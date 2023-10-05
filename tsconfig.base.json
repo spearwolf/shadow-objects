@@ -5,7 +5,7 @@
     "sourceMap": true,
     "declaration": false,
     "emitDecoratorMetadata": false,
-    "experimentalDecorators": true,
+    "experimentalDecorators": false,
     "useDefineForClassFields": false,
     "importHelpers": true,
     "baseUrl": ".",
