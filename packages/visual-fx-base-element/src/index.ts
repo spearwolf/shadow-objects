@@ -1,3 +1,3 @@
-export function fooBar() {
-  return 'fooBar';
-}
+import {SimpleGreeting} from './SimpleGreeting';
+
+customElements.define('simple-greeting', SimpleGreeting);

@@ -7,6 +7,16 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@spearwolf/eventize':
+        specifier: ^3.0.0
+        version: 3.0.0
+      '@spearwolf/signalize':
+        specifier: ^0.5.1
+        version: 0.5.1(@spearwolf/eventize@3.0.0)
+      lit:
+        specifier: 3.0.0-pre.1
+        version: 3.0.0-pre.1
     devDependencies:
       '@nx/eslint-plugin':
         specifier: ^16.10.0
@@ -101,11 +111,24 @@ importers:
       ts-node:
         specifier: ^10.9.1
         version: 10.9.1(@types/node@20.8.2)(typescript@5.2.2)
+      tslib:
+        specifier: ^2.6.2
+        version: 2.6.2
       typescript:
         specifier: ^5.2.2
         version: 5.2.2
 
-  packages/visual-fx-base-element: {}
+  packages/visual-fx-base-element:
+    dependencies:
+      '@spearwolf/eventize':
+        specifier: ^3.0.0
+        version: 3.0.0
+      '@spearwolf/signalize':
+        specifier: ^0.5.1
+        version: 0.5.1(@spearwolf/eventize@3.0.0)
+      lit:
+        specifier: 3.0.0-pre.1
+        version: 3.0.0-pre.1
 
 packages:
 
@@ -1740,6 +1763,16 @@ packages:
       '@jridgewell/sourcemap-codec': 1.4.15
     dev: true
 
+  /@lit-labs/ssr-dom-shim@1.1.2-pre.1:
+    resolution: {integrity: sha512-cRy/vafxn20Upocct6LeVzMatmnR0qHvX+7U00jPK0t9sxNaiAmpZyjHSUhLtUnG4jpuJW9UBIhVgYfZcgMo8A==}
+    dev: false
+
+  /@lit/reactive-element@2.0.0-pre.1:
+    resolution: {integrity: sha512-oKzaKLYHbXeeqfuDk8uS660Y3aH/LpMoctBwo5u2cS2vMwvurFX6raavNY/xsr4WsatNVn4sbA2VVx50hIAdTw==}
+    dependencies:
+      '@lit-labs/ssr-dom-shim': 1.1.2-pre.1
+    dev: false
+
   /@mapbox/node-pre-gyp@1.0.11:
     resolution: {integrity: sha512-Yhlar6v9WQgUp/He7BdgzOz8lqMQ8sU+jkCq7Wx8Myc5YFJLbEe7lgui/V7G1qB1DJykHSGwreceSaD60Y0PUQ==}
     hasBin: true
@@ -2331,6 +2364,20 @@ packages:
     resolution: {integrity: sha512-sXXKG+uL9IrKqViTtao2Ws6dy0znu9sOaP1di/jKGW1M6VssO8vlpXCQcpZ+jisQ1tTFAC5Jo/EOzFbggBagFQ==}
     dev: true
 
+  /@spearwolf/eventize@3.0.0:
+    resolution: {integrity: sha512-quCzFgEXEOY2gQ2LC7MTIsIvM7A3HKB7SrylctYr5uYSPoztWpf8dSJROIq/Za2sC3neU4tj0T/dboasblzuOQ==}
+    engines: {node: '>=18.16'}
+    dev: false
+
+  /@spearwolf/signalize@0.5.1(@spearwolf/eventize@3.0.0):
+    resolution: {integrity: sha512-uN3QSlIIPzU7JwV9peg4TL+iVKoHF2P70KOG3lvOi4x4nHd7shTamyJC/1FHxd+6lUF/IVO1m8vpgr7LVktcDQ==}
+    engines: {node: '>=18.16'}
+    peerDependencies:
+      '@spearwolf/eventize': ^3.0.0
+    dependencies:
+      '@spearwolf/eventize': 3.0.0
+    dev: false
+
   /@tootallnate/once@2.0.0:
     resolution: {integrity: sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A==}
     engines: {node: '>= 10'}
@@ -2479,6 +2526,10 @@ packages:
   /@types/tough-cookie@4.0.3:
     resolution: {integrity: sha512-THo502dA5PzG/sfQH+42Lw3fvmYkceefOspdCwpHRul8ik2Jv1K8I5OZz1AT3/rs46kwgMCe9bSBmDLYkkOMGg==}
     dev: true
+
+  /@types/trusted-types@2.0.4:
+    resolution: {integrity: sha512-IDaobHimLQhjwsQ/NMwRVfa/yL7L/wriQPMhw1ZJall0KX6E1oxk29XMDeilW5qTIg5aoiqf5Udy8U/51aNoQQ==}
+    dev: false
 
   /@types/yargs-parser@21.0.1:
     resolution: {integrity: sha512-axdPBuLuEJt0c4yI5OZssC19K2Mq1uKdrfZBzuxLvaztgqUtFYZUNw7lETExPYJR9jdEoIg4mb7RQKRQzOkeGQ==}
@@ -5625,6 +5676,28 @@ packages:
     resolution: {integrity: sha512-cNOjgCnLB+FnvWWtyRTzmB3POJ+cXxTA81LoW7u8JdmhfXzriropYwpjShnz1QLLWsQwY7nIxoDmcPTwphDK9w==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
     dev: true
+
+  /lit-element@4.0.0-pre.1:
+    resolution: {integrity: sha512-g6z4W3HRponlFEYUVeJXo4KcnxFj1lWTLhFDAkRxmcUq/7xYkvd955dqkwQ8x1XBVgtCA4m2mOYB3RrwfTlVDw==}
+    dependencies:
+      '@lit-labs/ssr-dom-shim': 1.1.2-pre.1
+      '@lit/reactive-element': 2.0.0-pre.1
+      lit-html: 3.0.0-pre.1
+    dev: false
+
+  /lit-html@3.0.0-pre.1:
+    resolution: {integrity: sha512-CzDS/69qdDGA/d5DZx8lvcH3uHS8fYnwyGnSo6z7ztKbHYCpHmyGJRfWh/pMXk4ixvkvHUGuRuGgEA8OnxKHJw==}
+    dependencies:
+      '@types/trusted-types': 2.0.4
+    dev: false
+
+  /lit@3.0.0-pre.1:
+    resolution: {integrity: sha512-HG5serwzvQuJL/G27Knpe7Hy/jFEJo8N2CaZe0pqipD26icgM5aeInWWaoktsKzE/XUc8/l/M5dghFDBhlEWWg==}
+    dependencies:
+      '@lit/reactive-element': 2.0.0-pre.1
+      lit-element: 4.0.0-pre.1
+      lit-html: 3.0.0-pre.1
+    dev: false
 
   /load-json-file@4.0.0:
     resolution: {integrity: sha512-Kx8hMakjX03tiGTLAIdJ+lL0htKnXjEZN6hk/tozf/WOuYGdZBJrZ+rCJRbVCugsjB3jMLn9746NsQIf5VjBMw==}

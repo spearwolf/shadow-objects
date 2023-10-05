@@ -4,8 +4,9 @@
     "rootDir": ".",
     "sourceMap": true,
     "declaration": false,
-    "emitDecoratorMetadata": true,
+    "emitDecoratorMetadata": false,
     "experimentalDecorators": true,
+    "useDefineForClassFields": false,
     "importHelpers": true,
     "baseUrl": ".",
     "allowUnreachableCode": false,
@@ -36,11 +37,18 @@
     "isolatedModules": true,
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "target": "ESNext",
-    "useDefineForClassFields": true,
     "incremental": false,
     "noErrorTruncation": true,
     "skipDefaultLibCheck": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "@spearwolf/visual-fx-base-element": ["packages/visual-fx-base-element/src"]
+    }
   },
-  "exclude": ["node_modules", "tmp"]
+  "exclude": ["node_modules", "tmp"],
+  "references": [
+    {
+      "path": "./packages/visual-fx-base-element/tsconfig.build.json"
+    }
+  ]
 }
