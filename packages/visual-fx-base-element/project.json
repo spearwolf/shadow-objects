@@ -1,0 +1,31 @@
+{
+  "name": "visual-fx-base-element",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "root": "packages/visual-fx-base-element",
+  "sourceRoot": "packages/visual-fx-base-element/src",
+  "projectType": "library",
+  "targets": {
+    "lint": {
+      "executor": "@nx/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["packages/visual-fx-base-element/**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "packages/visual-fx-base-element/jest.config.ts",
+        "passWithNoTests": true
+      },
+      "configurations": {
+        "ci": {
+          "ci": true,
+          "codeCoverage": true
+        }
+      }
+    }
+  },
+  "tags": []
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@spearwolf/visual-fx-base-element",
+  "description": "a base class and helpers for visual fx web components",
+  "version": "0.0.1-dev",
+  "author": {
+    "name": "Wolfger Schramm",
+    "email": "wolfger@spearwolf.de",
+    "url": "https://www.spearwolf.de"
+  },
+  "license": "Apache-2.0",
+  "main": "dist/visual-fx-base-element.cjs.js",
+  "module": "dist/visual-fx-base-element.mjs",
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    "import": "./dist/visual-fx-base-element.mjs",
+    "require": "./dist/visual-fx-base-element.cjs.js"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "run-s compile bundle makePackageJson",
+    "compile": "tsc -b tsconfig.build.json",
+    "bundle": "rollup -c rollup.config.mjs",
+    "clean": "rimraf build types dist ../../dist/packages/entity-verse",
+    "makePackageJson": "node ../../scripts/makePackageJson.mjs"
+  },
+  "rollup": {
+    "external": [
+      "@spearwolf/eventize",
+      "@spearwolf/signalize"
+    ]
+  }
+}
