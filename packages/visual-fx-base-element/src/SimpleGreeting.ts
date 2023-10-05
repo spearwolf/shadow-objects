@@ -1,12 +1,13 @@
 import {createEffect, signal} from '@spearwolf/signalize';
 import {LitElement, css, html} from 'lit';
+import {property} from 'lit/decorators.js';
 
 export class SimpleGreeting extends LitElement {
-  static override properties: {
-    name: {type: String};
-  };
+  // static override properties: {
+  //   name: {type: String};
+  // };
 
-  declare name: string;
+  // declare name: string;
 
   static override styles = css`
     p {
@@ -14,12 +15,14 @@ export class SimpleGreeting extends LitElement {
     }
   `;
 
+  @property() accessor name = 'Somebody';
+
   @signal() accessor foo = 'bar';
 
   constructor() {
     super();
 
-    this.name = 'Somebody';
+    // this.name = 'Somebody';
 
     createEffect(() => {
       console.log('foo changed to', this.foo);

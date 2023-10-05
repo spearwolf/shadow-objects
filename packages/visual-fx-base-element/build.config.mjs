@@ -1,4 +1,3 @@
-import {nodeResolve} from '@rollup/plugin-node-resolve';
 import fs from 'fs';
 import path from 'path';
 import {fileURLToPath} from 'url';
@@ -19,18 +18,4 @@ const makeBanner = (build) => {
   return createBanner({...packageJson, version});
 };
 
-export default {
-  plugins: [nodeResolve()],
-  input: {
-    [projectShortName]: path.join(buildDir, 'src/index.js'),
-  },
-  output: [
-    {
-      banner: makeBanner('esm'),
-      dir: distDir,
-      entryFileNames: '[name].standalone.mjs',
-      format: 'es',
-    },
-  ],
-  external: () => false,
-};
+export {buildDir, distDir, makeBanner, packageJson, projectDir, projectShortName};

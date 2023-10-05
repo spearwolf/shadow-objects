@@ -17,11 +17,11 @@
   },
   "sideEffects": false,
   "scripts": {
-    "build": "run-s compile bundle makePackageJson",
+    "build": "pnpm run-s compile bundle makePackageJson",
     "compile": "tsc -b tsconfig.build.json",
-    "bundle": "run-p bundle:library bundle:standalone",
+    "bundle": "pnpm run-s bundle:library bundle:standalone",
     "bundle:library": "rollup -c rollup.config.mjs",
-    "bundle:standalone": "rollup -c rollup.config.standalone.mjs",
+    "bundle:standalone": "node build.standalone.mjs",
     "clean": "rimraf build types dist ../../dist/packages/visual-fx-base-element",
     "makePackageJson": "node ../../scripts/makePackageJson.mjs"
   },
@@ -29,6 +29,7 @@
     "external": [
       "@spearwolf/eventize",
       "@spearwolf/signalize",
+      "lit/decorators.js",
       "lit"
     ]
   },
