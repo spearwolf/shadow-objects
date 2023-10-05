@@ -21,11 +21,14 @@
       "import": "./dist/simple-greeting.js",
       "require": "./dist/simple-greeting.cjs"
     },
-    "./bundle.js": "./dist/visual-fx-base-element.bundle.js"
+    "./bundle.js": "./dist/visual-fx-base-element.js"
   },
   "sideEffects": [
     "build/src/simple-greeting.js",
-    "build/src/bundle.js"
+    "build/src/bundle.js",
+    "dist/simple-greeting.js",
+    "dist/simple-greeting.cjs",
+    "dist/visual-fx-base-element.js"
   ],
   "scripts": {
     "build": "pnpm run-s compile bundle makePackageJson",

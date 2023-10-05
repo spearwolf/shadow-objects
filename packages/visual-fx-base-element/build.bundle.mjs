@@ -8,7 +8,7 @@ await esbuild.build({
   bundle: true,
   minify: true,
   format: 'esm',
-  target: ['es2020'],
+  target: ['es2017'],
   banner: {js: makeBanner('bundle')},
-  outfile: `${distDir}/${projectShortName}.bundle.js`,
+  outfile: `${distDir}/${projectShortName}.js`,
 });

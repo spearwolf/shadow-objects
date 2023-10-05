@@ -1,0 +1,9 @@
+{
+  "sideEffects": ["simple-greeting.js", "simple-greeting.cjs", "bundle.js"],
+  "scripts": null,
+  "devDependencies": null,
+  "rollup": null,
+  "nx": null,
+  "prettier": null,
+  "jest": null
+}
