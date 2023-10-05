@@ -114,11 +114,11 @@ importers:
   packages/visual-fx-base-element:
     dependencies:
       '@spearwolf/eventize':
-        specifier: ^3.0.0
-        version: 3.0.0
+        specifier: ^3.0.1
+        version: 3.0.1
       '@spearwolf/signalize':
         specifier: ^0.5.1
-        version: 0.5.1(@spearwolf/eventize@3.0.0)
+        version: 0.5.1(@spearwolf/eventize@3.0.1)
       lit:
         specifier: 3.0.0-pre.1
         version: 3.0.0-pre.1
@@ -2555,18 +2555,18 @@ packages:
     resolution: {integrity: sha512-sXXKG+uL9IrKqViTtao2Ws6dy0znu9sOaP1di/jKGW1M6VssO8vlpXCQcpZ+jisQ1tTFAC5Jo/EOzFbggBagFQ==}
     dev: true
 
-  /@spearwolf/eventize@3.0.0:
-    resolution: {integrity: sha512-quCzFgEXEOY2gQ2LC7MTIsIvM7A3HKB7SrylctYr5uYSPoztWpf8dSJROIq/Za2sC3neU4tj0T/dboasblzuOQ==}
+  /@spearwolf/eventize@3.0.1:
+    resolution: {integrity: sha512-teGmz40yD9hB0R2xndNuexVXe0lssaztHUkvYXQ7zw/idzZ29mN365T4NGTXFYqEApGqC8l7tIkX4NYDEelRGA==}
     engines: {node: '>=18.16'}
     dev: false
 
-  /@spearwolf/signalize@0.5.1(@spearwolf/eventize@3.0.0):
+  /@spearwolf/signalize@0.5.1(@spearwolf/eventize@3.0.1):
     resolution: {integrity: sha512-uN3QSlIIPzU7JwV9peg4TL+iVKoHF2P70KOG3lvOi4x4nHd7shTamyJC/1FHxd+6lUF/IVO1m8vpgr7LVktcDQ==}
     engines: {node: '>=18.16'}
     peerDependencies:
       '@spearwolf/eventize': ^3.0.0
     dependencies:
-      '@spearwolf/eventize': 3.0.0
+      '@spearwolf/eventize': 3.0.1
     dev: false
 
   /@tootallnate/once@2.0.0:
