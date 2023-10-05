@@ -4,11 +4,11 @@ import path from 'path';
 import {buildDir, distDir, makeBanner, projectShortName} from './build.config.mjs';
 
 await esbuild.build({
-  entryPoints: [path.join(buildDir, 'src/index.js')],
+  entryPoints: [path.join(buildDir, 'src/bundle.js')],
   bundle: true,
   minify: true,
   format: 'esm',
   target: ['es2020'],
-  banner: {js: makeBanner('standalone')},
-  outfile: `${distDir}/${projectShortName}.standalone.js`,
+  banner: {js: makeBanner('bundle')},
+  outfile: `${distDir}/${projectShortName}.bundle.js`,
 });

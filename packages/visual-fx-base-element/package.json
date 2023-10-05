@@ -8,20 +8,31 @@
     "url": "https://www.spearwolf.de"
   },
   "license": "Apache-2.0",
-  "main": "dist/visual-fx-base-element.cjs.js",
-  "module": "dist/visual-fx-base-element.mjs",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/types/index.d.ts",
   "exports": {
-    "import": "./dist/visual-fx-base-element.mjs",
-    "require": "./dist/visual-fx-base-element.cjs.js"
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./simple-greeting.js": {
+      "import": "./dist/simple-greeting.js",
+      "require": "./dist/simple-greeting.cjs"
+    },
+    "./bundle.js": "./dist/visual-fx-base-element.bundle.js"
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "build/src/simple-greeting.js",
+    "build/src/bundle.js"
+  ],
   "scripts": {
     "build": "pnpm run-s compile bundle makePackageJson",
     "compile": "tsc -b tsconfig.build.json",
     "bundle": "pnpm run-s bundle:library bundle:standalone",
     "bundle:library": "rollup -c rollup.config.mjs",
-    "bundle:standalone": "node build.standalone.mjs",
+    "bundle:standalone": "node build.bundle.mjs",
     "clean": "rimraf build types dist ../../dist/packages/visual-fx-base-element",
     "makePackageJson": "node ../../scripts/makePackageJson.mjs"
   },
