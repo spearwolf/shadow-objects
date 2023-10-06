@@ -1,7 +1,7 @@
 import {expect, test} from '@playwright/test';
 
-test.beforeEach('get / -', async ({page}) => {
-  await page.goto('/');
+test.beforeEach('goto page', async ({page}) => {
+  await page.goto('/pages/simple-greeting.html');
 });
 
 test('has element', async ({page}) => {

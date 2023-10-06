@@ -4,16 +4,26 @@
   "root": "packages/visual-fx-base-element-e2e",
   "sourceRoot": "packages/visual-fx-base-element-e2e/src",
   "projectType": "library",
+  "namedInputs": {
+    "defaults": [
+      "{projectRoot}/dist",
+      "{projectRoot}/pages",
+      "{projectRoot}/public",
+      "{projectRoot}/src",
+      "{projectRoot}/tests",
+      "{projectRoot}/index.html"
+    ]
+  },
   "targets": {
     "lint": {
       "executor": "@nx/linter:eslint",
       "outputs": ["{options.outputFile}"],
       "options": {
         "lintFilePatterns": [
-          "packages/visual-fx-base-element-e2e/src/**/*.ts",
-          "packages/visual-fx-base-element-e2e/src/**/*.js",
-          "packages/visual-fx-base-element-e2e/tests/**/*.ts",
-          "packages/visual-fx-base-element-e2e/tests/**/*.js"
+          "{projectRoot}/src/**/*.ts",
+          "{projectRoot}/src/**/*.js",
+          "{projectRoot}/tests/**/*.ts",
+          "{projectRoot}/tests/**/*.js"
         ]
       }
     },
@@ -26,5 +36,5 @@
       "dependsOn": ["^build", "build"]
     }
   },
-  "tags": []
+  "tags": ["e2e"]
 }

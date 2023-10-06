@@ -13,7 +13,7 @@
     "test": "pnpm exec nx run-many -t test",
     "lint": "pnpm exec nx run-many -t lint",
     "test:affected": "pnpm exec nx affected -t test",
-    "clean": "pnpm exec nx run-many -t clean && rimraf dist",
+    "clean": "pnpm exec nx run-many -t clean && pnpm exec rimraf dist",
     "update": "pnpm dlx npm-check --update",
     "cbt": "pnpm exec run-s clean build test",
     "site": "pnpm exec nx dev site",
