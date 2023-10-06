@@ -36,13 +36,13 @@
     "dist/bundle.js"
   ],
   "scripts": {
-    "build": "pnpm run-s compile bundle makePackageJson",
-    "compile": "tsc -b tsconfig.build.json",
-    "bundle": "pnpm run-s bundle:library bundle:standalone",
-    "bundle:library": "rollup -c rollup.config.mjs",
-    "bundle:standalone": "node build.bundle.mjs",
-    "clean": "rimraf build types dist ../../dist/packages/visual-fx-base-element",
-    "makePackageJson": "node ../../scripts/makePackageJson.mjs"
+    "build": "pnpm exec run-s compile bundle makePackageJson",
+    "compile": "pnpm exec tsc -b tsconfig.build.json",
+    "bundle": "pnpm exec run-s bundle:library bundle:standalone",
+    "bundle:library": "pnpm exec rollup -c rollup.config.mjs",
+    "bundle:standalone": "pnpm exec node build.bundle.mjs",
+    "clean": "pnpm exec rimraf build types dist ../../dist/packages/visual-fx-base-element",
+    "makePackageJson": "pnpm exec node ../../scripts/makePackageJson.mjs"
   },
   "rollup": {
     "external": [

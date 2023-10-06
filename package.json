@@ -9,16 +9,16 @@
     "node": ">=18.17.1"
   },
   "scripts": {
-    "build": "nx run-many -t build",
-    "test": "nx run-many -t test",
-    "lint": "nx run-many -t lint",
-    "test:affected": "nx affected -t test",
-    "clean": "nx run-many -t clean && rimraf dist",
-    "update": "npx npm-check --update",
-    "cbt": "run-s clean build test",
-    "site": "nx dev site",
-    "start": "nx dev site",
-    "ci": "run-s build lint test"
+    "build": "pnpm exec nx run-many -t build",
+    "test": "pnpm exec nx run-many -t test",
+    "lint": "pnpm exec nx run-many -t lint",
+    "test:affected": "pnpm exec nx affected -t test",
+    "clean": "pnpm exec nx run-many -t clean && rimraf dist",
+    "update": "pnpm dlx npm-check --update",
+    "cbt": "pnpm exec run-s clean build test",
+    "site": "pnpm exec nx dev site",
+    "start": "pnpm nx dev site",
+    "ci": "pnpm exec run-s build lint test"
   },
   "devDependencies": {
     "@nx/eslint-plugin": "^16.10.0",

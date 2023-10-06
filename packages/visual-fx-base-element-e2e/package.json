@@ -4,10 +4,10 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "clean": "rimraf build dist"
+    "dev": "pnpm exec vite",
+    "build": "pnpm exec tsc && pnpm exec vite build",
+    "preview": "pnpm exec vite preview",
+    "clean": "pnpm exec rimraf build dist"
   },
   "dependencies": {
     "@spearwolf/visual-fx-base-element": "workspace:*"
