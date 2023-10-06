@@ -9,7 +9,12 @@
       "executor": "@nx/linter:eslint",
       "outputs": ["{options.outputFile}"],
       "options": {
-        "lintFilePatterns": ["packages/visual-fx-base-element-e2e/src/**/*.ts", "packages/visual-fx-base-element-e2e/src/**/*.js"]
+        "lintFilePatterns": [
+          "packages/visual-fx-base-element-e2e/src/**/*.ts",
+          "packages/visual-fx-base-element-e2e/src/**/*.js",
+          "packages/visual-fx-base-element-e2e/tests/**/*.ts",
+          "packages/visual-fx-base-element-e2e/tests/**/*.js"
+        ]
       }
     },
     "test": {

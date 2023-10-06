@@ -8,7 +8,7 @@
     "build": "pnpm exec tsc && pnpm exec vite build",
     "preview": "pnpm exec vite preview --host",
     "build:n:serve": "pnpm exec run-s build preview",
-    "clean": "pnpm exec rimraf build dist playwright-report coverage",
+    "clean": "pnpm exec rimraf build dist playwright-report coverage test-results",
     "playwright:test": "pnpm exec playwright test",
     "playwright:test:ui": "pnpm exec playwright test --ui",
     "playwright:show-report": "pnpm exec playwright show-report",
