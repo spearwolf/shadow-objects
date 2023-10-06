@@ -6,4 +6,8 @@ export default {
     '^.+\\.[tj]s$': ['ts-jest', {tsconfig: '<rootDir>/tsconfig.spec.json'}],
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
+  testPathIgnorePatterns: ['/node_modules/', '/tests/'],
+  passWithNoTests: true,
+  collectCoverage: true,
+  coverageReporters: ['json', 'html'],
 };

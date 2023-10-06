@@ -13,18 +13,12 @@
       }
     },
     "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "executor": "nx:run-script",
       "options": {
-        "jestConfig": "packages/visual-fx-base-element-e2e/jest.config.ts",
-        "passWithNoTests": true
+        "script": "test"
       },
-      "configurations": {
-        "ci": {
-          "ci": true,
-          "codeCoverage": true
-        }
-      }
+      "outputs": ["{projectRoot}/playwright-report", "{projectRoot}/coverage"],
+      "dependsOn": ["^build", "build"]
     }
   },
   "tags": []

@@ -6,13 +6,20 @@
   "scripts": {
     "dev": "pnpm exec vite",
     "build": "pnpm exec tsc && pnpm exec vite build",
-    "preview": "pnpm exec vite preview",
-    "clean": "pnpm exec rimraf build dist"
+    "preview": "pnpm exec vite preview --host",
+    "build:n:serve": "pnpm exec run-s build preview",
+    "clean": "pnpm exec rimraf build dist playwright-report coverage",
+    "playwright:test": "pnpm exec playwright test",
+    "playwright:test:ui": "pnpm exec playwright test --ui",
+    "playwright:show-report": "pnpm exec playwright show-report",
+    "jest": "pnpm exec jest",
+    "test": "pnpm exec run-s jest playwright:test"
   },
   "dependencies": {
     "@spearwolf/visual-fx-base-element": "workspace:*"
   },
   "devDependencies": {
+    "@playwright/test": "^1.38.1",
     "typescript": "^5.2.2",
     "vite": "^4.4.5"
   }
