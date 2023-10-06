@@ -6,7 +6,7 @@
     "declaration": false,
     "emitDecoratorMetadata": false,
     "experimentalDecorators": false,
-    "useDefineForClassFields": false,
+    "useDefineForClassFields": true,
     "importHelpers": true,
     "baseUrl": ".",
     "allowUnreachableCode": false,
@@ -40,15 +40,15 @@
     "incremental": false,
     "noErrorTruncation": true,
     "skipDefaultLibCheck": true,
-    "skipLibCheck": true,
-    "paths": {
-      "@spearwolf/visual-fx-base-element": ["packages/visual-fx-base-element/src"]
-    }
+    "skipLibCheck": true
   },
   "exclude": ["node_modules", "tmp"],
   "references": [
     {
       "path": "./packages/visual-fx-base-element/tsconfig.build.json"
+    },
+    {
+      "path": "./packages/visual-fx-base-element-e2e/tsconfig.json"
     }
   ]
 }

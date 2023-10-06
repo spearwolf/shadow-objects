@@ -15,20 +15,25 @@
   "exports": {
     ".": {
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.cjs",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./bundle.js": {
+      "default": "./dist/bundle.js",
+      "types": "./dist/types/bundle.d.ts"
     },
     "./simple-greeting.js": {
       "import": "./dist/simple-greeting.js",
-      "require": "./dist/simple-greeting.cjs"
-    },
-    "./bundle.js": "./dist/visual-fx-base-element.js"
+      "require": "./dist/simple-greeting.cjs",
+      "types": "./dist/types/simple-greeting.d.ts"
+    }
   },
   "sideEffects": [
     "build/src/simple-greeting.js",
     "build/src/bundle.js",
     "dist/simple-greeting.js",
     "dist/simple-greeting.cjs",
-    "dist/visual-fx-base-element.js"
+    "dist/bundle.js"
   ],
   "scripts": {
     "build": "pnpm run-s compile bundle makePackageJson",

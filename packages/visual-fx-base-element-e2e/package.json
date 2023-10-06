@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "clean": "rimraf build dist"
   },
   "dependencies": {
     "@spearwolf/visual-fx-base-element": "workspace:*"

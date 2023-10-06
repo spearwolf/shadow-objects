@@ -1,7 +1,7 @@
 import * as esbuild from 'esbuild';
 import path from 'path';
 
-import {buildDir, distDir, makeBanner, projectShortName} from './build.config.mjs';
+import {buildDir, distDir, makeBanner} from './build.config.mjs';
 
 await esbuild.build({
   entryPoints: [path.join(buildDir, 'src/bundle.js')],
@@ -10,5 +10,5 @@ await esbuild.build({
   format: 'esm',
   target: ['es2017'],
   banner: {js: makeBanner('bundle')},
-  outfile: `${distDir}/${projectShortName}.js`,
+  outfile: `${distDir}/bundle.js`,
 });

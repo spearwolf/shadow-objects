@@ -1,5 +1,5 @@
 {
-  "sideEffects": ["simple-greeting.js", "simple-greeting.cjs", "bundle.js"],
+  "sideEffects": ["bundle.js", "simple-greeting.js", "simple-greeting.cjs"],
   "scripts": null,
   "devDependencies": null,
   "rollup": null,
