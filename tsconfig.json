@@ -1,11 +1,13 @@
 {
   "compileOnSave": false,
+  "exclude": ["node_modules"],
   "compilerOptions": {
     "rootDir": ".",
     "sourceMap": true,
-    "declaration": false,
-    "emitDecoratorMetadata": false,
+    "declaration": true,
+    "declarationMap": true,
     "experimentalDecorators": false,
+    "emitDecoratorMetadata": false,
     "useDefineForClassFields": true,
     "importHelpers": true,
     "baseUrl": ".",
@@ -24,7 +26,7 @@
     "useUnknownInCatchVariables": true,
     "noFallthroughCasesInSwitch": false,
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "resolveJsonModule": true,
     "downlevelIteration": false,
@@ -41,14 +43,5 @@
     "noErrorTruncation": true,
     "skipDefaultLibCheck": true,
     "skipLibCheck": true
-  },
-  "exclude": ["node_modules", "tmp"],
-  "references": [
-    {
-      "path": "./packages/visual-fx-base-element/tsconfig.build.json"
-    },
-    {
-      "path": "./packages/visual-fx-base-element-e2e/tsconfig.json"
-    }
-  ]
+  }
 }

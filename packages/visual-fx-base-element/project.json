@@ -2,7 +2,7 @@
   "name": "visual-fx-base-element",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "root": "packages/visual-fx-base-element",
-  "sourceRoot": "packages/visual-fx-base-element/src",
+  "sourceRoot": "{projectRoot}/src",
   "projectType": "library",
   "targets": {
     "lint": {
@@ -13,18 +13,11 @@
       }
     },
     "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "executor": "nx:run-script",
       "options": {
-        "jestConfig": "packages/visual-fx-base-element/jest.config.ts",
-        "passWithNoTests": true
+        "script": "test"
       },
-      "configurations": {
-        "ci": {
-          "ci": true,
-          "codeCoverage": true
-        }
-      }
+      "dependsOn": ["^build"]
     }
   },
   "tags": []
