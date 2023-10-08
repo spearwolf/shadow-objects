@@ -14,6 +14,8 @@
     },
     "test": {
       "executor": "nx:run-script",
+      "inputs": ["{projectRoot}/src"],
+      "outputs": ["{projectRoot}/tests"],
       "options": {
         "script": "test"
       },

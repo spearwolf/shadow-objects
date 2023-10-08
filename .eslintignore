@@ -5,3 +5,4 @@ lib
 coverage
 playwright-report
 test-reports
+tests
