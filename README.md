@@ -1,4 +1,4 @@
-# @spearwolf/visual-fx-web-components
+# visual-fx-web-components
 
 this is a monorepo based on [nx](https://nx.dev/) and [pnpm](https://pnpm.io/).
 
