@@ -3,20 +3,13 @@
   "include": ["src", "tests"],
   "exclude": ["build", "dist"],
   "compilerOptions": {
-    "composite": true,
-    "incremental": true,
-
     "rootDir": ".",
     "outDir": "./build",
-
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-
     "declaration": true,
     "declarationDir": "./build/types",
     "declarationMap": true,
-
-    "allowImportingTsExtensions": true,
     "noEmit": true
   }
 }
