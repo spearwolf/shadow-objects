@@ -4,6 +4,8 @@
   "compilerOptions": {
     "outDir": "./dist",
     "declarationDir": "./dist",
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
   }
 }
