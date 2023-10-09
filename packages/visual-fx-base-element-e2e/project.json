@@ -32,7 +32,7 @@
       "options": {
         "script": "test"
       },
-      "outputs": ["{projectRoot}/playwright-report", "{projectRoot}/coverage"],
+      "outputs": ["{projectRoot}/playwright-report", "{projectRoot}/test-results"],
       "dependsOn": ["^build", "build"]
     }
   },

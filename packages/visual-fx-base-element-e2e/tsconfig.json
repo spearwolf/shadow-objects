@@ -4,12 +4,6 @@
   "exclude": ["build", "dist"],
   "compilerOptions": {
     "rootDir": ".",
-    "outDir": "./build",
-    "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "declaration": true,
-    "declarationDir": "./build/types",
-    "declarationMap": true,
     "noEmit": true
   }
 }
