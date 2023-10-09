@@ -6,20 +6,24 @@
   "license": "Apache-2.0",
   "private": true,
   "engines": {
-    "node": ">=18.17.1"
+    "node": ">=18.17.1",
+    "pnpm": ">=8.8"
   },
   "scripts": {
-    "build": "pnpm exec nx run-many -t build",
-    "test": "pnpm exec nx run-many -t test",
-    "lint": "pnpm exec nx run-many -t lint",
-    "test:affected": "pnpm exec nx affected -t test",
-    "clean": "pnpm exec nx run-many -t clean && pnpm exec rimraf dist",
-    "clear-cache": "pnpm exec nx reset && pnpm exec nx run-many -t clean && pnpm exec rimraf dist",
+    "nx": "pnpm exec nx",
+    "rimraf": "pnpm exec rimraf",
+    "run-s": "pnpm exec run-s -s",
+    "build": "pnpm nx run-many -t build",
+    "test": "pnpm nx run-many -t test",
+    "lint": "pnpm nx run-many -t lint",
+    "test:affected": "pnpm nx affected -t test",
+    "clean": "pnpm nx run-many -t clean && pnpm rimraf dist",
+    "clear-cache": "pnpm nx reset && pnpm nx run-many -t clean && pnpm rimraf dist",
     "update": "pnpm dlx npm-check --update",
-    "cbt": "pnpm exec run-s clean build test",
-    "site": "pnpm exec nx dev site",
+    "cbt": "pnpm run-s clean build test",
+    "site": "pnpm nx dev site",
     "start": "pnpm nx dev site",
-    "ci": "pnpm exec run-s build lint test"
+    "ci": "pnpm run-s build lint test"
   },
   "devDependencies": {
     "@nx/eslint-plugin": "^16.10.0",

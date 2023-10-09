@@ -4,16 +4,20 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "pnpm exec vite",
-    "build": "pnpm exec tsc && pnpm exec vite build",
-    "preview": "pnpm exec vite preview --host",
-    "build:n:serve": "pnpm exec run-s build preview",
+    "tsc": "pnpm exec tsc",
+    "run-s": "pnpm exec run-s -s",
+    "playwright": "pnpm exec playwright",
+    "vite": "pnpm exec vite",
+    "dev": "pnpm vite",
+    "build": "pnpm tsc && pnpm vite build",
+    "vite:preview": "pnpm vite preview --host",
+    "preview": "pnpm run-s build vite:preview",
     "clean": "pnpm exec rimraf build dist playwright-report coverage test-results",
-    "playwright:test": "pnpm exec playwright test",
-    "playwright:test:ui": "pnpm exec playwright test --ui",
-    "playwright:show-report": "pnpm exec playwright show-report",
+    "playwright:test": "pnpm playwright test",
+    "playwright:test:ui": "pnpm playwright test --ui",
+    "playwright:show-report": "pnpm playwright show-report",
     "jest": "pnpm exec jest",
-    "test": "pnpm exec run-s jest playwright:test"
+    "test": "pnpm jest && pnpm playwright:test"
   },
   "dependencies": {
     "@spearwolf/visual-fx-base-element": "workspace:*"

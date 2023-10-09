@@ -39,13 +39,15 @@
     "dist/bundle.js"
   ],
   "scripts": {
-    "build": "pnpm exec run-s compile:lib compile:bundle bundle makePackageJson",
-    "compile:lib": "pnpm exec tsc -b tsconfig.lib.json",
-    "compile:bundle": "pnpm exec tsc -b tsconfig.build.json",
-    "compile:tests": "pnpm exec tsc -b tsconfig.tests.json",
+    "tsc": "pnpm exec tsc",
+    "run-s": "pnpm exec run-s -s",
+    "build": "pnpm run-s compile:lib compile:bundle bundle makePackageJson",
+    "compile:lib": "pnpm tsc -b tsconfig.lib.json",
+    "compile:bundle": "pnpm tsc -b tsconfig.build.json",
+    "compile:tests": "pnpm tsc -b tsconfig.tests.json",
     "bundle": "pnpm exec node build.bundle.mjs",
     "vitest:run": "pnpm exec vitest tests/src --run",
-    "test": "pnpm exec run-s compile:tests vitest:run",
+    "test": "pnpm compile:tests && pnpm vitest:run",
     "clean": "pnpm exec rimraf build types dist lib tests",
     "makePackageJson": "pnpm exec node ../../scripts/makePackageJson.mjs"
   },
