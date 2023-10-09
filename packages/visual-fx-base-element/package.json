@@ -41,7 +41,7 @@
   "scripts": {
     "build": "pnpm exec run-s compile:lib compile:bundle bundle makePackageJson",
     "compile:lib": "pnpm exec tsc -b tsconfig.lib.json",
-    "compile:bundle": "pnpm exec tsc -b tsconfig.bundle.json",
+    "compile:bundle": "pnpm exec tsc -b tsconfig.build.json",
     "compile:tests": "pnpm exec tsc -b tsconfig.tests.json",
     "bundle": "pnpm exec node build.bundle.mjs",
     "vitest:run": "pnpm exec vitest tests/src --run",
