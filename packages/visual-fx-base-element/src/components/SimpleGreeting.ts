@@ -1,4 +1,5 @@
-import {createEffect, signal} from '@spearwolf/signalize';
+import {createEffect} from '@spearwolf/signalize';
+import {signal} from '@spearwolf/signalize/decorators';
 import {LitElement, css, html} from 'lit';
 import {property} from 'lit/decorators.js';
 
