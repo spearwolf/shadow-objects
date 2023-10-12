@@ -2,18 +2,8 @@
   "name": "visual-fx-base-element-e2e",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "root": "packages/visual-fx-base-element-e2e",
-  "sourceRoot": "packages/visual-fx-base-element-e2e/src",
-  "projectType": "library",
-  "namedInputs": {
-    "defaults": [
-      "{projectRoot}/dist",
-      "{projectRoot}/pages",
-      "{projectRoot}/public",
-      "{projectRoot}/src",
-      "{projectRoot}/tests",
-      "{projectRoot}/index.html"
-    ]
-  },
+  "sourceRoot": "{projectRoot}/src",
+  "projectType": "e2e",
   "targets": {
     "lint": {
       "executor": "@nx/linter:eslint",
@@ -36,5 +26,5 @@
       "dependsOn": ["^build", "build"]
     }
   },
-  "tags": ["e2e"]
+  "tags": []
 }
