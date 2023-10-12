@@ -1,5 +1,5 @@
-import {describe, it, expect} from 'vitest';
-import {VisualFxBase} from './VisualFxBase';
+import {describe, expect, it} from 'vitest';
+import {VisualFxBase} from './VisualFxBase.js';
 
 describe('VisualFxBase', () => {
   describe('class', () => {

@@ -1,3 +1,3 @@
-import {VisualFxBase} from './components/VisualFxBase';
+import {VisualFxBase} from './components/VisualFxBase.js';
 
 customElements.define('visual-fx-base', VisualFxBase);

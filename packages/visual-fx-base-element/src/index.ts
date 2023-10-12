@@ -1,2 +1,2 @@
-export * from './components/SimpleGreeting';
-export * from './components/VisualFxBase';
+export * from './components/SimpleGreeting.js';
+export * from './components/VisualFxBase.js';
