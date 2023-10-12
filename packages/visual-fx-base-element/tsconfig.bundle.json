@@ -3,8 +3,6 @@
   "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"],
   "compilerOptions": {
     "outDir": "./build",
-    "declarationDir": "./build",
-    "target": "ES2017",
-    "lib": ["ES2017", "DOM", "DOM.Iterable"]
+    "declarationDir": "./build"
   }
 }

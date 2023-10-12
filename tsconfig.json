@@ -1,6 +1,5 @@
 {
   "compileOnSave": false,
-  "exclude": ["node_modules", "dist", "build"],
   "compilerOptions": {
     "rootDir": ".",
     "sourceMap": true,
@@ -32,14 +31,13 @@
     "downlevelIteration": false,
     "removeComments": true,
     "stripInternal": true,
-    "allowJs": true,
+    "allowJs": false,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
     "isolatedModules": true,
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "target": "ESNext",
-    "incremental": false,
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "noErrorTruncation": true,
     "skipDefaultLibCheck": true,
     "skipLibCheck": true

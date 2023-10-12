@@ -1,6 +1,7 @@
-import fs from 'fs';
-import path from 'path';
-import {fileURLToPath} from 'url';
+import * as esbuild from 'esbuild';
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 
 import {createBanner} from '../../scripts/rollup/createBanner.mjs';
 import {makeVersionWithBuild} from '../../scripts/rollup/makeVersionWithBuild.mjs';
@@ -8,14 +9,22 @@ import {makeVersionWithBuild} from '../../scripts/rollup/makeVersionWithBuild.mj
 const projectDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 const packageJson = JSON.parse(fs.readFileSync(path.join(projectDir, 'package.json')));
 
-const projectShortName = path.basename(projectDir);
-
 const buildDir = path.join(projectDir, 'build');
 const distDir = path.join(projectDir, 'dist');
+
+// const projectShortName = path.basename(projectDir);
 
 const makeBanner = (build) => {
   const version = makeVersionWithBuild(build)(packageJson.version);
   return createBanner({...packageJson, version});
 };
 
-export {buildDir, distDir, makeBanner, packageJson, projectDir, projectShortName};
+await esbuild.build({
+  entryPoints: [path.join(buildDir, 'src/bundle.js')],
+  bundle: true,
+  minify: true,
+  format: 'esm',
+  target: ['es2017'],
+  banner: {js: makeBanner('bundle')},
+  outfile: `${distDir}/bundle.js`,
+});
