@@ -2,7 +2,7 @@
 
 > _umbra ents_ is short for latin _"umbra entitatis"_, which translates to _"shadow entities"_
 
-Each _entity_ belongs to a _view component_, but exists in a _web worker_ (therefore called _shadow_, because they are located outside the document, analogous to the elements in a _html shadow DOM_), where the components are located in the main document of the browser.
+Each _entity_ belongs to a _view component_, but exists in a _web worker_ (therefore called _shadow_, because they are located outside the document, analogous to the elements in a _html shadow DOM_), where the components are located in the main document of the browser window.
 
 The components are arranged in a tree hierarchy, just like in the DOM.
 As an entity is always linked to a component, they are also arranged in a hierarchy, just like the components.
