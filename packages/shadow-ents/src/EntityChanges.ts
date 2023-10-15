@@ -1,13 +1,12 @@
 import {appendTo} from './array-utils.js';
-import {
-  EntityChangeTrailPhase,
-  EntityChangeType,
-  type EntityChangeEntryType,
-  type IEntityChangeCreateEntity,
-  type IEntityChangeDestroyEntity,
-  type IEntityChangeProperties,
-  type IEntityChangeSetParent,
-  type IEntityChangeUpdateOrder,
+import {EntityChangeTrailPhase, EntityChangeType} from './constants.js';
+import type {
+  EntityChangeEntryType,
+  IEntityChangeCreateEntity,
+  IEntityChangeDestroyEntity,
+  IEntityChangeProperties,
+  IEntityChangeSetParent,
+  IEntityChangeUpdateOrder,
 } from './types.js';
 
 export class EntityChanges {

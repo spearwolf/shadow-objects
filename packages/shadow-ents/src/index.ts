@@ -5,4 +5,4 @@ export * from './EntityRegistry.js';
 export * from './EntityView.js';
 export * from './EntityViewSpace.js';
 export * from './events.js';
-export * from './types.js';
+export type * from './types.js';

@@ -7,8 +7,9 @@ import {getDefaultRegistry} from './EntityRegistry.js';
 import {EntityUplink} from './EntityUplink.js';
 import {EntityView} from './EntityView.js';
 import {EntityViewSpace} from './EntityViewSpace.js';
+import {EntityChangeType} from './constants.js';
 import {OnCreate, OnInit, OnRemoveFromParent} from './events.js';
-import {EntityChangeType, type EntitiesSyncEvent} from './types.js';
+import type {EntitiesSyncEvent} from './types.js';
 
 const nextSyncEvent = (link: EntityEnv): Promise<EntitiesSyncEvent> =>
   new Promise((resolve) => {

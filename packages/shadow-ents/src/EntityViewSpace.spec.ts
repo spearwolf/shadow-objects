@@ -1,7 +1,7 @@
 import {afterAll, describe, expect, it} from 'vitest';
 import {EntityView} from './EntityView.js';
 import {EntityViewSpace} from './EntityViewSpace.js';
-import {EntityChangeType} from './types.js';
+import {EntityChangeType} from './constants.js';
 
 describe('EntityViewSpace', () => {
   const ctx = EntityViewSpace.get();

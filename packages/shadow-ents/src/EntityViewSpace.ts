@@ -1,7 +1,8 @@
 import {EntityChanges} from './EntityChanges';
 import {EntityView} from './EntityView';
 import {removeFrom} from './array-utils';
-import {EntityChangeTrailPhase, type EntityChangeEntryType} from './types.js';
+import {EntityChangeTrailPhase} from './constants.js';
+import type {EntityChangeEntryType} from './types.js';
 
 interface ViewInstance {
   entity: EntityView;
