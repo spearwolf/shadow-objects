@@ -8,20 +8,20 @@ let structuredCloneWarningHasBeenShown = false;
 
 const checkStructuredClone = () => {
   if (!hasStructuredClone && !structuredCloneWarningHasBeenShown) {
-    console.warn('EntityLocalEnv: structuredClone() is not available, ignoring useStructuredClone preference');
+    console.warn('LocalEnv: structuredClone() is not available, ignoring useStructuredClone preference');
     structuredCloneWarningHasBeenShown = true;
   }
   return hasStructuredClone;
 };
 
-export interface EntityLocalEnvParams {
+export interface LocalEnvParams {
   namespace?: string | symbol;
   registry?: Registry;
   useStructuredClone?: boolean;
 }
 
 /**
- * An _entity environment_ that runs within the same process as the _entity view objects_
+ * An _entity environment_ that runs within the same process as the _view components_
  * (which in most cases should be the main thread of the active browser window/tab)
  *
  * To avoid unexpected side effects, all data that is synchronized is cloned using `structuredClone()` by default
@@ -32,7 +32,7 @@ export class LocalEnv extends BaseEnv {
 
   useStructuredClone = true;
 
-  constructor(options?: EntityLocalEnvParams) {
+  constructor(options?: LocalEnvParams) {
     super(options?.namespace);
 
     this.kernel = new Kernel(options?.registry);
