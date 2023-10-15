@@ -19,7 +19,7 @@ export class Kernel extends Eventize {
 
   constructor(registry?: Registry) {
     super();
-    this.registry = registry ?? Registry.get();
+    this.registry = Registry.get(registry);
   }
 
   getEntity(uuid: string): Uplink {

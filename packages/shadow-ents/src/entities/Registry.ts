@@ -6,15 +6,16 @@ interface RegistryEntry {
   constructors: EntityConstructor[];
 }
 
+/** The entity registry */
 export class Registry {
-  /** return the default registry */
-  static get() {
-    return defaultRegistry;
+  /** return the specified registry or, if not defined, the default registry */
+  static get(registry?: Registry) {
+    return registry ?? defaultRegistry;
   }
 
   readonly #registry = new Map<string, RegistryEntry>();
 
-  registerEntityComponent(token: string, constructor: EntityConstructor) {
+  registerEntity(token: string, constructor: EntityConstructor) {
     if (this.#registry.has(token)) {
       appendTo(this.#registry.get(token)!.constructors, constructor);
     } else {

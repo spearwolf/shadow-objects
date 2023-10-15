@@ -7,6 +7,7 @@ export interface EntityDecoratorOptions {
   registry?: Registry;
 }
 
+/** The entity decorator */
 export function Entity(options: EntityDecoratorOptions) {
   // return function <C extends EntityConstructor>(target: C, _context?: ClassDecoratorContext<C>) {
   return function <C extends EntityConstructor>(target: C, _context?: any) {
@@ -17,8 +18,7 @@ export function Entity(options: EntityDecoratorOptions) {
       }
     };
 
-    const registry = options.registry ?? Registry.get();
-    registry.registerEntityComponent(options.token, Entity);
+    Registry.get(options.registry).registerEntity(options.token, Entity);
 
     return Entity;
   };
