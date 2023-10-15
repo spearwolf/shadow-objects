@@ -1,9 +1,9 @@
 import {afterAll, describe, expect, it} from 'vitest';
-import {ViewComponent} from './view-components/ViewComponent.js';
-import {EntityViewSpace} from './EntityViewSpace.js';
+import {ComponentContext} from './ComponentContext.js';
+import {ViewComponent} from './ViewComponent.js';
 
 describe('EntityProxy', () => {
-  const ctx = EntityViewSpace.get();
+  const ctx = ComponentContext.get();
 
   afterAll(() => {
     ctx.clear();
@@ -32,7 +32,7 @@ describe('EntityProxy', () => {
   it('should add entity as child (constructor)', () => {
     const parent = new ViewComponent('test');
     const child = new ViewComponent('test', parent);
-    const ctx = EntityViewSpace.get();
+    const ctx = ComponentContext.get();
 
     expect(ctx.hasEntity(parent)).toBeTruthy();
     expect(ctx.hasEntity(child)).toBeTruthy();

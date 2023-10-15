@@ -1,6 +1,6 @@
 import {Eventize, Priority} from '@spearwolf/eventize';
-import {EntityViewSpace} from './EntityViewSpace.js';
-import type {EntitiesSyncEvent, EntityChangeEntryType} from './types.js';
+import {ComponentContext} from '../ComponentContext.js';
+import type {EntitiesSyncEvent, EntityChangeEntryType} from '../../types.js';
 
 /**
  * The base class for all _entity environments_.
@@ -16,8 +16,8 @@ export class EntityEnv extends Eventize {
     return this.#namespace;
   }
 
-  get view(): EntityViewSpace {
-    return EntityViewSpace.get(this.#namespace);
+  get view(): ComponentContext {
+    return ComponentContext.get(this.#namespace);
   }
 
   #readyPromise: Promise<EntityEnv>;
@@ -38,7 +38,7 @@ export class EntityEnv extends Eventize {
   constructor(namespace?: string | symbol) {
     super();
 
-    this.#namespace = namespace ?? EntityViewSpace.GlobalNS;
+    this.#namespace = namespace ?? ComponentContext.GlobalNS;
 
     this.#readyPromise = new Promise<EntityEnv>((resolve) => {
       this.#readyResolve = resolve;

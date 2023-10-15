@@ -1,8 +1,8 @@
 import {EntityChanges} from './EntityChanges';
-import {ViewComponent} from './view-components/ViewComponent';
-import {removeFrom} from './array-utils';
-import {EntityChangeTrailPhase} from './constants.js';
-import type {EntityChangeEntryType} from './types.js';
+import {ViewComponent} from './ViewComponent';
+import {removeFrom} from '../array-utils';
+import {EntityChangeTrailPhase} from '../constants.js';
+import type {EntityChangeEntryType} from '../types.js';
 
 interface ViewInstance {
   entity: ViewComponent;
@@ -12,7 +12,7 @@ interface ViewInstance {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __entityViewSpace: Map<string | symbol, EntityViewSpace> | undefined;
+  var __entityViewSpace: Map<string | symbol, ComponentContext> | undefined;
 }
 
 /**
@@ -20,18 +20,18 @@ declare global {
  *
  * If no namespace is specified when creating an `EntityView`, the `EntityView` is packed into the global namespace.
  */
-export class EntityViewSpace {
+export class ComponentContext {
   static GlobalNS = Symbol.for('globalEntities');
 
-  static get(namespace?: string | symbol): EntityViewSpace {
+  static get(namespace?: string | symbol): ComponentContext {
     if (globalThis.__entityViewSpace === undefined) {
-      globalThis.__entityViewSpace = new Map<string | symbol, EntityViewSpace>();
+      globalThis.__entityViewSpace = new Map<string | symbol, ComponentContext>();
     }
-    const ns = namespace ?? EntityViewSpace.GlobalNS;
+    const ns = namespace ?? ComponentContext.GlobalNS;
     if (globalThis.__entityViewSpace.has(ns)) {
       return globalThis.__entityViewSpace.get(ns)!;
     } else {
-      const ctx = new EntityViewSpace();
+      const ctx = new ComponentContext();
       globalThis.__entityViewSpace.set(ns, ctx);
       return ctx;
     }

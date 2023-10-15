@@ -1,5 +1,5 @@
-import {EntityViewSpace} from '../EntityViewSpace.js';
-import {generateUUID} from '../generateUUID.js';
+import {ComponentContext} from './ComponentContext.js';
+import {generateUUID} from './generateUUID.js';
 
 /**
  * The EntityView is a proxy for the actual entity object.
@@ -15,7 +15,7 @@ export class ViewComponent {
   #namespace?: string | symbol;
   #order = 0;
 
-  #viewspace: EntityViewSpace;
+  #viewspace: ComponentContext;
   #parent?: ViewComponent;
 
   get uuid() {
@@ -62,7 +62,7 @@ export class ViewComponent {
     this.#order = order;
     this.#namespace = namespace;
 
-    this.#viewspace = EntityViewSpace.get(this.#namespace);
+    this.#viewspace = ComponentContext.get(this.#namespace);
     this.#viewspace.addEntity(this);
   }
 

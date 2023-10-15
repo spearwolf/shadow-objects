@@ -1,7 +1,7 @@
 import {EntityEnv} from './EntityEnv';
-import {EntityKernel} from './entities/EntityKernel.js';
-import {EntityRegistry} from './entities/EntityRegistry.js';
-import type {EntitiesSyncEvent, EntityChangeEntryType} from './types.js';
+import {EntityKernel} from '../../entities/EntityKernel.js';
+import {EntityRegistry} from '../../entities/EntityRegistry.js';
+import type {EntitiesSyncEvent, EntityChangeEntryType} from '../../types.js';
 
 const hasStructuredClone = typeof structuredClone === 'function' ? true : false;
 let structuredCloneWarningHasBeenShown = false;

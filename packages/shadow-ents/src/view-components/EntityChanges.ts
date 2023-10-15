@@ -1,5 +1,5 @@
-import {appendTo} from './array-utils.js';
-import {EntityChangeTrailPhase, EntityChangeType} from './constants.js';
+import {appendTo} from '../array-utils.js';
+import {EntityChangeTrailPhase, EntityChangeType} from '../constants.js';
 import type {
   EntityChangeEntryType,
   IEntityChangeCreateEntity,
@@ -7,7 +7,7 @@ import type {
   IEntityChangeProperties,
   IEntityChangeSetParent,
   IEntityChangeUpdateOrder,
-} from './types.js';
+} from '../types.js';
 
 export class EntityChanges {
   #entityUuid: string;

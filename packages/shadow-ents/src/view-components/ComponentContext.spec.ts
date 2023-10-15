@@ -1,24 +1,24 @@
 import {afterAll, describe, expect, it} from 'vitest';
-import {ViewComponent} from './view-components/ViewComponent.js';
-import {EntityViewSpace} from './EntityViewSpace.js';
-import {EntityChangeType} from './constants.js';
+import {EntityChangeType} from '../constants.js';
+import {ComponentContext} from './ComponentContext.js';
+import {ViewComponent} from './ViewComponent.js';
 
-describe('EntityViewSpace', () => {
-  const ctx = EntityViewSpace.get();
+describe('ComponentContext', () => {
+  const cc = ComponentContext.get();
 
   afterAll(() => {
-    ctx.clear();
+    cc.clear();
   });
 
   it('should be defined', () => {
-    expect(EntityViewSpace).toBeDefined();
+    expect(ComponentContext).toBeDefined();
   });
 
   it('should insert create-entity and destroy-entites in change trail', () => {
     const a = new ViewComponent('a');
     const b = new ViewComponent('b', a);
 
-    let changes = ctx.buildChangeTrails();
+    let changes = cc.buildChangeTrails();
 
     expect(changes).toHaveLength(2);
     expect(changes).toEqual([
@@ -28,7 +28,7 @@ describe('EntityViewSpace', () => {
 
     a.destroy();
 
-    changes = ctx.buildChangeTrails();
+    changes = cc.buildChangeTrails();
 
     expect(changes).toHaveLength(2);
     expect(changes).toEqual([
@@ -45,7 +45,7 @@ describe('EntityViewSpace', () => {
     a.setProperty('plah', 42);
     a.removeProperty('plah');
 
-    let changes = ctx.buildChangeTrails();
+    let changes = cc.buildChangeTrails();
 
     expect(changes).toHaveLength(2);
     expect(changes).toEqual([
@@ -58,7 +58,7 @@ describe('EntityViewSpace', () => {
     b.setProperty('xyz', 123);
     b.setProperty('numberOfTheBeast', 666);
 
-    changes = ctx.buildChangeTrails();
+    changes = cc.buildChangeTrails();
 
     expect(changes).toHaveLength(2);
     expect(changes).toEqual([
@@ -80,7 +80,7 @@ describe('EntityViewSpace', () => {
     const c = new ViewComponent('c', a, 3);
     const d = new ViewComponent('d', a, 2);
 
-    let changes = ctx.buildChangeTrails();
+    let changes = cc.buildChangeTrails();
 
     expect(changes).toHaveLength(4);
     expect(changes).toEqual([
@@ -95,7 +95,7 @@ describe('EntityViewSpace', () => {
 
     b.order = 1;
 
-    changes = ctx.buildChangeTrails();
+    changes = cc.buildChangeTrails();
 
     expect(changes).toHaveLength(2);
     expect(changes).toEqual([
