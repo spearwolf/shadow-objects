@@ -1,5 +1,5 @@
 import {afterAll, describe, expect, it} from 'vitest';
-import {EntityView} from './EntityView.js';
+import {ViewComponent} from './view-components/ViewComponent.js';
 import {EntityViewSpace} from './EntityViewSpace.js';
 
 describe('EntityProxy', () => {
@@ -10,11 +10,11 @@ describe('EntityProxy', () => {
   });
 
   it('should be defined', () => {
-    expect(EntityView).toBeDefined();
+    expect(ViewComponent).toBeDefined();
   });
 
   it('should create new entity', () => {
-    const entity = new EntityView('test');
+    const entity = new ViewComponent('test');
     expect(entity.uuid).toBeDefined();
     expect(entity.token).toBe('test');
     expect(entity.parent).toBeUndefined();
@@ -23,15 +23,15 @@ describe('EntityProxy', () => {
   });
 
   it('should destroy entity', () => {
-    const entity = new EntityView('test');
+    const entity = new ViewComponent('test');
     expect(ctx.hasEntity(entity)).toBeTruthy();
     entity.destroy();
     expect(ctx.hasEntity(entity)).toBeFalsy();
   });
 
   it('should add entity as child (constructor)', () => {
-    const parent = new EntityView('test');
-    const child = new EntityView('test', parent);
+    const parent = new ViewComponent('test');
+    const child = new ViewComponent('test', parent);
     const ctx = EntityViewSpace.get();
 
     expect(ctx.hasEntity(parent)).toBeTruthy();
@@ -41,8 +41,8 @@ describe('EntityProxy', () => {
   });
 
   it('should add entity as child (addChild)', () => {
-    const parent = new EntityView('test');
-    const child = new EntityView('test');
+    const parent = new ViewComponent('test');
+    const child = new ViewComponent('test');
 
     expect(ctx.hasEntity(parent)).toBeTruthy();
     expect(ctx.hasEntity(child)).toBeTruthy();
@@ -56,8 +56,8 @@ describe('EntityProxy', () => {
   });
 
   it('should remove from parent', () => {
-    const parent = new EntityView('test');
-    const child = new EntityView('test', parent);
+    const parent = new ViewComponent('test');
+    const child = new ViewComponent('test', parent);
 
     expect(ctx.isChildOf(child, parent)).toBeTruthy();
     expect(ctx.isRootEntity(parent)).toBeTruthy();
@@ -70,9 +70,9 @@ describe('EntityProxy', () => {
   });
 
   it('should set parent', () => {
-    const a = new EntityView('test');
-    const b = new EntityView('test', a);
-    const c = new EntityView('test');
+    const a = new ViewComponent('test');
+    const b = new ViewComponent('test', a);
+    const c = new ViewComponent('test');
 
     expect(ctx.isChildOf(b, a)).toBeTruthy();
     expect(ctx.isChildOf(b, c)).toBeFalsy();

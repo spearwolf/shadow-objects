@@ -1,11 +1,11 @@
 import {EntityChanges} from './EntityChanges';
-import {EntityView} from './EntityView';
+import {ViewComponent} from './view-components/ViewComponent';
 import {removeFrom} from './array-utils';
 import {EntityChangeTrailPhase} from './constants.js';
 import type {EntityChangeEntryType} from './types.js';
 
 interface ViewInstance {
-  entity: EntityView;
+  entity: ViewComponent;
   children: string[]; // we use an Array here and not a Set, because we want to keep the insertion order
   changes: EntityChanges;
 }
@@ -42,7 +42,7 @@ export class EntityViewSpace {
 
   #removedEntityChanges: EntityChanges[] = [];
 
-  addEntity(entity: EntityView) {
+  addEntity(entity: ViewComponent) {
     if (this.hasEntity(entity)) {
       throw new Error(`Entity with uuid:${entity.uuid} already exists`);
     }
@@ -60,15 +60,15 @@ export class EntityViewSpace {
     }
   }
 
-  hasEntity(entity: EntityView) {
+  hasEntity(entity: ViewComponent) {
     return this.#entities.has(entity.uuid);
   }
 
-  isRootEntity(entity: EntityView) {
+  isRootEntity(entity: ViewComponent) {
     return this.#rootEntities.includes(entity.uuid);
   }
 
-  removeEntity(entity: EntityView) {
+  removeEntity(entity: ViewComponent) {
     if (this.hasEntity(entity)) {
       const entry = this.#entities.get(entity.uuid)!;
 
@@ -82,7 +82,7 @@ export class EntityViewSpace {
     }
   }
 
-  removeChildFromParent(childUuid: string, parent: EntityView) {
+  removeChildFromParent(childUuid: string, parent: ViewComponent) {
     if (this.hasEntity(parent)) {
       const childEntry = this.#entities.get(childUuid)!;
       const entry = this.#entities.get(parent.uuid)!;
@@ -95,7 +95,7 @@ export class EntityViewSpace {
     }
   }
 
-  isChildOf(child: EntityView, parent: EntityView) {
+  isChildOf(child: ViewComponent, parent: ViewComponent) {
     if (this.hasEntity(parent)) {
       const entry = this.#entities.get(parent.uuid)!;
       return entry.children.includes(child.uuid);
@@ -103,7 +103,7 @@ export class EntityViewSpace {
     return false;
   }
 
-  addToChildren(parent: EntityView, child: EntityView) {
+  addToChildren(parent: ViewComponent, child: ViewComponent) {
     const entry = this.#entities.get(parent.uuid);
     if (entry) {
       this.#appendToOrdered(child, entry.children);
@@ -122,15 +122,15 @@ export class EntityViewSpace {
     }
   }
 
-  setProperty<T = unknown>(entity: EntityView, propKey: string, value: T, isEqual?: (a: T, b: T) => boolean) {
+  setProperty<T = unknown>(entity: ViewComponent, propKey: string, value: T, isEqual?: (a: T, b: T) => boolean) {
     this.#entities.get(entity.uuid)?.changes.changeProperty(propKey, value, isEqual);
   }
 
-  removeProperty(entity: EntityView, propKey: string) {
+  removeProperty(entity: ViewComponent, propKey: string) {
     this.#entities.get(entity.uuid)?.changes.removeProperty(propKey);
   }
 
-  changeOrder(entity: EntityView) {
+  changeOrder(entity: ViewComponent) {
     if (entity.parent) {
       const parentEntry = this.#entities.get(entity.parent.uuid)!;
       removeFrom(parentEntry.children, entity.uuid);
@@ -197,7 +197,7 @@ export class EntityViewSpace {
     return path;
   }
 
-  #appendToOrdered(entity: EntityView, childUuids: string[]) {
+  #appendToOrdered(entity: ViewComponent, childUuids: string[]) {
     if (childUuids.length === 0) {
       childUuids.push(entity.uuid);
       return;
@@ -208,7 +208,7 @@ export class EntityViewSpace {
     }
 
     const len = childUuids.length;
-    const childEntities = new Array<EntityView>(len);
+    const childEntities = new Array<ViewComponent>(len);
 
     childEntities[0] = this.#entities.get(childUuids[0])!.entity;
 

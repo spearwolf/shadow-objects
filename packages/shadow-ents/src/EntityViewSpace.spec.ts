@@ -1,5 +1,5 @@
 import {afterAll, describe, expect, it} from 'vitest';
-import {EntityView} from './EntityView.js';
+import {ViewComponent} from './view-components/ViewComponent.js';
 import {EntityViewSpace} from './EntityViewSpace.js';
 import {EntityChangeType} from './constants.js';
 
@@ -15,8 +15,8 @@ describe('EntityViewSpace', () => {
   });
 
   it('should insert create-entity and destroy-entites in change trail', () => {
-    const a = new EntityView('a');
-    const b = new EntityView('b', a);
+    const a = new ViewComponent('a');
+    const b = new ViewComponent('b', a);
 
     let changes = ctx.buildChangeTrails();
 
@@ -38,8 +38,8 @@ describe('EntityViewSpace', () => {
   });
 
   it('should insert change-properties in change trail', () => {
-    const a = new EntityView('a');
-    const b = new EntityView('b', a);
+    const a = new ViewComponent('a');
+    const b = new ViewComponent('b', a);
 
     a.setProperty('foo', 'bar');
     a.setProperty('plah', 42);
@@ -75,10 +75,10 @@ describe('EntityViewSpace', () => {
   });
 
   it('should insert update-orders in change trail', () => {
-    const a = new EntityView('a', undefined, 100);
-    const b = new EntityView('b', a);
-    const c = new EntityView('c', a, 3);
-    const d = new EntityView('d', a, 2);
+    const a = new ViewComponent('a', undefined, 100);
+    const b = new ViewComponent('b', a);
+    const c = new ViewComponent('c', a, 3);
+    const d = new ViewComponent('d', a, 2);
 
     let changes = ctx.buildChangeTrails();
 

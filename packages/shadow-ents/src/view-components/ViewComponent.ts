@@ -1,5 +1,5 @@
-import {EntityViewSpace} from './EntityViewSpace.js';
-import {generateUUID} from './generateUUID.js';
+import {EntityViewSpace} from '../EntityViewSpace.js';
+import {generateUUID} from '../generateUUID.js';
 
 /**
  * The EntityView is a proxy for the actual entity object.
@@ -9,14 +9,14 @@ import {generateUUID} from './generateUUID.js';
  * The kernel can, but does not have to, run in the same javascript environment. It is also conceivable, for example,
  * that the kernel runs in a web-worker, while the entity twins are created within the main document.
  */
-export class EntityView {
+export class ViewComponent {
   #uuid: string;
   #token: string;
   #namespace?: string | symbol;
   #order = 0;
 
   #viewspace: EntityViewSpace;
-  #parent?: EntityView;
+  #parent?: ViewComponent;
 
   get uuid() {
     return this.#uuid;
@@ -26,11 +26,11 @@ export class EntityView {
     return this.#token;
   }
 
-  get parent(): EntityView | undefined {
+  get parent(): ViewComponent | undefined {
     return this.#parent;
   }
 
-  set parent(parent: EntityView | null | undefined) {
+  set parent(parent: ViewComponent | null | undefined) {
     if (parent) {
       parent.addChild(this);
     } else {
@@ -54,7 +54,7 @@ export class EntityView {
     }
   }
 
-  constructor(token: string, parent?: EntityView, order = 0, namespace?: string | symbol) {
+  constructor(token: string, parent?: ViewComponent, order = 0, namespace?: string | symbol) {
     this.#uuid = generateUUID();
 
     this.#token = token;
@@ -66,7 +66,7 @@ export class EntityView {
     this.#viewspace.addEntity(this);
   }
 
-  isChildOf(entity: EntityView) {
+  isChildOf(entity: ViewComponent) {
     return this.#parent === entity;
   }
 
@@ -77,7 +77,7 @@ export class EntityView {
     }
   }
 
-  addChild(child: EntityView) {
+  addChild(child: ViewComponent) {
     if (!child.isChildOf(this)) {
       child.removeFromParent();
       child.#parent = this;

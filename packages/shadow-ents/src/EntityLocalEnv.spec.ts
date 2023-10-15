@@ -5,7 +5,7 @@ import {EntityEnv} from './EntityEnv.js';
 import {EntityLocalEnv} from './EntityLocalEnv.js';
 import {getDefaultRegistry} from './entities/EntityRegistry.js';
 import {EntityUplink} from './entities/EntityUplink.js';
-import {EntityView} from './EntityView.js';
+import {ViewComponent} from './view-components/ViewComponent.js';
 import {EntityViewSpace} from './EntityViewSpace.js';
 import {EntityChangeType} from './constants.js';
 import {OnCreate, OnInit, OnRemoveFromParent} from './entities/entity-events.js';
@@ -46,8 +46,8 @@ describe('EntityLocalEnv', () => {
   it('should sync', async () => {
     const localEnv = new EntityLocalEnv().start();
 
-    const a = new EntityView('a');
-    const b = new EntityView('b', a);
+    const a = new ViewComponent('a');
+    const b = new ViewComponent('b', a);
 
     a.setProperty('foo', 'bar');
     b.setProperty('xyz', 123);
@@ -65,8 +65,8 @@ describe('EntityLocalEnv', () => {
   it('should create entities within kernel', async () => {
     const localEnv = new EntityLocalEnv().start();
 
-    const a = new EntityView('a');
-    const b = new EntityView('b', a);
+    const a = new ViewComponent('a');
+    const b = new ViewComponent('b', a);
 
     a.setProperty('foo', 'bar');
     b.setProperty('xyz', 123);
@@ -95,7 +95,7 @@ describe('EntityLocalEnv', () => {
       }
     }
 
-    const c = new EntityView('c', a, -1);
+    const c = new ViewComponent('c', a, -1);
 
     await localEnv.sync();
 
@@ -138,7 +138,7 @@ describe('EntityLocalEnv', () => {
       }
     }
 
-    const a = new EntityView('a');
+    const a = new ViewComponent('a');
     a.setProperty('foo', 'bar');
 
     await localEnv.sync();
