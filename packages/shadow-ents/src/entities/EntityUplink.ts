@@ -1,7 +1,7 @@
 import {Eventize, Priority} from '@spearwolf/eventize';
 import {batch, createSignal, destroySignal, value, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
 import {EntityKernel} from './EntityKernel';
-import {OnAddChild, OnAddToParent, OnDestroy, OnRemoveChild, OnRemoveFromParent} from './events.js';
+import {OnAddChild, OnAddToParent, OnDestroy, OnRemoveChild, OnRemoveFromParent} from './entity-events.js';
 
 export class EntityUplink extends Eventize {
   #kernel: EntityKernel;

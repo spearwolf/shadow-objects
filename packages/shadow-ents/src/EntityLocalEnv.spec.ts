@@ -1,14 +1,14 @@
 import {type EventizeApi} from '@spearwolf/eventize';
 import {afterAll, describe, expect, it, vi} from 'vitest';
-import {Entity} from './Entity.js';
+import {Entity} from './entities/Entity.js';
 import {EntityEnv} from './EntityEnv.js';
 import {EntityLocalEnv} from './EntityLocalEnv.js';
-import {getDefaultRegistry} from './EntityRegistry.js';
-import {EntityUplink} from './EntityUplink.js';
+import {getDefaultRegistry} from './entities/EntityRegistry.js';
+import {EntityUplink} from './entities/EntityUplink.js';
 import {EntityView} from './EntityView.js';
 import {EntityViewSpace} from './EntityViewSpace.js';
 import {EntityChangeType} from './constants.js';
-import {OnCreate, OnInit, OnRemoveFromParent} from './events.js';
+import {OnCreate, OnInit, OnRemoveFromParent} from './entities/entity-events.js';
 import type {EntitiesSyncEvent} from './types.js';
 
 const nextSyncEvent = (link: EntityEnv): Promise<EntitiesSyncEvent> =>

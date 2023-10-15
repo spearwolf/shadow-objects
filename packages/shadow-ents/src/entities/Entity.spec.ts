@@ -1,7 +1,7 @@
 import {isEventized} from '@spearwolf/eventize';
 import {afterEach, describe, expect, it} from 'vitest';
-import {Entity} from './Entity.js';
 import {EntityKernel} from './EntityKernel.js';
+import {Entity} from './Entity.js';
 import {EntityRegistry, getDefaultRegistry} from './EntityRegistry.js';
 
 describe('@Entity decorator', () => {

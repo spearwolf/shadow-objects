@@ -1,10 +1,10 @@
 import {Eventize} from '@spearwolf/eventize';
 import {batch} from '@spearwolf/signalize';
 import {EntityRegistry, getDefaultRegistry} from './EntityRegistry.js';
-import {EntityUplink} from './EntityUplink';
-import {EntityChangeType} from './constants.js';
-import {OnCreate, OnDestroy, OnInit} from './events.js';
-import type {EntitiesSyncEvent, EntityChangeEntryType} from './types.js';
+import {EntityUplink} from './EntityUplink.js';
+import {EntityChangeType} from '../constants.js';
+import {OnCreate, OnDestroy, OnInit} from './entity-events.js';
+import type {EntitiesSyncEvent, EntityChangeEntryType} from '../types.js';
 
 /**
  * The _entity kernel_ is the central hub for all _entity uplinks_.

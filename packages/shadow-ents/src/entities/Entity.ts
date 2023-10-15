@@ -1,6 +1,6 @@
 import {eventize} from '@spearwolf/eventize';
 import {EntityRegistry, getDefaultRegistry} from './EntityRegistry.js';
-import type {EntityConstructor} from './types.ts';
+import type {EntityConstructor} from '../types.js';
 
 export interface EntityDecoratorOptions {
   token: string;

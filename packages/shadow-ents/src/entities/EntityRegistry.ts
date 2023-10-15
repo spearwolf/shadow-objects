@@ -1,5 +1,5 @@
-import {appendTo} from './array-utils';
-import type {EntityConstructor} from './types.js';
+import {appendTo} from '../array-utils';
+import type {EntityConstructor} from '../types.js';
 
 interface RegistryEntry {
   token: string;
