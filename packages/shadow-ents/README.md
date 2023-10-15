@@ -1,6 +1,6 @@
-# umbra-ents
+# shadow-ents
 
-> _umbra ents_ is short for latin _"umbra entitatis"_, which translates to _"shadow entities"_
+> _ents_ is short for latin _"entitatis"_, which translates to _"shadow entities"_
 
 ![architecture overview](./docs/architecture@2x.png)
 
