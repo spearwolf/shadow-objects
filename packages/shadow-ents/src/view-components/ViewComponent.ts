@@ -63,7 +63,7 @@ export class ViewComponent {
     this.#namespace = namespace;
 
     this.#viewspace = ComponentContext.get(this.#namespace);
-    this.#viewspace.addEntity(this);
+    this.#viewspace.addComponent(this);
   }
 
   isChildOf(entity: ViewComponent) {
@@ -72,7 +72,7 @@ export class ViewComponent {
 
   removeFromParent() {
     if (this.#parent) {
-      this.#viewspace.removeChildFromParent(this.uuid, this.#parent);
+      this.#viewspace.removeFromParent(this.uuid, this.#parent);
       this.#parent = undefined;
     }
   }
@@ -95,6 +95,6 @@ export class ViewComponent {
 
   destroy() {
     this.removeFromParent();
-    this.#viewspace.removeEntity(this);
+    this.#viewspace.removeComponent(this);
   }
 }

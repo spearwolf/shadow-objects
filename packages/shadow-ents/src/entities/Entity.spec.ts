@@ -32,7 +32,7 @@ describe('@Entity decorator', () => {
       }
     }
 
-    const entity = kernel.createEntityComponents('test')?.at(-1) as Foo;
+    const entity = kernel.createEntityInstances('test')?.at(-1) as Foo;
 
     expect(entity).toBeDefined();
     expect(entity).toBeInstanceOf(Foo);

@@ -1,5 +1,5 @@
 {
-  "sideEffects": ["bundle.js", "src/bundle.js"],
+  "sideEffects": ["bundle.js", "src/bundle.js", "src/index.js", "src/view-components/ComponentContext.js"],
   "scripts": null,
   "devDependencies": null,
   "rollup": null,

@@ -1,12 +1,12 @@
-export enum EntityChangeTrailPhase {
+export enum ChangeTrailPhase {
   StructuralChanges = 1,
   ContentUpdates,
   Removal,
 }
 
-export enum EntityChangeType {
-  CreateEntity = 1,
-  DestroyEntity,
+export enum ComponentChangeType {
+  CreateEntities = 1,
+  DestroyEntities,
   SetParent,
   UpdateOrder,
   ChangeProperties,

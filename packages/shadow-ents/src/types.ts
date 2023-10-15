@@ -1,47 +1,47 @@
-import type {EntityChangeType} from './constants';
+import type {ComponentChangeType} from './constants';
 
-export interface IEntityChangeEntry {
-  type: EntityChangeType;
+export interface IComponentChange {
+  type: ComponentChangeType;
   uuid: string;
 }
 
-export interface IEntityChangeCreateEntity extends IEntityChangeEntry {
-  type: EntityChangeType.CreateEntity;
+export interface ICreateEntitiesChange extends IComponentChange {
+  type: ComponentChangeType.CreateEntities;
   token: string;
   parentUuid?: string;
   order?: number;
   properties?: [string, unknown][];
 }
 
-export interface IEntityChangeDestroyEntity extends IEntityChangeEntry {
-  type: EntityChangeType.DestroyEntity;
+export interface IDestroyEntitiesChange extends IComponentChange {
+  type: ComponentChangeType.DestroyEntities;
 }
 
-export interface IEntityChangeSetParent extends IEntityChangeEntry {
-  type: EntityChangeType.SetParent;
+export interface ISetParentChange extends IComponentChange {
+  type: ComponentChangeType.SetParent;
   parentUuid: string | undefined;
   order?: number;
 }
 
-export interface IEntityChangeUpdateOrder extends IEntityChangeEntry {
-  type: EntityChangeType.UpdateOrder;
+export interface IUpdateOrderChange extends IComponentChange {
+  type: ComponentChangeType.UpdateOrder;
   order: number;
 }
 
-export interface IEntityChangeProperties extends IEntityChangeEntry {
-  type: EntityChangeType.ChangeProperties;
+export interface IPropertiesChange extends IComponentChange {
+  type: ComponentChangeType.ChangeProperties;
   properties: [string, unknown][];
 }
 
-export type EntityChangeEntryType =
-  | IEntityChangeCreateEntity
-  | IEntityChangeDestroyEntity
-  | IEntityChangeSetParent
-  | IEntityChangeUpdateOrder
-  | IEntityChangeProperties;
+export type IComponentChangeType =
+  | ICreateEntitiesChange
+  | IDestroyEntitiesChange
+  | ISetParentChange
+  | IUpdateOrderChange
+  | IPropertiesChange;
 
-export interface EntitiesSyncEvent {
-  changeTrail: EntityChangeEntryType[];
+export interface SyncEvent {
+  changeTrail: IComponentChangeType[];
 }
 
 export interface EntityConstructor {

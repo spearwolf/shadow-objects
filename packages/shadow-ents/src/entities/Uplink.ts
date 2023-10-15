@@ -3,6 +3,13 @@ import {batch, createSignal, destroySignal, value, type SignalReader, type Signa
 import {Kernel} from './Kernel';
 import {OnAddChild, OnAddToParent, OnDestroy, OnRemoveChild, OnRemoveFromParent} from './events.js';
 
+/**
+ * An uplink has a parent and children, replicating the hierarchy of view components.
+ *
+ * A signal is created for each view component property.
+ *
+ * Entities can receive and use the property signals via the uplink.
+ */
 export class Uplink extends Eventize {
   #kernel: Kernel;
   #uuid: string;
@@ -47,7 +54,7 @@ export class Uplink extends Eventize {
       this.removeFromParent();
 
       this.#parentUuid = parentUuid || undefined;
-      this.#parent = parentUuid ? this.#kernel.getEntity(parentUuid) : undefined;
+      this.#parent = parentUuid ? this.#kernel.getUplink(parentUuid) : undefined;
 
       if (this.#parent) {
         this.#parent.addChild(this);
@@ -57,7 +64,7 @@ export class Uplink extends Eventize {
 
   get parent(): Uplink | undefined {
     if (!this.#parent && this.#parentUuid) {
-      this.#parent = this.#kernel.getEntity(this.#parentUuid);
+      this.#parent = this.#kernel.getUplink(this.#parentUuid);
     }
     return this.#parent;
   }
@@ -82,8 +89,6 @@ export class Uplink extends Eventize {
   }
 
   [OnDestroy]() {
-    console.log('uplink.on-destroy', this.uuid);
-
     for (const [sig] of this.#signals.values()) {
       destroySignal(sig);
     }
@@ -108,7 +113,7 @@ export class Uplink extends Eventize {
     }
 
     if (this.#childrenUuids.has(child.uuid)) {
-      throw new Error(`Child with uuid: ${child.uuid} already exists! parentUuid: ${this.uuid}`);
+      throw new Error(`child with uuid: ${child.uuid} already exists! parentUuid: ${this.uuid}`);
     }
 
     this.#childrenUuids.add(child.uuid);

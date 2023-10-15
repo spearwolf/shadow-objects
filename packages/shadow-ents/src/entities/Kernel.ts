@@ -1,36 +1,37 @@
 import {Eventize} from '@spearwolf/eventize';
 import {batch} from '@spearwolf/signalize';
-import {EntityChangeType} from '../constants.js';
-import type {EntitiesSyncEvent, EntityChangeEntryType} from '../types.js';
+import {ComponentChangeType} from '../constants.js';
+import type {IComponentChangeType, SyncEvent} from '../types.js';
 import {Registry} from './Registry.js';
 import {Uplink} from './Uplink.js';
 import {OnCreate, OnDestroy, OnInit} from './events.js';
 
 /**
- * The _entity kernel_ is the central hub for all _entity uplinks_.
+ * The entity kernel manages the lifecycle of all uplinks and entity instances.
  *
- * The entities are created, destroyed, parented, etc. based on the entity _view change log_.
- * The entity components are created based on the _tokens_ and the _entity registry_.
+ * An uplink is created for each view component. The uplinks act as containers for the entity instances.
+ *
+ * Which entities are created is determined by the token.
  */
 export class Kernel extends Eventize {
   registry: Registry;
 
-  #entities: Map<string, Uplink> = new Map();
+  #uplinks: Map<string, Uplink> = new Map();
 
   constructor(registry?: Registry) {
     super();
     this.registry = Registry.get(registry);
   }
 
-  getEntity(uuid: string): Uplink {
-    const entity = this.#entities.get(uuid);
+  getUplink(uuid: string): Uplink {
+    const entity = this.#uplinks.get(uuid);
     if (!entity) {
-      throw new Error(`Entity with uuid "${uuid}" not found.`);
+      throw new Error(`entity with uuid "${uuid}" not found!`);
     }
     return entity;
   }
 
-  run(event: EntitiesSyncEvent) {
+  run(event: SyncEvent) {
     batch(() => {
       for (const entry of event.changeTrail) {
         this.parse(entry);
@@ -38,72 +39,72 @@ export class Kernel extends Eventize {
     });
   }
 
-  parse(entry: EntityChangeEntryType) {
+  parse(entry: IComponentChangeType) {
     switch (entry.type) {
-      case EntityChangeType.CreateEntity:
-        this.createEntity(entry.uuid, entry.token, entry.parentUuid, entry.order, entry.properties);
+      case ComponentChangeType.CreateEntities:
+        this.createUplink(entry.uuid, entry.token, entry.parentUuid, entry.order, entry.properties);
         break;
 
-      case EntityChangeType.DestroyEntity:
-        this.destroyEntity(entry.uuid);
+      case ComponentChangeType.DestroyEntities:
+        this.destroyUplink(entry.uuid);
         break;
 
-      case EntityChangeType.SetParent:
+      case ComponentChangeType.SetParent:
         this.setParent(entry.uuid, entry.parentUuid, entry.order);
         break;
 
-      case EntityChangeType.UpdateOrder:
+      case ComponentChangeType.UpdateOrder:
         this.updateOrder(entry.uuid, entry.order);
         break;
 
-      case EntityChangeType.ChangeProperties:
+      case ComponentChangeType.ChangeProperties:
         this.changeProperties(entry.uuid, entry.properties);
         break;
     }
   }
 
-  createEntity(uuid: string, token: string, parentUuid?: string, order = 0, properties?: [string, unknown][]) {
-    const entity = new Uplink(this, uuid);
+  createUplink(uuid: string, token: string, parentUuid?: string, order = 0, properties?: [string, unknown][]) {
+    const uplink = new Uplink(this, uuid);
 
-    entity.order = order;
+    uplink.order = order;
 
-    this.#entities.set(uuid, entity);
+    this.#uplinks.set(uuid, uplink);
 
-    this.createEntityComponents(token, entity);
+    this.createEntityInstances(token, uplink);
 
     if (parentUuid) {
-      entity.parentUuid = parentUuid;
+      uplink.parentUuid = parentUuid;
     }
 
     if (properties) {
-      entity.setProperties(properties);
+      uplink.setProperties(properties);
     }
 
-    entity.emit(OnInit, entity, this);
+    uplink.emit(OnInit, uplink, this);
   }
 
-  destroyEntity(uuid: string) {
-    const entity = this.getEntity(uuid);
-    entity.emit(OnDestroy, this);
-    this.#entities.delete(uuid);
+  destroyUplink(uuid: string) {
+    const uplink = this.getUplink(uuid);
+    uplink.emit(OnDestroy, this);
+    this.#uplinks.delete(uuid);
   }
 
   setParent(uuid: string, parentUuid?: string, order = 0) {
-    const entity = this.getEntity(uuid);
-    entity.removeFromParent();
-    entity.order = order;
-    entity.parentUuid = parentUuid;
+    const uplink = this.getUplink(uuid);
+    uplink.removeFromParent();
+    uplink.order = order;
+    uplink.parentUuid = parentUuid;
   }
 
   updateOrder(uuid: string, order: number) {
-    this.getEntity(uuid).order = order;
+    this.getUplink(uuid).order = order;
   }
 
   changeProperties(uuid: string, properties: [string, unknown][]) {
-    this.getEntity(uuid).setProperties(properties);
+    this.getUplink(uuid).setProperties(properties);
   }
 
-  createEntityComponents(token: string, uplink?: Uplink) {
+  createEntityInstances(token: string, uplink?: Uplink) {
     return this.registry.findConstructors(token)?.map((constructor) => {
       const instance = new constructor();
       if (uplink) {

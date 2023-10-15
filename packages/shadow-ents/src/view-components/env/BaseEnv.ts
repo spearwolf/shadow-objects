@@ -1,13 +1,13 @@
 import {Eventize, Priority} from '@spearwolf/eventize';
+import type {SyncEvent, IComponentChangeType} from '../../types.js';
 import {ComponentContext} from '../ComponentContext.js';
-import type {EntitiesSyncEvent, EntityChangeEntryType} from '../../types.js';
 
 /**
  * The base class for all _entity environments_.
  *
- * An _entity environment_ is responsible for synchronizing entities from a _view space_ with _entity components_ from a _kernel_.
+ * An _entity environment_ is responsible for synchronising view components with entities.
  */
-export class EntityEnv extends Eventize {
+export class BaseEnv extends Eventize {
   static OnSync = Symbol('onSync');
 
   #namespace: string | symbol;
@@ -20,10 +20,10 @@ export class EntityEnv extends Eventize {
     return ComponentContext.get(this.#namespace);
   }
 
-  #readyPromise: Promise<EntityEnv>;
-  #readyResolve!: (value: EntityEnv) => void;
+  #readyPromise: Promise<BaseEnv>;
+  #readyResolve!: (value: BaseEnv) => void;
 
-  get ready(): Promise<EntityEnv> {
+  get ready(): Promise<BaseEnv> {
     return this.#readyPromise;
   }
 
@@ -40,7 +40,7 @@ export class EntityEnv extends Eventize {
 
     this.#namespace = namespace ?? ComponentContext.GlobalNS;
 
-    this.#readyPromise = new Promise<EntityEnv>((resolve) => {
+    this.#readyPromise = new Promise<BaseEnv>((resolve) => {
       this.#readyResolve = resolve;
     });
   }
@@ -50,14 +50,14 @@ export class EntityEnv extends Eventize {
       if (!this.isReady) {
         this.#syncCallsBeforeReady++;
         if (this.#syncCallsBeforeReady > 1) {
-          return this.once(EntityEnv.OnSync, Priority.Low, () => resolve());
+          return this.once(BaseEnv.OnSync, Priority.Low, () => resolve());
         }
       }
       this.ready.then(() => {
-        const syncEvent: EntitiesSyncEvent = {
+        const syncEvent: SyncEvent = {
           changeTrail: this.getChangeTrail(),
         };
-        this.emit(EntityEnv.OnSync, syncEvent);
+        this.emit(BaseEnv.OnSync, syncEvent);
         resolve();
       });
     });
@@ -68,7 +68,7 @@ export class EntityEnv extends Eventize {
     this.#readyResolve(this);
   }
 
-  protected getChangeTrail(): EntityChangeEntryType[] {
+  protected getChangeTrail(): IComponentChangeType[] {
     return this.view.buildChangeTrails();
   }
 }

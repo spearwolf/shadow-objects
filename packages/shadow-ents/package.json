@@ -23,7 +23,12 @@
     }
   },
   "sideEffects": [
+    "build/src/view-components/ComponentContext.js",
+    "build/src/index.js",
+    "dist/src/view-components/ComponentContext.js",
+    "dist/src/view-components/ComponentContext.js",
     "dist/src/bundle.js",
+    "dist/src/index.js",
     "dist/bundle.js"
   ],
   "scripts": {
@@ -32,7 +37,7 @@
     "build": "pnpm run-s compile:lib compile:bundle bundle makePackageJson",
     "compile:lib": "pnpm tsc -b tsconfig.lib.json",
     "compile:bundle": "pnpm tsc -b tsconfig.bundle.json",
-    "compile:tests": "pnpm tsc -b tsconfig.tests.json",
+    "compile:tests": "pnpm rimraf tests && pnpm tsc -b tsconfig.tests.json",
     "bundle": "pnpm exec node bundle.mjs",
     "vitest:run": "pnpm exec vitest tests/src --run",
     "test": "pnpm compile:tests && pnpm vitest:run",

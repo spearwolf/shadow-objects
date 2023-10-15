@@ -1,23 +1,23 @@
 import {appendTo} from '../array-utils.js';
-import {EntityChangeTrailPhase, EntityChangeType} from '../constants.js';
+import {ChangeTrailPhase, ComponentChangeType} from '../constants.js';
 import type {
-  EntityChangeEntryType,
-  IEntityChangeCreateEntity,
-  IEntityChangeDestroyEntity,
-  IEntityChangeProperties,
-  IEntityChangeSetParent,
-  IEntityChangeUpdateOrder,
+  IComponentChangeType,
+  ICreateEntitiesChange,
+  IDestroyEntitiesChange,
+  IPropertiesChange,
+  ISetParentChange,
+  IUpdateOrderChange,
 } from '../types.js';
 
-export class EntityChanges {
-  #entityUuid: string;
+export class ComponentChanges {
+  #uuid: string;
   #token: string;
   #order: number;
 
-  #curTrailSerial = 1;
+  #serial = 1;
 
-  #isCreateEntity = true;
-  #isDestroyEntity = false;
+  #isCreate = true;
+  #isDestroy = false;
 
   #parentUuid: string | null | undefined = undefined;
 
@@ -26,24 +26,24 @@ export class EntityChanges {
 
   #orderChanged = false;
 
-  get entityUuid() {
-    return this.#entityUuid;
+  get uuid() {
+    return this.#uuid;
   }
 
-  constructor(entityUuid: string, token: string, order: number) {
-    this.#entityUuid = entityUuid;
+  constructor(uuid: string, token: string, order: number) {
+    this.#uuid = uuid;
     this.#token = token;
     this.#order = order;
   }
 
-  destroyEntity() {
-    this.#isDestroyEntity = true;
-    this.#curTrailSerial++;
+  destroyEntities() {
+    this.#isDestroy = true;
+    this.#serial++;
   }
 
   setParent(parentUuid?: string) {
     this.#parentUuid = parentUuid ?? null;
-    this.#curTrailSerial++;
+    this.#serial++;
   }
 
   changeProperty<T = unknown>(key: string, value: T, isEqual?: (a: T, b: T) => boolean) {
@@ -51,7 +51,7 @@ export class EntityChanges {
     if ((isEqual == null && value !== prevValue) || (isEqual != null && !isEqual(value, prevValue))) {
       this.#properties.set(key, value);
       appendTo(this.#changedProperties, key);
-      this.#curTrailSerial++;
+      this.#serial++;
     }
   }
 
@@ -59,7 +59,7 @@ export class EntityChanges {
     if (this.#order !== order) {
       this.#order = order;
       this.#orderChanged = true;
-      this.#curTrailSerial++;
+      this.#serial++;
     }
   }
 
@@ -67,21 +67,21 @@ export class EntityChanges {
     if (this.#properties.has(key)) {
       this.#properties.delete(key);
       appendTo(this.#changedProperties, key);
-      this.#curTrailSerial++;
+      this.#serial++;
     }
   }
 
   hasChanges() {
-    return this.#curTrailSerial > 0;
+    return this.#serial > 0;
   }
 
   clear() {
-    this.#isCreateEntity = false;
-    this.#isDestroyEntity = false;
+    this.#isCreate = false;
+    this.#isDestroy = false;
     this.#parentUuid = undefined;
     this.#changedProperties.length = 0;
     this.#orderChanged = false;
-    this.#curTrailSerial = 0;
+    this.#serial = 0;
   }
 
   dispose() {
@@ -89,13 +89,13 @@ export class EntityChanges {
     this.#properties.clear();
   }
 
-  buildChangeTrail(trail: EntityChangeEntryType[], trailPhase: EntityChangeTrailPhase) {
+  buildChangeTrail(trail: IComponentChangeType[], trailPhase: ChangeTrailPhase) {
     switch (trailPhase) {
-      case EntityChangeTrailPhase.StructuralChanges:
-        if (!this.#isDestroyEntity && this.#isCreateEntity) {
+      case ChangeTrailPhase.StructuralChanges:
+        if (!this.#isDestroy && this.#isCreate) {
           trail.push(this.makeCreateEntityChange());
         }
-        if (!this.#isCreateEntity && !this.#isDestroyEntity) {
+        if (!this.#isCreate && !this.#isDestroy) {
           if (this.#parentUuid !== undefined) {
             trail.push(this.makeSetParentChange());
           } else if (this.#orderChanged) {
@@ -103,23 +103,23 @@ export class EntityChanges {
           }
         }
         break;
-      case EntityChangeTrailPhase.ContentUpdates:
-        if (!this.#isCreateEntity && this.#changedProperties.length > 0) {
+      case ChangeTrailPhase.ContentUpdates:
+        if (!this.#isCreate && this.#changedProperties.length > 0) {
           trail.push(this.makeChangePropertyChange());
         }
         break;
-      case EntityChangeTrailPhase.Removal:
-        if (this.#isDestroyEntity && !this.#isCreateEntity) {
+      case ChangeTrailPhase.Removal:
+        if (this.#isDestroy && !this.#isCreate) {
           trail.push(this.makeDestroyEntityChange());
         }
         break;
     }
   }
 
-  makeCreateEntityChange(): IEntityChangeCreateEntity {
-    const entry: IEntityChangeCreateEntity = {
-      type: EntityChangeType.CreateEntity,
-      uuid: this.#entityUuid,
+  makeCreateEntityChange(): ICreateEntitiesChange {
+    const entry: ICreateEntitiesChange = {
+      type: ComponentChangeType.CreateEntities,
+      uuid: this.#uuid,
       token: this.#token,
     };
 
@@ -138,17 +138,17 @@ export class EntityChanges {
     return entry;
   }
 
-  makeDestroyEntityChange(): IEntityChangeDestroyEntity {
+  makeDestroyEntityChange(): IDestroyEntitiesChange {
     return {
-      type: EntityChangeType.DestroyEntity,
-      uuid: this.#entityUuid,
+      type: ComponentChangeType.DestroyEntities,
+      uuid: this.#uuid,
     };
   }
 
-  makeSetParentChange(): IEntityChangeSetParent {
-    const entry: IEntityChangeSetParent = {
-      type: EntityChangeType.SetParent,
-      uuid: this.#entityUuid,
+  makeSetParentChange(): ISetParentChange {
+    const entry: ISetParentChange = {
+      type: ComponentChangeType.SetParent,
+      uuid: this.#uuid,
       parentUuid: this.#parentUuid ?? undefined,
     };
     if (this.#orderChanged) {
@@ -157,18 +157,18 @@ export class EntityChanges {
     return entry;
   }
 
-  makeUpdateOrderChange(): IEntityChangeUpdateOrder {
+  makeUpdateOrderChange(): IUpdateOrderChange {
     return {
-      type: EntityChangeType.UpdateOrder,
-      uuid: this.#entityUuid,
+      type: ComponentChangeType.UpdateOrder,
+      uuid: this.#uuid,
       order: this.#order,
     };
   }
 
-  makeChangePropertyChange(): IEntityChangeProperties {
+  makeChangePropertyChange(): IPropertiesChange {
     return {
-      type: EntityChangeType.ChangeProperties,
-      uuid: this.#entityUuid,
+      type: ComponentChangeType.ChangeProperties,
+      uuid: this.#uuid,
       properties: this.#changedProperties.reduce(
         (entries, key) => [...entries, [key, this.#properties.get(key)]],
         [] as [string, unknown][],

@@ -1,5 +1,5 @@
 import {afterAll, describe, expect, it} from 'vitest';
-import {EntityChangeType} from '../constants.js';
+import {ComponentChangeType} from '../constants.js';
 import {ComponentContext} from './ComponentContext.js';
 import {ViewComponent} from './ViewComponent.js';
 
@@ -14,7 +14,7 @@ describe('ComponentContext', () => {
     expect(ComponentContext).toBeDefined();
   });
 
-  it('should insert create-entity and destroy-entites in change trail', () => {
+  it('should insert create-entities and destroy-entities in change trail', () => {
     const a = new ViewComponent('a');
     const b = new ViewComponent('b', a);
 
@@ -22,8 +22,8 @@ describe('ComponentContext', () => {
 
     expect(changes).toHaveLength(2);
     expect(changes).toEqual([
-      {type: EntityChangeType.CreateEntity, uuid: a.uuid, token: 'a'},
-      {type: EntityChangeType.CreateEntity, uuid: b.uuid, token: 'b', parentUuid: a.uuid},
+      {type: ComponentChangeType.CreateEntities, uuid: a.uuid, token: 'a'},
+      {type: ComponentChangeType.CreateEntities, uuid: b.uuid, token: 'b', parentUuid: a.uuid},
     ]);
 
     a.destroy();
@@ -32,8 +32,8 @@ describe('ComponentContext', () => {
 
     expect(changes).toHaveLength(2);
     expect(changes).toEqual([
-      {type: EntityChangeType.SetParent, uuid: b.uuid, parentUuid: undefined},
-      {type: EntityChangeType.DestroyEntity, uuid: a.uuid},
+      {type: ComponentChangeType.SetParent, uuid: b.uuid, parentUuid: undefined},
+      {type: ComponentChangeType.DestroyEntities, uuid: a.uuid},
     ]);
   });
 
@@ -49,8 +49,8 @@ describe('ComponentContext', () => {
 
     expect(changes).toHaveLength(2);
     expect(changes).toEqual([
-      {type: EntityChangeType.CreateEntity, uuid: a.uuid, token: 'a', properties: [['foo', 'bar']]},
-      {type: EntityChangeType.CreateEntity, uuid: b.uuid, token: 'b', parentUuid: a.uuid},
+      {type: ComponentChangeType.CreateEntities, uuid: a.uuid, token: 'a', properties: [['foo', 'bar']]},
+      {type: ComponentChangeType.CreateEntities, uuid: b.uuid, token: 'b', parentUuid: a.uuid},
     ]);
 
     a.setProperty('foo', 'bar');
@@ -62,9 +62,9 @@ describe('ComponentContext', () => {
 
     expect(changes).toHaveLength(2);
     expect(changes).toEqual([
-      {type: EntityChangeType.ChangeProperties, uuid: a.uuid, properties: [['plah', 42]]},
+      {type: ComponentChangeType.ChangeProperties, uuid: a.uuid, properties: [['plah', 42]]},
       {
-        type: EntityChangeType.ChangeProperties,
+        type: ComponentChangeType.ChangeProperties,
         uuid: b.uuid,
         properties: [
           ['xyz', 123],
@@ -84,10 +84,10 @@ describe('ComponentContext', () => {
 
     expect(changes).toHaveLength(4);
     expect(changes).toEqual([
-      {type: EntityChangeType.CreateEntity, uuid: a.uuid, token: 'a', order: 100},
-      {type: EntityChangeType.CreateEntity, uuid: b.uuid, token: 'b', parentUuid: a.uuid},
-      {type: EntityChangeType.CreateEntity, uuid: d.uuid, token: 'd', parentUuid: a.uuid, order: 2},
-      {type: EntityChangeType.CreateEntity, uuid: c.uuid, token: 'c', parentUuid: a.uuid, order: 3},
+      {type: ComponentChangeType.CreateEntities, uuid: a.uuid, token: 'a', order: 100},
+      {type: ComponentChangeType.CreateEntities, uuid: b.uuid, token: 'b', parentUuid: a.uuid},
+      {type: ComponentChangeType.CreateEntities, uuid: d.uuid, token: 'd', parentUuid: a.uuid, order: 2},
+      {type: ComponentChangeType.CreateEntities, uuid: c.uuid, token: 'c', parentUuid: a.uuid, order: 3},
     ]);
 
     c.removeFromParent();
@@ -99,8 +99,8 @@ describe('ComponentContext', () => {
 
     expect(changes).toHaveLength(2);
     expect(changes).toEqual([
-      {type: EntityChangeType.SetParent, uuid: c.uuid, parentUuid: undefined, order: 15},
-      {type: EntityChangeType.UpdateOrder, uuid: b.uuid, order: 1},
+      {type: ComponentChangeType.SetParent, uuid: c.uuid, parentUuid: undefined, order: 15},
+      {type: ComponentChangeType.UpdateOrder, uuid: b.uuid, order: 1},
     ]);
   });
 });

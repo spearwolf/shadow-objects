@@ -1,19 +1,19 @@
 import {type EventizeApi} from '@spearwolf/eventize';
 import {afterAll, describe, expect, it, vi} from 'vitest';
-import {EntityChangeType} from '../../constants.js';
+import {ComponentChangeType} from '../../constants.js';
 import {Entity} from '../../entities/Entity.js';
 import {Registry} from '../../entities/Registry.js';
 import {Uplink} from '../../entities/Uplink.js';
 import {OnCreate, OnInit, OnRemoveFromParent} from '../../entities/events.js';
-import type {EntitiesSyncEvent} from '../../types.js';
+import type {SyncEvent} from '../../types.js';
 import {ComponentContext} from '../ComponentContext.js';
 import {ViewComponent} from '../ViewComponent.js';
-import {EntityEnv} from './EntityEnv.js';
-import {EntityLocalEnv} from './EntityLocalEnv.js';
+import {BaseEnv} from './BaseEnv.js';
+import {LocalEnv} from './LocalEnv.js';
 
-const nextSyncEvent = (link: EntityEnv): Promise<EntitiesSyncEvent> =>
+const nextSyncEvent = (env: BaseEnv): Promise<SyncEvent> =>
   new Promise((resolve) => {
-    link.once(EntityEnv.OnSync, resolve);
+    env.once(BaseEnv.OnSync, resolve);
   });
 
 const waitForNext = (obj: EventizeApi, event: string | symbol): Promise<unknown[]> =>
@@ -21,18 +21,18 @@ const waitForNext = (obj: EventizeApi, event: string | symbol): Promise<unknown[
     obj.once(event, (...args: unknown[]) => resolve(args));
   });
 
-describe('EntityLocalEnv', () => {
+describe('LocalEnv', () => {
   afterAll(() => {
     ComponentContext.get().clear();
     Registry.get().clear();
   });
 
   it('should be defined', () => {
-    expect(EntityLocalEnv).toBeDefined();
+    expect(LocalEnv).toBeDefined();
   });
 
   it('should start', async () => {
-    const localEnv = new EntityLocalEnv();
+    const localEnv = new LocalEnv();
 
     expect(localEnv.isReady).toBe(false);
 
@@ -44,7 +44,7 @@ describe('EntityLocalEnv', () => {
   });
 
   it('should sync', async () => {
-    const localEnv = new EntityLocalEnv().start();
+    const localEnv = new LocalEnv().start();
 
     const a = new ViewComponent('a');
     const b = new ViewComponent('b', a);
@@ -57,13 +57,13 @@ describe('EntityLocalEnv', () => {
     const event = await nextSyncEvent(localEnv);
 
     expect(event.changeTrail).toEqual([
-      {type: EntityChangeType.CreateEntity, token: 'a', uuid: a.uuid, properties: [['foo', 'bar']]},
-      {type: EntityChangeType.CreateEntity, token: 'b', uuid: b.uuid, parentUuid: a.uuid, properties: [['xyz', 123]]},
+      {type: ComponentChangeType.CreateEntities, token: 'a', uuid: a.uuid, properties: [['foo', 'bar']]},
+      {type: ComponentChangeType.CreateEntities, token: 'b', uuid: b.uuid, parentUuid: a.uuid, properties: [['xyz', 123]]},
     ]);
   });
 
-  it('should create entities within kernel', async () => {
-    const localEnv = new EntityLocalEnv().start();
+  it('should create uplinks and entities', async () => {
+    const localEnv = new LocalEnv().start();
 
     const a = new ViewComponent('a');
     const b = new ViewComponent('b', a);
@@ -73,8 +73,8 @@ describe('EntityLocalEnv', () => {
 
     await localEnv.sync();
 
-    const aa = localEnv.kernel.getEntity(a.uuid);
-    const bb = localEnv.kernel.getEntity(b.uuid);
+    const aa = localEnv.kernel.getUplink(a.uuid);
+    const bb = localEnv.kernel.getUplink(b.uuid);
 
     expect(aa).toBeDefined();
     expect(aa.getProperty('foo')).toBe('bar');
@@ -99,7 +99,7 @@ describe('EntityLocalEnv', () => {
 
     await localEnv.sync();
 
-    const cc = localEnv.kernel.getEntity(c.uuid);
+    const cc = localEnv.kernel.getUplink(c.uuid);
 
     expect(aa.children).toHaveLength(2);
     expect(aa.children[0]).toBe(cc);
@@ -122,8 +122,8 @@ describe('EntityLocalEnv', () => {
     await expect(removeFromParent).resolves.toBe(cc.uuid);
   });
 
-  it('should create entity components', async () => {
-    const localEnv = new EntityLocalEnv().start();
+  it('should call create and init events on entities', async () => {
+    const localEnv = new LocalEnv().start();
 
     const onCreateMock = vi.fn();
     const onInitMock = vi.fn();
@@ -143,7 +143,7 @@ describe('EntityLocalEnv', () => {
 
     await localEnv.sync();
 
-    const aa = localEnv.kernel.getEntity(a.uuid);
+    const aa = localEnv.kernel.getUplink(a.uuid);
 
     expect(aa).toBeDefined();
     expect(aa.getProperty('foo')).toBe('bar');
