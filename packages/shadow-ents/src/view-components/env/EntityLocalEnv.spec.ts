@@ -2,9 +2,9 @@ import {type EventizeApi} from '@spearwolf/eventize';
 import {afterAll, describe, expect, it, vi} from 'vitest';
 import {EntityChangeType} from '../../constants.js';
 import {Entity} from '../../entities/Entity.js';
-import {getDefaultRegistry} from '../../entities/EntityRegistry.js';
-import {EntityUplink} from '../../entities/EntityUplink.js';
-import {OnCreate, OnInit, OnRemoveFromParent} from '../../entities/entity-events.js';
+import {Registry} from '../../entities/Registry.js';
+import {Uplink} from '../../entities/Uplink.js';
+import {OnCreate, OnInit, OnRemoveFromParent} from '../../entities/events.js';
 import type {EntitiesSyncEvent} from '../../types.js';
 import {ComponentContext} from '../ComponentContext.js';
 import {ViewComponent} from '../ViewComponent.js';
@@ -24,7 +24,7 @@ const waitForNext = (obj: EventizeApi, event: string | symbol): Promise<unknown[
 describe('EntityLocalEnv', () => {
   afterAll(() => {
     ComponentContext.get().clear();
-    getDefaultRegistry().clear();
+    Registry.get().clear();
   });
 
   it('should be defined', () => {
@@ -90,7 +90,7 @@ describe('EntityLocalEnv', () => {
 
     @Entity({token: 'c'})
     class EntityCcc implements OnRemoveFromParent {
-      [OnRemoveFromParent](_uplink: EntityUplink) {
+      [OnRemoveFromParent](_uplink: Uplink) {
         onRemoveFromParent(this);
       }
     }
@@ -107,7 +107,7 @@ describe('EntityLocalEnv', () => {
 
     expect(onRemoveFromParent).not.toHaveBeenCalled();
 
-    const removeFromParent = waitForNext(cc, OnRemoveFromParent).then(([entity]) => (entity as EntityUplink).uuid);
+    const removeFromParent = waitForNext(cc, OnRemoveFromParent).then(([entity]) => (entity as Uplink).uuid);
 
     c.removeFromParent();
 
@@ -130,10 +130,10 @@ describe('EntityLocalEnv', () => {
 
     @Entity({token: 'a'})
     class Aaa implements OnCreate, OnInit {
-      [OnCreate](uplink: EntityUplink) {
+      [OnCreate](uplink: Uplink) {
         onCreateMock(uplink, this);
       }
-      [OnInit](uplink: EntityUplink) {
+      [OnInit](uplink: Uplink) {
         onInitMock(uplink, this);
       }
     }

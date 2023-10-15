@@ -1,12 +1,12 @@
 import {isEventized} from '@spearwolf/eventize';
 import {afterEach, describe, expect, it} from 'vitest';
-import {EntityKernel} from './EntityKernel.js';
 import {Entity} from './Entity.js';
-import {EntityRegistry, getDefaultRegistry} from './EntityRegistry.js';
+import {Kernel} from './Kernel.js';
+import {Registry} from './Registry.js';
 
 describe('@Entity decorator', () => {
   afterEach(() => {
-    getDefaultRegistry().clear();
+    Registry.get().clear();
   });
 
   it('should register a class constructor by token', () => {
@@ -14,13 +14,13 @@ describe('@Entity decorator', () => {
     class Foo {}
 
     expect(Foo).toBeDefined();
-    expect(getDefaultRegistry().hasToken('test')).toBeTruthy();
-    expect(getDefaultRegistry().findConstructors('test')).toContain(Foo);
+    expect(Registry.get().hasToken('test')).toBeTruthy();
+    expect(Registry.get().findConstructors('test')).toContain(Foo);
   });
 
   it('should create an entity component instance', () => {
-    const registry = new EntityRegistry();
-    const kernel = new EntityKernel(registry);
+    const registry = new Registry();
+    const kernel = new Kernel(registry);
 
     @Entity({registry, token: 'test'})
     class Foo {

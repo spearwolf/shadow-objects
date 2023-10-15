@@ -1,23 +1,23 @@
 import {Eventize, Priority} from '@spearwolf/eventize';
 import {batch, createSignal, destroySignal, value, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
-import {EntityKernel} from './EntityKernel';
-import {OnAddChild, OnAddToParent, OnDestroy, OnRemoveChild, OnRemoveFromParent} from './entity-events.js';
+import {Kernel} from './Kernel';
+import {OnAddChild, OnAddToParent, OnDestroy, OnRemoveChild, OnRemoveFromParent} from './events.js';
 
-export class EntityUplink extends Eventize {
-  #kernel: EntityKernel;
+export class Uplink extends Eventize {
+  #kernel: Kernel;
   #uuid: string;
 
   #signals = new Map<string, [get: SignalReader<any>, set: SignalWriter<any>]>();
 
   #parentUuid?: string;
-  #parent?: EntityUplink;
+  #parent?: Uplink;
 
   #childrenUuids: Set<string> = new Set();
-  #children: EntityUplink[] = [];
+  #children: Uplink[] = [];
 
   #order = 0;
 
-  get kernel(): EntityKernel {
+  get kernel(): Kernel {
     return this.#kernel;
   }
 
@@ -55,14 +55,14 @@ export class EntityUplink extends Eventize {
     }
   }
 
-  get parent(): EntityUplink | undefined {
+  get parent(): Uplink | undefined {
     if (!this.#parent && this.#parentUuid) {
       this.#parent = this.#kernel.getEntity(this.#parentUuid);
     }
     return this.#parent;
   }
 
-  set parent(parent: EntityUplink | undefined) {
+  set parent(parent: Uplink | undefined) {
     this.parentUuid = parent?.uuid;
   }
 
@@ -70,11 +70,11 @@ export class EntityUplink extends Eventize {
     return !!this.#parentUuid;
   }
 
-  get children(): readonly EntityUplink[] {
+  get children(): readonly Uplink[] {
     return this.#children;
   }
 
-  constructor(kernel: EntityKernel, uuid: string) {
+  constructor(kernel: Kernel, uuid: string) {
     super();
     this.#kernel = kernel;
     this.#uuid = uuid;
@@ -98,7 +98,7 @@ export class EntityUplink extends Eventize {
     this.#children.length = 0;
   }
 
-  addChild(child: EntityUplink) {
+  addChild(child: Uplink) {
     if (this.#children.length === 0) {
       this.#childrenUuids.add(child.uuid);
       this.#children.push(child);
@@ -124,7 +124,7 @@ export class EntityUplink extends Eventize {
     this.#children.sort((a, b) => a.order - b.order);
   }
 
-  removeChild(child: EntityUplink) {
+  removeChild(child: Uplink) {
     if (this.#childrenUuids.has(child.uuid)) {
       this.#childrenUuids.delete(child.uuid);
       this.#children.splice(this.#children.indexOf(child), 1);

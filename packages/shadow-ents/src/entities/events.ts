@@ -1,4 +1,4 @@
-import {EntityUplink} from './EntityUplink.js';
+import {Uplink} from './Uplink.js';
 
 export const OnCreate = Symbol('onCreate');
 export const OnInit = Symbol('onInit');
@@ -18,7 +18,7 @@ export const OnRemoveChild = Symbol('onRemoveChild'); // TODO call OnRemoveChild
  * The _entity uplink_ does not get this event.
  */
 export interface OnCreate {
-  [OnCreate](entity: EntityUplink): void;
+  [OnCreate](entity: Uplink): void;
 }
 
 /**
@@ -29,7 +29,7 @@ export interface OnCreate {
  * When the `OnInit` event is triggered, **all** entity components have been initialized and have already received their individual `OnCreate` event.
  */
 export interface OnInit {
-  [OnInit](entity: EntityUplink): void;
+  [OnInit](entity: Uplink): void;
 }
 
 /**
@@ -40,7 +40,7 @@ export interface OnInit {
  * This is the last event in the lifecycle of an entity component.
  */
 export interface OnDestroy {
-  [OnDestroy](entity: EntityUplink): void;
+  [OnDestroy](entity: Uplink): void;
 }
 
 /**
@@ -51,17 +51,17 @@ export interface OnDestroy {
  * The `OnAddToParent` event comes _after_ the `OnAddChild` event.
  */
 export interface OnAddToParent {
-  [OnAddToParent](child: EntityUplink, parent: EntityUplink): void;
+  [OnAddToParent](child: Uplink, parent: Uplink): void;
 }
 
 export interface OnRemoveFromParent {
-  [OnRemoveFromParent](child: EntityUplink, parent: EntityUplink): void;
+  [OnRemoveFromParent](child: Uplink, parent: Uplink): void;
 }
 
 export interface OnAddChild {
-  [OnAddChild](parent: EntityUplink, child: EntityUplink): void;
+  [OnAddChild](parent: Uplink, child: Uplink): void;
 }
 
 export interface OnRemoveChild {
-  [OnRemoveChild](parent: EntityUplink, child: EntityUplink): void;
+  [OnRemoveChild](parent: Uplink, child: Uplink): void;
 }

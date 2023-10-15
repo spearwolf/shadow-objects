@@ -1,7 +1,7 @@
-import {EntityEnv} from './EntityEnv';
-import {EntityKernel} from '../../entities/EntityKernel.js';
-import {EntityRegistry} from '../../entities/EntityRegistry.js';
+import {Kernel} from '../../entities/Kernel.js';
+import {Registry} from '../../entities/Registry.js';
 import type {EntitiesSyncEvent, EntityChangeEntryType} from '../../types.js';
+import {EntityEnv} from './EntityEnv';
 
 const hasStructuredClone = typeof structuredClone === 'function' ? true : false;
 let structuredCloneWarningHasBeenShown = false;
@@ -16,7 +16,7 @@ const checkStructuredClone = () => {
 
 export interface EntityLocalEnvParams {
   namespace?: string | symbol;
-  registry?: EntityRegistry;
+  registry?: Registry;
   useStructuredClone?: boolean;
 }
 
@@ -28,14 +28,14 @@ export interface EntityLocalEnvParams {
  * (this behavior can of course also be deactivated).
  */
 export class EntityLocalEnv extends EntityEnv {
-  readonly kernel: EntityKernel;
+  readonly kernel: Kernel;
 
   useStructuredClone = true;
 
   constructor(options?: EntityLocalEnvParams) {
     super(options?.namespace);
 
-    this.kernel = new EntityKernel(options?.registry);
+    this.kernel = new Kernel(options?.registry);
     this.useStructuredClone = options?.useStructuredClone ?? true;
 
     this.on(EntityEnv.OnSync, (event: EntitiesSyncEvent) => this.kernel.run(event));

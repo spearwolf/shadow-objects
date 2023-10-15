@@ -6,7 +6,12 @@ interface RegistryEntry {
   constructors: EntityConstructor[];
 }
 
-export class EntityRegistry {
+export class Registry {
+  /** return the default registry */
+  static get() {
+    return defaultRegistry;
+  }
+
   readonly #registry = new Map<string, RegistryEntry>();
 
   registerEntityComponent(token: string, constructor: EntityConstructor) {
@@ -30,6 +35,4 @@ export class EntityRegistry {
   }
 }
 
-const defaultRegistry = new EntityRegistry();
-
-export const getDefaultRegistry = () => defaultRegistry;
+const defaultRegistry = new Registry();

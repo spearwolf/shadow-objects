@@ -1,10 +1,10 @@
 import {Eventize} from '@spearwolf/eventize';
 import {batch} from '@spearwolf/signalize';
-import {EntityRegistry, getDefaultRegistry} from './EntityRegistry.js';
-import {EntityUplink} from './EntityUplink.js';
 import {EntityChangeType} from '../constants.js';
-import {OnCreate, OnDestroy, OnInit} from './entity-events.js';
 import type {EntitiesSyncEvent, EntityChangeEntryType} from '../types.js';
+import {Registry} from './Registry.js';
+import {Uplink} from './Uplink.js';
+import {OnCreate, OnDestroy, OnInit} from './events.js';
 
 /**
  * The _entity kernel_ is the central hub for all _entity uplinks_.
@@ -12,17 +12,17 @@ import type {EntitiesSyncEvent, EntityChangeEntryType} from '../types.js';
  * The entities are created, destroyed, parented, etc. based on the entity _view change log_.
  * The entity components are created based on the _tokens_ and the _entity registry_.
  */
-export class EntityKernel extends Eventize {
-  registry: EntityRegistry;
+export class Kernel extends Eventize {
+  registry: Registry;
 
-  #entities: Map<string, EntityUplink> = new Map();
+  #entities: Map<string, Uplink> = new Map();
 
-  constructor(registry?: EntityRegistry) {
+  constructor(registry?: Registry) {
     super();
-    this.registry = registry ?? getDefaultRegistry();
+    this.registry = registry ?? Registry.get();
   }
 
-  getEntity(uuid: string): EntityUplink {
+  getEntity(uuid: string): Uplink {
     const entity = this.#entities.get(uuid);
     if (!entity) {
       throw new Error(`Entity with uuid "${uuid}" not found.`);
@@ -63,7 +63,7 @@ export class EntityKernel extends Eventize {
   }
 
   createEntity(uuid: string, token: string, parentUuid?: string, order = 0, properties?: [string, unknown][]) {
-    const entity = new EntityUplink(this, uuid);
+    const entity = new Uplink(this, uuid);
 
     entity.order = order;
 
@@ -103,7 +103,7 @@ export class EntityKernel extends Eventize {
     this.getEntity(uuid).setProperties(properties);
   }
 
-  createEntityComponents(token: string, uplink?: EntityUplink) {
+  createEntityComponents(token: string, uplink?: Uplink) {
     return this.registry.findConstructors(token)?.map((constructor) => {
       const instance = new constructor();
       if (uplink) {
