@@ -105,6 +105,22 @@ importers:
         specifier: 3.0.0-pre.1
         version: 3.0.0-pre.1
 
+  packages/shadow-ents-e2e:
+    dependencies:
+      '@spearwolf/shadow-ents':
+        specifier: workspace:*
+        version: link:../shadow-ents
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.38.1
+        version: 1.38.1
+      typescript:
+        specifier: ^5.2.2
+        version: 5.2.2
+      vite:
+        specifier: ^4.4.5
+        version: 4.4.11(@types/node@20.8.2)
+
   packages/visual-fx-base-element:
     dependencies:
       '@spearwolf/eventize':

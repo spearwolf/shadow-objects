@@ -20,7 +20,7 @@ export class ShadowEntsElement extends HTMLElement {
   connectedCallback() {
     console.log('Custom element added to page.');
 
-    this.dispatchEvent(new CustomEvent(RequestContextEventName, {detail: {requester: this[$uuid]}}));
+    this.dispatchEvent(new CustomEvent(RequestContextEventName, {detail: {requester: this}}));
   }
 
   disconnectedCallback() {

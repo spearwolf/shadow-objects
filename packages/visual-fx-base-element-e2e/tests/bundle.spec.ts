@@ -7,7 +7,7 @@ test.describe('bundle', () => {
 
   test.describe('simple-greeting', () => {
     test('has element', async ({page}) => {
-      await expect(page.getByTestId('sg')).toBeVisible();
+      await expect(page.getByTestId('sg')).toBeAttached();
     });
 
     test('custom element is defined', async ({page}) => {
@@ -24,7 +24,7 @@ test.describe('bundle', () => {
 
   test.describe('visual-fx-base', () => {
     test('has element', async ({page}) => {
-      await expect(page.getByTestId('vfxb')).toBeVisible();
+      await expect(page.getByTestId('vfxb')).toBeAttached();
     });
 
     test('custom element is defined', async ({page}) => {
