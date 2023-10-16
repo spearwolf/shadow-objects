@@ -1,5 +1,5 @@
+import {generateUUID} from '../generateUUID.js';
 import {ComponentContext} from './ComponentContext.js';
-import {generateUUID} from './generateUUID.js';
 
 export class ViewComponent {
   #uuid: string;
