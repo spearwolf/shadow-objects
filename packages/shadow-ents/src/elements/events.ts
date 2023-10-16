@@ -7,6 +7,7 @@ export interface RequestContextEvent extends CustomEvent {
   };
 }
 
+// TODO remove?
 export interface ElementContextEvent extends CustomEvent {
   detail: {
     requester: ShadowEntsElement;
@@ -16,6 +17,8 @@ export interface ElementContextEvent extends CustomEvent {
 
 export interface ShadowEntsEventMap {
   [RequestContextEventName]: RequestContextEvent;
+
+  // TODO remove?
   [ElementContextEventName]: ElementContextEvent;
 }
 

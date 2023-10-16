@@ -45,6 +45,7 @@ export class ShadowEntsElement extends HTMLElement {
     console.log('Custom element set context element', contextElement);
   }
 
+  // TODO remove?
   #onElementContext(event: ElementContextEvent) {
     console.log('Custom element element context', event);
   }
