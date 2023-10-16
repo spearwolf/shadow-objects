@@ -3,7 +3,6 @@ import {generateUUID} from '../generateUUID';
 import {$isElement, $type, ElementType, RequestContextEventName} from './constants';
 import type {RequestContextEvent} from './events';
 
-// TODO namespace
 // TODO children + order
 
 export class ShadowEntsElement extends HTMLElement {
@@ -13,53 +12,66 @@ export class ShadowEntsElement extends HTMLElement {
 
   readonly uuid = generateUUID();
 
-  #contextElementSignal: [SignalReader<ShadowEntsElement | undefined>, SignalWriter<ShadowEntsElement | undefined>] =
+  #parentShadowElementSignal: [SignalReader<ShadowEntsElement | undefined>, SignalWriter<ShadowEntsElement | undefined>] =
     createSignal();
 
-  get contextElement(): ShadowEntsElement | undefined {
-    return this.#contextElementSignal[0]();
+  #setParentShadowElement(element: ShadowEntsElement) {
+    this.#parentShadowElementSignal[1](element ?? undefined);
+  }
+
+  get parentShadowElement(): ShadowEntsElement | undefined {
+    return this.#parentShadowElementSignal[0]();
   }
 
   constructor() {
     super();
 
+    // TODO remove me!
     createEffect(() => {
-      console.log(`contextElement#${this.uuid}`, this.contextElement);
+      console.log(`parentShadowElement#${this.uuid}`, '->', this.parentShadowElement?.uuid, this.parentShadowElement);
     });
   }
 
   connectedCallback() {
-    console.log('Custom element added to page', this.uuid);
+    console.log('connectedCallback', this.uuid);
 
-    this.dispatchEvent(new CustomEvent(RequestContextEventName, {bubbles: true, detail: {requester: this}}));
-
-    this.addEventListener(RequestContextEventName, this.#onRequestContext, {capture: false, passive: false});
+    this.dispatchRequestContextEvent();
+    this.registerListener();
   }
 
   disconnectedCallback() {
-    console.log('Custom element removed from page', this.uuid);
+    console.log('disconnectedCallback', this.uuid);
 
-    this.removeEventListener(RequestContextEventName, this.#onRequestContext, {capture: false});
+    this.unregisterListener();
   }
 
   adoptedCallback() {
-    console.log('Custom element moved to new page', this.uuid);
+    console.log('TODO adoptedCallback', this.uuid);
   }
 
   #onRequestContext = (event: RequestContextEvent) => {
     const requester = event.detail?.requester;
 
-    console.log('Custom element request context', {requester: requester?.uuid, self: this.uuid});
-
-    if (requester != null && requester !== this) {
-      console.log('Custom element stop propagation', requester);
+    if (requester != null && requester !== this && this.isContextFor(requester)) {
       event.stopPropagation();
-      requester.#setContextElement(this);
+      requester.#setParentShadowElement(this);
     }
   };
 
-  #setContextElement(contextElement: ShadowEntsElement) {
-    console.log('Custom element set context element', contextElement);
-    this.#contextElementSignal[1](contextElement ?? undefined);
+  protected isContextFor(_element: ShadowEntsElement): boolean {
+    // TODO check namespace
+    return true;
+  }
+
+  protected registerListener(): void {
+    this.addEventListener(RequestContextEventName, this.#onRequestContext, {capture: false, passive: false});
+  }
+
+  protected unregisterListener(): void {
+    this.removeEventListener(RequestContextEventName, this.#onRequestContext, {capture: false});
+  }
+
+  protected dispatchRequestContextEvent(): void {
+    this.dispatchEvent(new CustomEvent(RequestContextEventName, {bubbles: true, detail: {requester: this}}));
   }
 }
