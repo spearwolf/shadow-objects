@@ -1,3 +1,6 @@
+export * from './elements/ShadowEntsElement.js';
+export * from './elements/constants.js';
+export * from './elements/isShadowEntsElement.js';
 export * from './entities/Entity.js';
 export * from './entities/Registry.js';
 export * from './entities/events.js';

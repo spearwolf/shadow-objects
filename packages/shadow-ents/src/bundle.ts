@@ -1,4 +1,4 @@
-import './index.js';
+import './shadow-ents-base.js';
 
 declare global {
   interface Window {
@@ -6,4 +6,5 @@ declare global {
   }
 }
 
+// TODO remove me
 window.SHADOW_ENTS_WAS_HERE = true;

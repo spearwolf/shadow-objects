@@ -20,13 +20,19 @@
     "./bundle.js": {
       "default": "./dist/bundle.js",
       "types": "./dist/src/bundle.d.ts"
+    },
+    "./shadow-ents-base.js": {
+      "default": "./dist/src/shadow-ents-base.js",
+      "types": "./dist/src/shadow-ents-base.d.ts"
     }
   },
   "sideEffects": [
     "build/src/view-components/ComponentContext.js",
+    "build/src/shadow-ents-base.js",
+    "build/src/bundle.js",
     "build/src/index.js",
     "dist/src/view-components/ComponentContext.js",
-    "dist/src/view-components/ComponentContext.js",
+    "dist/src/shadow-ents-base.js",
     "dist/src/bundle.js",
     "dist/src/index.js",
     "dist/bundle.js"
@@ -34,7 +40,7 @@
   "scripts": {
     "tsc": "pnpm exec tsc",
     "run-s": "pnpm exec run-s -s",
-    "build": "pnpm run-s compile:lib compile:bundle bundle makePackageJson",
+    "build": "pnpm run-s clean:build compile:lib compile:bundle bundle makePackageJson",
     "compile:lib": "pnpm tsc -b tsconfig.lib.json",
     "compile:bundle": "pnpm tsc -b tsconfig.bundle.json",
     "compile:tests": "pnpm rimraf tests && pnpm tsc -b tsconfig.tests.json",
@@ -42,6 +48,7 @@
     "vitest:run": "pnpm exec vitest tests/src --run",
     "test": "pnpm compile:tests && pnpm vitest:run",
     "clean": "pnpm exec rimraf build types dist lib tests",
+    "clean:build": "pnpm exec rimraf build dist",
     "makePackageJson": "pnpm exec node ../../scripts/makePackageJson.mjs"
   },
   "dependencies": {

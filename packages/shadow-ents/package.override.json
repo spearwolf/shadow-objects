@@ -1,5 +1,11 @@
 {
-  "sideEffects": ["bundle.js", "src/bundle.js", "src/index.js", "src/view-components/ComponentContext.js"],
+  "sideEffects": [
+    "bundle.js",
+    "src/bundle.js",
+    "src/index.js",
+    "src/view-components/ComponentContext.js",
+    "src/shadow-ents-base.js"
+  ],
   "scripts": null,
   "devDependencies": null,
   "rollup": null,
