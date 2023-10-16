@@ -15,7 +15,7 @@ The root of a component hierarchy is always the _component context_. The context
 
 Within the entity worker is the _entity kernel_, which is responsible for the entities and their lifecycles. This is the counterpart to the component context.
 
-When a component is created, a string based id and/or multiple tags can be applied. Based on this data, the kernel decides what types of entities to create and associate with the component. 
+When a component is created, a string based token and/or multiple tags can be applied. Based on this data, the kernel decides what types of entities to create and associate with the component. 
  
 Multiple entities can be associated with a component.
 
