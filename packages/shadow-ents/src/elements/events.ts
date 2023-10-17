@@ -1,9 +1,10 @@
 import type {ShadowEntsBase} from './ShadowEntsBase.js';
-import type {ElementContextEventName, RequestContextEventName} from './constants.js';
+import type {ElementContextEventName, RequestContextEventName, ShadowElementType} from './constants.js';
 
 export interface RequestContextEvent extends CustomEvent {
   detail: {
     requester: ShadowEntsBase;
+    types?: readonly ShadowElementType[];
   };
 }
 

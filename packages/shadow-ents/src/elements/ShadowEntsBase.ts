@@ -1,4 +1,5 @@
-import {batch, connect, createEffect, createSignal, value, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
+import {eventize} from '@spearwolf/eventize';
+import {connect, createEffect, createSignal, value, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
 import {GlobalNS} from '../constants.js';
 import {generateUUID} from '../generateUUID.js';
 import {toNamespace} from '../toNamespace.js';
@@ -7,7 +8,7 @@ import {RequestContextEventName, ShadowElementType} from './constants.js';
 import type {RequestContextEvent} from './events.js';
 import {isShadowElement} from './isShadowElement.js';
 
-// TODO children + order
+// TODO children order
 
 type SignalFuncs<T> = [SignalReader<T>, SignalWriter<T>];
 
@@ -21,6 +22,8 @@ export class ShadowEntsBase extends HTMLElement {
   readonly shadowType: ShadowElementType = ShadowElementType.ShadowEntsBase;
 
   readonly uuid = generateUUID();
+
+  readonly #childQueue = eventize({});
 
   /** the shadow ents namespace */
   get ns(): NamespaceType {
@@ -43,9 +46,13 @@ export class ShadowEntsBase extends HTMLElement {
 
   getParentShadowElementByType(shadowType: ShadowElementType): ShadowEntsBase | undefined {
     if (this.isRelevantParentElementType(shadowType)) {
-      return this.#getParentShadowElementSignalByType(shadowType)[0]();
+      return value(this.#getParentShadowElementSignalByType(shadowType)[0]);
     }
     return undefined;
+  }
+
+  isParentShadowElement(element: ShadowEntsBase): boolean {
+    return this.getParentShadowElementByType(element.shadowType) === element;
   }
 
   readonly #ns: SignalFuncs<NamespaceType> = createSignal(GlobalNS);
@@ -56,6 +63,14 @@ export class ShadowEntsBase extends HTMLElement {
     if (!this.#parentShadowElements.has(shadowType)) {
       const sig = createSignal<ShadowEntsBase | undefined>();
       this.#parentShadowElements.set(shadowType, sig);
+
+      sig[0]((el) => {
+        if (el) {
+          console.debug('subscribe to childQueue', this.uuid, {self: this, parent: el});
+          return el.#childQueue.on(this);
+        }
+      });
+
       return sig;
     }
     return this.#parentShadowElements.get(shadowType);
@@ -133,6 +148,9 @@ export class ShadowEntsBase extends HTMLElement {
       this.#disconnectFromShadowTree();
       this.#dispatchRequestContextEvent();
     }
+
+    // TODO  we need to store all shadow-elements without a parentShadowElement somewhere
+    // so we could re-request-context on namespace change
   };
 
   #onRequestContext = (event: RequestContextEvent) => {
@@ -143,15 +161,19 @@ export class ShadowEntsBase extends HTMLElement {
       requester !== this &&
       isShadowElement(requester) &&
       requester.ns === this.ns &&
-      this.isRelevantParentElementType(requester.shadowType)
+      this.isRelevantParentElementType(requester.shadowType) &&
+      (event.detail.types == null || event.detail.types.includes(this.shadowType))
     ) {
       event.stopPropagation();
-      requester.#setParentShadowElement(this);
+      if (!requester.isParentShadowElement(this)) {
+        requester.#setParentShadowElement(this);
+        this.#childQueue.emit('onChildAddedToParent', this, requester);
+      }
     }
   };
 
-  #onChildRemoved(child: ShadowEntsBase) {
-    console.debug('onChildRemoved parent:', this.uuid, 'child:', child.uuid);
+  #onChildRemoved(_child: ShadowEntsBase) {
+    // console.debug('onChildRemoved parent:', this.uuid, 'child:', child.uuid);
   }
 
   #registerListener(): void {
@@ -162,20 +184,43 @@ export class ShadowEntsBase extends HTMLElement {
     this.removeEventListener(RequestContextEventName, this.#onRequestContext, {capture: false});
   }
 
-  #dispatchRequestContextEvent(): void {
-    this.dispatchEvent(new CustomEvent(RequestContextEventName, {bubbles: true, detail: {requester: this}}));
+  #dispatchRequestContextEvent(types?: ShadowElementType[]): void {
+    this.dispatchEvent(new CustomEvent(RequestContextEventName, {bubbles: true, detail: {requester: this, types}}));
   }
 
   #disconnectFromShadowTree() {
-    batch(() => {
-      for (const [getParent, setParent] of this.#parentShadowElements.values()) {
-        const parent = value(getParent);
-        if (parent) {
-          parent.#onChildRemoved(this); // move to an effect?
-          setParent(undefined);
-        }
+    for (const [getParent, setParent] of this.#parentShadowElements.values()) {
+      const parent = value(getParent);
+      if (parent) {
+        parent.#onChildRemoved(this); // move to an effect?
+        parent.#childQueue.off(this);
+        setParent(undefined);
       }
-      // TODO children should be removed from parent and should request a new parent
+    }
+    this.#childQueue.emit('onParentDisconnectedFromShadowTree', this);
+  }
+
+  onParentDisconnectedFromShadowTree(element: ShadowEntsBase) {
+    if (element === this) return;
+
+    console.debug('onParentDisconnectedFromShadowTree', this.uuid, {self: this, parent: element});
+
+    this.#disconnectFromShadowTree();
+    if (this.isConnected) {
+      this.#dispatchRequestContextEvent([element.shadowType]);
+    }
+  }
+
+  onChildAddedToParent(parent: ShadowEntsBase, child: ShadowEntsBase) {
+    if (parent === this || child === this) return;
+
+    console.debug('onChildAddedToParent', this.uuid, {
+      self: this,
+      parent,
+      child,
     });
+
+    // TODO filter parent shadowType
+    this.#dispatchRequestContextEvent([parent.shadowType]);
   }
 }
