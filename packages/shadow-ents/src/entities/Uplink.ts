@@ -88,7 +88,7 @@ export class Uplink extends Eventize {
     this.once(OnDestroy, Priority.Min, this);
   }
 
-  [OnDestroy]() {
+  onDestroy() {
     for (const [sig] of this.#signals.values()) {
       destroySignal(sig);
     }
