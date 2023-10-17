@@ -1,4 +1,4 @@
-import {createEffect, createSignal, value, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
+import {batch, connect, createEffect, createSignal, value, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
 import {GlobalNS} from '../constants.js';
 import {generateUUID} from '../generateUUID.js';
 import {toNamespace} from '../toNamespace.js';
@@ -24,11 +24,11 @@ export class ShadowEntsBase extends HTMLElement {
 
   /** the shadow ents namespace */
   get ns(): NamespaceType {
-    return this.#namespace$sig[0]();
+    return value(this.#ns[0]);
   }
 
   set ns(value: NamespaceType | null | undefined) {
-    this.#namespace$sig[1](toNamespace(value));
+    this.#ns[1](toNamespace(value));
   }
 
   get parentShadowElement(): ShadowEntsBase | undefined {
@@ -48,7 +48,7 @@ export class ShadowEntsBase extends HTMLElement {
     return undefined;
   }
 
-  #namespace$sig: SignalFuncs<NamespaceType> = createSignal<NamespaceType>(GlobalNS);
+  readonly #ns: SignalFuncs<NamespaceType> = createSignal(GlobalNS);
 
   #parentShadowElements = new Map<ShadowElementType, SignalFuncs<ShadowEntsBase | undefined>>();
 
@@ -67,6 +67,8 @@ export class ShadowEntsBase extends HTMLElement {
 
   constructor() {
     super();
+
+    connect(this.#ns[0], this.#onNamespaceChange);
 
     // TODO remove me!
     createEffect(() => {
@@ -89,7 +91,12 @@ export class ShadowEntsBase extends HTMLElement {
 
     switch (name) {
       case 'ns':
-        this.ns = newValue;
+        {
+          const nextNs = toNamespace(newValue);
+          if (toNamespace(oldValue) !== nextNs) {
+            this.#ns[1](toNamespace(nextNs));
+          }
+        }
         break;
     }
   }
@@ -97,16 +104,20 @@ export class ShadowEntsBase extends HTMLElement {
   connectedCallback() {
     console.debug('connectedCallback', this.uuid);
 
-    this.dispatchRequestContextEvent();
+    // we want to create our context here:
+    // find a parent element for each relevant shadow type
+    this.#dispatchRequestContextEvent();
 
-    this.registerListener();
+    this.#registerListener();
   }
 
   disconnectedCallback() {
     console.debug('disconnectedCallback', this.uuid);
 
-    this.unregisterListener();
+    this.#unregisterListener();
 
+    // this is the opposite of context finding:
+    // we take this element out of the shadow tree
     this.#disconnectFromShadowTree();
   }
 
@@ -114,6 +125,15 @@ export class ShadowEntsBase extends HTMLElement {
     // https://developer.mozilla.org/en-US/docs/Web/API/Node/ownerDocument
     console.warn('TODO adoptedCallback', this.uuid, this.ownerDocument);
   }
+
+  #onNamespaceChange = () => {
+    console.debug('onNamespaceChange', {uuid: this.uuid, ns: this.ns, self: this});
+
+    if (this.isConnected) {
+      this.#disconnectFromShadowTree();
+      this.#dispatchRequestContextEvent();
+    }
+  };
 
   #onRequestContext = (event: RequestContextEvent) => {
     const requester = event.detail?.requester;
@@ -134,26 +154,28 @@ export class ShadowEntsBase extends HTMLElement {
     console.debug('onChildRemoved parent:', this.uuid, 'child:', child.uuid);
   }
 
-  protected registerListener(): void {
+  #registerListener(): void {
     this.addEventListener(RequestContextEventName, this.#onRequestContext, {capture: false, passive: false});
   }
 
-  protected unregisterListener(): void {
+  #unregisterListener(): void {
     this.removeEventListener(RequestContextEventName, this.#onRequestContext, {capture: false});
   }
 
-  protected dispatchRequestContextEvent(): void {
+  #dispatchRequestContextEvent(): void {
     this.dispatchEvent(new CustomEvent(RequestContextEventName, {bubbles: true, detail: {requester: this}}));
   }
 
   #disconnectFromShadowTree() {
-    for (const [getParent, setParent] of this.#parentShadowElements.values()) {
-      const parent = value(getParent);
-      if (parent) {
-        parent.#onChildRemoved(this); // move to an effect?
-        setParent(undefined);
+    batch(() => {
+      for (const [getParent, setParent] of this.#parentShadowElements.values()) {
+        const parent = value(getParent);
+        if (parent) {
+          parent.#onChildRemoved(this); // move to an effect?
+          setParent(undefined);
+        }
       }
-    }
-    // TODO children should be removed from parent and should request a new parent
+      // TODO children should be removed from parent and should request a new parent
+    });
   }
 }
