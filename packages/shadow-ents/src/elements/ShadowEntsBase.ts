@@ -1,4 +1,4 @@
-import {createEffect, createSignal, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
+import {createEffect, createSignal, value, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
 import {GlobalNS} from '../constants.js';
 import {generateUUID} from '../generateUUID.js';
 import {toNamespace} from '../toNamespace.js';
@@ -98,6 +98,7 @@ export class ShadowEntsBase extends HTMLElement {
     console.debug('connectedCallback', this.uuid);
 
     this.dispatchRequestContextEvent();
+
     this.registerListener();
   }
 
@@ -105,6 +106,8 @@ export class ShadowEntsBase extends HTMLElement {
     console.debug('disconnectedCallback', this.uuid);
 
     this.unregisterListener();
+
+    this.#disconnectFromShadowTree();
   }
 
   adoptedCallback() {
@@ -127,6 +130,10 @@ export class ShadowEntsBase extends HTMLElement {
     }
   };
 
+  #onChildRemoved(child: ShadowEntsBase) {
+    console.debug('onChildRemoved parent:', this.uuid, 'child:', child.uuid);
+  }
+
   protected registerListener(): void {
     this.addEventListener(RequestContextEventName, this.#onRequestContext, {capture: false, passive: false});
   }
@@ -137,5 +144,16 @@ export class ShadowEntsBase extends HTMLElement {
 
   protected dispatchRequestContextEvent(): void {
     this.dispatchEvent(new CustomEvent(RequestContextEventName, {bubbles: true, detail: {requester: this}}));
+  }
+
+  #disconnectFromShadowTree() {
+    for (const [getParent, setParent] of this.#parentShadowElements.values()) {
+      const parent = value(getParent);
+      if (parent) {
+        parent.#onChildRemoved(this); // move to an effect?
+        setParent(undefined);
+      }
+    }
+    // TODO children should be removed from parent and should request a new parent
   }
 }
