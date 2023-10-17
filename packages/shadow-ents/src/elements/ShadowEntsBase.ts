@@ -5,11 +5,16 @@ import {toNamespace} from '../toNamespace.js';
 import type {NamespaceType} from '../types.js';
 import {RequestContextEventName, ShadowElementType} from './constants.js';
 import type {RequestContextEvent} from './events.js';
+import {isShadowElement} from './isShadowElement.js';
 
 // TODO children + order
 
+type SignalFuncs<T> = [SignalReader<T>, SignalWriter<T>];
+
 export class ShadowEntsBase extends HTMLElement {
   static observedAttributes = ['ns'];
+
+  static relevantParentElementTypes: readonly ShadowElementType[] = [ShadowElementType.ShadowEntsBase];
 
   readonly isShadowElement = true;
 
@@ -27,15 +32,37 @@ export class ShadowEntsBase extends HTMLElement {
   }
 
   get parentShadowElement(): ShadowEntsBase | undefined {
-    return this.#parentShadowElement$sig[0]();
+    return this.#getParentShadowElementSignalByType(this.shadowType)[0]();
   }
 
-  #namespace$sig: [SignalReader<NamespaceType>, SignalWriter<NamespaceType>] = createSignal<NamespaceType>(GlobalNS);
+  isRelevantParentElementType(shadowType: ShadowElementType): boolean {
+    return (
+      this.shadowType === shadowType || Object.getPrototypeOf(this).constructor.relevantParentElementTypes.includes(shadowType)
+    );
+  }
 
-  #parentShadowElement$sig: [SignalReader<ShadowEntsBase | undefined>, SignalWriter<ShadowEntsBase | undefined>] = createSignal();
+  getParentShadowElementByType(shadowType: ShadowElementType): ShadowEntsBase | undefined {
+    if (this.isRelevantParentElementType(shadowType)) {
+      return this.#getParentShadowElementSignalByType(shadowType)[0]();
+    }
+    return undefined;
+  }
+
+  #namespace$sig: SignalFuncs<NamespaceType> = createSignal<NamespaceType>(GlobalNS);
+
+  #parentShadowElements = new Map<ShadowElementType, SignalFuncs<ShadowEntsBase | undefined>>();
+
+  #getParentShadowElementSignalByType(shadowType: ShadowElementType): SignalFuncs<ShadowEntsBase | undefined> {
+    if (!this.#parentShadowElements.has(shadowType)) {
+      const sig = createSignal<ShadowEntsBase | undefined>();
+      this.#parentShadowElements.set(shadowType, sig);
+      return sig;
+    }
+    return this.#parentShadowElements.get(shadowType);
+  }
 
   #setParentShadowElement(element: ShadowEntsBase) {
-    this.#parentShadowElement$sig[1](element ?? undefined);
+    this.#getParentShadowElementSignalByType(element.shadowType)[1](element ?? undefined);
   }
 
   constructor() {
@@ -87,16 +114,17 @@ export class ShadowEntsBase extends HTMLElement {
   #onRequestContext = (event: RequestContextEvent) => {
     const requester = event.detail?.requester;
 
-    if (requester != null && requester !== this && requester.ns === this.ns && this.isContextFor(requester)) {
+    if (
+      requester != null &&
+      requester !== this &&
+      isShadowElement(requester) &&
+      requester.ns === this.ns &&
+      this.isRelevantParentElementType(requester.shadowType)
+    ) {
       event.stopPropagation();
       requester.#setParentShadowElement(this);
     }
   };
-
-  protected isContextFor(_element: ShadowEntsBase): boolean {
-    // TODO check namespace
-    return true;
-  }
 
   protected registerListener(): void {
     this.addEventListener(RequestContextEventName, this.#onRequestContext, {capture: false, passive: false});
