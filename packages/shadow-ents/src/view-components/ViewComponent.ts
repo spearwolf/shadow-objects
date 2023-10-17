@@ -4,10 +4,9 @@ import {ComponentContext} from './ComponentContext.js';
 export class ViewComponent {
   #uuid: string;
   #token: string;
-  #namespace?: string | symbol;
   #order = 0;
 
-  #context: ComponentContext;
+  #context?: ComponentContext;
   #parent?: ViewComponent;
 
   get uuid() {
@@ -30,6 +29,22 @@ export class ViewComponent {
     }
   }
 
+  get context(): ComponentContext | undefined {
+    return this.#context;
+  }
+
+  set context(context: ComponentContext | null | undefined) {
+    if (this.#context != context) {
+      if (this.#context) {
+        this.disconnectFromContext();
+      }
+      this.#context = context;
+      if (context) {
+        context.addComponent(this);
+      }
+    }
+  }
+
   /**
    * The order property sets the order to lay out a component in a children array of the parent component.
    *
@@ -47,16 +62,18 @@ export class ViewComponent {
     }
   }
 
-  constructor(token: string, parent?: ViewComponent, order = 0, namespace?: string | symbol) {
-    this.#uuid = generateUUID();
+  constructor(token: string, options?: {parent?: ViewComponent; order?: number; context?: ComponentContext; uuid?: string}) {
+    if (options instanceof ViewComponent) {
+      options = {parent: options};
+    }
+
+    this.#uuid = options?.uuid ?? generateUUID();
 
     this.#token = token;
-    this.#parent = parent;
-    this.#order = order;
-    this.#namespace = namespace;
+    this.#parent = options?.parent;
+    this.#order = options?.order ?? 0;
 
-    this.#context = ComponentContext.get(this.#namespace);
-    this.#context.addComponent(this);
+    this.context = options?.context ?? ComponentContext.get();
   }
 
   isChildOf(entity: ViewComponent) {
@@ -86,8 +103,10 @@ export class ViewComponent {
     this.#context.removeProperty(this, name);
   }
 
-  destroy() {
+  disconnectFromContext() {
     this.removeFromParent();
     this.#context.removeComponent(this);
+    this.#context = undefined;
+    this.#order = 0;
   }
 }

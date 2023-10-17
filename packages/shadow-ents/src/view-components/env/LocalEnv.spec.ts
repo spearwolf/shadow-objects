@@ -95,7 +95,7 @@ describe('LocalEnv', () => {
       }
     }
 
-    const c = new ViewComponent('c', a, -1);
+    const c = new ViewComponent('c', {parent: a, order: -1});
 
     await localEnv.sync();
 

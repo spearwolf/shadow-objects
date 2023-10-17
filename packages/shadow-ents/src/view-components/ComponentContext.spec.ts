@@ -26,7 +26,7 @@ describe('ComponentContext', () => {
       {type: ComponentChangeType.CreateEntities, uuid: b.uuid, token: 'b', parentUuid: a.uuid},
     ]);
 
-    a.destroy();
+    a.disconnectFromContext();
 
     changes = cc.buildChangeTrails();
 
@@ -75,10 +75,10 @@ describe('ComponentContext', () => {
   });
 
   it('should insert update-orders in change trail', () => {
-    const a = new ViewComponent('a', undefined, 100);
+    const a = new ViewComponent('a', {order: 100});
     const b = new ViewComponent('b', a);
-    const c = new ViewComponent('c', a, 3);
-    const d = new ViewComponent('d', a, 2);
+    const c = new ViewComponent('c', {parent: a, order: 3});
+    const d = new ViewComponent('d', {parent: a, order: 2});
 
     let changes = cc.buildChangeTrails();
 

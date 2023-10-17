@@ -3,10 +3,10 @@ import {ComponentContext} from './ComponentContext.js';
 import {ViewComponent} from './ViewComponent.js';
 
 describe('EntityProxy', () => {
-  const ctx = ComponentContext.get();
+  const cc = ComponentContext.get();
 
   afterAll(() => {
-    ctx.clear();
+    cc.clear();
   });
 
   it('should be defined', () => {
@@ -18,15 +18,15 @@ describe('EntityProxy', () => {
     expect(entity.uuid).toBeDefined();
     expect(entity.token).toBe('test');
     expect(entity.parent).toBeUndefined();
-    expect(ctx.hasComponent(entity)).toBeTruthy();
-    expect(ctx.isRootComponent(entity)).toBeTruthy();
+    expect(cc.hasComponent(entity)).toBeTruthy();
+    expect(cc.isRootComponent(entity)).toBeTruthy();
   });
 
   it('should destroy entity', () => {
     const entity = new ViewComponent('test');
-    expect(ctx.hasComponent(entity)).toBeTruthy();
-    entity.destroy();
-    expect(ctx.hasComponent(entity)).toBeFalsy();
+    expect(cc.hasComponent(entity)).toBeTruthy();
+    entity.disconnectFromContext();
+    expect(cc.hasComponent(entity)).toBeFalsy();
   });
 
   it('should add entity as child (constructor)', () => {
@@ -44,29 +44,29 @@ describe('EntityProxy', () => {
     const parent = new ViewComponent('test');
     const child = new ViewComponent('test');
 
-    expect(ctx.hasComponent(parent)).toBeTruthy();
-    expect(ctx.hasComponent(child)).toBeTruthy();
-    expect(ctx.isChildOf(child, parent)).toBeFalsy();
-    expect(ctx.isRootComponent(child)).toBeTruthy();
+    expect(cc.hasComponent(parent)).toBeTruthy();
+    expect(cc.hasComponent(child)).toBeTruthy();
+    expect(cc.isChildOf(child, parent)).toBeFalsy();
+    expect(cc.isRootComponent(child)).toBeTruthy();
 
     parent.addChild(child);
 
-    expect(ctx.isChildOf(child, parent)).toBeTruthy();
-    expect(ctx.isRootComponent(child)).toBeFalsy();
+    expect(cc.isChildOf(child, parent)).toBeTruthy();
+    expect(cc.isRootComponent(child)).toBeFalsy();
   });
 
   it('should remove from parent', () => {
     const parent = new ViewComponent('test');
     const child = new ViewComponent('test', parent);
 
-    expect(ctx.isChildOf(child, parent)).toBeTruthy();
-    expect(ctx.isRootComponent(parent)).toBeTruthy();
+    expect(cc.isChildOf(child, parent)).toBeTruthy();
+    expect(cc.isRootComponent(parent)).toBeTruthy();
 
     child.removeFromParent();
 
     expect(child.parent).toBeUndefined();
-    expect(ctx.isChildOf(child, parent)).toBeFalsy();
-    expect(ctx.isRootComponent(child)).toBeTruthy();
+    expect(cc.isChildOf(child, parent)).toBeFalsy();
+    expect(cc.isRootComponent(child)).toBeTruthy();
   });
 
   it('should set parent', () => {
@@ -74,13 +74,13 @@ describe('EntityProxy', () => {
     const b = new ViewComponent('test', a);
     const c = new ViewComponent('test');
 
-    expect(ctx.isChildOf(b, a)).toBeTruthy();
-    expect(ctx.isChildOf(b, c)).toBeFalsy();
+    expect(cc.isChildOf(b, a)).toBeTruthy();
+    expect(cc.isChildOf(b, c)).toBeFalsy();
 
     b.parent = c;
 
     expect(b.parent).toBe(c);
-    expect(ctx.isChildOf(b, a)).toBeFalsy();
-    expect(ctx.isChildOf(b, c)).toBeTruthy();
+    expect(cc.isChildOf(b, a)).toBeFalsy();
+    expect(cc.isChildOf(b, c)).toBeTruthy();
   });
 });
