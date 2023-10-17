@@ -1,5 +1,6 @@
 import {Eventize, Priority} from '@spearwolf/eventize';
-import type {SyncEvent, IComponentChangeType} from '../../types.js';
+import {toNamespace} from '../../toNamespace.js';
+import type {IComponentChangeType, SyncEvent} from '../../types.js';
 import {ComponentContext} from '../ComponentContext.js';
 
 /**
@@ -38,7 +39,7 @@ export class BaseEnv extends Eventize {
   constructor(namespace?: string | symbol) {
     super();
 
-    this.#namespace = namespace ?? ComponentContext.GlobalNS;
+    this.#namespace = toNamespace(namespace);
 
     this.#readyPromise = new Promise<BaseEnv>((resolve) => {
       this.#readyResolve = resolve;

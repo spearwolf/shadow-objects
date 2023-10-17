@@ -1,6 +1,7 @@
 import {removeFrom} from '../array-utils.js';
 import {ChangeTrailPhase} from '../constants.js';
-import type {IComponentChangeType} from '../types.js';
+import {toNamespace} from '../toNamespace.js';
+import type {IComponentChangeType, NamespaceType} from '../types.js';
 import {ComponentChanges} from './ComponentChanges.js';
 import type {ViewComponent} from './ViewComponent.js';
 
@@ -12,7 +13,7 @@ interface ViewInstance {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __shadowEntsComponentContexts: Map<string | symbol, ComponentContext> | undefined;
+  var __shadowEntsContexts: Map<string | symbol, ComponentContext> | undefined;
 }
 
 /**
@@ -21,18 +22,16 @@ declare global {
  * If no namespace is specified when creating a `ComponentContext`, the global namespace is used.
  */
 export class ComponentContext {
-  static GlobalNS = Symbol.for('ShadowEntsGlobalNS');
-
-  static get(namespace?: string | symbol): ComponentContext {
-    if (globalThis.__shadowEntsComponentContexts === undefined) {
-      globalThis.__shadowEntsComponentContexts = new Map<string | symbol, ComponentContext>();
+  static get(namespace?: NamespaceType): ComponentContext {
+    if (globalThis.__shadowEntsContexts === undefined) {
+      globalThis.__shadowEntsContexts = new Map<NamespaceType, ComponentContext>();
     }
-    const ns = namespace ?? ComponentContext.GlobalNS;
-    if (globalThis.__shadowEntsComponentContexts.has(ns)) {
-      return globalThis.__shadowEntsComponentContexts.get(ns)!;
+    const ns = toNamespace(namespace);
+    if (globalThis.__shadowEntsContexts.has(ns)) {
+      return globalThis.__shadowEntsContexts.get(ns)!;
     } else {
       const ctx = new ComponentContext();
-      globalThis.__shadowEntsComponentContexts.set(ns, ctx);
+      globalThis.__shadowEntsContexts.set(ns, ctx);
       return ctx;
     }
   }

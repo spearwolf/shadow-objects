@@ -1,3 +1,5 @@
+import type {NamespaceType} from './types.ts';
+
 export enum ChangeTrailPhase {
   StructuralChanges = 1,
   ContentUpdates,
@@ -11,3 +13,5 @@ export enum ComponentChangeType {
   UpdateOrder,
   ChangeProperties,
 }
+
+export const GlobalNS: NamespaceType = Symbol.for('ShadowEntsGlobalNS');

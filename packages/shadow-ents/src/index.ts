@@ -4,6 +4,7 @@ export * from './elements/isShadowElement.js';
 export * from './entities/Entity.js';
 export * from './entities/Registry.js';
 export * from './entities/events.js';
+export * from './toNamespace.js';
 export type * from './types.js';
 export * from './view-components/ComponentContext.js';
 export * from './view-components/ViewComponent.js';

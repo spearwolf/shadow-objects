@@ -47,3 +47,5 @@ export interface SyncEvent {
 export interface EntityConstructor {
   new (...args: any[]): {};
 }
+
+export type NamespaceType = string | symbol;

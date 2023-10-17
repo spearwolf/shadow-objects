@@ -1,6 +1,8 @@
 import {createEffect, createSignal, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
+import {GlobalNS} from '../constants.js';
 import {generateUUID} from '../generateUUID.js';
-import {ComponentContext} from '../index.js';
+import {toNamespace} from '../toNamespace.js';
+import type {NamespaceType} from '../types.js';
 import {RequestContextEventName, ShadowElementType} from './constants.js';
 import type {RequestContextEvent} from './events.js';
 
@@ -16,25 +18,20 @@ export class ShadowEntsBase extends HTMLElement {
   readonly uuid = generateUUID();
 
   /** the shadow ents namespace */
-  get ns(): string | symbol {
+  get ns(): NamespaceType {
     return this.#namespace$sig[0]();
   }
 
-  set ns(value: string | symbol | null | undefined) {
-    this.#namespace$sig[1](
-      typeof value === 'string'
-        ? value.trim() || ComponentContext.GlobalNS
-        : typeof value === 'symbol'
-        ? value
-        : ComponentContext.GlobalNS,
-    );
+  set ns(value: NamespaceType | null | undefined) {
+    this.#namespace$sig[1](toNamespace(value));
   }
 
   get parentShadowElement(): ShadowEntsBase | undefined {
     return this.#parentShadowElement$sig[0]();
   }
 
-  #namespace$sig: [SignalReader<string | symbol>, SignalWriter<string | symbol>] = createSignal();
+  #namespace$sig: [SignalReader<NamespaceType>, SignalWriter<NamespaceType>] = createSignal<NamespaceType>(GlobalNS);
+
   #parentShadowElement$sig: [SignalReader<ShadowEntsBase | undefined>, SignalWriter<ShadowEntsBase | undefined>] = createSignal();
 
   #setParentShadowElement(element: ShadowEntsBase) {
@@ -48,9 +45,14 @@ export class ShadowEntsBase extends HTMLElement {
     createEffect(() => {
       const parent = this.parentShadowElement;
       console.info(
-        `<shadow-ents-base ns=${String(this.ns)} uuid=${this.uuid}>`,
+        '<shadow-ents-base ns=',
+        String(this.ns || ''),
+        'uuid=',
+        this.uuid,
+        '>',
         'parentShadowElement:',
         parent ? {uuid: parent?.uuid, parent} : undefined,
+        {self: this},
       );
     });
   }
@@ -85,7 +87,7 @@ export class ShadowEntsBase extends HTMLElement {
   #onRequestContext = (event: RequestContextEvent) => {
     const requester = event.detail?.requester;
 
-    if (requester != null && requester !== this && this.isContextFor(requester)) {
+    if (requester != null && requester !== this && requester.ns === this.ns && this.isContextFor(requester)) {
       event.stopPropagation();
       requester.#setParentShadowElement(this);
     }
