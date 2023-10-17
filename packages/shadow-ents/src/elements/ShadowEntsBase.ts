@@ -108,7 +108,8 @@ export class ShadowEntsBase extends HTMLElement {
   }
 
   adoptedCallback() {
-    console.warn('TODO adoptedCallback', this.uuid);
+    // https://developer.mozilla.org/en-US/docs/Web/API/Node/ownerDocument
+    console.warn('TODO adoptedCallback', this.uuid, this.ownerDocument);
   }
 
   #onRequestContext = (event: RequestContextEvent) => {
