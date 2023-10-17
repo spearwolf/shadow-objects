@@ -1,4 +1,4 @@
-import type {ComponentChangeType} from './constants';
+import type {ComponentChangeType} from './constants.js';
 
 export interface IComponentChange {
   type: ComponentChangeType;

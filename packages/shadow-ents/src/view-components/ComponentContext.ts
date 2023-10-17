@@ -1,8 +1,8 @@
-import {removeFrom} from '../array-utils';
+import {removeFrom} from '../array-utils.js';
 import {ChangeTrailPhase} from '../constants.js';
 import type {IComponentChangeType} from '../types.js';
-import {ComponentChanges} from './ComponentChanges';
-import type {ViewComponent} from './ViewComponent';
+import {ComponentChanges} from './ComponentChanges.js';
+import type {ViewComponent} from './ViewComponent.js';
 
 interface ViewInstance {
   component: ViewComponent;

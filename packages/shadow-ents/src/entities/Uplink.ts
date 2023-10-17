@@ -1,6 +1,6 @@
 import {Eventize, Priority} from '@spearwolf/eventize';
 import {batch, createSignal, destroySignal, value, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
-import {Kernel} from './Kernel';
+import {Kernel} from './Kernel.js';
 import {OnAddChild, OnAddToParent, OnDestroy, OnRemoveChild, OnRemoveFromParent} from './events.js';
 
 /**

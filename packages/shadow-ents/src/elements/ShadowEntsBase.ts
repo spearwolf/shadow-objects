@@ -1,11 +1,13 @@
 import {createEffect, createSignal, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
-import {generateUUID} from '../generateUUID';
-import {RequestContextEventName, ShadowElementType} from './constants';
-import type {RequestContextEvent} from './events';
+import {generateUUID} from '../generateUUID.js';
+import {RequestContextEventName, ShadowElementType} from './constants.js';
+import type {RequestContextEvent} from './events.js';
 
 // TODO children + order
 
 export class ShadowEntsBase extends HTMLElement {
+  static observedAttributes = ['ns'];
+
   readonly isShadowElement = true;
 
   readonly shadowType: ShadowElementType = ShadowElementType.ShadowEntsBase;

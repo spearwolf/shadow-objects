@@ -1,4 +1,4 @@
-import {appendTo} from '../array-utils';
+import {appendTo} from '../array-utils.js';
 import type {EntityConstructor} from '../types.js';
 
 interface RegistryEntry {

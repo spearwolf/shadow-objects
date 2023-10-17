@@ -2,11 +2,12 @@
   "root": true,
   "ignorePatterns": ["**/*"],
   "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint", "@nx", "import", "react", "prettier"],
+  "plugins": ["@typescript-eslint", "@nx", "import", "require-extensions", "react", "prettier"],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
     "plugin:import/typescript",
+    "plugin:require-extensions/recommended",
     "plugin:astro/recommended",
     "plugin:prettier/recommended"
   ],
