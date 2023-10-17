@@ -9,14 +9,16 @@
   <body>
     <script type="module" src="/src/shadow-ents-base.ts"></script>
     <main>
-      <shadow-ents-base data-testid="seBase0">
-        seBase0
-        <shadow-ents-base data-testid="seBase1">
-          seBase1
-          <shadow-ents-base data-testid="seBase3"> seBase3 </shadow-ents-base>
+      <shadow-local-env>
+        <shadow-ents-base data-testid="seBase0">
+          seBase0
+          <shadow-ents-base data-testid="seBase1">
+            seBase1
+            <shadow-ents-base data-testid="seBase3"> seBase3 </shadow-ents-base>
+          </shadow-ents-base>
+          <shadow-ents-base data-testid="seBase2"> seBase2 </shadow-ents-base>
         </shadow-ents-base>
-        <shadow-ents-base data-testid="seBase2"> seBase2 </shadow-ents-base>
-      </shadow-ents-base>
+      </shadow-local-env>
     </main>
   </body>
 </html>

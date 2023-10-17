@@ -1,3 +1,3 @@
-import {ShadowEntsElement} from './elements/ShadowEntsElement.js';
+import {ShadowEntsBase} from './elements/ShadowEntsBase.js';
 
-customElements.define('shadow-ents-base', ShadowEntsElement);
+customElements.define('shadow-ents-base', ShadowEntsBase);

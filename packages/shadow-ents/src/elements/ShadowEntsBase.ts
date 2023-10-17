@@ -1,26 +1,25 @@
 import {createEffect, createSignal, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
 import {generateUUID} from '../generateUUID';
-import {$isElement, $type, ElementType, RequestContextEventName} from './constants';
+import {RequestContextEventName, ShadowElementType} from './constants';
 import type {RequestContextEvent} from './events';
 
 // TODO children + order
 
-export class ShadowEntsElement extends HTMLElement {
-  readonly [$isElement] = true;
+export class ShadowEntsBase extends HTMLElement {
+  readonly isShadowElement = true;
 
-  readonly [$type]: ElementType = ElementType.Base;
+  readonly shadowType: ShadowElementType = ShadowElementType.ShadowEntsBase;
 
   readonly uuid = generateUUID();
 
-  #parentShadowElementSignal: [SignalReader<ShadowEntsElement | undefined>, SignalWriter<ShadowEntsElement | undefined>] =
-    createSignal();
+  #parentShadowElement$sig: [SignalReader<ShadowEntsBase | undefined>, SignalWriter<ShadowEntsBase | undefined>] = createSignal();
 
-  #setParentShadowElement(element: ShadowEntsElement) {
-    this.#parentShadowElementSignal[1](element ?? undefined);
+  #setParentShadowElement(element: ShadowEntsBase) {
+    this.#parentShadowElement$sig[1](element ?? undefined);
   }
 
-  get parentShadowElement(): ShadowEntsElement | undefined {
-    return this.#parentShadowElementSignal[0]();
+  get parentShadowElement(): ShadowEntsBase | undefined {
+    return this.#parentShadowElement$sig[0]();
   }
 
   constructor() {
@@ -58,7 +57,7 @@ export class ShadowEntsElement extends HTMLElement {
     }
   };
 
-  protected isContextFor(_element: ShadowEntsElement): boolean {
+  protected isContextFor(_element: ShadowEntsBase): boolean {
     // TODO check namespace
     return true;
   }
