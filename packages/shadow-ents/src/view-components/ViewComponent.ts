@@ -2,12 +2,13 @@ import {generateUUID} from '../generateUUID.js';
 import {ComponentContext} from './ComponentContext.js';
 
 export class ViewComponent {
-  #uuid: string;
-  #token: string;
-  #order = 0;
+  readonly #uuid: string;
+  readonly #token: string;
 
   #context?: ComponentContext;
+
   #parent?: ViewComponent;
+  #order = 0;
 
   get uuid() {
     return this.#uuid;
@@ -23,6 +24,9 @@ export class ViewComponent {
 
   set parent(parent: ViewComponent | null | undefined) {
     if (parent) {
+      if (parent.#context !== this.#context) {
+        throw new Error('ViewComponent: cannot set parent from different context');
+      }
       parent.addChild(this);
     } else {
       this.removeFromParent();
@@ -70,10 +74,16 @@ export class ViewComponent {
     this.#uuid = options?.uuid ?? generateUUID();
 
     this.#token = token;
-    this.#parent = options?.parent;
     this.#order = options?.order ?? 0;
+    this.#parent = options?.parent;
 
-    this.context = options?.context ?? ComponentContext.get();
+    const ctx = options?.context ?? ComponentContext.get();
+
+    if (this.#parent && this.#parent.#context !== ctx) {
+      throw new Error('ViewComponent: cannot set parent from different context');
+    }
+
+    this.context = ctx;
   }
 
   isChildOf(entity: ViewComponent) {
@@ -88,6 +98,9 @@ export class ViewComponent {
   }
 
   addChild(child: ViewComponent) {
+    if (child.#context !== this.#context) {
+      throw new Error('ViewComponent: cannot add child from different context');
+    }
     if (!child.isChildOf(this)) {
       child.removeFromParent();
       child.#parent = this;
@@ -107,6 +120,5 @@ export class ViewComponent {
     this.removeFromParent();
     this.#context.removeComponent(this);
     this.#context = undefined;
-    this.#order = 0;
   }
 }
