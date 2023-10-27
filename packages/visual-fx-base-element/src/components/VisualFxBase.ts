@@ -6,6 +6,7 @@ export interface VisualFxBase extends EventizeApi {}
 
 export class VisualFxBase extends LitElement {
   static override styles = css`
+    :host,
     div {
       display: block;
       width: 100%;
