@@ -1,8 +1,8 @@
-import {eventize, type EventizeApi} from '@spearwolf/eventize';
-import {Display} from '@spearwolf/twopoint5d';
+import {eventize, type Eventize} from '@spearwolf/eventize';
+import {Display, type DisplayParameters} from '@spearwolf/twopoint5d';
 import {css, html, LitElement} from 'lit';
 
-export interface VisualFxBase extends EventizeApi {}
+export interface VisualFxBase extends Eventize {}
 
 export class VisualFxBase extends LitElement {
   static override styles = css`
@@ -64,12 +64,54 @@ export class VisualFxBase extends LitElement {
       return;
     }
 
-    // TODO read options from attributes
+    const options: DisplayParameters = {
+      precision: this.#readStringAttribute('precision', ['highp', 'mediump', 'lowp'], 'highp'),
+      powerPreference: this.#readStringAttribute('power-preference', ['default', 'high-performance', 'low-power'], 'default'),
+      preserveDrawingBuffer: this.#readBooleanAttribute('preserve-drawing-buffer'),
+      premultipliedAlpha: this.#readBooleanAttribute('premultiplied-alpha', true),
+      stencil: this.#readBooleanAttribute('stencil'),
+      alpha: this.#readBooleanAttribute('alpha', true),
+      depth: this.#readBooleanAttribute('depth', true),
+      antialias: this.#readBooleanAttribute('antialias', true),
+      desynchronized: this.#readBooleanAttribute('desynchronized'),
+      failIfMajorPerformanceCaveat: this.#readBooleanAttribute('fail-if-major-performance-caveat'),
+    };
 
-    this.display = new Display(this.container!);
+    console.debug('webgl context attributes:', options);
+
+    this.display = new Display(this.container!, options);
+
     this.display.on(this);
     this.display.start();
 
     console.debug('display created', this.display);
+  }
+
+  #readBooleanAttribute(name: string, defValue = false): boolean {
+    let val: boolean | undefined = undefined;
+    if (this.hasAttribute(name)) {
+      const strVal = this.getAttribute(name).trim().toLowerCase();
+      if (strVal === '' || strVal === 'true' || strVal === 'yes' || strVal === '1') {
+        val = true;
+      } else {
+        val = false;
+      }
+    }
+    if (this.hasAttribute(`no-${name}`)) {
+      val = false;
+    }
+    return val ?? defValue;
+  }
+
+  #readStringAttribute(name: string, validValues: string[], defValue = ''): string {
+    if (this.hasAttribute(name)) {
+      const strVal = this.getAttribute(name).trim().toLowerCase();
+      if (validValues.includes(strVal)) {
+        return strVal;
+      } else {
+        console.warn(`invalid value for "${name}":`, strVal, 'valid values:', validValues, 'defaulting to:', defValue);
+      }
+    }
+    return defValue;
   }
 }

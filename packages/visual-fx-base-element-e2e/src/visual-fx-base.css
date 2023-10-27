@@ -1,0 +1,12 @@
+.visual-fx-base-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.visual-fx-base {
+  width: 50vw;
+  min-width: 320px;
+  height: 50vh;
+  min-height: 160px;
+}
