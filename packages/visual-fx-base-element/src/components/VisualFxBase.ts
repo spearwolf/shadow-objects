@@ -1,6 +1,8 @@
 import {eventize, type Eventize} from '@spearwolf/eventize';
 import {Display, type DisplayParameters} from '@spearwolf/twopoint5d';
 import {css, html, LitElement} from 'lit';
+import {readBooleanAttribute} from '../utils/readBooleanAttribute.js';
+import {readStringAttribute} from '../utils/readStringAttribute.js';
 
 export interface VisualFxBase extends Eventize {}
 
@@ -65,16 +67,16 @@ export class VisualFxBase extends LitElement {
     }
 
     const options: DisplayParameters = {
-      precision: this.#readStringAttribute('precision', ['highp', 'mediump', 'lowp'], 'highp'),
-      powerPreference: this.#readStringAttribute('power-preference', ['default', 'high-performance', 'low-power'], 'default'),
-      preserveDrawingBuffer: this.#readBooleanAttribute('preserve-drawing-buffer'),
-      premultipliedAlpha: this.#readBooleanAttribute('premultiplied-alpha', true),
-      stencil: this.#readBooleanAttribute('stencil'),
-      alpha: this.#readBooleanAttribute('alpha', true),
-      depth: this.#readBooleanAttribute('depth', true),
-      antialias: this.#readBooleanAttribute('antialias', true),
-      desynchronized: this.#readBooleanAttribute('desynchronized'),
-      failIfMajorPerformanceCaveat: this.#readBooleanAttribute('fail-if-major-performance-caveat'),
+      precision: readStringAttribute(this, 'precision', ['highp', 'mediump', 'lowp'], 'highp'),
+      powerPreference: readStringAttribute(this, 'power-preference', ['default', 'high-performance', 'low-power'], 'default'),
+      preserveDrawingBuffer: readBooleanAttribute(this, 'preserve-drawing-buffer'),
+      premultipliedAlpha: readBooleanAttribute(this, 'premultiplied-alpha', true),
+      stencil: readBooleanAttribute(this, 'stencil'),
+      alpha: readBooleanAttribute(this, 'alpha', true),
+      depth: readBooleanAttribute(this, 'depth', true),
+      antialias: readBooleanAttribute(this, 'antialias', true),
+      desynchronized: readBooleanAttribute(this, 'desynchronized'),
+      failIfMajorPerformanceCaveat: readBooleanAttribute(this, 'fail-if-major-performance-caveat'),
     };
 
     console.debug('webgl context attributes:', options);
@@ -85,33 +87,5 @@ export class VisualFxBase extends LitElement {
     this.display.start();
 
     console.debug('display created', this.display);
-  }
-
-  #readBooleanAttribute(name: string, defValue = false): boolean {
-    let val: boolean | undefined = undefined;
-    if (this.hasAttribute(name)) {
-      const strVal = this.getAttribute(name).trim().toLowerCase();
-      if (strVal === '' || strVal === 'true' || strVal === 'yes' || strVal === '1') {
-        val = true;
-      } else {
-        val = false;
-      }
-    }
-    if (this.hasAttribute(`no-${name}`)) {
-      val = false;
-    }
-    return val ?? defValue;
-  }
-
-  #readStringAttribute(name: string, validValues: string[], defValue = ''): string {
-    if (this.hasAttribute(name)) {
-      const strVal = this.getAttribute(name).trim().toLowerCase();
-      if (validValues.includes(strVal)) {
-        return strVal;
-      } else {
-        console.warn(`invalid value for "${name}":`, strVal, 'valid values:', validValues, 'defaulting to:', defValue);
-      }
-    }
-    return defValue;
   }
 }
