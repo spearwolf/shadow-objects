@@ -43,16 +43,16 @@ export class VisualFxBase extends LitElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
-    this.display?.start();
     if (this.display) {
+      this.display.start();
       console.debug('display started', this.display);
     }
   }
 
   override disconnectedCallback(): void {
     super.disconnectedCallback();
-    this.display?.stop();
     if (this.display) {
+      this.display.stop();
       console.debug('display stopped', this.display);
     }
   }
