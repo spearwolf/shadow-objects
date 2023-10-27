@@ -4,9 +4,9 @@ import {css, html, LitElement} from 'lit';
 import {readBooleanAttribute} from '../utils/readBooleanAttribute.js';
 import {readStringAttribute} from '../utils/readStringAttribute.js';
 
-export interface VisualFxBase extends Eventize {}
+export interface VfxDisplay extends Eventize {}
 
-export class VisualFxBase extends LitElement {
+export class VfxDisplay extends LitElement {
   static override styles = css`
     :host,
     div {

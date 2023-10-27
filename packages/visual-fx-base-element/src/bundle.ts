@@ -1,2 +1,2 @@
 import './simple-greeting.js';
-import './visual-fx-base.js';
+import './vfx-display.js';

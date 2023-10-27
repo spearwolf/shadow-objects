@@ -1,10 +1,10 @@
 import {describe, expect, it} from 'vitest';
-import {VisualFxBase} from './VisualFxBase.js';
+import {VfxDisplay} from './VfxDisplay.js';
 
-describe('VisualFxBase', () => {
+describe('VfxDisplay', () => {
   describe('class', () => {
     it('should exists', () => {
-      expect(VisualFxBase).toBeDefined();
+      expect(VfxDisplay).toBeDefined();
     });
   });
 });

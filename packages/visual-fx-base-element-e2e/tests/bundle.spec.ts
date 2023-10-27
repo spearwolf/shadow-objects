@@ -22,16 +22,16 @@ test.describe('bundle', () => {
     });
   });
 
-  test.describe('visual-fx-base', () => {
+  test.describe('vfx-display', () => {
     test('has element', async ({page}) => {
-      await expect(page.getByTestId('vfxb')).toBeAttached();
+      await expect(page.getByTestId('vfxd')).toBeAttached();
     });
 
     test('custom element is defined', async ({page}) => {
       expect(
         await page.evaluate(() =>
           customElements
-            .whenDefined('visual-fx-base')
+            .whenDefined('vfx-display')
             .then(() => true)
             .catch(() => false),
         ),

@@ -25,16 +25,16 @@
       "default": "./dist/src/simple-greeting.js",
       "types": "./dist/src/simple-greeting.d.ts"
     },
-    "./visual-fx-base.js": {
-      "default": "./dist/src/visual-fx-base.js",
-      "types": "./dist/src/visual-fx-base.d.ts"
+    "./vfx-display.js": {
+      "default": "./dist/src/vfx-display.js",
+      "types": "./dist/src/vfx-display.d.ts"
     }
   },
   "sideEffects": [
     "build/src/simple-greeting.js",
-    "build/src/visual-fx-base.js",
+    "build/src/vfx-display.js",
     "dist/src/simple-greeting.js",
-    "dist/src/visual-fx-base.js",
+    "dist/src/vfx-display.js",
     "dist/src/bundle.js",
     "dist/bundle.js"
   ],
