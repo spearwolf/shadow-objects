@@ -1,6 +1,8 @@
+import {provide} from '@lit/context';
 import {eventize, type Eventize} from '@spearwolf/eventize';
 import {Display, type DisplayParameters} from '@spearwolf/twopoint5d';
 import {css, html, LitElement} from 'lit';
+import {twopoint5dDisplayContext} from '../context/twopoint5d-display-context.js';
 import {readBooleanAttribute} from '../utils/readBooleanAttribute.js';
 import {readStringAttribute} from '../utils/readStringAttribute.js';
 
@@ -8,18 +10,21 @@ export interface VfxDisplay extends Eventize {}
 
 export class VfxDisplay extends LitElement {
   static override styles = css`
-    :host,
-    div {
+    :host {
       display: block;
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      border: 0;
-      line-height: 0;
-      font-size: 0;
     }
   `;
+
+  @provide({context: twopoint5dDisplayContext})
+  accessor display: Display | undefined;
+
+  get container(): HTMLDivElement | undefined {
+    return this.renderRoot?.querySelector('div') ?? undefined;
+  }
+
+  get canvas(): HTMLCanvasElement | undefined {
+    return this.renderRoot?.querySelector('canvas') ?? undefined;
+  }
 
   constructor() {
     super();
@@ -28,16 +33,6 @@ export class VfxDisplay extends LitElement {
 
   override render() {
     return html`<div></div>`;
-  }
-
-  display?: Display;
-
-  get container(): HTMLDivElement | undefined {
-    return this.renderRoot?.querySelector('div') ?? undefined;
-  }
-
-  get canvas(): HTMLCanvasElement | undefined {
-    return this.renderRoot?.querySelector('canvas') ?? undefined;
   }
 
   override firstUpdated(): void {
@@ -77,6 +72,9 @@ export class VfxDisplay extends LitElement {
       antialias: readBooleanAttribute(this, 'antialias', true),
       desynchronized: readBooleanAttribute(this, 'desynchronized'),
       failIfMajorPerformanceCaveat: readBooleanAttribute(this, 'fail-if-major-performance-caveat'),
+      styleSheetRoot: this.renderRoot,
+      resizeToElement: this,
+      resizeToAttributeEl: this,
     };
 
     console.debug('webgl context attributes:', options);

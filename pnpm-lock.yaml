@@ -126,6 +126,9 @@ importers:
 
   packages/visual-fx-base-element:
     dependencies:
+      '@lit/context':
+        specifier: ^1.0.0
+        version: 1.0.1
       '@spearwolf/eventize':
         specifier: ^3.0.2
         version: 3.0.2
@@ -133,8 +136,8 @@ importers:
         specifier: ^0.7.0
         version: 0.7.0(@spearwolf/eventize@3.0.2)
       '@spearwolf/twopoint5d':
-        specifier: ^0.2.0
-        version: 0.2.0(@spearwolf/eventize@3.0.2)(three@0.153.0)
+        specifier: ^0.2.2
+        version: 0.2.2(@spearwolf/eventize@3.0.2)(three@0.153.0)
       lit:
         specifier: 3.0.0-pre.1
         version: 3.0.0-pre.1
@@ -2381,14 +2384,30 @@ packages:
       '@jridgewell/sourcemap-codec': 1.4.15
     dev: true
 
+  /@lit-labs/ssr-dom-shim@1.1.2:
+    resolution: {integrity: sha512-jnOD+/+dSrfTWYfSXBXlo5l5f0q1UuJo3tkbMDCYA2lKUYq79jaxqtGEvnRoh049nt1vdo1+45RinipU6FGY2g==}
+    dev: false
+
   /@lit-labs/ssr-dom-shim@1.1.2-pre.1:
     resolution: {integrity: sha512-cRy/vafxn20Upocct6LeVzMatmnR0qHvX+7U00jPK0t9sxNaiAmpZyjHSUhLtUnG4jpuJW9UBIhVgYfZcgMo8A==}
+    dev: false
+
+  /@lit/context@1.0.1:
+    resolution: {integrity: sha512-ujQEV42vRjhNzCu/YNc+dy8eq48cEYO2SvEl7iCmMzt8X7ixUYcDt8DPV1UBr58FJ7EUe9vTLPv/0soAi9bfRw==}
+    dependencies:
+      '@lit/reactive-element': 2.0.1
     dev: false
 
   /@lit/reactive-element@2.0.0-pre.1:
     resolution: {integrity: sha512-oKzaKLYHbXeeqfuDk8uS660Y3aH/LpMoctBwo5u2cS2vMwvurFX6raavNY/xsr4WsatNVn4sbA2VVx50hIAdTw==}
     dependencies:
       '@lit-labs/ssr-dom-shim': 1.1.2-pre.1
+    dev: false
+
+  /@lit/reactive-element@2.0.1:
+    resolution: {integrity: sha512-eu50SQXHRthFwWJMp0oAFg95Rvm6MTPjxSXWuvAu7It90WVFLFpNBoIno7XOXSDvVgTrtKnUV4OLJqys2Svn4g==}
+    dependencies:
+      '@lit-labs/ssr-dom-shim': 1.1.2
     dev: false
 
   /@nodelib/fs.scandir@2.1.5:
@@ -2968,8 +2987,8 @@ packages:
       - enquirer
     dev: false
 
-  /@spearwolf/twopoint5d@0.2.0(@spearwolf/eventize@3.0.2)(three@0.153.0):
-    resolution: {integrity: sha512-ykdUxejw7nKNJ9li9X+U+kdu2AufztIL9pvCAkC67bhipDfee93D44kx9MmngWIzrSba0z371SGWL8W2ryinuA==}
+  /@spearwolf/twopoint5d@0.2.2(@spearwolf/eventize@3.0.2)(three@0.153.0):
+    resolution: {integrity: sha512-xvbzDMM7XKIBGXSfh+QykX22w0M5n7HowE/+sUXEIn0+IhWzq6LoFmsCnb1bjoJKT6f86Zii3dyDhpyZY7qY6A==}
     peerDependencies:
       '@spearwolf/eventize': ^3.0.2
       three: ^0.153
