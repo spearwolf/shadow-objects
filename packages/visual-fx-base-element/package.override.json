@@ -1,5 +1,5 @@
 {
-  "sideEffects": ["bundle.js", "src/bundle.js", "src/simple-greeting.js", "src/vfx-display.js"],
+  "sideEffects": ["bundle.js", "src/bundle.js", "src/simple-greeting.js", "src/vfx-display.js", "src/twopoint5d-stage2d.js"],
   "scripts": null,
   "devDependencies": null,
   "rollup": null,

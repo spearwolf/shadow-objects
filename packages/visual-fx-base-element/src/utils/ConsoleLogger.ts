@@ -14,6 +14,8 @@ const canGroup =
   typeof console.groupCollapsed === 'function' &&
   typeof console.groupEnd === 'function';
 
+const g_loggers = new Map<string, ConsoleLogger>();
+
 export class ConsoleLogger {
   static Styles = {
     log: 'color:#969694;background:#323436;font-size:80%;display:inline-flex;align-items:center;justify-content:center;padding:0.1em 0.5em;border-radius:2px;margin-right:0.3em',
@@ -21,6 +23,13 @@ export class ConsoleLogger {
     error:
       'color:#d96687;background:#323436;font-size:80%;display:inline-flex;align-items:center;justify-content:center;padding:0.1em 0.5em;border-radius:2px;margin-right:0.3em',
   };
+
+  static getLogger(namespace: string): ConsoleLogger {
+    if (!g_loggers.has(namespace)) {
+      g_loggers.set(namespace, new ConsoleLogger(namespace));
+    }
+    return g_loggers.get(namespace)!;
+  }
 
   parent?: ConsoleLogger;
 

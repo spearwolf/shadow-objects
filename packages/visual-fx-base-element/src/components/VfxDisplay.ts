@@ -70,7 +70,7 @@ export class VfxDisplay extends LitElement {
   set debug(value: boolean) {
     this.#debug = value;
     if (this.#debug && this.logger == null) {
-      this.logger = new ConsoleLogger(VfxDisplay.LoggerNS);
+      this.logger = ConsoleLogger.getLogger(VfxDisplay.LoggerNS);
     } else if (!this.#debug && this.logger != null) {
       this.logger = undefined;
     }
