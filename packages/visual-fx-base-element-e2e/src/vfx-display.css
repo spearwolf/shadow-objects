@@ -1,12 +1,21 @@
-.visual-fx-base-container {
+.vfx-display-container {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.visual-fx-base {
+.vfx-display {
   width: 50vw;
   min-width: 320px;
   height: 50vh;
   min-height: 160px;
+  box-shadow: rgb(255, 0, 102) 0px 0px 0px 1px;
+}
+
+.mono-text {
+  font-size: 1rem;
+  font-family: monospace;
+  margin: 0;
+  padding: 0;
+  line-height: 1;
 }

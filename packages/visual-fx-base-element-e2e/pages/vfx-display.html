@@ -9,7 +9,13 @@
   <body>
     <script type="module" src="/src/vfx-display.ts"></script>
     <main class="vfx-display-container">
-      <vfx-display class="vfx-display" data-testid="vfxd"></vfx-display>
+      <vfx-display class="vfx-display" data-testid="vfxd" debug>
+        <p class="mono-text" slot="top-left">top-left</p>
+        <p class="mono-text" slot="top-right">top-right</p>
+        <p class="mono-text" slot="bottom-left">bottom-left</p>
+        <p class="mono-text" slot="bottom-right">bottom-right</p>
+        hej-ho!
+      </vfx-display>
     </main>
   </body>
 </html>
