@@ -130,14 +130,14 @@ importers:
         specifier: ^1.0.0
         version: 1.0.1
       '@spearwolf/eventize':
-        specifier: ^3.0.2
-        version: 3.0.2
+        specifier: ^3.4.0
+        version: 3.4.0
       '@spearwolf/signalize':
         specifier: ^0.7.0
-        version: 0.7.0(@spearwolf/eventize@3.0.2)
+        version: 0.7.0(@spearwolf/eventize@3.4.0)
       '@spearwolf/twopoint5d':
-        specifier: ^0.2.2
-        version: 0.2.2(@spearwolf/eventize@3.0.2)(three@0.153.0)
+        specifier: ^0.3.0
+        version: 0.3.0(@spearwolf/eventize@3.4.0)(three@0.153.0)
       lit:
         specifier: 3.0.0-pre.1
         version: 3.0.0-pre.1
@@ -2974,6 +2974,11 @@ packages:
     engines: {node: '>=18.16'}
     dev: false
 
+  /@spearwolf/eventize@3.4.0:
+    resolution: {integrity: sha512-KASZbMQj1Vr4KFhcb+tz6BWW6/rDXSQRwUZc2JNGcsAXB4vCJ6tc5dmrpyGMH1fhCY/tJMq+ZEbfiUzwP5OvPA==}
+    engines: {node: '>=18.16'}
+    dev: false
+
   /@spearwolf/signalize@0.7.0(@spearwolf/eventize@3.0.2):
     resolution: {integrity: sha512-f+SdkvPmRQMTqhELajqOrpXyqr2WM6QIpi+UQ9YW9frAawPjd4zIkyfrLeBVXGJ51WAa7Kdq4ZPFEGshB7hEEw==}
     engines: {node: '>=18.16'}
@@ -2987,13 +2992,26 @@ packages:
       - enquirer
     dev: false
 
-  /@spearwolf/twopoint5d@0.2.2(@spearwolf/eventize@3.0.2)(three@0.153.0):
-    resolution: {integrity: sha512-xvbzDMM7XKIBGXSfh+QykX22w0M5n7HowE/+sUXEIn0+IhWzq6LoFmsCnb1bjoJKT6f86Zii3dyDhpyZY7qY6A==}
+  /@spearwolf/signalize@0.7.0(@spearwolf/eventize@3.4.0):
+    resolution: {integrity: sha512-f+SdkvPmRQMTqhELajqOrpXyqr2WM6QIpi+UQ9YW9frAawPjd4zIkyfrLeBVXGJ51WAa7Kdq4ZPFEGshB7hEEw==}
+    engines: {node: '>=18.16'}
     peerDependencies:
-      '@spearwolf/eventize': ^3.0.2
+      '@spearwolf/eventize': ^3.0.0
+    dependencies:
+      '@spearwolf/eventize': 3.4.0
+    optionalDependencies:
+      carbon-now-cli: 2.0.0
+    transitivePeerDependencies:
+      - enquirer
+    dev: false
+
+  /@spearwolf/twopoint5d@0.3.0(@spearwolf/eventize@3.4.0)(three@0.153.0):
+    resolution: {integrity: sha512-UxRyJQVv5VrfgLa6ds8aLLV/JZ1X31DyQCjFAEqjQV+OYUaForso3UpSaYrDufkym4NFjFuwQkdjzGDKKLKhWA==}
+    peerDependencies:
+      '@spearwolf/eventize': ^3.3.0
       three: ^0.153
     dependencies:
-      '@spearwolf/eventize': 3.0.2
+      '@spearwolf/eventize': 3.4.0
       three: 0.153.0
     dev: false
 
@@ -5611,6 +5629,7 @@ packages:
   /human-signals@2.1.0:
     resolution: {integrity: sha512-B4FFZ6q/T2jhhksgkbEW3HBvWIfDW85snkQgawt07S7J5QXTk6BkNV+0yAeZrM5QpMAdYlocGoljn0sJ/WQkFw==}
     engines: {node: '>=10.17.0'}
+    requiresBuild: true
 
   /human-signals@4.3.1:
     resolution: {integrity: sha512-nZXjEF2nbo7lIw3mgYjItAfgQXog3OjJogSbKa2CQIIvSGWcKgeJnQlNXip6NglNzYH45nSRiEVimMvYL8DDqQ==}
@@ -5949,6 +5968,7 @@ packages:
   /is-stream@2.0.1:
     resolution: {integrity: sha512-hFoiJiTl63nn+kstHGBtewWSKnQLpyb155KHheA1l39uvtO9nWIop1p3udqPcUd/xbF1VLMO4n7OI6p7RbngDg==}
     engines: {node: '>=8'}
+    requiresBuild: true
 
   /is-stream@3.0.0:
     resolution: {integrity: sha512-LnQR4bZ9IADDRSkvpqMGvt/tEJWclzklNgSw48V5EAaAeDd6qGvN8ei6k5p0tvxSR171VmGyHuTiAOfxAbr8kA==}
@@ -8007,6 +8027,7 @@ packages:
   /strip-final-newline@2.0.0:
     resolution: {integrity: sha512-BrpvfNAE3dcvq7ll3xVumzjKjZQ5tI1sEUIKr3Uoks0XUl45St3FlatVqef9prk4jRDzhW6WZg+3bk93y6pLjA==}
     engines: {node: '>=6'}
+    requiresBuild: true
 
   /strip-final-newline@3.0.0:
     resolution: {integrity: sha512-dOESqjYr96iWYylGObzd39EuNTa5VJxyvVAEm5Jnh7KGo75V43Hk1odPQkNDyXNmUR6k+gEiDVXnjB8HJ3crXw==}
