@@ -6,10 +6,19 @@ import {twopoint5dDisplayContext} from '../context/twopoint5d-display-context.js
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {readBooleanAttribute} from '../utils/readBooleanAttribute.js';
 import {readStringAttribute} from '../utils/readStringAttribute.js';
+import {whenDefined} from '../utils/whenDefined.js';
 
 export interface VfxDisplay extends Eventize {}
 
 export class VfxDisplay extends LitElement {
+  static async whenDefined(el: any): Promise<VfxDisplay> {
+    await whenDefined(el);
+    if (el instanceof VfxDisplay) {
+      return el;
+    }
+    throw new Error('not a VfxDisplay');
+  }
+
   static LoggerNS = 'vfx-display';
 
   static override styles = css`
