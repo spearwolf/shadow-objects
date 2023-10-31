@@ -1,14 +1,14 @@
 import {consume} from '@lit/context';
 import {eventize, type Eventize} from '@spearwolf/eventize';
-import {createSignal} from '@spearwolf/signalize';
+import {createSignal, value} from '@spearwolf/signalize';
 import type {Display} from '@spearwolf/twopoint5d';
-import {css, html, LitElement} from 'lit';
+import {css, html} from 'lit';
 import {twopoint5dDisplayContext} from '../context/twopoint5d-display-context.js';
-import {ConsoleLogger} from '../utils/ConsoleLogger.js';
+import {VisualFxBaseElement} from './VisualFxBaseElement.js';
 
 export interface Twopoint5dStage2d extends Eventize {}
 
-export class Twopoint5dStage2d extends LitElement {
+export class Twopoint5dStage2d extends VisualFxBaseElement {
   static override styles = css`
     :host {
       display: inline;
@@ -21,6 +21,10 @@ export class Twopoint5dStage2d extends LitElement {
   #display = createSignal<Display | undefined>();
 
   get display(): Display | undefined {
+    return value(this.#display[0]);
+  }
+
+  get display$(): Display | undefined {
     return this.#display[0]();
   }
 
@@ -28,15 +32,14 @@ export class Twopoint5dStage2d extends LitElement {
     this.#display[1](value);
   }
 
-  logger = ConsoleLogger.getLogger('twopoint5d-stage2d');
-
   constructor() {
     super();
     eventize(this);
+    this.loggerNS = 'twopoint5d-stage2d';
   }
 
   override render() {
-    this.logger.log('render: display:', this.displayCtx);
+    this.logger?.log('render: display:', this.displayCtx);
 
     this.display = this.displayCtx;
 

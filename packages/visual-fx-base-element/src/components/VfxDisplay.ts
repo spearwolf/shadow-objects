@@ -1,16 +1,16 @@
 import {provide} from '@lit/context';
 import {eventize, type Eventize} from '@spearwolf/eventize';
 import {Display, type DisplayParameters} from '@spearwolf/twopoint5d';
-import {css, html, LitElement} from 'lit';
+import {css, html} from 'lit';
 import {twopoint5dDisplayContext} from '../context/twopoint5d-display-context.js';
-import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {readBooleanAttribute} from '../utils/readBooleanAttribute.js';
 import {readStringAttribute} from '../utils/readStringAttribute.js';
 import {whenDefined} from '../utils/whenDefined.js';
+import {VisualFxBaseElement} from './VisualFxBaseElement.js';
 
 export interface VfxDisplay extends Eventize {}
 
-export class VfxDisplay extends LitElement {
+export class VfxDisplay extends VisualFxBaseElement {
   static async whenDefined(el: any): Promise<VfxDisplay> {
     await whenDefined(el);
     if (el instanceof VfxDisplay) {
@@ -18,8 +18,6 @@ export class VfxDisplay extends LitElement {
     }
     throw new Error('not a VfxDisplay');
   }
-
-  static LoggerNS = 'vfx-display';
 
   static override styles = css`
     :host {
@@ -70,28 +68,10 @@ export class VfxDisplay extends LitElement {
     return this.renderRoot?.querySelector('canvas') ?? undefined;
   }
 
-  #debug = false;
-
-  get debug(): boolean {
-    return this.#debug;
-  }
-
-  set debug(value: boolean) {
-    this.#debug = value;
-    if (this.#debug && this.logger == null) {
-      this.logger = ConsoleLogger.getLogger(VfxDisplay.LoggerNS);
-    } else if (!this.#debug && this.logger != null) {
-      this.logger = undefined;
-    }
-  }
-
-  logger?: ConsoleLogger;
-
   constructor() {
     super();
     eventize(this);
-    this.debug = this.hasAttribute('debug');
-    // TODO react to attribute changes for debug
+    this.loggerNS = 'vfx-display';
     // TODO fullscreen - go fullscreen should include overlay-content
     // TODO mobile fullscreen - go fullscreen on rotation to landscape (as attribute)
   }
