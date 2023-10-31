@@ -1,4 +1,6 @@
 import {LitElement} from 'lit';
+import {property} from 'lit/decorators.js';
+import {readBooleanAttribute} from '../index.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 
 const DEBUG_ATTR = 'debug';
@@ -11,6 +13,7 @@ export class VisualFxBaseElement extends LitElement {
     return this.#debug;
   }
 
+  @property({type: Boolean, attribute: DEBUG_ATTR})
   set debug(value: any) {
     this.#debug = Boolean(value);
     if (!this.#debug && this.#logger != null) {
@@ -44,6 +47,12 @@ export class VisualFxBaseElement extends LitElement {
   constructor() {
     super();
     this.debug = this.hasAttribute(DEBUG_ATTR);
-    // TODO react to attribute changes for debug
+  }
+
+  override attributeChangedCallback(name: string, oldValue: string, newValue: string): void {
+    super.attributeChangedCallback(name, oldValue, newValue);
+    if (name === DEBUG_ATTR) {
+      this.debug = readBooleanAttribute(this, DEBUG_ATTR);
+    }
   }
 }
