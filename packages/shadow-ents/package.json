@@ -52,7 +52,7 @@
     "makePackageJson": "pnpm exec node ../../scripts/makePackageJson.mjs"
   },
   "dependencies": {
-    "@spearwolf/eventize": "^3.0.2",
+    "@spearwolf/eventize": "^3.4.1",
     "@spearwolf/signalize": "^0.7.0",
     "lit": "3.0.0-pre.1"
   }
