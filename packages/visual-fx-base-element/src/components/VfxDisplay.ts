@@ -115,7 +115,12 @@ export class VfxDisplay extends VisualFxBaseElement {
 
     const options: DisplayParameters = {
       precision: readStringAttribute(this, 'precision', ['highp', 'mediump', 'lowp'], 'highp'),
-      powerPreference: readStringAttribute(this, 'power-preference', ['default', 'high-performance', 'low-power'], 'default'),
+      powerPreference: readStringAttribute(
+        this,
+        'power-preference',
+        ['default', 'high-performance', 'low-power'],
+        'high-performance',
+      ),
       preserveDrawingBuffer: readBooleanAttribute(this, 'preserve-drawing-buffer'),
       premultipliedAlpha: readBooleanAttribute(this, 'premultiplied-alpha', true),
       stencil: readBooleanAttribute(this, 'stencil'),
