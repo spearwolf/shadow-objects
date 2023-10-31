@@ -2,7 +2,14 @@ export function readBooleanAttribute(el: HTMLElement, name: string, defValue = f
   let val: boolean | undefined = undefined;
   if (el.hasAttribute(name)) {
     const strVal = el.getAttribute(name).trim().toLowerCase();
-    if (strVal === '' || strVal === 'true' || strVal === 'yes' || strVal === '1') {
+    if (
+      strVal === '' ||
+      strVal === 'true' ||
+      strVal === 'yes' ||
+      strVal === 'on' ||
+      strVal === '1' ||
+      strVal === name.toLowerCase()
+    ) {
       val = true;
     } else {
       val = false;

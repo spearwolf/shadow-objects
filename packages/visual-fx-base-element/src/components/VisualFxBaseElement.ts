@@ -1,13 +1,14 @@
 import {LitElement} from 'lit';
 import {property} from 'lit/decorators.js';
-import {readBooleanAttribute} from '../index.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
+import {asBoolean} from '../utils/asBoolean.js';
+import {readBooleanAttribute} from '../utils/readBooleanAttribute.js';
 
 const DEBUG_ATTR = 'debug';
 const UNNAMED = '(unnamed)';
 
 export class VisualFxBaseElement extends LitElement {
-  #debug = false;
+  #debug: boolean;
 
   get debug(): boolean {
     return this.#debug;
@@ -15,7 +16,7 @@ export class VisualFxBaseElement extends LitElement {
 
   @property({type: Boolean, attribute: DEBUG_ATTR})
   set debug(value: any) {
-    this.#debug = Boolean(value);
+    this.#debug = asBoolean(value);
     if (!this.#debug && this.#logger != null) {
       this.#logger = undefined;
     }
@@ -31,7 +32,7 @@ export class VisualFxBaseElement extends LitElement {
     return this.#logger;
   }
 
-  #loggerNS: string = UNNAMED;
+  #loggerNS: string;
 
   get loggerNS(): string {
     return this.#loggerNS;
@@ -46,7 +47,8 @@ export class VisualFxBaseElement extends LitElement {
 
   constructor() {
     super();
-    this.debug = this.hasAttribute(DEBUG_ATTR);
+    this.#loggerNS = UNNAMED;
+    this.#debug = readBooleanAttribute(this, DEBUG_ATTR);
   }
 
   override attributeChangedCallback(name: string, oldValue: string, newValue: string): void {

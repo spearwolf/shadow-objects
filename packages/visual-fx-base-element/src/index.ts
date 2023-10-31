@@ -4,6 +4,7 @@ export * from './components/VfxDisplay.js';
 export * from './components/VisualFxBaseElement.js';
 export * from './context/twopoint5d-display-context.js';
 export * from './utils/ConsoleLogger.js';
+export * from './utils/asBoolean.js';
 export * from './utils/readBooleanAttribute.js';
 export * from './utils/readStringAttribute.js';
 export * from './utils/whenDefined.js';

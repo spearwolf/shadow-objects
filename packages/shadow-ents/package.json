@@ -53,7 +53,7 @@
   },
   "dependencies": {
     "@spearwolf/eventize": "^3.4.1",
-    "@spearwolf/signalize": "^0.7.0",
+    "@spearwolf/signalize": "^0.8.0",
     "lit": "3.0.1"
   }
 }

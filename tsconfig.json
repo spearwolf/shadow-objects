@@ -7,7 +7,7 @@
     "declarationMap": true,
     "experimentalDecorators": false,
     "emitDecoratorMetadata": false,
-    "useDefineForClassFields": true,
+    "useDefineForClassFields": false,
     "importHelpers": true,
     "baseUrl": ".",
     "allowUnreachableCode": false,

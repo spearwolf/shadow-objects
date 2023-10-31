@@ -1,5 +1,4 @@
 import {provide} from '@lit/context';
-import {eventize, type Eventize} from '@spearwolf/eventize';
 import {Display, type DisplayParameters} from '@spearwolf/twopoint5d';
 import {css, html} from 'lit';
 import {twopoint5dDisplayContext} from '../context/twopoint5d-display-context.js';
@@ -7,8 +6,6 @@ import {readBooleanAttribute} from '../utils/readBooleanAttribute.js';
 import {readStringAttribute} from '../utils/readStringAttribute.js';
 import {whenDefined} from '../utils/whenDefined.js';
 import {VisualFxBaseElement} from './VisualFxBaseElement.js';
-
-export interface VfxDisplay extends Eventize {}
 
 export class VfxDisplay extends VisualFxBaseElement {
   static async whenDefined(el: any): Promise<VfxDisplay> {
@@ -70,8 +67,9 @@ export class VfxDisplay extends VisualFxBaseElement {
 
   constructor() {
     super();
-    eventize(this);
+
     this.loggerNS = 'vfx-display';
+
     // TODO fullscreen - go fullscreen should include overlay-content
     // TODO mobile fullscreen - go fullscreen on rotation to landscape (as attribute)
   }

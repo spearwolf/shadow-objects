@@ -102,8 +102,8 @@ importers:
         specifier: ^3.4.1
         version: 3.4.1
       '@spearwolf/signalize':
-        specifier: ^0.7.0
-        version: 0.7.0(@spearwolf/eventize@3.4.1)
+        specifier: ^0.8.0
+        version: 0.8.0(@spearwolf/eventize@3.4.1)
       lit:
         specifier: 3.0.1
         version: 3.0.1
@@ -133,8 +133,8 @@ importers:
         specifier: ^3.4.1
         version: 3.4.1
       '@spearwolf/signalize':
-        specifier: ^0.7.0
-        version: 0.7.0(@spearwolf/eventize@3.4.1)
+        specifier: ^0.8.0
+        version: 0.8.0(@spearwolf/eventize@3.4.1)
       '@spearwolf/twopoint5d':
         specifier: ^0.3.2
         version: 0.3.2(@spearwolf/eventize@3.4.1)(three@0.153.0)
@@ -2964,11 +2964,11 @@ packages:
     engines: {node: '>=18.16'}
     dev: false
 
-  /@spearwolf/signalize@0.7.0(@spearwolf/eventize@3.4.1):
-    resolution: {integrity: sha512-f+SdkvPmRQMTqhELajqOrpXyqr2WM6QIpi+UQ9YW9frAawPjd4zIkyfrLeBVXGJ51WAa7Kdq4ZPFEGshB7hEEw==}
+  /@spearwolf/signalize@0.8.0(@spearwolf/eventize@3.4.1):
+    resolution: {integrity: sha512-86j8+DpGsdPpNzg/scn9jMo/AsgLWiuAb9ttvItjR8J2Id+WmTcsbyN6kUTmMTcoUevG54ltTy0xx28fjY46fA==}
     engines: {node: '>=18.16'}
     peerDependencies:
-      '@spearwolf/eventize': ^3.0.0
+      '@spearwolf/eventize': ^3.4.1
     dependencies:
       '@spearwolf/eventize': 3.4.1
     optionalDependencies:
