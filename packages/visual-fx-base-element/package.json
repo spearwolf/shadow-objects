@@ -58,10 +58,10 @@
     "makePackageJson": "pnpm exec node ../../scripts/makePackageJson.mjs"
   },
   "dependencies": {
-    "@lit/context": "^1.0.0",
+    "@lit/context": "^1.0.1",
     "@spearwolf/eventize": "^3.4.1",
     "@spearwolf/signalize": "^0.7.0",
-    "@spearwolf/twopoint5d": "^0.3.1",
-    "lit": "3.0.0-pre.1"
+    "@spearwolf/twopoint5d": "^0.3.2",
+    "lit": "3.0.1"
   }
 }

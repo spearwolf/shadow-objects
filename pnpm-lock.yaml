@@ -105,8 +105,8 @@ importers:
         specifier: ^0.7.0
         version: 0.7.0(@spearwolf/eventize@3.4.1)
       lit:
-        specifier: 3.0.0-pre.1
-        version: 3.0.0-pre.1
+        specifier: 3.0.1
+        version: 3.0.1
 
   packages/shadow-ents-e2e:
     dependencies:
@@ -127,7 +127,7 @@ importers:
   packages/visual-fx-base-element:
     dependencies:
       '@lit/context':
-        specifier: ^1.0.0
+        specifier: ^1.0.1
         version: 1.0.1
       '@spearwolf/eventize':
         specifier: ^3.4.1
@@ -136,11 +136,11 @@ importers:
         specifier: ^0.7.0
         version: 0.7.0(@spearwolf/eventize@3.4.1)
       '@spearwolf/twopoint5d':
-        specifier: ^0.3.1
-        version: 0.3.1(@spearwolf/eventize@3.4.1)(three@0.153.0)
+        specifier: ^0.3.2
+        version: 0.3.2(@spearwolf/eventize@3.4.1)(three@0.153.0)
       lit:
-        specifier: 3.0.0-pre.1
-        version: 3.0.0-pre.1
+        specifier: 3.0.1
+        version: 3.0.1
 
   packages/visual-fx-base-element-e2e:
     dependencies:
@@ -2388,20 +2388,10 @@ packages:
     resolution: {integrity: sha512-jnOD+/+dSrfTWYfSXBXlo5l5f0q1UuJo3tkbMDCYA2lKUYq79jaxqtGEvnRoh049nt1vdo1+45RinipU6FGY2g==}
     dev: false
 
-  /@lit-labs/ssr-dom-shim@1.1.2-pre.1:
-    resolution: {integrity: sha512-cRy/vafxn20Upocct6LeVzMatmnR0qHvX+7U00jPK0t9sxNaiAmpZyjHSUhLtUnG4jpuJW9UBIhVgYfZcgMo8A==}
-    dev: false
-
   /@lit/context@1.0.1:
     resolution: {integrity: sha512-ujQEV42vRjhNzCu/YNc+dy8eq48cEYO2SvEl7iCmMzt8X7ixUYcDt8DPV1UBr58FJ7EUe9vTLPv/0soAi9bfRw==}
     dependencies:
       '@lit/reactive-element': 2.0.1
-    dev: false
-
-  /@lit/reactive-element@2.0.0-pre.1:
-    resolution: {integrity: sha512-oKzaKLYHbXeeqfuDk8uS660Y3aH/LpMoctBwo5u2cS2vMwvurFX6raavNY/xsr4WsatNVn4sbA2VVx50hIAdTw==}
-    dependencies:
-      '@lit-labs/ssr-dom-shim': 1.1.2-pre.1
     dev: false
 
   /@lit/reactive-element@2.0.1:
@@ -2987,8 +2977,8 @@ packages:
       - enquirer
     dev: false
 
-  /@spearwolf/twopoint5d@0.3.1(@spearwolf/eventize@3.4.1)(three@0.153.0):
-    resolution: {integrity: sha512-ckVdxBOw1b/p0ic40AWr8Xywi4CjtKLrVPGcqyGaEHcvyzqvQpVeHlyhnEVq8aLngON1062kn/TGHUcJQCHENA==}
+  /@spearwolf/twopoint5d@0.3.2(@spearwolf/eventize@3.4.1)(three@0.153.0):
+    resolution: {integrity: sha512-rLSdCCOPs7VIp8HJklRSPzTYtWqGzplmHjmnPE1huwbHggXFxjdNSdPaB+CVADY1VIRL1JT7jqeR/Mr+uHBx0g==}
     peerDependencies:
       '@spearwolf/eventize': ^3.4.1
       three: ^0.153
@@ -6254,26 +6244,26 @@ packages:
     dev: false
     optional: true
 
-  /lit-element@4.0.0-pre.1:
-    resolution: {integrity: sha512-g6z4W3HRponlFEYUVeJXo4KcnxFj1lWTLhFDAkRxmcUq/7xYkvd955dqkwQ8x1XBVgtCA4m2mOYB3RrwfTlVDw==}
+  /lit-element@4.0.1:
+    resolution: {integrity: sha512-OxRMJem4HKZt0320HplLkBPoi4KHiEHoPHKd8Lzf07ZQVAOKIjZ32yPLRKRDEolFU1RgrQBfSHQMoxKZ72V3Kw==}
     dependencies:
-      '@lit-labs/ssr-dom-shim': 1.1.2-pre.1
-      '@lit/reactive-element': 2.0.0-pre.1
-      lit-html: 3.0.0-pre.1
+      '@lit-labs/ssr-dom-shim': 1.1.2
+      '@lit/reactive-element': 2.0.1
+      lit-html: 3.0.1
     dev: false
 
-  /lit-html@3.0.0-pre.1:
-    resolution: {integrity: sha512-CzDS/69qdDGA/d5DZx8lvcH3uHS8fYnwyGnSo6z7ztKbHYCpHmyGJRfWh/pMXk4ixvkvHUGuRuGgEA8OnxKHJw==}
+  /lit-html@3.0.1:
+    resolution: {integrity: sha512-1nmGaNNQg9rBvE1yJ6oS3ZNbLs3FXtlG4+jgGkix8O740qVEwwiFVTgDGIIH8N5TcQ8V9tBk5T+sxqBgffcjJg==}
     dependencies:
       '@types/trusted-types': 2.0.4
     dev: false
 
-  /lit@3.0.0-pre.1:
-    resolution: {integrity: sha512-HG5serwzvQuJL/G27Knpe7Hy/jFEJo8N2CaZe0pqipD26icgM5aeInWWaoktsKzE/XUc8/l/M5dghFDBhlEWWg==}
+  /lit@3.0.1:
+    resolution: {integrity: sha512-CYFv7/gwrs6bfPm299O9LD/HB4dgHvsEf/yqUOI//fi469i2OrT4xaptUcmhr05DNQEgsBFecFH8EJnN5So8oQ==}
     dependencies:
-      '@lit/reactive-element': 2.0.0-pre.1
-      lit-element: 4.0.0-pre.1
-      lit-html: 3.0.0-pre.1
+      '@lit/reactive-element': 2.0.1
+      lit-element: 4.0.1
+      lit-html: 3.0.1
     dev: false
 
   /load-bmfont@1.4.1:

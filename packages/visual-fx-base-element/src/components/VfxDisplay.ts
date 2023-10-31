@@ -126,7 +126,7 @@ export class VfxDisplay extends VisualFxBaseElement {
       antialias: readBooleanAttribute(this, 'antialias', true),
       desynchronized: readBooleanAttribute(this, 'desynchronized'),
       failIfMajorPerformanceCaveat: readBooleanAttribute(this, 'fail-if-major-performance-caveat'),
-      styleSheetRoot: this.renderRoot,
+      styleSheetRoot: this.renderRoot as any,
       resizeToElement: this,
       resizeToAttributeEl: this,
     };
