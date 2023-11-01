@@ -24,6 +24,7 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
   `;
 
   @consume({context: twopoint5dDisplayContext, subscribe: true})
+  @property({attribute: false})
   accessor displayCtx: Display | undefined;
 
   readonly #display: SignalFuncs<Display | undefined> = createSignal();
@@ -159,7 +160,7 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
   override render() {
     this.display = this.displayCtx;
 
-    this.logger?.log('render', {display: this.display, stage2d: this.stage2d});
+    this.logger?.log('render', {displayCtx: this.displayCtx, display: this.display, stage2d: this.stage2d});
 
     return html`<slot></slot>`;
   }
@@ -167,11 +168,11 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
   private onProjectionPropsUpdate(): void {
     const {projectionPlane, projectionOrigin, projectionType} = this.#projSignals.getValueObject();
 
+    if ([projectionPlane, projectionOrigin, projectionType].some((val) => val == null)) return;
+
     const planeDescription = `${projectionPlane}|${projectionOrigin}` as ProjectionPlaneDescription;
 
     this.logger?.log('onProjectionPropsUpdate', {projectionType, planeDescription});
-
-    if ([projectionPlane, projectionOrigin, projectionType].some((val) => val == null)) return;
 
     if (projectionType === 'parallax') {
       this.projection = new ParallaxProjection(planeDescription);
