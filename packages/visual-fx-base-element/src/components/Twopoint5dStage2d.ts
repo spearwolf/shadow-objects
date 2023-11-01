@@ -13,6 +13,7 @@ import {
 import {css, html} from 'lit';
 import {property} from 'lit/decorators.js';
 import {twopoint5dDisplayContext} from '../context/twopoint5d-display-context.js';
+import {StageResize, type StageResizeProps} from '../events.js';
 import {SignalMap} from '../utils/SignalMap.js';
 import {VisualFxBaseElement} from './VisualFxBaseElement.js';
 
@@ -22,6 +23,9 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
       display: inline;
     }
   `;
+
+  @property({type: String, reflect: true})
+  accessor name: string | undefined;
 
   @consume({context: twopoint5dDisplayContext, subscribe: true})
   @property({attribute: false})
@@ -107,18 +111,18 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
     this.projectionOrigin = 'bottom-left';
 
     this.display$((display) => {
-      this.logger?.log('display!', display);
+      this.logger?.log('requested display context', display);
 
+      // TODO create a StageRenderer interface?
       return display?.on('resize', ({width, height}) => {
-        this.logger?.log('display resize', {width, height, stage2d: this.stage2d});
         this.stage2d.resize(width, height);
       });
     });
 
     this.projection$((proj) => {
+      this.logger?.log('update projection', {projection: proj, stage: this.stage2d});
+      // TODO fix "stageresize" event with width:0 and height:0 issue
       this.stage2d.projection = proj;
-
-      this.logger?.log('projection!', {stage2d: this.stage2d});
     });
 
     this.#projSignals = SignalMap.fromProps(this, ['projectionPlane', 'projectionOrigin', 'projectionType']);
@@ -144,7 +148,15 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
     }, [...this.#viewSpecsSignals.getSignals(), this.projection$]);
 
     this.stage2d.on('resize', (stage2d: Stage2D) => {
-      this.dispatchEvent(new CustomEvent('stage2d:resize', {bubbles: true, detail: {stage2d}}));
+      const detail: StageResizeProps = {
+        name: stage2d.name,
+        width: stage2d.width,
+        height: stage2d.height,
+        containerWidth: stage2d.containerWidth,
+        containerHeight: stage2d.containerHeight,
+        stage: stage2d,
+      };
+      this.dispatchEvent(new CustomEvent<StageResizeProps>(StageResize, {bubbles: true, detail}));
     });
   }
 
@@ -160,7 +172,9 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
   override render() {
     this.display = this.displayCtx;
 
-    this.logger?.log('render', {displayCtx: this.displayCtx, display: this.display, stage2d: this.stage2d});
+    if (this.name) {
+      this.stage2d.name = this.name;
+    }
 
     return html`<slot></slot>`;
   }
@@ -171,8 +185,6 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
     if ([projectionPlane, projectionOrigin, projectionType].some((val) => val == null)) return;
 
     const planeDescription = `${projectionPlane}|${projectionOrigin}` as ProjectionPlaneDescription;
-
-    this.logger?.log('onProjectionPropsUpdate', {projectionType, planeDescription});
 
     if (projectionType === 'parallax') {
       this.projection = new ParallaxProjection(planeDescription);
@@ -191,10 +203,7 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
     const projection = this.projection;
     if (projection) {
       const viewSpecs = this.#viewSpecsSignals.getValueObject() as ParallaxProjectionSpecs | OrthographicProjectionSpecs;
-      this.logger?.log(`onViewSpecsPropsUpdate projection.viewSpecs`, {projection, viewSpecs});
       (projection as ParallaxProjection).viewSpecs = viewSpecs;
-    } else {
-      this.logger?.log('onViewSpecsPropsUpdate (no projection)', this.#viewSpecsSignals.getValueObject());
     }
   }
 }

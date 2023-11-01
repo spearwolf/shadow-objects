@@ -21,6 +21,10 @@
       "default": "./dist/bundle.js",
       "types": "./dist/src/bundle.d.ts"
     },
+    "./events.js": {
+      "default": "./dist/src/events.js",
+      "types": "./dist/src/events.d.ts"
+    },
     "./simple-greeting.js": {
       "default": "./dist/src/simple-greeting.js",
       "types": "./dist/src/simple-greeting.d.ts"
