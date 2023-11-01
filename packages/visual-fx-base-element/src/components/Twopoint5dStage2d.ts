@@ -160,10 +160,10 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
     });
   }
 
-  override willUpdate(changedProperties: Map<PropertyKey, unknown>) {
+  override willUpdate(changedProperties: Map<keyof this, unknown>) {
     super.willUpdate(changedProperties);
 
-    const propKeys = Array.from(changedProperties.keys()) as (keyof this)[];
+    const propKeys = Array.from(changedProperties.keys());
 
     this.#projSignals.updateFromProps(this, propKeys);
     this.#viewSpecsSignals.updateFromProps(this, propKeys);
