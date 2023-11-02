@@ -12,6 +12,7 @@ import {
 } from '@spearwolf/twopoint5d';
 import {css, html} from 'lit';
 import {property} from 'lit/decorators.js';
+import type {Scene} from 'three';
 import {stageRendererContext} from '../context/stage-renderer-context.js';
 import {StageRenderFrame, StageResize, type StageRenderFrameProps, type StageResizeProps} from '../events.js';
 import type {IStageRenderer} from '../twopoint5d/IStageRenderer.js';
@@ -20,6 +21,10 @@ import {whenDefined} from '../utils/whenDefined.js';
 import {VisualFxBaseElement} from './VisualFxBaseElement.js';
 
 const isValidSize = ({width, height}: {width: number; height: number}): boolean => !(isNaN(width) || isNaN(height));
+
+export interface FirstFrameProps extends StageRenderFrameProps {
+  stage: Stage2D;
+}
 
 export interface Twopoint5dStage2d extends Eventize {}
 
@@ -118,11 +123,19 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
 
   readonly stage2d = new Stage2D();
 
+  readonly #firstFrame: Promise<FirstFrameProps>;
+
+  firstFrame(): Promise<FirstFrameProps> {
+    return this.#firstFrame;
+  }
+
+  sceneReady(): Promise<Scene> {
+    return Promise.resolve(this.stage2d.scene);
+  }
+
   constructor() {
     super();
     eventize(this);
-
-    this.retain(StageResize); // make sure that every new subscriber gets this event first
 
     this.loggerNS = 'twopoint5d-stage2d';
 
@@ -130,6 +143,16 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
 
     this.projectionPlane = 'xy';
     this.projectionOrigin = 'bottom-left';
+
+    this.retain(StageResize); // make sure that every new subscriber gets this event first
+
+    this.#firstFrame = new Promise((resolve) => {
+      this.once(StageResize, (stageResizeProps: StageResizeProps) => {
+        this.once(StageRenderFrame, (stageRenderFrame: StageRenderFrameProps) => {
+          resolve({...stageRenderFrame, stage: stageResizeProps.stage});
+        });
+      });
+    });
 
     this.stageRenderer$((stageRenderer) => {
       this.logger?.log('requested stage-renderer context', stageRenderer);

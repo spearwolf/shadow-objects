@@ -1,13 +1,13 @@
-import {Twopoint5dStage2d} from '@spearwolf/visual-fx-base-element';
+import {FirstFrameProps, Twopoint5dStage2d} from '@spearwolf/visual-fx-base-element';
 import {
   StageRenderFrame,
   StageRenderFrameProps,
   StageResize,
   StageResizeEvent,
-  StageResizeProps,
 } from '@spearwolf/visual-fx-base-element/events.js';
 import '@spearwolf/visual-fx-base-element/twopoint5d-stage2d.js';
 import '@spearwolf/visual-fx-base-element/vfx-display.js';
+import {Color, Scene} from 'three';
 import './style.css';
 import './vfx-display.css';
 
@@ -22,8 +22,12 @@ el.addEventListener(StageResize, (e: StageResizeEvent) => {
   console.debug(StageResize, e.detail);
 });
 
-el.once(StageResize, ({stage}: StageResizeProps) => {
-  console.debug('TODO init scene', stage);
+el.sceneReady().then((scene: Scene) => {
+  scene.background = new Color(0x102030);
+});
+
+el.firstFrame().then((props: FirstFrameProps) => {
+  console.log('firstFrame', props);
 });
 
 el.on(StageRenderFrame, (props: StageRenderFrameProps) => {

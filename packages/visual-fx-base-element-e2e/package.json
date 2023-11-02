@@ -18,10 +18,12 @@
     "test": "pnpm playwright test"
   },
   "dependencies": {
-    "@spearwolf/visual-fx-base-element": "workspace:*"
+    "@spearwolf/visual-fx-base-element": "workspace:*",
+    "three": "0.153"
   },
   "devDependencies": {
     "@playwright/test": "^1.38.1",
+    "@types/three": "0.153",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
