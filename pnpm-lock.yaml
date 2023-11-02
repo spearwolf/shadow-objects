@@ -150,6 +150,9 @@ importers:
 
   packages/visual-fx-base-element-e2e:
     dependencies:
+      '@spearwolf/twopoint5d':
+        specifier: ^0.3.3
+        version: 0.3.3(@spearwolf/eventize@3.4.1)(three@0.153.0)
       '@spearwolf/visual-fx-base-element':
         specifier: workspace:*
         version: link:../visual-fx-base-element

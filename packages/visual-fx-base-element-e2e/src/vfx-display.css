@@ -9,7 +9,7 @@
   min-width: 320px;
   height: 50vh;
   min-height: 160px;
-  box-shadow: rgb(255, 0, 102) 0px 0px 0px 1px;
+  box-shadow: rgba(255, 99, 20, 0.25) 0px 0px 0px 1px;
 }
 
 .mono-text {

@@ -1,43 +1,40 @@
+import {TextureFactory} from '@spearwolf/twopoint5d';
 import {Twopoint5dStage2d} from '@spearwolf/visual-fx-base-element';
-import {
-  StageFirstFrame,
-  StageFirstFrameProps,
-  StageRenderFrame,
-  StageRenderFrameProps,
-  StageResize,
-  StageResizeEvent,
-} from '@spearwolf/visual-fx-base-element/events.js';
+import {StageFirstFrameProps} from '@spearwolf/visual-fx-base-element/events.js';
 import '@spearwolf/visual-fx-base-element/twopoint5d-stage2d.js';
 import '@spearwolf/visual-fx-base-element/vfx-display.js';
-import {Color, Scene} from 'three';
+import {Color, Scene, Sprite, SpriteMaterial} from 'three';
 import './style.css';
 import './vfx-display.css';
 
 console.log('hej ho!');
 
-const el = await Twopoint5dStage2d.whenDefined(document.querySelector('[data-testid="stage2d"]'));
+Twopoint5dStage2d.whenDefined(document.getElementById('stage2d')).then((el) => {
+  // let renderFrameLogCount = 0;
 
-let renderFrameLogCount = 0;
+  // el.addEventListener(StageResize, (e: StageResizeEvent) => {
+  //   renderFrameLogCount = 0;
+  //   console.debug(StageResize, e.detail);
+  // });
 
-el.addEventListener(StageResize, (e: StageResizeEvent) => {
-  renderFrameLogCount = 0;
-  console.debug(StageResize, e.detail);
-});
+  el.sceneReady().then((scene: Scene) => {
+    scene.background = new Color(0x212121);
+  });
 
-el.sceneReady().then((scene: Scene) => {
-  scene.background = new Color(0x102030);
-});
+  el.firstFrame().then(({renderer, stage: {scene}}: StageFirstFrameProps) => {
+    const texFactory = new TextureFactory(renderer, ['nearest', 'flipy', 'srgb']);
+    const texImage = texFactory.load('/assets/ball-pattern-rot--not-power-of-2.png');
 
-el.once(StageFirstFrame, (props: StageFirstFrameProps) => {
-  console.log('firstFrame', props);
-});
+    const material = new SpriteMaterial({map: texImage});
+    const sprite = new Sprite(material);
 
-el.firstFrame().then((props: StageFirstFrameProps) => {
-  console.log('firstFrame (promise)', props);
-});
+    sprite.scale.set(197, 205, 1);
+    scene.add(sprite);
+  });
 
-el.on(StageRenderFrame, (props: StageRenderFrameProps) => {
-  if (renderFrameLogCount++ < 3) {
-    console.debug(StageRenderFrame, props.frameNo, props);
-  }
+  // el.on(StageRenderFrame, (props: StageRenderFrameProps) => {
+  //   if (renderFrameLogCount++ < 3) {
+  //     console.debug(StageRenderFrame, props.frameNo, props);
+  //   }
+  // });
 });

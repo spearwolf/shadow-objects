@@ -18,6 +18,7 @@
     "test": "pnpm playwright test"
   },
   "dependencies": {
+    "@spearwolf/twopoint5d": "^0.3.3",
     "@spearwolf/visual-fx-base-element": "workspace:*",
     "three": "0.153"
   },
