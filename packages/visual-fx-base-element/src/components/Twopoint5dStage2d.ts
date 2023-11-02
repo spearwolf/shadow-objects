@@ -4,7 +4,6 @@ import {
   OrthographicProjection,
   ParallaxProjection,
   Stage2D,
-  type Display,
   type IProjection,
   type OrthographicProjectionSpecs,
   type ParallaxProjectionSpecs,
@@ -12,8 +11,9 @@ import {
 } from '@spearwolf/twopoint5d';
 import {css, html} from 'lit';
 import {property} from 'lit/decorators.js';
-import {twopoint5dDisplayContext} from '../context/twopoint5d-display-context.js';
+import {stageRendererContext} from '../context/stage-renderer-context.js';
 import {StageResize, type StageResizeProps} from '../events.js';
+import type {IStageRenderer} from '../twopoint5d/IStageRenderer.js';
 import {SignalMap} from '../utils/SignalMap.js';
 import {VisualFxBaseElement} from './VisualFxBaseElement.js';
 
@@ -27,22 +27,22 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
   @property({type: String, reflect: true})
   accessor name: string | undefined;
 
-  @consume({context: twopoint5dDisplayContext, subscribe: true})
+  @consume({context: stageRendererContext, subscribe: true})
   @property({attribute: false})
-  accessor displayCtx: Display | undefined;
+  accessor stageRendererCtx: IStageRenderer | undefined;
 
-  readonly #display: SignalFuncs<Display | undefined> = createSignal();
+  readonly #stageRenderer: SignalFuncs<IStageRenderer | undefined> = createSignal();
 
-  get display(): Display | undefined {
-    return value(this.#display[0]);
+  get stageRenderer(): IStageRenderer | undefined {
+    return value(this.#stageRenderer[0]);
   }
 
-  get display$(): SignalReader<Display | undefined> {
-    return this.#display[0];
+  get stageRenderer$(): SignalReader<IStageRenderer | undefined> {
+    return this.#stageRenderer[0];
   }
 
-  set display(value: Display | undefined) {
-    this.#display[1](value);
+  set stageRenderer(value: IStageRenderer | undefined) {
+    this.#stageRenderer[1](value);
   }
 
   @property({type: String, reflect: true})
@@ -110,13 +110,11 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
     this.projectionPlane = 'xy';
     this.projectionOrigin = 'bottom-left';
 
-    this.display$((display) => {
-      this.logger?.log('requested display context', display);
+    this.stageRenderer$((stageRenderer) => {
+      this.logger?.log('requested stage-renderer context', stageRenderer);
 
-      // TODO create a StageRenderer interface?
-      return display?.on('resize', ({width, height}) => {
-        this.stage2d.resize(width, height);
-      });
+      stageRenderer.addStage(this.stage2d);
+      return () => stageRenderer.removeStage(this.stage2d);
     });
 
     this.projection$((proj) => {
@@ -170,7 +168,7 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
   }
 
   override render() {
-    this.display = this.displayCtx;
+    this.stageRenderer = this.stageRendererCtx;
 
     if (this.name) {
       this.stage2d.name = this.name;

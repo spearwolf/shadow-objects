@@ -1,7 +1,10 @@
 import {provide} from '@lit/context';
 import {Display, type DisplayParameters} from '@spearwolf/twopoint5d';
 import {css, html} from 'lit';
+import {stageRendererContext} from '../context/stage-renderer-context.js';
 import {twopoint5dDisplayContext} from '../context/twopoint5d-display-context.js';
+import type {IStageRenderer} from '../twopoint5d/IStageRenderer.js';
+import {SimpleStageRenderer} from '../twopoint5d/SimpleStageRenderer.js';
 import {readBooleanAttribute} from '../utils/readBooleanAttribute.js';
 import {readStringAttribute} from '../utils/readStringAttribute.js';
 import {whenDefined} from '../utils/whenDefined.js';
@@ -56,6 +59,9 @@ export class VfxDisplay extends VisualFxBaseElement {
 
   @provide({context: twopoint5dDisplayContext})
   accessor display: Display | undefined;
+
+  @provide({context: stageRendererContext})
+  accessor stageRenderer: IStageRenderer | undefined;
 
   get container(): HTMLElement | undefined {
     return this.renderRoot?.querySelector('.canvas-container') ?? undefined;
@@ -127,7 +133,7 @@ export class VfxDisplay extends VisualFxBaseElement {
       alpha: readBooleanAttribute(this, 'alpha', true),
       depth: readBooleanAttribute(this, 'depth', true),
       antialias: readBooleanAttribute(this, 'antialias', true),
-      desynchronized: readBooleanAttribute(this, 'desynchronized'),
+      // desynchronized: readBooleanAttribute(this, 'desynchronized'),
       failIfMajorPerformanceCaveat: readBooleanAttribute(this, 'fail-if-major-performance-caveat'),
       styleSheetRoot: this.renderRoot as any,
       resizeToElement: this,
@@ -139,8 +145,12 @@ export class VfxDisplay extends VisualFxBaseElement {
     this.display = new Display(this.container!, options);
 
     this.display.on(this);
+
+    this.stageRenderer = new SimpleStageRenderer();
+    this.stageRenderer.attach(this.display);
+
     this.display.start();
 
-    this.logger?.log('display created', this.display);
+    this.logger?.log('display created', {display: this.display, stageRenderer: this.stageRenderer});
   }
 }

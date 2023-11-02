@@ -68,6 +68,11 @@
     "@spearwolf/eventize": "^3.4.1",
     "@spearwolf/signalize": "^0.8.0",
     "@spearwolf/twopoint5d": "^0.3.2",
-    "lit": "3.0.1"
+    "@types/three": "0.153",
+    "lit": "3.0.1",
+    "three": "0.153"
+  },
+  "devDependencies": {
+    "@types/three": "0.153"
   }
 }
