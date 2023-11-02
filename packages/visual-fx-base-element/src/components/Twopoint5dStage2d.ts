@@ -16,6 +16,7 @@ import {stageRendererContext} from '../context/stage-renderer-context.js';
 import {StageRenderFrame, StageResize, type StageRenderFrameProps, type StageResizeProps} from '../events.js';
 import type {IStageRenderer} from '../twopoint5d/IStageRenderer.js';
 import {SignalMap} from '../utils/SignalMap.js';
+import {whenDefined} from '../utils/whenDefined.js';
 import {VisualFxBaseElement} from './VisualFxBaseElement.js';
 
 const isValidSize = ({width, height}: {width: number; height: number}): boolean => !(isNaN(width) || isNaN(height));
@@ -23,6 +24,14 @@ const isValidSize = ({width, height}: {width: number; height: number}): boolean 
 export interface Twopoint5dStage2d extends Eventize {}
 
 export class Twopoint5dStage2d extends VisualFxBaseElement {
+  static async whenDefined(el: any): Promise<Twopoint5dStage2d> {
+    await whenDefined(el);
+    if (el instanceof Twopoint5dStage2d) {
+      return el;
+    }
+    throw new Error('not a Twopoint5dStage2d');
+  }
+
   static override styles = css`
     :host {
       display: inline;
@@ -112,6 +121,8 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
   constructor() {
     super();
     eventize(this);
+
+    this.retain(StageResize); // make sure that every new subscriber gets this event first
 
     this.loggerNS = 'twopoint5d-stage2d';
 
