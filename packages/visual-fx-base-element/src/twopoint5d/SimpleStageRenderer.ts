@@ -1,7 +1,14 @@
 import {eventize, type Eventize} from '@spearwolf/eventize';
-import {Display} from '@spearwolf/twopoint5d';
+import {Display, Stage2D} from '@spearwolf/twopoint5d';
 import type {WebGLRenderer} from 'three';
-import {StageAdded, StageRemoved, type StageAddedProps, type StageRemovedProps} from '../events.js';
+import {
+  StageAdded,
+  StageRemoved,
+  StageRenderFrame,
+  type StageAddedProps,
+  type StageRemovedProps,
+  type StageRenderFrameProps,
+} from '../events.js';
 import type {IStageRenderer, StageParentType, StageType} from './IStageRenderer.js';
 
 export interface SimpleStageRenderer extends Eventize {}
@@ -60,9 +67,12 @@ export class SimpleStageRenderer implements IStageRenderer {
         display.on('resize', ({width, height}: {width: number; height: number}) => {
           this.resize(width, height);
         }),
-        display.on('frame', ({renderer}: {renderer: WebGLRenderer}) => {
-          this.renderFrame(renderer);
-        }),
+        display.on(
+          'frame',
+          ({renderer, now, deltaTime, frameNo}: {renderer: WebGLRenderer; now: number; deltaTime: number; frameNo: number}) => {
+            this.renderFrame(renderer, now, deltaTime, frameNo);
+          },
+        ),
       ],
     );
   }
@@ -89,17 +99,34 @@ export class SimpleStageRenderer implements IStageRenderer {
   }
 
   #resizeStage(stage: StageItem, width: number, height: number): void {
-    if (stage.width !== width || stage.height !== height) {
+    if (
+      stage.width !== width ||
+      stage.height !== height ||
+      (stage.stage instanceof Stage2D && (stage.stage.containerWidth !== width || stage.stage.containerHeight !== height))
+    ) {
       stage.width = width;
       stage.height = height;
       stage.stage.resize(width, height);
     }
   }
 
-  renderFrame(renderer: WebGLRenderer): void {
+  renderFrame(renderer: WebGLRenderer, now: number, deltaTime: number, frameNo: number): void {
     this.#stages.forEach((stage) => {
       this.#resizeStage(stage, this.width, this.height);
-      stage.stage.renderFrame(renderer);
+
+      if (stage.stage instanceof Stage2D) {
+        stage.stage.emit(StageRenderFrame, {
+          width: stage.stage.width,
+          height: stage.stage.height,
+          renderer,
+          now,
+          deltaTime,
+          frameNo,
+        } as StageRenderFrameProps);
+        stage.stage.renderFrame(renderer);
+      } else {
+        stage.stage.renderFrame(renderer, now, deltaTime, frameNo);
+      }
     });
   }
 

@@ -136,8 +136,8 @@ importers:
         specifier: ^0.8.0
         version: 0.8.0(@spearwolf/eventize@3.4.1)
       '@spearwolf/twopoint5d':
-        specifier: ^0.3.2
-        version: 0.3.2(@spearwolf/eventize@3.4.1)(three@0.153.0)
+        specifier: ^0.3.3
+        version: 0.3.3(@spearwolf/eventize@3.4.1)(three@0.153.0)
       '@types/three':
         specifier: '0.153'
         version: 0.153.0
@@ -2997,8 +2997,8 @@ packages:
       - enquirer
     dev: false
 
-  /@spearwolf/twopoint5d@0.3.2(@spearwolf/eventize@3.4.1)(three@0.153.0):
-    resolution: {integrity: sha512-rLSdCCOPs7VIp8HJklRSPzTYtWqGzplmHjmnPE1huwbHggXFxjdNSdPaB+CVADY1VIRL1JT7jqeR/Mr+uHBx0g==}
+  /@spearwolf/twopoint5d@0.3.3(@spearwolf/eventize@3.4.1)(three@0.153.0):
+    resolution: {integrity: sha512-axP11Lfrzk6uV397FL+5HDoN7VRPT70XOMacsnB8cdE/Kx/PQgQxp+5nhc/YMX2/lCb+thX+GyAFgCllZxW+rg==}
     peerDependencies:
       '@spearwolf/eventize': ^3.4.1
       three: ^0.153

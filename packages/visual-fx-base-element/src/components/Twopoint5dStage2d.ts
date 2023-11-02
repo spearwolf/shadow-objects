@@ -1,4 +1,5 @@
 import {consume} from '@lit/context';
+import {eventize, type Eventize} from '@spearwolf/eventize';
 import {createEffect, createSignal, value, type SignalFuncs, type SignalReader} from '@spearwolf/signalize';
 import {
   OrthographicProjection,
@@ -12,10 +13,14 @@ import {
 import {css, html} from 'lit';
 import {property} from 'lit/decorators.js';
 import {stageRendererContext} from '../context/stage-renderer-context.js';
-import {StageResize, type StageResizeProps} from '../events.js';
+import {StageRenderFrame, StageResize, type StageRenderFrameProps, type StageResizeProps} from '../events.js';
 import type {IStageRenderer} from '../twopoint5d/IStageRenderer.js';
 import {SignalMap} from '../utils/SignalMap.js';
 import {VisualFxBaseElement} from './VisualFxBaseElement.js';
+
+const isValidSize = ({width, height}: {width: number; height: number}): boolean => !(isNaN(width) || isNaN(height));
+
+export interface Twopoint5dStage2d extends Eventize {}
 
 export class Twopoint5dStage2d extends VisualFxBaseElement {
   static override styles = css`
@@ -84,6 +89,10 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
   readonly #projSignals: SignalMap;
   readonly #viewSpecsSignals: SignalMap;
 
+  private getViewSpecs(): ParallaxProjectionSpecs | OrthographicProjectionSpecs {
+    return this.#viewSpecsSignals.getValueObject() as ParallaxProjectionSpecs | OrthographicProjectionSpecs;
+  }
+
   readonly #projection = createSignal<IProjection | undefined>();
 
   get projection(): IProjection | undefined {
@@ -102,6 +111,7 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
 
   constructor() {
     super();
+    eventize(this);
 
     this.loggerNS = 'twopoint5d-stage2d';
 
@@ -118,8 +128,6 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
     });
 
     this.projection$((proj) => {
-      this.logger?.log('update projection', {projection: proj, stage: this.stage2d});
-      // TODO fix "stageresize" event with width:0 and height:0 issue
       this.stage2d.projection = proj;
     });
 
@@ -143,9 +151,9 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
 
     createEffect(() => {
       this.onViewSpecsPropsUpdate();
-    }, [...this.#viewSpecsSignals.getSignals(), this.projection$]);
+    }, this.#viewSpecsSignals.getSignals());
 
-    this.stage2d.on('resize', (stage2d: Stage2D) => {
+    this.stage2d.on(Stage2D.Resize, (stage2d: Stage2D) => {
       const detail: StageResizeProps = {
         name: stage2d.name,
         width: stage2d.width,
@@ -154,7 +162,17 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
         containerHeight: stage2d.containerHeight,
         stage: stage2d,
       };
-      this.dispatchEvent(new CustomEvent<StageResizeProps>(StageResize, {bubbles: true, detail}));
+      if (isValidSize(detail)) {
+        this.emit(StageResize, detail);
+        this.dispatchEvent(new CustomEvent<StageResizeProps>(StageResize, {bubbles: false, detail}));
+      }
+    });
+
+    this.stage2d.on(StageRenderFrame, (detail: StageRenderFrameProps) => {
+      if (isValidSize(detail)) {
+        this.emit(StageRenderFrame, detail);
+        this.dispatchEvent(new CustomEvent<StageRenderFrameProps>(StageRenderFrame, {bubbles: false, detail}));
+      }
     });
   }
 
@@ -185,9 +203,9 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
     const planeDescription = `${projectionPlane}|${projectionOrigin}` as ProjectionPlaneDescription;
 
     if (projectionType === 'parallax') {
-      this.projection = new ParallaxProjection(planeDescription);
+      this.projection = new ParallaxProjection(planeDescription, this.getViewSpecs() as ParallaxProjectionSpecs);
     } else if ((projectionType as string)?.startsWith('ortho')) {
-      this.projection = new OrthographicProjection(planeDescription);
+      this.projection = new OrthographicProjection(planeDescription, this.getViewSpecs() as OrthographicProjectionSpecs);
     } else {
       this.projection = undefined;
 
@@ -198,10 +216,19 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
   }
 
   private onViewSpecsPropsUpdate(): void {
-    const projection = this.projection;
-    if (projection) {
-      const viewSpecs = this.#viewSpecsSignals.getValueObject() as ParallaxProjectionSpecs | OrthographicProjectionSpecs;
-      (projection as ParallaxProjection).viewSpecs = viewSpecs;
+    const {projection} = this.stage2d;
+    if (projection == null) return;
+
+    if (projection instanceof ParallaxProjection) {
+      const viewSpecs = this.getViewSpecs() as ParallaxProjectionSpecs;
+      this.logger?.log('parallax viewSpecs', viewSpecs);
+      projection.viewSpecs = viewSpecs;
+    } else if (projection instanceof OrthographicProjection) {
+      const viewSpecs = this.getViewSpecs() as OrthographicProjectionSpecs;
+      this.logger?.log('orthographic viewSpecs', viewSpecs);
+      projection.viewSpecs = viewSpecs;
     }
+
+    this.stage2d.update(true);
   }
 }

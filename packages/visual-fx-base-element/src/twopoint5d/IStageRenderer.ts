@@ -9,7 +9,7 @@ export interface IStageRenderer {
   detach(): void;
 
   resize(width: number, height: number): void;
-  renderFrame(renderer: WebGLRenderer): void;
+  renderFrame(renderer: WebGLRenderer, now: number, deltaTime: number, frameNo: number): void;
 
   addStage(stage: StageType): void;
   removeStage(stage: StageType): void;
