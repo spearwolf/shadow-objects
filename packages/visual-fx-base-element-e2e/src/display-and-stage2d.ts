@@ -1,5 +1,6 @@
 import {FirstFrameProps, Twopoint5dStage2d} from '@spearwolf/visual-fx-base-element';
 import {
+  StageFirstFrame,
   StageRenderFrame,
   StageRenderFrameProps,
   StageResize,
@@ -26,8 +27,12 @@ el.sceneReady().then((scene: Scene) => {
   scene.background = new Color(0x102030);
 });
 
-el.firstFrame().then((props: FirstFrameProps) => {
+el.once(StageFirstFrame, (props: FirstFrameProps) => {
   console.log('firstFrame', props);
+});
+
+el.firstFrame().then((props: FirstFrameProps) => {
+  console.log('firstFrame (promise)', props);
 });
 
 el.on(StageRenderFrame, (props: StageRenderFrameProps) => {
