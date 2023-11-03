@@ -1,79 +1,132 @@
 import {eventize, type Eventize} from '@spearwolf/eventize';
+import {createSignal, value, type SignalReader} from '@spearwolf/signalize';
 import {type TextureOptionClasses, type TileSetOptions} from '@spearwolf/twopoint5d';
-import {TextureResource} from './TextureResource.js';
+import type {WebGLRenderer} from 'three';
+import {TextureResource, type TextureResourceSubType} from './TextureResource.js';
 
 export interface TextureCatalogItem {
   imageUrl?: string;
   atlasUrl?: string;
   tileSet?: TileSetOptions;
-  classes?: TextureOptionClasses[];
+  texture?: TextureOptionClasses[];
 }
 
 export interface TextureCatalogData {
-  baseUrl?: string;
-  defaultClasses: TextureOptionClasses[];
+  defaultTextureClasses: TextureOptionClasses[];
   items: Record<string, TextureCatalogItem>;
 }
 
-const Ready = 'ready';
+const ready = 'ready';
+
+const joinTextureClasses = (...classes: TextureOptionClasses[][] | undefined): TextureOptionClasses[] | undefined => {
+  const all = classes?.filter((c) => c != null);
+  if (all && all.length) {
+    return Array.from(new Set(all.flat()).values());
+  }
+  return undefined;
+};
 
 export interface TextureCatalog extends Eventize {}
 
 export class TextureCatalog {
+  static RendererChanged = 'rendererChanged';
+
   static async load(url: string | URL): Promise<TextureCatalog> {
     return new TextureCatalog().load(url);
   }
 
-  defaultClasses: TextureOptionClasses[] = [];
+  defaultTextureClasses: TextureOptionClasses[] = [];
+
+  #renderer = createSignal<WebGLRenderer | undefined>();
+
+  get renderer(): WebGLRenderer | undefined {
+    return value(this.#renderer[0]);
+  }
+
+  get renderer$(): SignalReader<WebGLRenderer | undefined> {
+    return this.#renderer[0];
+  }
+
+  set renderer(value: WebGLRenderer | undefined) {
+    this.#renderer[1](value);
+  }
 
   #resources = new Map<string, TextureResource>();
 
   constructor() {
     eventize(this);
-    this.retain(Ready);
+    this.retain(ready);
+
+    this.renderer$((renderer) => {
+      this.emit(TextureCatalog.RendererChanged, renderer);
+    });
   }
 
-  whenReady(): Promise<TextureCatalog> {
-    return this.onceAsync(Ready).then(() => this);
+  async whenReady(): Promise<TextureCatalog> {
+    await this.onceAsync(ready);
+    return this;
   }
 
-  async load(url: string | URL) {
-    const response = await fetch(url);
-    const data: TextureCatalogData = await response.json();
-    this.parse(data);
+  load(url: string | URL) {
+    fetch(url).then(async (response) => {
+      const data: TextureCatalogData = await response.json();
+      this.parse(data);
+    });
     return this;
   }
 
   parse(data: TextureCatalogData) {
-    if (Array.isArray(data.defaultClasses) && data.defaultClasses.length) {
-      this.defaultClasses = data.defaultClasses.splice(0);
+    if (Array.isArray(data.defaultTextureClasses) && data.defaultTextureClasses.length) {
+      this.defaultTextureClasses = data.defaultTextureClasses.splice(0);
     }
 
     // TODO what should happen if a resource is already created?
 
     for (const [id, item] of Object.entries(data.items)) {
-      const resource = new TextureResource(id);
+      let resource: TextureResource | undefined;
 
-      if (item.imageUrl) {
-        resource.imageUrl = item.imageUrl;
+      const textureClasses = joinTextureClasses(item.texture, this.defaultTextureClasses);
+
+      if (item.tileSet) {
+        resource = TextureResource.fromTileSet(id, item.imageUrl, item.tileSet, textureClasses);
+      }
+      // TODO atlasUrl
+      else if (item.imageUrl) {
+        resource = TextureResource.fromImage(id, item.imageUrl, textureClasses);
       }
 
-      if (item.atlasUrl) {
-        resource.atlasUrl = item.atlasUrl;
+      if (resource) {
+        this.#resources.set(id, resource);
+        this.on(resource);
+        // TODO off(resource)
       }
-
-      // TODO
-      // if (item.tileSet) {
-      //   resource.tileSet = new TileSet(item.tileSet);
-      // }
-
-      if (Array.isArray(item.classes) && item.classes.length) {
-        resource.classes = item.classes.splice(0);
-      }
-
-      this.#resources.set(id, resource);
     }
 
-    this.emit(Ready, this);
+    this.emit(ready, this);
+  }
+
+  get(id: string, type: TextureResourceSubType, callback: (val: any) => void): () => void {
+    // TODO get with multiple types
+
+    let isActive = true;
+    let unsubscribe: () => void = () => {
+      isActive = false;
+    };
+
+    // TODO reload catalog data
+
+    this.whenReady().then(() => {
+      if (isActive) {
+        const resource = this.#resources.get(id);
+        if (resource) {
+          resource.activate();
+          resource.renderer = this.renderer;
+          // TODO refCount
+          unsubscribe = resource.on(type, callback);
+        }
+      }
+    });
+
+    return unsubscribe;
   }
 }

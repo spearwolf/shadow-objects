@@ -1,13 +1,14 @@
-import {TextureFactory} from '@spearwolf/twopoint5d';
-import {Stage2DElement} from '@spearwolf/two5-elements';
+import {Stage2DElement, TextureCatalog} from '@spearwolf/two5-elements';
 import {StageFirstFrameProps} from '@spearwolf/two5-elements/events.js';
-import '@spearwolf/two5-elements/two5-stage2d.js';
 import '@spearwolf/two5-elements/two5-display.js';
-import {Color, Scene, Sprite, SpriteMaterial} from 'three';
+import '@spearwolf/two5-elements/two5-stage2d.js';
+import {Color, Scene, Sprite, SpriteMaterial, Texture} from 'three';
 import './style.css';
 import './two5-display.css';
 
 console.log('hej ho!');
+
+const textures = new TextureCatalog().load('/assets/textures.json');
 
 Stage2DElement.whenDefined(document.getElementById('stage2d')).then((el) => {
   // let renderFrameLogCount = 0;
@@ -22,11 +23,14 @@ Stage2DElement.whenDefined(document.getElementById('stage2d')).then((el) => {
   });
 
   el.firstFrame().then(({renderer, stage: {scene}}: StageFirstFrameProps) => {
-    const texFactory = new TextureFactory(renderer, ['nearest', 'flipy', 'srgb']);
-    const texImage = texFactory.load('/assets/ball-pattern-rot--not-power-of-2.png');
+    textures.renderer = renderer;
 
-    const material = new SpriteMaterial({map: texImage});
+    const material = new SpriteMaterial({map: new Texture()});
     const sprite = new Sprite(material);
+
+    textures.get('ballPatternRot', 'texture', (texture) => {
+      sprite.material = new SpriteMaterial({map: texture});
+    });
 
     sprite.scale.set(197, 205, 1);
     scene.add(sprite);
