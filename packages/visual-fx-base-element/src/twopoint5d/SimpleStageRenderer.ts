@@ -13,17 +13,16 @@ import type {IStageRenderer, StageParentType, StageType} from './IStageRenderer.
 
 export interface SimpleStageRenderer extends Eventize {}
 
-type UnsubscribeFn = () => void;
-
 interface StageItem {
   stage: StageType;
   width: number;
   height: number;
 }
 
+const UnsubscribeFromParent = 'unsubscribeFromParent';
+
 export class SimpleStageRenderer implements IStageRenderer {
   #parent?: StageParentType;
-  #unsubscribeFromParent: UnsubscribeFn[] = [];
 
   width: number = 0;
   height: number = 0;
@@ -45,8 +44,7 @@ export class SimpleStageRenderer implements IStageRenderer {
   }
 
   #removeFromParent(): void {
-    this.#unsubscribeFromParent.forEach((unsubscribe) => unsubscribe());
-    this.#unsubscribeFromParent.length = 0;
+    this.emit(UnsubscribeFromParent);
 
     if (!(this.#parent instanceof Display)) {
       this.#parent!.removeStage(this);
@@ -62,18 +60,20 @@ export class SimpleStageRenderer implements IStageRenderer {
   }
 
   #addToDisplay(display: Display): void {
-    this.#unsubscribeFromParent.push(
-      ...[
-        display.on('resize', ({width, height}: {width: number; height: number}) => {
-          this.resize(width, height);
-        }),
-        display.on(
-          'frame',
-          ({renderer, now, deltaTime, frameNo}: {renderer: WebGLRenderer; now: number; deltaTime: number; frameNo: number}) => {
-            this.renderFrame(renderer, now, deltaTime, frameNo);
-          },
-        ),
-      ],
+    this.once(
+      UnsubscribeFromParent,
+      display.on('resize', ({width, height}: {width: number; height: number}) => {
+        this.resize(width, height);
+      }),
+    );
+    this.once(
+      UnsubscribeFromParent,
+      display.on(
+        'frame',
+        ({renderer, now, deltaTime, frameNo}: {renderer: WebGLRenderer; now: number; deltaTime: number; frameNo: number}) => {
+          this.renderFrame(renderer, now, deltaTime, frameNo);
+        },
+      ),
     );
   }
 
