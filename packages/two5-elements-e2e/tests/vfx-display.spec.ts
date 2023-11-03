@@ -1,5 +1,5 @@
 import {expect, test} from '@playwright/test';
-import {VfxDisplay} from '@spearwolf/visual-fx-base-element';
+import {VfxDisplay} from '@spearwolf/two5-elements';
 
 test.describe('vfx-display', () => {
   test.beforeEach('goto page', async ({page}) => {

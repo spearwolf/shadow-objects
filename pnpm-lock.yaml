@@ -124,7 +124,7 @@ importers:
         specifier: ^4.4.5
         version: 4.4.11(@types/node@20.8.2)
 
-  packages/visual-fx-base-element:
+  packages/two5-elements:
     dependencies:
       '@lit/context':
         specifier: ^1.0.1
@@ -153,9 +153,9 @@ importers:
       '@spearwolf/twopoint5d':
         specifier: ^0.3.3
         version: 0.3.3(@spearwolf/eventize@3.4.1)(three@0.153.0)
-      '@spearwolf/visual-fx-base-element':
+      '@spearwolf/two5-elements':
         specifier: workspace:*
-        version: link:../visual-fx-base-element
+        version: link:../two5-elements
       three:
         specifier: '0.153'
         version: 0.153.0

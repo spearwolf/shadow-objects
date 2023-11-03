@@ -1,7 +1,7 @@
 {
-  "name": "visual-fx-base-element",
+  "name": "two5-elements",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "root": "packages/visual-fx-base-element",
+  "root": "packages/two5-elements",
   "sourceRoot": "{projectRoot}/src",
   "projectType": "library",
   "targets": {

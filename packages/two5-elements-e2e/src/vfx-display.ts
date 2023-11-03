@@ -1,5 +1,5 @@
-import {VfxDisplay} from '@spearwolf/visual-fx-base-element';
-import '@spearwolf/visual-fx-base-element/vfx-display.js';
+import {VfxDisplay} from '@spearwolf/two5-elements';
+import '@spearwolf/two5-elements/vfx-display.js';
 import './style.css';
 import './vfx-display.css';
 import './whenDefined.js';

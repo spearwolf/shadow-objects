@@ -1,4 +1,4 @@
-import {whenDefined} from '@spearwolf/visual-fx-base-element';
+import {whenDefined} from '@spearwolf/two5-elements';
 
 declare global {
   interface Window {

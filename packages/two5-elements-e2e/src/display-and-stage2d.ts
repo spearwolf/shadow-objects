@@ -1,8 +1,8 @@
 import {TextureFactory} from '@spearwolf/twopoint5d';
-import {Twopoint5dStage2d} from '@spearwolf/visual-fx-base-element';
-import {StageFirstFrameProps} from '@spearwolf/visual-fx-base-element/events.js';
-import '@spearwolf/visual-fx-base-element/twopoint5d-stage2d.js';
-import '@spearwolf/visual-fx-base-element/vfx-display.js';
+import {Twopoint5dStage2d} from '@spearwolf/two5-elements';
+import {StageFirstFrameProps} from '@spearwolf/two5-elements/events.js';
+import '@spearwolf/two5-elements/twopoint5d-stage2d.js';
+import '@spearwolf/two5-elements/vfx-display.js';
 import {Color, Scene, Sprite, SpriteMaterial} from 'three';
 import './style.css';
 import './vfx-display.css';
