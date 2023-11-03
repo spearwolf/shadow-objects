@@ -29,23 +29,23 @@
       "default": "./dist/src/simple-greeting.js",
       "types": "./dist/src/simple-greeting.d.ts"
     },
-    "./vfx-display.js": {
-      "default": "./dist/src/vfx-display.js",
-      "types": "./dist/src/vfx-display.d.ts"
+    "./two5-display.js": {
+      "default": "./dist/src/two5-display.js",
+      "types": "./dist/src/two5-display.d.ts"
     },
-    "./twopoint5d-stage2d.js": {
-      "default": "./dist/src/twopoint5d-stage2d.js",
-      "types": "./dist/src/twopoint5d-stage2d.d.ts"
+    "./two5-stage2d.js": {
+      "default": "./dist/src/two5-stage2d.js",
+      "types": "./dist/src/two5-stage2d.d.ts"
     }
   },
   "sideEffects": [
     "build/src/simple-greeting.js",
-    "build/src/vfx-display.js",
-    "build/src/twopoint5d-stage2d.js",
+    "build/src/two5-display.js",
+    "build/src/two5-stage2d.js",
     "build/src/components/attachContextRoot.js",
     "dist/src/simple-greeting.js",
-    "dist/src/vfx-display.js",
-    "dist/src/twopoint5d-stage2d.js",
+    "dist/src/two5-display.js",
+    "dist/src/two5-stage2d.js",
     "dist/src/components/attachContextRoot.js",
     "dist/src/bundle.js",
     "dist/bundle.js"

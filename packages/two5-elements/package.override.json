@@ -3,8 +3,8 @@
     "bundle.js",
     "src/bundle.js",
     "src/simple-greeting.js",
-    "src/vfx-display.js",
-    "src/twopoint5d-stage2d.js",
+    "src/two5-display.js",
+    "src/two5-stage2d.js",
     "src/components/attachContextRoot.js"
   ],
   "scripts": null,

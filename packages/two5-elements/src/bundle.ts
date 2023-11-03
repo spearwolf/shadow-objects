@@ -1,3 +1,3 @@
 import './simple-greeting.js';
-import './vfx-display.js';
-import './twopoint5d-stage2d.js';
+import './two5-display.js';
+import './two5-stage2d.js';

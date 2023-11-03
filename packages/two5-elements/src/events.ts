@@ -23,7 +23,7 @@ export interface StageRemovedProps {
 }
 
 /**
- * published by the <twopoint5d-stage2d> element as object event and customevent
+ * published by the <two5-stage2d> element as object event and customevent
  */
 export const StageResize = 'stageresize';
 
@@ -41,7 +41,7 @@ export interface StageResizeEvent extends Event {
 }
 
 /**
- * published by the <twopoint5d-stage2d> element as object event and customevent
+ * published by the <two5-stage2d> element as object event and customevent
  */
 export const StageRenderFrame = 'stagerenderframe';
 
@@ -59,7 +59,7 @@ export interface StageRenderFrameEvent extends Event {
 }
 
 /**
- * published by the <twopoint5d-stage2d> element as object event and promise
+ * published by the <two5-stage2d> element as object event and promise
  */
 export const StageFirstFrame = 'stagefirstframe';
 

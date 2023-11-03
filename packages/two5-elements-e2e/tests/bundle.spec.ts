@@ -22,7 +22,7 @@ test.describe('bundle', () => {
     });
   });
 
-  test.describe('vfx-display', () => {
+  test.describe('two5-display', () => {
     test('has element', async ({page}) => {
       await expect(page.getByTestId('vfxd')).toBeAttached();
     });
@@ -31,7 +31,7 @@ test.describe('bundle', () => {
       expect(
         await page.evaluate(() =>
           customElements
-            .whenDefined('vfx-display')
+            .whenDefined('two5-display')
             .then(() => true)
             .catch(() => false),
         ),

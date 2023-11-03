@@ -1,8 +1,8 @@
 import {expect, test} from '@playwright/test';
 
-test.describe('twopoint5d-stage2d', () => {
+test.describe('two5-stage2d', () => {
   test.beforeEach('goto page', async ({page}) => {
-    await page.goto('/pages/twopoint5d-stage2d.html');
+    await page.goto('/pages/two5-stage2d.html');
   });
 
   test('has element', async ({page}) => {
@@ -13,7 +13,7 @@ test.describe('twopoint5d-stage2d', () => {
     expect(
       await page.evaluate(() =>
         customElements
-          .whenDefined('twopoint5d-stage2d')
+          .whenDefined('two5-stage2d')
           .then(() => true)
           .catch(() => false),
       ),

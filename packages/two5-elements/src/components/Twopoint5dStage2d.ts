@@ -140,7 +140,7 @@ export class Twopoint5dStage2d extends VisualFxBaseElement {
     super();
     eventize(this);
 
-    this.loggerNS = 'twopoint5d-stage2d';
+    this.loggerNS = 'two5-stage2d';
 
     this.fit = 'contain';
 

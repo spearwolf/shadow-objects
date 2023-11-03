@@ -74,7 +74,7 @@ export class VfxDisplay extends VisualFxBaseElement {
   constructor() {
     super();
 
-    this.loggerNS = 'vfx-display';
+    this.loggerNS = 'two5-display';
 
     // TODO fullscreen - go fullscreen should include overlay-content
     // TODO mobile fullscreen - go fullscreen on rotation to landscape (as attribute)
