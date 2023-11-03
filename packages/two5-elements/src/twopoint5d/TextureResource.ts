@@ -1,15 +1,14 @@
 import {eventize, type Eventize} from '@spearwolf/eventize';
 import {batch, createEffect, createSignal, value, type SignalFuncs, type SignalReader} from '@spearwolf/signalize';
 import {
-  PowerOf2ImageLoader,
+  TextureCoords,
   TextureFactory,
   TileSet,
   type TextureAtlas,
-  type TextureCoords,
   type TextureOptionClasses,
   type TileSetOptions,
 } from '@spearwolf/twopoint5d';
-import type {Texture, WebGLRenderer} from 'three';
+import {ImageLoader, type Texture, type WebGLRenderer} from 'three';
 
 export type TextureResourceType = 'image' | 'atlas' | 'tileset';
 export type TextureResourceSubType = 'imageCoords' | 'atlas' | 'tileSet' | 'texture';
@@ -90,6 +89,7 @@ export class TextureResource {
   #tileSetOptions?: SignalFuncs<TileSetOptions | undefined>;
   #tileSet?: SignalFuncs<TileSet | undefined>;
   #textureClasses: SignalFuncs<TextureOptionClasses[] | undefined> = createSignal(undefined, {compareFn: cmpTexClasses});
+  #textureFactory: SignalFuncs<TextureFactory | undefined> = createSignal();
   #texture: SignalFuncs<Texture | undefined> = createSignal();
 
   #createTileSetOptionsSignal(tileSetOptions: TileSetOptions | undefined) {
@@ -198,6 +198,18 @@ export class TextureResource {
     this.#textureClasses[1](value);
   }
 
+  get textureFactory(): TextureFactory | undefined {
+    return value(this.#textureFactory[0]);
+  }
+
+  get textureFactory$(): SignalReader<TextureFactory | undefined> {
+    return this.#textureFactory[0];
+  }
+
+  set textureFactory(value: TextureFactory | undefined) {
+    this.#textureFactory[1](value);
+  }
+
   get texture(): Texture | undefined {
     return value(this.#texture[0]);
   }
@@ -257,19 +269,22 @@ export class TextureResource {
         this.emit('texture', value);
       });
 
+      createEffect(() => {
+        if (this.renderer) {
+          this.textureFactory = new TextureFactory(this.renderer, this.textureClasses);
+        }
+      }, [this.renderer$, this.textureClasses$]);
+
       createEffect(async () => {
-        if (this.renderer && this.imageUrl) {
-          const texFactory = new TextureFactory(this.renderer, this.textureClasses);
-          // TODO create textureFactory signal
-          // TODO use texture loader from three
-          const {imgEl, texCoords} = await new PowerOf2ImageLoader().loadAsync(this.imageUrl);
+        if (this.textureFactory && this.imageUrl) {
+          const image = await new ImageLoader().loadAsync(this.imageUrl);
           batch(() => {
-            this.imageCoords = texCoords;
-            this.texture = texFactory.create(imgEl);
+            this.imageCoords = new TextureCoords(0, 0, image.width, image.height);
+            this.texture = this.textureFactory.create(image);
           });
           // TODO return dispose texture function
         }
-      }, [this.renderer$, this.textureClasses$, this.imageUrl$]);
+      }, [this.textureFactory$, this.imageUrl$]);
 
       if (this.#tileSetOptions) {
         createEffect(async () => {
