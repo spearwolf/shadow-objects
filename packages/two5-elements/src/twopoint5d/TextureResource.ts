@@ -283,4 +283,6 @@ export class TextureResource {
     }
     return this;
   }
+
+  // TODO deactivate (refCount)
 }
