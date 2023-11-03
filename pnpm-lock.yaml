@@ -148,7 +148,7 @@ importers:
         specifier: '0.153'
         version: 0.153.0
 
-  packages/visual-fx-base-element-e2e:
+  packages/two5-elements-e2e:
     dependencies:
       '@spearwolf/twopoint5d':
         specifier: ^0.3.3

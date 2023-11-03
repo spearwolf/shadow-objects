@@ -1,7 +1,7 @@
 {
-  "name": "visual-fx-base-element-e2e",
+  "name": "two5-elements-e2e",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "root": "packages/visual-fx-base-element-e2e",
+  "root": "packages/two5-elements-e2e",
   "sourceRoot": "{projectRoot}/src",
   "projectType": "e2e",
   "targets": {
