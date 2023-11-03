@@ -1,8 +1,8 @@
 import {provide} from '@lit/context';
 import {Display, type DisplayParameters} from '@spearwolf/twopoint5d';
 import {css, html} from 'lit';
+import {displayContext} from '../context/display-context.js';
 import {stageRendererContext} from '../context/stage-renderer-context.js';
-import {twopoint5dDisplayContext} from '../context/twopoint5d-display-context.js';
 import type {IStageRenderer} from '../twopoint5d/IStageRenderer.js';
 import {SimpleStageRenderer} from '../twopoint5d/SimpleStageRenderer.js';
 import {readBooleanAttribute} from '../utils/readBooleanAttribute.js';
@@ -57,7 +57,7 @@ export class DisplayElement extends Two5Element {
     }
   `;
 
-  @provide({context: twopoint5dDisplayContext})
+  @provide({context: displayContext})
   accessor display: Display | undefined;
 
   @provide({context: stageRendererContext})
