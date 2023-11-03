@@ -80,6 +80,8 @@ export class TextureResource {
     return resource;
   }
 
+  // TODO static fromAtlas()
+
   #renderer = createSignal<WebGLRenderer | undefined>();
   #imageUrl: SignalFuncs<string | undefined> = createSignal();
   #imageCoords: SignalFuncs<TextureCoords | undefined> = createSignal(undefined, {compareFn: cmpTexCoords});
@@ -258,6 +260,7 @@ export class TextureResource {
       createEffect(async () => {
         if (this.renderer && this.imageUrl) {
           const texFactory = new TextureFactory(this.renderer, this.textureClasses);
+          // TODO create textureFactory signal
           // TODO use texture loader from three
           const {imgEl, texCoords} = await new PowerOf2ImageLoader().loadAsync(this.imageUrl);
           batch(() => {
