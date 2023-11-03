@@ -1,5 +1,5 @@
 import {expect, test} from '@playwright/test';
-import {VfxDisplay} from '@spearwolf/two5-elements';
+import {DisplayElement} from '@spearwolf/two5-elements';
 
 test.describe('two5-display', () => {
   test.beforeEach('goto page', async ({page}) => {
@@ -7,7 +7,7 @@ test.describe('two5-display', () => {
   });
 
   test('has element', async ({page}) => {
-    await expect(page.getByTestId('vfxd')).toBeAttached();
+    await expect(page.getByTestId('two5display')).toBeAttached();
   });
 
   test('custom element is defined', async ({page}) => {
@@ -25,8 +25,8 @@ test.describe('two5-display', () => {
     expect(
       await page.evaluate(() =>
         window
-          .whenDefined<VfxDisplay>(document.querySelector('two5-display'))
-          .then((vfxd: VfxDisplay) => vfxd.display.onceAsync('start'))
+          .whenDefined<DisplayElement>(document.querySelector('two5-display'))
+          .then((two5display: DisplayElement) => two5display.display.onceAsync('start'))
           .then(() => true),
       ),
     ).toBe(true);

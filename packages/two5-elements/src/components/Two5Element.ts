@@ -7,7 +7,7 @@ import {readBooleanAttribute} from '../utils/readBooleanAttribute.js';
 const DEBUG_ATTR = 'debug';
 const UNNAMED = '(unnamed)';
 
-export class VisualFxBaseElement extends LitElement {
+export class Two5Element extends LitElement {
   #debug: boolean;
 
   get debug(): boolean {

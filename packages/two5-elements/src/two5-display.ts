@@ -1,4 +1,4 @@
-import {VfxDisplay} from './components/VfxDisplay.js';
+import {DisplayElement} from './components/DisplayElement.js';
 import './components/attachContextRoot.js';
 
-customElements.define('two5-display', VfxDisplay);
+customElements.define('two5-display', DisplayElement);

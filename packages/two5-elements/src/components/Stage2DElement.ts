@@ -25,19 +25,19 @@ import {
 import type {IStageRenderer} from '../twopoint5d/IStageRenderer.js';
 import {SignalMap} from '../utils/SignalMap.js';
 import {whenDefined} from '../utils/whenDefined.js';
-import {VisualFxBaseElement} from './VisualFxBaseElement.js';
+import {Two5Element} from './Two5Element.js';
 
 const isValidSize = ({width, height}: {width: number; height: number}): boolean => !(isNaN(width) || isNaN(height));
 
-export interface Twopoint5dStage2d extends Eventize {}
+export interface Stage2DElement extends Eventize {}
 
-export class Twopoint5dStage2d extends VisualFxBaseElement {
-  static async whenDefined(el: any): Promise<Twopoint5dStage2d> {
+export class Stage2DElement extends Two5Element {
+  static async whenDefined(el: any): Promise<Stage2DElement> {
     await whenDefined(el);
-    if (el instanceof Twopoint5dStage2d) {
+    if (el instanceof Stage2DElement) {
       return el;
     }
-    throw new Error('not a Twopoint5dStage2d');
+    throw new Error('not a Stage2DElement');
   }
 
   static override styles = css`

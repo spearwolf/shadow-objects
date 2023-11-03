@@ -1,5 +1,5 @@
 import {TextureFactory} from '@spearwolf/twopoint5d';
-import {Twopoint5dStage2d} from '@spearwolf/two5-elements';
+import {Stage2DElement} from '@spearwolf/two5-elements';
 import {StageFirstFrameProps} from '@spearwolf/two5-elements/events.js';
 import '@spearwolf/two5-elements/two5-stage2d.js';
 import '@spearwolf/two5-elements/two5-display.js';
@@ -9,7 +9,7 @@ import './two5-display.css';
 
 console.log('hej ho!');
 
-Twopoint5dStage2d.whenDefined(document.getElementById('stage2d')).then((el) => {
+Stage2DElement.whenDefined(document.getElementById('stage2d')).then((el) => {
   // let renderFrameLogCount = 0;
 
   // el.addEventListener(StageResize, (e: StageResizeEvent) => {

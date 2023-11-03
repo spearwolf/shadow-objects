@@ -24,7 +24,7 @@ test.describe('bundle', () => {
 
   test.describe('two5-display', () => {
     test('has element', async ({page}) => {
-      await expect(page.getByTestId('vfxd')).toBeAttached();
+      await expect(page.getByTestId('two5display')).toBeAttached();
     });
 
     test('custom element is defined', async ({page}) => {
