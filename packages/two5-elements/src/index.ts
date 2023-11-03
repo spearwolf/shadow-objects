@@ -6,6 +6,7 @@ export * from './context/display-context.js';
 export * from './context/stage-renderer-context.js';
 export type * from './twopoint5d/IStageRenderer.js';
 export * from './twopoint5d/SimpleStageRenderer.js';
+export * from './twopoint5d/TextureCatalog.js';
 export * from './utils/ConsoleLogger.js';
 export * from './utils/asBoolean.js';
 export * from './utils/readBooleanAttribute.js';
