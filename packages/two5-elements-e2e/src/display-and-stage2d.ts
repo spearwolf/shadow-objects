@@ -28,7 +28,8 @@ Stage2DElement.whenDefined(document.getElementById('stage2d')).then((el) => {
     const material = new SpriteMaterial({map: new Texture()});
     const sprite = new Sprite(material);
 
-    textures.get('ballPatternRot', 'texture', (texture) => {
+    textures.get('ballPatternRot', ['texture', 'imageCoords'], ([texture, imageCoords]) => {
+      console.log('texture', {texture, imageCoords});
       sprite.material = new SpriteMaterial({map: texture});
     });
 

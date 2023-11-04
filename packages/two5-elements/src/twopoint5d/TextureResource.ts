@@ -234,7 +234,7 @@ export class TextureResource {
     this.#renderer[1](value);
   }
 
-  #active = false;
+  #load = false;
 
   constructor(id: string, type: TextureResourceType) {
     eventize(this);
@@ -245,13 +245,16 @@ export class TextureResource {
     this.retain(['imageCoords', 'atlas', 'tileSet', 'texture']);
   }
 
+  /**
+   * is called by the TextureCatalog
+   */
   rendererChanged(renderer: WebGLRenderer | undefined) {
     this.renderer = renderer;
   }
 
-  activate(): TextureResource {
-    if (!this.#active) {
-      this.#active = true;
+  load(): TextureResource {
+    if (!this.#load) {
+      this.#load = true;
 
       this.imageCoords$((value) => {
         this.emit('imageCoords', value);
@@ -269,20 +272,25 @@ export class TextureResource {
         this.emit('texture', value);
       });
 
-      createEffect(() => {
-        if (this.renderer) {
-          this.textureFactory = new TextureFactory(this.renderer, this.textureClasses);
-        }
-      }, [this.renderer$, this.textureClasses$]);
-
       createEffect(async () => {
         if (this.textureFactory && this.imageUrl) {
           const image = await new ImageLoader().loadAsync(this.imageUrl);
+          let texture: Texture | undefined;
+
           batch(() => {
             this.imageCoords = new TextureCoords(0, 0, image.width, image.height);
-            this.texture = this.textureFactory.create(image);
+
+            texture = this.textureFactory.create(image);
+            texture.name = this.id;
+            this.texture = texture;
           });
-          // TODO return dispose texture function
+
+          if (texture) {
+            return () => {
+              console.log('dispose texture', texture);
+              texture.dispose();
+            };
+          }
         }
       }, [this.textureFactory$, this.imageUrl$]);
 
@@ -295,6 +303,15 @@ export class TextureResource {
       }
 
       // TODO load atlas
+
+      // this effect is dynamic and comes last,
+      // because it can trigger the others and it is quite possible
+      // that the renderer has already been set
+      createEffect(() => {
+        if (this.renderer) {
+          this.textureFactory = new TextureFactory(this.renderer$(), this.textureClasses$());
+        }
+      });
     }
     return this;
   }

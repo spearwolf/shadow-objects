@@ -17,6 +17,7 @@ export interface TextureCatalogData {
 }
 
 const ready = 'ready';
+const rendererChanged = 'rendererChanged';
 
 const joinTextureClasses = (...classes: TextureOptionClasses[][] | undefined): TextureOptionClasses[] | undefined => {
   const all = classes?.filter((c) => c != null);
@@ -29,8 +30,6 @@ const joinTextureClasses = (...classes: TextureOptionClasses[][] | undefined): T
 export interface TextureCatalog extends Eventize {}
 
 export class TextureCatalog {
-  static RendererChanged = 'rendererChanged';
-
   static async load(url: string | URL): Promise<TextureCatalog> {
     return new TextureCatalog().load(url);
   }
@@ -55,10 +54,10 @@ export class TextureCatalog {
 
   constructor() {
     eventize(this);
-    this.retain(ready);
+    this.retain([ready, rendererChanged]);
 
     this.renderer$((renderer) => {
-      this.emit(TextureCatalog.RendererChanged, renderer);
+      this.emit(rendererChanged, renderer);
     });
   }
 
@@ -105,24 +104,48 @@ export class TextureCatalog {
     this.emit(ready, this);
   }
 
-  get(id: string, type: TextureResourceSubType, callback: (val: any) => void): () => void {
-    // TODO get with multiple types
+  get(id: string, type: TextureResourceSubType | TextureResourceSubType[], callback: (val: any) => void): () => void {
+    const multipleTypes = Array.isArray(type);
+    const values = multipleTypes ? new Map<TextureResourceSubType, any>() : undefined;
+    const unsubscribeCallbacks: (() => void)[] = [];
 
     let isActive = true;
-    let unsubscribe: () => void = () => {
+
+    const unsubscribe: () => void = () => {
       isActive = false;
+      values.clear();
+      unsubscribeCallbacks.forEach((cb) => cb());
     };
 
     // TODO reload catalog data
 
-    this.whenReady().then(() => {
+    this.once(ready, () => {
       if (isActive) {
+        // TODO subscribe to resource
         const resource = this.#resources.get(id);
         if (resource) {
-          resource.activate();
+          resource.load();
           resource.renderer = this.renderer;
           // TODO refCount
-          unsubscribe = resource.on(type, callback);
+          if (multipleTypes) {
+            (type as Array<TextureResourceSubType>).forEach((t) => {
+              unsubscribeCallbacks.push(
+                resource.on(t, (val) => {
+                  values.set(t, val);
+                  const valuesArg = (type as Array<TextureResourceSubType>).map((t) => values.get(t)).filter((v) => v != null);
+                  if (valuesArg.length === type.length) {
+                    callback(valuesArg);
+                  }
+                }),
+              );
+            });
+          } else {
+            unsubscribeCallbacks.push(
+              resource.on(type, (val) => {
+                callback(val);
+              }),
+            );
+          }
         }
       }
     });
