@@ -30,6 +30,7 @@ Stage2DElement.whenDefined(document.getElementById('stage2d')).then((el) => {
 
     textures.get('ballPatternRot', ['texture', 'imageCoords'], ([texture, imageCoords]) => {
       console.log('texture', {texture, imageCoords});
+      sprite.material.dispose();
       sprite.material = new SpriteMaterial({map: texture});
     });
 
