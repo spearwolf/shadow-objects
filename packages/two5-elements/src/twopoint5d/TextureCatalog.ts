@@ -30,6 +30,7 @@ const joinTextureClasses = (...classes: TextureOptionClasses[][] | undefined): T
 
 export interface TextureCatalog extends Eventize {}
 
+// TODO rename to TextureStore
 export class TextureCatalog {
   static async load(url: string | URL): Promise<TextureCatalog> {
     return new TextureCatalog().load(url);

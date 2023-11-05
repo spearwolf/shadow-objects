@@ -21,6 +21,7 @@ interface StageItem {
 
 const UnsubscribeFromParent = 'unsubscribeFromParent';
 
+// TODO rename to StageRenderer
 export class SimpleStageRenderer implements IStageRenderer {
   #parent?: StageParentType;
 
