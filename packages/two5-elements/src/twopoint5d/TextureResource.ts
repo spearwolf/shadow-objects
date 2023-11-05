@@ -56,8 +56,10 @@ export class TextureResource {
   static fromImage(id: string, imageUrl: string, textureClasses?: TextureOptionClasses[]): TextureResource {
     const resource = new TextureResource(id, 'image');
 
-    resource.imageUrl = imageUrl;
-    resource.textureClasses = textureClasses?.splice(0);
+    batch(() => {
+      resource.imageUrl = imageUrl;
+      resource.textureClasses = textureClasses?.splice(0);
+    });
 
     return resource;
   }
@@ -70,11 +72,13 @@ export class TextureResource {
   ): TextureResource {
     const resource = new TextureResource(id, 'tileset');
 
-    resource.imageUrl = imageUrl;
-    resource.#createTileSetOptionsSignal(tileSetOptions);
-    resource.#tileSet = createSignal();
-    resource.#atlas = createSignal();
-    resource.textureClasses = textureClasses?.splice(0);
+    batch(() => {
+      resource.imageUrl = imageUrl;
+      resource.#createTileSetOptionsSignal(tileSetOptions);
+      resource.#tileSet = createSignal();
+      resource.#atlas = createSignal();
+      resource.textureClasses = textureClasses?.splice(0);
+    });
 
     return resource;
   }
@@ -315,6 +319,4 @@ export class TextureResource {
     }
     return this;
   }
-
-  // TODO deactivate (refCount)
 }

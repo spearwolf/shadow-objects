@@ -1,5 +1,5 @@
 import {eventize, type Eventize} from '@spearwolf/eventize';
-import {createSignal, value, type SignalReader} from '@spearwolf/signalize';
+import {batch, createSignal, value, type SignalReader} from '@spearwolf/signalize';
 import {type TextureOptionClasses, type TileSetOptions} from '@spearwolf/twopoint5d';
 import type {WebGLRenderer} from 'three';
 import {TextureResource, type TextureResourceSubType} from './TextureResource.js';
@@ -16,8 +16,9 @@ export interface TextureCatalogData {
   items: Record<string, TextureCatalogItem>;
 }
 
-const ready = 'ready';
-const rendererChanged = 'rendererChanged';
+const OnReady = 'ready';
+const OnRendererChanged = 'rendererChanged';
+const OnResource = 'resource';
 
 const joinTextureClasses = (...classes: TextureOptionClasses[][] | undefined): TextureOptionClasses[] | undefined => {
   const all = classes?.filter((c) => c != null);
@@ -54,15 +55,26 @@ export class TextureCatalog {
 
   constructor() {
     eventize(this);
-    this.retain([ready, rendererChanged]);
+    this.retain([OnReady, OnRendererChanged]);
 
     this.renderer$((renderer) => {
-      this.emit(rendererChanged, renderer);
+      this.emit(OnRendererChanged, renderer);
+    });
+  }
+
+  onResource(id: string, callback: (resource: TextureResource) => void): () => void {
+    const resource = this.#resources.get(id);
+    if (resource) {
+      callback(resource);
+      return () => {};
+    }
+    return this.on(`${OnResource}:${id}`, (resource) => {
+      callback(resource);
     });
   }
 
   async whenReady(): Promise<TextureCatalog> {
-    await this.onceAsync(ready);
+    await this.onceAsync(OnReady);
     return this;
   }
 
@@ -79,57 +91,97 @@ export class TextureCatalog {
       this.defaultTextureClasses = data.defaultTextureClasses.splice(0);
     }
 
-    // TODO what should happen if a resource is already created?
+    const updatedResources: TextureResource[] = [];
 
     for (const [id, item] of Object.entries(data.items)) {
-      let resource: TextureResource | undefined;
+      let resource: TextureResource | undefined = this.#resources.get(id);
 
       const textureClasses = joinTextureClasses(item.texture, this.defaultTextureClasses);
 
       if (item.tileSet) {
-        resource = TextureResource.fromTileSet(id, item.imageUrl, item.tileSet, textureClasses);
+        if (resource) {
+          if (resource.type !== 'tileset') {
+            // TODO maybe we can throw away the old resource and create a new one?
+            throw new Error(`Resource ${id} already exists with type "${resource.type}" - cannot change to "tileset"`);
+          }
+          batch(() => {
+            resource.imageUrl = item.imageUrl;
+            resource.tileSetOptions = item.tileSet;
+            resource.textureClasses = textureClasses;
+          });
+        } else {
+          resource = TextureResource.fromTileSet(id, item.imageUrl, item.tileSet, textureClasses);
+        }
       }
       // TODO atlasUrl
       else if (item.imageUrl) {
-        resource = TextureResource.fromImage(id, item.imageUrl, textureClasses);
+        if (resource) {
+          if (resource.type !== 'image') {
+            throw new Error(`Resource ${id} already exists with type "${resource.type}" - cannot change to "image"`);
+          }
+          batch(() => {
+            resource.imageUrl = item.imageUrl;
+            resource.textureClasses = textureClasses;
+          });
+        } else {
+          resource = TextureResource.fromImage(id, item.imageUrl, textureClasses);
+        }
       }
 
       if (resource) {
         this.#resources.set(id, resource);
         this.on(resource);
-        // TODO off(resource)
+        // TODO on delete resource: off(resource)
+        updatedResources.push(resource);
       }
     }
 
-    this.emit(ready, this);
+    this.emit(OnReady, this);
+
+    updatedResources.forEach((resource) => {
+      this.emit(`${OnResource}:${resource.id}`, resource);
+    });
   }
 
   get(id: string, type: TextureResourceSubType | TextureResourceSubType[], callback: (val: any) => void): () => void {
-    const multipleTypes = Array.isArray(type);
-    const values = multipleTypes ? new Map<TextureResourceSubType, any>() : undefined;
-    const unsubscribeCallbacks: (() => void)[] = [];
+    const isMultipleTypes = Array.isArray(type);
+    const values = isMultipleTypes ? new Map<TextureResourceSubType, any>() : undefined;
 
-    let isActive = true;
+    const unsubscribeFromSubType: (() => void)[] = [];
+    let unsubscribeFromResource: undefined | (() => void);
 
-    const unsubscribe: () => void = () => {
-      isActive = false;
-      values.clear();
-      unsubscribeCallbacks.forEach((cb) => cb());
+    let isActiveSubscription = true;
+
+    const clearSubTypeSubscriptions = () => {
+      unsubscribeFromSubType.forEach((cb) => cb());
+      unsubscribeFromSubType.length = 0;
     };
 
-    // TODO reload catalog data
+    const unsubscribe: () => void = () => {
+      isActiveSubscription = false;
+      values.clear();
+      unsubscribeFromResource();
+      clearSubTypeSubscriptions();
+    };
 
-    this.once(ready, () => {
-      if (isActive) {
-        // TODO subscribe to resource
-        const resource = this.#resources.get(id);
-        if (resource) {
+    this.once(OnReady, () => {
+      if (isActiveSubscription) {
+        unsubscribeFromResource = this.onResource(id, (resource) => {
+          clearSubTypeSubscriptions();
+
           resource.load();
           resource.renderer = this.renderer;
-          // TODO refCount
-          if (multipleTypes) {
+
+          resource.refCount++;
+          unsubscribeFromSubType.push(() => {
+            resource.refCount--;
+          });
+
+          console.log('resource', resource);
+
+          if (isMultipleTypes) {
             (type as Array<TextureResourceSubType>).forEach((t) => {
-              unsubscribeCallbacks.push(
+              unsubscribeFromSubType.push(
                 resource.on(t, (val) => {
                   values.set(t, val);
                   const valuesArg = (type as Array<TextureResourceSubType>).map((t) => values.get(t)).filter((v) => v != null);
@@ -140,13 +192,13 @@ export class TextureCatalog {
               );
             });
           } else {
-            unsubscribeCallbacks.push(
+            unsubscribeFromSubType.push(
               resource.on(type, (val) => {
                 callback(val);
               }),
             );
           }
-        }
+        });
       }
     });
 
