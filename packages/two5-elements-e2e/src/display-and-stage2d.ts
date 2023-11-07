@@ -1,4 +1,4 @@
-import {Stage2DElement, TextureCatalog} from '@spearwolf/two5-elements';
+import {Stage2DElement, TextureStore} from '@spearwolf/two5-elements';
 import {StageFirstFrameProps} from '@spearwolf/two5-elements/events.js';
 import '@spearwolf/two5-elements/two5-display.js';
 import '@spearwolf/two5-elements/two5-stage2d.js';
@@ -8,7 +8,7 @@ import './two5-display.css';
 
 console.log('hej ho!');
 
-const textures = new TextureCatalog().load('/assets/textures.json');
+const textures = new TextureStore().load('/assets/textures.json');
 
 Stage2DElement.whenDefined(document.getElementById('stage2d')).then((el) => {
   // let renderFrameLogCount = 0;

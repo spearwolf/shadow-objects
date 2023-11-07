@@ -250,7 +250,7 @@ export class TextureResource {
   }
 
   /**
-   * is called by the TextureCatalog
+   * is called by the TextureStore
    */
   rendererChanged(renderer: WebGLRenderer | undefined) {
     this.renderer = renderer;

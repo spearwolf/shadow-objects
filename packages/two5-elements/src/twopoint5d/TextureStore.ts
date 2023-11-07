@@ -4,16 +4,16 @@ import {type TextureOptionClasses, type TileSetOptions} from '@spearwolf/twopoin
 import type {WebGLRenderer} from 'three';
 import {TextureResource, type TextureResourceSubType} from './TextureResource.js';
 
-export interface TextureCatalogItem {
+export interface TextureStoreItem {
   imageUrl?: string;
   atlasUrl?: string;
   tileSet?: TileSetOptions;
   texture?: TextureOptionClasses[];
 }
 
-export interface TextureCatalogData {
+export interface TextureStoreData {
   defaultTextureClasses: TextureOptionClasses[];
-  items: Record<string, TextureCatalogItem>;
+  items: Record<string, TextureStoreItem>;
 }
 
 const OnReady = 'ready';
@@ -28,12 +28,11 @@ const joinTextureClasses = (...classes: TextureOptionClasses[][] | undefined): T
   return undefined;
 };
 
-export interface TextureCatalog extends Eventize {}
+export interface TextureStore extends Eventize {}
 
-// TODO rename to TextureStore
-export class TextureCatalog {
-  static async load(url: string | URL): Promise<TextureCatalog> {
-    return new TextureCatalog().load(url);
+export class TextureStore {
+  static async load(url: string | URL): Promise<TextureStore> {
+    return new TextureStore().load(url);
   }
 
   defaultTextureClasses: TextureOptionClasses[] = [];
@@ -74,20 +73,20 @@ export class TextureCatalog {
     });
   }
 
-  async whenReady(): Promise<TextureCatalog> {
+  async whenReady(): Promise<TextureStore> {
     await this.onceAsync(OnReady);
     return this;
   }
 
   load(url: string | URL) {
     fetch(url).then(async (response) => {
-      const data: TextureCatalogData = await response.json();
+      const data: TextureStoreData = await response.json();
       this.parse(data);
     });
     return this;
   }
 
-  parse(data: TextureCatalogData) {
+  parse(data: TextureStoreData) {
     if (Array.isArray(data.defaultTextureClasses) && data.defaultTextureClasses.length) {
       this.defaultTextureClasses = data.defaultTextureClasses.splice(0);
     }
