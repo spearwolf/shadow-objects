@@ -1,7 +1,7 @@
 {
-  "name": "two5-elements-e2e",
+  "name": "twopoint5d-elements-e2e",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "root": "packages/two5-elements-e2e",
+  "root": "packages/twopoint5d-elements-e2e",
   "sourceRoot": "{projectRoot}/src",
   "projectType": "e2e",
   "targets": {
