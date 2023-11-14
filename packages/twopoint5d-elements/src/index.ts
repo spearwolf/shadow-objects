@@ -1,7 +1,7 @@
 export * from './components/DisplayElement.js';
 export * from './components/SimpleGreeting.js';
 export * from './components/Stage2DElement.js';
-export * from './components/Two5Element.js';
+export * from './components/TwoPoint5DElement.js';
 export * from './context/display-context.js';
 export * from './context/stage-renderer-context.js';
 export type * from './twopoint5d/IStageRenderer.js';

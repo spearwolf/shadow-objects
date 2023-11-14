@@ -25,13 +25,13 @@ import {
 import type {IStageRenderer} from '../twopoint5d/IStageRenderer.js';
 import {SignalMap} from '../utils/SignalMap.js';
 import {whenDefined} from '../utils/whenDefined.js';
-import {Two5Element} from './Two5Element.js';
+import {TwoPoint5DElement} from './TwoPoint5DElement.js';
 
 const isValidSize = ({width, height}: {width: number; height: number}): boolean => !(isNaN(width) || isNaN(height));
 
 export interface Stage2DElement extends Eventize {}
 
-export class Stage2DElement extends Two5Element {
+export class Stage2DElement extends TwoPoint5DElement {
   static async whenDefined(el: any): Promise<Stage2DElement> {
     await whenDefined(el);
     if (el instanceof Stage2DElement) {

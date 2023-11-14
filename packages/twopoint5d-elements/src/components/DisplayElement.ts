@@ -8,9 +8,9 @@ import {SimpleStageRenderer} from '../twopoint5d/SimpleStageRenderer.js';
 import {readBooleanAttribute} from '../utils/readBooleanAttribute.js';
 import {readStringAttribute} from '../utils/readStringAttribute.js';
 import {whenDefined} from '../utils/whenDefined.js';
-import {Two5Element} from './Two5Element.js';
+import {TwoPoint5DElement} from './TwoPoint5DElement.js';
 
-export class DisplayElement extends Two5Element {
+export class DisplayElement extends TwoPoint5DElement {
   static async whenDefined(el: any): Promise<DisplayElement> {
     await whenDefined(el);
     if (el instanceof DisplayElement) {
