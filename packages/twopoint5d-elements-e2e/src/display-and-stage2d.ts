@@ -1,7 +1,7 @@
-import {Stage2DElement, TextureStore} from '@spearwolf/two5-elements';
-import {StageFirstFrameProps} from '@spearwolf/two5-elements/events.js';
-import '@spearwolf/two5-elements/two5-display.js';
-import '@spearwolf/two5-elements/two5-stage2d.js';
+import {Stage2DElement, TextureStore} from '@spearwolf/twopoint5d-elements';
+import {StageFirstFrameProps} from '@spearwolf/twopoint5d-elements/events.js';
+import '@spearwolf/twopoint5d-elements/two5-display.js';
+import '@spearwolf/twopoint5d-elements/two5-stage2d.js';
 import {Color, Scene, Sprite, SpriteMaterial, Texture} from 'three';
 import './style.css';
 import './two5-display.css';

@@ -1,7 +1,7 @@
 {
-  "name": "two5-elements",
+  "name": "twopoint5d-elements",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "root": "packages/two5-elements",
+  "root": "packages/twopoint5d-elements",
   "sourceRoot": "{projectRoot}/src",
   "projectType": "library",
   "targets": {

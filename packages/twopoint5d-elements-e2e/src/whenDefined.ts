@@ -1,4 +1,4 @@
-import {whenDefined} from '@spearwolf/two5-elements';
+import {whenDefined} from '@spearwolf/twopoint5d-elements';
 
 declare global {
   interface Window {

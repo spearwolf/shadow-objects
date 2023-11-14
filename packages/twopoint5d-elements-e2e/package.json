@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@spearwolf/twopoint5d": "^0.3.3",
-    "@spearwolf/two5-elements": "workspace:*",
+    "@spearwolf/twopoint5d-elements": "workspace:*",
     "three": "0.153"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
-import {DisplayElement} from '@spearwolf/two5-elements';
-import '@spearwolf/two5-elements/two5-display.js';
+import {DisplayElement} from '@spearwolf/twopoint5d-elements';
+import '@spearwolf/twopoint5d-elements/two5-display.js';
 import './style.css';
 import './two5-display.css';
 import './whenDefined.js';

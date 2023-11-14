@@ -1,5 +1,5 @@
 import {expect, test} from '@playwright/test';
-import {DisplayElement} from '@spearwolf/two5-elements';
+import {DisplayElement} from '@spearwolf/twopoint5d-elements';
 
 test.describe('two5-display', () => {
   test.beforeEach('goto page', async ({page}) => {
