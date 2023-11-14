@@ -3,8 +3,8 @@ import {StageFirstFrameProps} from '@spearwolf/twopoint5d-elements/events.js';
 import '@spearwolf/twopoint5d-elements/two5-display.js';
 import '@spearwolf/twopoint5d-elements/two5-stage2d.js';
 import {Color, Scene, Sprite, SpriteMaterial, Texture} from 'three';
+import './display.css';
 import './style.css';
-import './two5-display.css';
 
 console.log('hej ho!');
 

@@ -1,7 +1,7 @@
 import {DisplayElement} from '@spearwolf/twopoint5d-elements';
 import '@spearwolf/twopoint5d-elements/two5-display.js';
+import './display.css';
 import './style.css';
-import './two5-display.css';
 import './whenDefined.js';
 
 declare global {

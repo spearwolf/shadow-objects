@@ -1,9 +1,9 @@
 import {expect, test} from '@playwright/test';
 import {DisplayElement} from '@spearwolf/twopoint5d-elements';
 
-test.describe('two5-display', () => {
+test.describe('display', () => {
   test.beforeEach('goto page', async ({page}) => {
-    await page.goto('/pages/two5-display.html');
+    await page.goto('/pages/display.html');
   });
 
   test('has element', async ({page}) => {
@@ -21,12 +21,12 @@ test.describe('two5-display', () => {
     ).toBe(true);
   });
 
-  test('two5-display started', async ({page}) => {
+  test('display started', async ({page}) => {
     expect(
       await page.evaluate(() =>
         window
           .whenDefined<DisplayElement>(document.querySelector('two5-display'))
-          .then((two5display: DisplayElement) => two5display.display.onceAsync('start'))
+          .then((el: DisplayElement) => el.display.onceAsync('start'))
           .then(() => true),
       ),
     ).toBe(true);

@@ -1,8 +1,8 @@
 import {expect, test} from '@playwright/test';
 
-test.describe('two5-stage2d', () => {
+test.describe('stage2d', () => {
   test.beforeEach('goto page', async ({page}) => {
-    await page.goto('/pages/two5-stage2d.html');
+    await page.goto('/pages/stage2d.html');
   });
 
   test('has element', async ({page}) => {
