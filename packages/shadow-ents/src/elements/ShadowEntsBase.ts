@@ -109,7 +109,7 @@ export class ShadowEntsBase extends HTMLElement {
         {
           const nextNs = toNamespace(newValue);
           if (toNamespace(oldValue) !== nextNs) {
-            this.#ns[1](toNamespace(nextNs));
+            this.#ns[1](nextNs);
           }
         }
         break;
@@ -155,7 +155,6 @@ export class ShadowEntsBase extends HTMLElement {
 
   #onRequestContext = (event: RequestContextEvent) => {
     const requester = event.detail?.requester;
-
     if (
       requester != null &&
       requester !== this &&
