@@ -47,13 +47,14 @@
     "bundle": "pnpm exec node bundle.mjs",
     "vitest:run": "pnpm exec vitest tests/src --run",
     "test": "pnpm compile:tests && pnpm vitest:run",
+    "update": "pnpm dlx npm-check --update",
     "clean": "pnpm exec rimraf build types dist lib tests",
     "clean:build": "pnpm exec rimraf build dist",
     "makePackageJson": "pnpm exec node ../../scripts/makePackageJson.mjs"
   },
   "dependencies": {
     "@spearwolf/eventize": "^3.4.1",
-    "@spearwolf/signalize": "^0.8.0",
-    "lit": "3.0.1"
+    "@spearwolf/signalize": "^0.12.0",
+    "lit": "3.1.1"
   }
 }
