@@ -1,6 +1,6 @@
 import {Kernel} from '../../entities/Kernel.js';
 import {Registry} from '../../entities/Registry.js';
-import type {SyncEvent, IComponentChangeType} from '../../types.js';
+import type {IComponentChangeType, SyncEvent} from '../../types.js';
 import {BaseEnv} from './BaseEnv.js';
 
 const hasStructuredClone = typeof structuredClone === 'function' ? true : false;
@@ -20,6 +20,8 @@ export interface LocalEnvParams {
   useStructuredClone?: boolean;
 }
 
+const USE_STRUCTURED_CLONE_BY_DEFAULT = true;
+
 /**
  * An _entity environment_ that runs within the same process as the _view components_
  * (which in most cases should be the main thread of the active browser window/tab)
@@ -30,13 +32,13 @@ export interface LocalEnvParams {
 export class LocalEnv extends BaseEnv {
   readonly kernel: Kernel;
 
-  useStructuredClone = true;
+  useStructuredClone = USE_STRUCTURED_CLONE_BY_DEFAULT;
 
   constructor(options?: LocalEnvParams) {
     super(options?.namespace);
 
     this.kernel = new Kernel(options?.registry);
-    this.useStructuredClone = options?.useStructuredClone ?? true;
+    this.useStructuredClone = options?.useStructuredClone ?? USE_STRUCTURED_CLONE_BY_DEFAULT;
 
     this.on(BaseEnv.OnSync, (event: SyncEvent) => this.kernel.run(event));
   }
