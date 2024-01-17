@@ -121,6 +121,7 @@ export class ShadowEntsBase extends HTMLElement implements IShadowElement {
     console.warn('TODO adoptedCallback', {shadowEntsBase: this});
   }
 
+  // TODO call me!
   onChildRemoved(child: IShadowElement) {
     console.debug('onChildRemoved', {parent: this, child});
   }
