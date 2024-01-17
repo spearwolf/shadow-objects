@@ -141,6 +141,8 @@ export class ShadowEntsBase extends HTMLElement implements IShadowElement {
   #onNamespaceChange = () => {
     console.debug('onNamespaceChange', {uuid: this.uuid, ns: this.ns, shadowEntsBase: this});
 
+    // TODO changing the namespace should re-connect all descendants
+
     if (this.isConnected && this.hasTypedParents()) {
       this.#disconnectFromShadowTree();
       this.#dispatchRequestContextEvent();
