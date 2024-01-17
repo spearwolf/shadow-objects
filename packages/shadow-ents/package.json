@@ -24,15 +24,21 @@
     "./shadow-ents-base.js": {
       "default": "./dist/src/shadow-ents-base.js",
       "types": "./dist/src/shadow-ents-base.d.ts"
+    },
+    "./shadow-local-env.js": {
+      "default": "./dist/src/shadow-local-env.js",
+      "types": "./dist/src/shadow-local-env.d.ts"
     }
   },
   "sideEffects": [
     "build/src/view-components/ComponentContext.js",
     "build/src/shadow-ents-base.js",
+    "build/src/shadow-local-env.js",
     "build/src/bundle.js",
     "build/src/index.js",
     "dist/src/view-components/ComponentContext.js",
     "dist/src/shadow-ents-base.js",
+    "dist/src/shadow-local-env.js",
     "dist/src/bundle.js",
     "dist/src/index.js",
     "dist/bundle.js"
@@ -53,6 +59,7 @@
     "makePackageJson": "pnpm exec node ../../scripts/makePackageJson.mjs"
   },
   "dependencies": {
+    "@lit/context": "^1.1.0",
     "@spearwolf/eventize": "^3.4.1",
     "@spearwolf/signalize": "^0.12.0",
     "lit": "3.1.1"

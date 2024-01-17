@@ -1,3 +1,5 @@
 import {ShadowEntsBase} from './elements/ShadowEntsBase.js';
 
-customElements.define('shadow-ents-base', ShadowEntsBase);
+customElements.whenDefined('shadow-local-env').then(() => {
+  customElements.define('shadow-ents-base', ShadowEntsBase);
+});

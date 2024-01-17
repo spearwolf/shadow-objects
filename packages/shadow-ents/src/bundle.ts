@@ -1,3 +1,4 @@
+import './shadow-local-env.js';
 import './shadow-ents-base.js';
 
 declare global {

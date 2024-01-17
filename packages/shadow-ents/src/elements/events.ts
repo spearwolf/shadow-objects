@@ -4,7 +4,7 @@ import type {ElementContextEventName, RequestContextEventName, ShadowElementType
 export interface RequestContextEvent extends CustomEvent {
   detail: {
     requester: ShadowEntsBase;
-    types?: readonly ShadowElementType[];
+    types: ShadowElementType[];
   };
 }
 

@@ -1,4 +1,7 @@
+export * from './elements/IShadowElement.js';
+export * from './elements/IShadowEnvElement.js';
 export * from './elements/ShadowEntsBase.js';
+export * from './elements/ShadowLocalEnv.js';
 export * from './elements/constants.js';
 export * from './elements/isShadowElement.js';
 export * from './entities/Entity.js';

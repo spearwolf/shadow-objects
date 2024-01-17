@@ -21,4 +21,21 @@ test.describe('bundle', () => {
       ).toBe(true);
     });
   });
+
+  test.describe('shadow-local-env', () => {
+    test('has element', async ({page}) => {
+      await expect(page.getByTestId('localEnv0')).toBeAttached();
+    });
+
+    test('custom element is defined', async ({page}) => {
+      expect(
+        await page.evaluate(() =>
+          customElements
+            .whenDefined('shadow-local-env')
+            .then(() => true)
+            .catch(() => false),
+        ),
+      ).toBe(true);
+    });
+  });
 });
