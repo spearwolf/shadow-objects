@@ -12,4 +12,7 @@ export interface IShadowElement extends HTMLElement {
 
   setParentByType(element: IShadowElement, type: ShadowElementType): void;
   getParentByType(shadowType: ShadowElementType): IShadowElement | undefined;
+
+  onAttachedToParent(parent: IShadowElement, type: ShadowElementType): void;
+  onChildRemoved(child: IShadowElement, type: ShadowElementType): void;
 }
