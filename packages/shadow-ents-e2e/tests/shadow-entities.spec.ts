@@ -3,6 +3,7 @@ import {expect, test} from '@playwright/test';
 test.describe('shadow-entity', () => {
   test.beforeEach('goto page', async ({page}) => {
     await page.goto('/pages/shadow-entities.html');
+    await page.evaluate(() => customElements.whenDefined('shadow-entity'));
   });
 
   test('has element', async ({page}) => {

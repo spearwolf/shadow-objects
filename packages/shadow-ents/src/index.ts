@@ -1,5 +1,5 @@
-export * from './elements/IShadowElement.js';
-export * from './elements/IShadowEnvElement.js';
+export type * from './elements/IShadowElement.js';
+export type * from './elements/IShadowEnvElement.js';
 export * from './elements/ShadowEntity.js';
 export * from './elements/ShadowLocalEnv.js';
 export * from './elements/constants.js';
