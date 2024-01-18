@@ -10,18 +10,18 @@
     <script type="module" src="/src/bundle.ts"></script>
     <main>
       <shadow-local-env data-testid="localEnv0">
-        <shadow-ents-base data-testid="seBase0">
+        <shadow-entity data-testid="seBase0">
           seBase0
-          <shadow-ents-base data-testid="seBase1">
+          <shadow-entity data-testid="seBase1">
             seBase1
-            <shadow-ents-base data-testid="seBase3"> seBase3 </shadow-ents-base>
-          </shadow-ents-base>
-          <shadow-ents-base data-testid="seBase2"> seBase2 </shadow-ents-base>
-        </shadow-ents-base>
+            <shadow-entity data-testid="seBase3"> seBase3 </shadow-entity>
+          </shadow-entity>
+          <shadow-entity data-testid="seBase2"> seBase2 </shadow-entity>
+        </shadow-entity>
       </shadow-local-env>
     </main>
     <script>
-      customElements.whenDefined('shadow-ents-base').then(() => {
+      customElements.whenDefined('shadow-entity').then(() => {
         window.localEnv0 = document.querySelector('[data-testid="localEnv0"]');
         window.seBase0 = document.querySelector('[data-testid="seBase0"]');
         window.seBase1 = document.querySelector('[data-testid="seBase1"]');

@@ -1,5 +1,5 @@
-parents (context) by shadow-type
-================================
+shadow-tree: parent elements (aka context elements) by shadow-type
+===================================================================
 
 ### the following tree is given
 
@@ -29,7 +29,7 @@ CC
 - `B4.getParentByType(A)` &rarr; `A2`
 
 
-### A context tree
+### A context/shadow tree
 
 ```
 A1
@@ -41,7 +41,7 @@ A1
     +-- A4
 ```
 
-### B context tree
+### B context/shadow tree
 
 ```
 B1
@@ -63,7 +63,7 @@ usage scenarios
   - _disconnected_: the browser calls the `disconnectedCallback()` for A2 and all descendents
 - the only thing A2 has to do is detach itself from all parents-by-context
 
-### parents-by-context for A2
+### context: parents-by-type for A2
 
 | type | element |
 |------|---------|
@@ -71,12 +71,12 @@ usage scenarios
 | B    | B1      |
 | CC   | CC      |
 
-### who calls whom
+### who calls what
 
-- the browser calls `disconnectedCallback()` for all descendants:
-  - A2, B2, A3, A4, B3, B4
 - within `disconnectedCallback()` the element must disconnect from all parents-by-type:
   - the `onChildRemoved()` is called for each parent
+- after that, the browser calls `disconnectedCallback()` for all descendants (all in the disconnected subtree):
+  - A2, B2, A3, A4, B3, B4
 
 ### how the tree looks afterwards
 

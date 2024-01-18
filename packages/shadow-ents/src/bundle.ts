@@ -1,11 +1,10 @@
+import './shadow-entity.js';
 import './shadow-local-env.js';
-import './shadow-ents-base.js';
 
 declare global {
   interface Window {
-    SHADOW_ENTS_WAS_HERE: boolean;
+    SHADOW_ENTS_BUNDLE_LOADED: boolean;
   }
 }
 
-// TODO remove me
-window.SHADOW_ENTS_WAS_HERE = true;
+window.SHADOW_ENTS_BUNDLE_LOADED = true;

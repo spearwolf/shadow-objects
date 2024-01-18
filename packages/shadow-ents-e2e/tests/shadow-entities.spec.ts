@@ -1,8 +1,8 @@
 import {expect, test} from '@playwright/test';
 
-test.describe('shadow-ents-base', () => {
+test.describe('shadow-entity', () => {
   test.beforeEach('goto page', async ({page}) => {
-    await page.goto('/pages/shadow-ents-base.html');
+    await page.goto('/pages/shadow-entities.html');
   });
 
   test('has element', async ({page}) => {
@@ -13,7 +13,7 @@ test.describe('shadow-ents-base', () => {
     expect(
       await page.evaluate(() =>
         customElements
-          .whenDefined('shadow-ents-base')
+          .whenDefined('shadow-entity')
           .then(() => true)
           .catch(() => false),
       ),

@@ -12,9 +12,7 @@ import {isShadowElement} from './isShadowElement.js';
 
 type SignalFuncs<T> = [SignalReader<T>, SignalWriter<T>];
 
-// TODO rename to ShadowEntity <shadow-entity>
-
-export class ShadowEntsBase extends HTMLElement implements IShadowElement {
+export class ShadowEntity extends HTMLElement implements IShadowElement {
   static observedAttributes = ['ns'];
 
   static readonly relevantParentTypes: readonly ShadowElementType[] = [
@@ -62,7 +60,7 @@ export class ShadowEntsBase extends HTMLElement implements IShadowElement {
    * Returns the parent element of _shadow-type_.
    *
    * This is the _shadow-context_ element.
-   * Only the types defined in {@link ShadowEntsBase.relevantParentTypes} can have context elements.
+   * Only the types defined in {@link ShadowEntity.relevantParentTypes} can have context elements.
    */
   getParentByType(shadowType: ShadowElementType): IShadowElement | undefined {
     const getParent = this.getParentByType$(shadowType)?.[0];

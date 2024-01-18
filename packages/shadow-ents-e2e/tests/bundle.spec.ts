@@ -5,7 +5,7 @@ test.describe('bundle', () => {
     await page.goto('/pages/bundle.html');
   });
 
-  test.describe('shadow-ents-base', () => {
+  test.describe('shadow-entity', () => {
     test('has element', async ({page}) => {
       await expect(page.getByTestId('seBase0')).toBeAttached();
     });
@@ -14,7 +14,7 @@ test.describe('bundle', () => {
       expect(
         await page.evaluate(() =>
           customElements
-            .whenDefined('shadow-ents-base')
+            .whenDefined('shadow-entity')
             .then(() => true)
             .catch(() => false),
         ),

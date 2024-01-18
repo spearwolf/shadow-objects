@@ -4,7 +4,7 @@
     "src/bundle.js",
     "src/index.js",
     "src/view-components/ComponentContext.js",
-    "src/shadow-ents-base.js",
+    "src/shadow-entity.js",
     "src/shadow-local-env.js"
   ],
   "scripts": null,
