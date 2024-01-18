@@ -21,5 +21,7 @@ export interface IShadowElement extends HTMLElement {
   onAttachedToContext(context: IShadowElement, type: ShadowElementType): void;
   onChildRemovedFromContext(child: IShadowElement, type: ShadowElementType): void;
 
+  // TODO getChildrenOfContext(shadowType) -> IShadowElement[]
+
   hasContextElements(): boolean;
 }

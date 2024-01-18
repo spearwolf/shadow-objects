@@ -27,6 +27,9 @@ shadow-tree: parent elements (aka context elements) by shadow-type
 - `A2.getContextByType(B)` &rarr; `B1`
 - `B3.getContextByType(B)` &rarr; `A4`
 - `B4.getContextByType(A)` &rarr; `A2`
+- `A2.getChildrenOfContext(A)` &rarr; `A3`, `A4`
+- `A2.getChildrenOfContext(B)` &rarr; `B2`
+- `B2.getChildrenOfContext(B)` &rarr; `B3`, `B4`
 
 
 ### A context/shadow tree
