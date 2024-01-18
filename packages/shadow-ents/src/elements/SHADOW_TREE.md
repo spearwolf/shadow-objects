@@ -4,29 +4,29 @@ shadow-tree: parent elements (aka context elements) by shadow-type
 ### the following tree is given
 
 ```
-CC
+<CC>
 |
-+-- A1
++-- <A1>
     |
-    +-- B1
+    +-- <B1>
         |
-        +-- A2
+        +-- <A2>
             |
-            +-- B2
+            +-- <B2>
                 |
-                +-- A3
+                +-- <A3>
                 |
-                +-- A4
+                +-- <A4>
                 |   |
-                |   +-- B3
+                |   +-- <B3>
                 |
-                +-- B4
+                +-- <B4>
 ```
 
-- `A2.getParentByType(A)` &rarr; `A1`
-- `A2.getParentByType(B)` &rarr; `B1`
-- `B3.getParentByType(B)` &rarr; `A4`
-- `B4.getParentByType(A)` &rarr; `A2`
+- `A2.getContextByType(A)` &rarr; `A1`
+- `A2.getContextByType(B)` &rarr; `B1`
+- `B3.getContextByType(B)` &rarr; `A4`
+- `B4.getContextByType(A)` &rarr; `A2`
 
 
 ### A context/shadow tree
@@ -74,7 +74,7 @@ usage scenarios
 ### who calls what
 
 - within `disconnectedCallback()` the element must disconnect from all parents-by-type:
-  - the `onChildRemoved()` is called for each parent
+  - the `onChildRemovedFromContext()` is called for each parent/context element
 - after that, the browser calls `disconnectedCallback()` for all descendants (all in the disconnected subtree):
   - A2, B2, A3, A4, B3, B4
 

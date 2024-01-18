@@ -1,5 +1,5 @@
 export enum ShadowElementType {
-  ShadowEntsBase = 1,
+  ShadowEntity = 1,
   ShadowEnv,
   ShadowLocalEnv,
 }

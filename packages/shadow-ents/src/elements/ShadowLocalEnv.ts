@@ -5,19 +5,19 @@ import {ShadowEntity} from './ShadowEntity.js';
 import {ShadowElementType} from './constants.js';
 
 export class ShadowLocalEnv extends ShadowEntity implements IShadowEnvElement {
-  static override readonly relevantParentTypes: readonly ShadowElementType[] = [];
-
-  #cc?: ComponentContext;
+  override readonly contextTypes: ShadowElementType[] = [];
 
   override readonly shadowTypes = new Set([ShadowElementType.ShadowLocalEnv, ShadowElementType.ShadowEnv]);
 
-  get componentContext(): ComponentContext {
-    return this.#cc!;
-  }
+  #cc?: ComponentContext;
 
   constructor() {
     super();
     this.ns = GlobalNS;
+  }
+
+  get componentContext(): ComponentContext {
+    return this.#cc!;
   }
 
   override connectedCallback(): void {

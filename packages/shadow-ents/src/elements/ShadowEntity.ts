@@ -1,4 +1,4 @@
-import {connect, createEffect, createSignal, value, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
+import {connect, createEffect, createSignal, value, type SignalFuncs, type SignalReader} from '@spearwolf/signalize';
 import {GlobalNS} from '../constants.js';
 import {generateUUID} from '../generateUUID.js';
 import {toNamespace} from '../toNamespace.js';
@@ -10,27 +10,20 @@ import {isShadowElement} from './isShadowElement.js';
 
 // TODO sync dom children order to shadow tree order
 
-type SignalFuncs<T> = [SignalReader<T>, SignalWriter<T>];
-
 export class ShadowEntity extends HTMLElement implements IShadowElement {
   static observedAttributes = ['ns'];
 
-  static readonly relevantParentTypes: readonly ShadowElementType[] = [
-    ShadowElementType.ShadowEntsBase,
-    ShadowElementType.ShadowEnv,
-  ];
+  readonly contextTypes: ShadowElementType[] = [ShadowElementType.ShadowEntity, ShadowElementType.ShadowEnv];
 
   readonly isShadowElement = true;
 
   readonly uuid = generateUUID();
 
-  readonly shadowTypes: Set<ShadowElementType> = new Set([ShadowElementType.ShadowEntsBase]);
+  readonly shadowTypes: Set<ShadowElementType> = new Set([ShadowElementType.ShadowEntity]);
 
   readonly #ns: SignalFuncs<NamespaceType> = createSignal(GlobalNS);
 
   #contextElements = new Map<ShadowElementType, SignalFuncs<IShadowElement | undefined>>();
-
-  // readonly #childQueue = eventize({});
 
   constructor() {
     super();
@@ -52,48 +45,45 @@ export class ShadowEntity extends HTMLElement implements IShadowElement {
     this.#ns[1](toNamespace(value));
   }
 
-  #getRelevantParentTypes(): readonly ShadowElementType[] {
-    return Object.getPrototypeOf(this).constructor.relevantParentTypes as readonly ShadowElementType[];
-  }
-
   /**
    * Returns the parent element of _shadow-type_.
    *
    * This is the _shadow-context_ element.
-   * Only the types defined in {@link ShadowEntity.relevantParentTypes} can have context elements.
+   *
+   * Only the types defined in {@link ShadowEntity.contextTypes} can have context elements.
    */
-  getParentByType(shadowType: ShadowElementType): IShadowElement | undefined {
-    const getParent = this.getParentByType$(shadowType)?.[0];
+  getContextByType(shadowType: ShadowElementType): IShadowElement | undefined {
+    const getParent = this.getContextByType$(shadowType)?.[0];
     return getParent ? value(getParent) : undefined;
   }
 
-  setParentByType(element: IShadowElement, type: ShadowElementType) {
-    this.getParentByType$(type)?.[1](element ?? undefined);
+  setContextByType(element: IShadowElement, type: ShadowElementType) {
+    this.getContextByType$(type)?.[1](element ?? undefined);
   }
 
-  getParentByType$(shadowType: ShadowElementType): SignalFuncs<IShadowElement | undefined> {
-    if (!this.#contextElements.has(shadowType) && this.#getRelevantParentTypes().includes(shadowType)) {
-      const parent$$ = createSignal<IShadowElement | undefined>();
-      this.#contextElements.set(shadowType, parent$$);
+  getContextByType$(shadowType: ShadowElementType): SignalFuncs<IShadowElement | undefined> {
+    if (!this.#contextElements.has(shadowType) && this.contextTypes.includes(shadowType)) {
+      const context$$ = createSignal<IShadowElement | undefined>();
+      this.#contextElements.set(shadowType, context$$);
 
-      const [updateParent] = createEffect(
+      const [runContextCallbacks] = createEffect(
         () => {
-          const parent = value(parent$$[0]);
-          if (parent != null) {
-            this.onAttachedToParent(parent, shadowType);
+          const ctx = value(context$$[0]);
+          if (ctx != null) {
+            this.onAttachedToContext(ctx, shadowType);
             return () => {
-              parent.onChildRemoved(this, shadowType);
+              ctx.onChildRemovedFromContext(this, shadowType);
             };
           }
         },
-        {dependencies: [parent$$[0]]},
+        {dependencies: [context$$[0]]},
       );
 
       // TODO destroy the effect?
 
-      updateParent();
+      runContextCallbacks();
 
-      return parent$$;
+      return context$$;
     }
 
     return this.#contextElements.get(shadowType);
@@ -117,9 +107,9 @@ export class ShadowEntity extends HTMLElement implements IShadowElement {
   }
 
   connectedCallback() {
-    console.debug('connectedCallback', {shadowEntsBase: this});
+    console.debug('connectedCallback', {shadowEntity: this});
 
-    this.#registerListener();
+    this.#registerEventListeners();
 
     // we want to create our context here:
     // find a parent element for each relevant shadow type
@@ -127,34 +117,34 @@ export class ShadowEntity extends HTMLElement implements IShadowElement {
   }
 
   disconnectedCallback() {
-    console.debug('disconnectedCallback', {shadowEntsBase: this});
+    console.debug('disconnectedCallback', {shadowEntity: this});
 
     // this is the opposite of context finding:
     // we take this element out of the shadow tree
     this.#disconnectFromShadowTree();
 
-    this.#unregisterListener();
+    this.#unregisterEventListeners();
   }
 
   adoptedCallback() {
     // TODO disconnect and reconnect to shadow tree
     // https://developer.mozilla.org/en-US/docs/Web/API/Node/ownerDocument
-    console.warn('TODO adoptedCallback', {shadowEntsBase: this});
+    console.warn('TODO adoptedCallback', {shadowEntity: this});
   }
 
-  onChildRemoved(child: IShadowElement, type: ShadowElementType) {
-    console.debug('onChildRemoved', {parent: this, type, child});
+  onChildRemovedFromContext(child: IShadowElement, type: ShadowElementType) {
+    console.debug('onChildRemovedFromContext', {parent: this, type, child});
   }
 
-  onAttachedToParent(parent: IShadowElement, type: ShadowElementType) {
-    console.debug('onAttachedToParent', {me: this, type, parent});
+  onAttachedToContext(parent: IShadowElement, type: ShadowElementType) {
+    console.debug('onAttachedToContext', {me: this, type, parent});
   }
 
-  #registerListener(): void {
+  #registerEventListeners(): void {
     this.addEventListener(RequestContextEventName, this.#onRequestContext, {capture: false, passive: false});
   }
 
-  #unregisterListener(): void {
+  #unregisterEventListeners(): void {
     this.removeEventListener(RequestContextEventName, this.#onRequestContext, {capture: false});
   }
 
@@ -188,7 +178,7 @@ export class ShadowEntity extends HTMLElement implements IShadowElement {
 
       for (const type of shadowTypes) {
         wantedTypes.splice(wantedTypes.indexOf(type), 1);
-        requester.setParentByType(this, type);
+        requester.setContextByType(this, type);
       }
 
       if (wantedTypes.length === 0) {
@@ -198,20 +188,19 @@ export class ShadowEntity extends HTMLElement implements IShadowElement {
   };
 
   #dispatchRequestContextEvent(): void {
-    const types = this.#getRelevantParentTypes();
-    if (types.length > 0) {
+    if (this.contextTypes.length > 0) {
       this.dispatchEvent(
         new CustomEvent(RequestContextEventName, {
           bubbles: true,
-          detail: {requester: this, types: [...types]},
+          detail: {requester: this, types: [...this.contextTypes]},
         }),
       );
     }
   }
 
   #disconnectFromShadowTree() {
-    for (const [, setParent] of this.#contextElements.values()) {
-      setParent(undefined);
+    for (const [, setContext] of this.#contextElements.values()) {
+      setContext(undefined);
     }
   }
 }
