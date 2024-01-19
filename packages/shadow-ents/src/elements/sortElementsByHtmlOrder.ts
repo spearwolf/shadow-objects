@@ -1,5 +1,8 @@
 // from https://github.com/spearwolf/twopoint5d/blob/main/packages/twopoint5d-elements/src/utils/sortElementsByHtmlOrder.ts
 
+// TODO respect shadow dom?
+// see https://pm.dartus.fr/blog/a-complete-guide-on-shadow-dom-and-event-propagation/
+
 class ElementItem {
   container: HTMLElement;
   children: HTMLElement[];

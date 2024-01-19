@@ -231,9 +231,11 @@ export class ShadowEntity extends HTMLElement {
 
   #dispatchRequestContextEvent(): void {
     if (this.contextTypes.length > 0) {
+      // https://pm.dartus.fr/blog/a-complete-guide-on-shadow-dom-and-event-propagation/
       this.dispatchEvent(
         new CustomEvent(RequestContextEventName, {
           bubbles: true,
+          composed: true, // TODO save the event.target as hostElement (we need the hostElement to sort the children elements)
           detail: {requester: this, types: [...this.contextTypes]},
         }),
       );
