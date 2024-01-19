@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>shadow-dom-playground</title>
+  </head>
+  <body>
+    <script type="module" src="/src/shadow-dom-playground.ts"></script>
+    <main>
+      <shadow-local-env data-testid="localEnv0">
+        <shadow-entity data-testid="seBase0">
+          seBase0
+          <shadow-dom-playground data-testid="play0" entity-id="seBase4">
+            <shadow-entity data-testid="seBase1">
+              seBase1
+              <shadow-entity data-testid="seBase3">seBase3</shadow-entity>
+            </shadow-entity>
+          </shadow-dom-playground>
+          <shadow-entity data-testid="seBase2">seBase2</shadow-entity>
+          <shadow-dom-playground mode="closed" data-testid="play1" entity-id="seBase5">
+            <shadow-entity data-testid="seBase6">seBase6</shadow-entity>
+          </shadow-dom-playground>
+        </shadow-entity>
+      </shadow-local-env>
+    </main>
+    <script>
+      Promise.all([customElements.whenDefined('shadow-entity'), customElements.whenDefined('shadow-dom-playground')]).then(() => {
+        window.localEnv0 = document.querySelector('[data-testid="localEnv0"]');
+        console.log('localEnv0', {uuid: localEnv0.uuid, localEnv0});
+
+        for (const i of [0, 1, 2, 3, 4, 5, 6]) {
+          const el = document.querySelector(`[data-testid="seBase${i}"]`);
+          window[`seBase${i}`] = el;
+          console.log(`seBase${i}`, {uuid: seBase0.uuid, [`seBase${i}`]: el});
+        }
+      });
+    </script>
+  </body>
+</html>

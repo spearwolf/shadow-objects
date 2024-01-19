@@ -6,7 +6,6 @@ import type {NamespaceType} from '../types.js';
 import {RequestContextEventName, ShadowElementType} from './constants.js';
 import type {RequestContextEvent} from './events.js';
 import {isShadowElement} from './isShadowElement.js';
-import {sortElementsByHtmlOrder} from './sortElementsByHtmlOrder.js';
 
 export class ShadowEntity extends HTMLElement {
   static observedAttributes = ['ns'];
@@ -18,6 +17,8 @@ export class ShadowEntity extends HTMLElement {
   readonly uuid = generateUUID();
 
   readonly shadowTypes: Set<ShadowElementType> = new Set([ShadowElementType.ShadowEntity]);
+
+  stopContextRequestPropagation = false;
 
   readonly #ns: SignalFuncs<NamespaceType> = createSignal(GlobalNS);
 
@@ -156,7 +157,6 @@ export class ShadowEntity extends HTMLElement {
 
     if (!children.includes(child)) {
       children.push(child);
-      this.#contextChildren.set(type, sortElementsByHtmlOrder(this, children) as ShadowEntity[]);
     }
   }
 
@@ -223,7 +223,7 @@ export class ShadowEntity extends HTMLElement {
         requester.setContextByType(this, type);
       }
 
-      if (wantedTypes.length === 0) {
+      if (this.stopContextRequestPropagation || wantedTypes.length === 0) {
         event.stopPropagation();
       }
     }
@@ -235,7 +235,7 @@ export class ShadowEntity extends HTMLElement {
       this.dispatchEvent(
         new CustomEvent(RequestContextEventName, {
           bubbles: true,
-          composed: true, // TODO save the event.target as hostElement (we need the hostElement to sort the children elements)
+          composed: true,
           detail: {requester: this, types: [...this.contextTypes]},
         }),
       );

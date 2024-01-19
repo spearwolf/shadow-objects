@@ -14,6 +14,7 @@ export class ShadowLocalEnv extends ShadowEntity implements IShadowEnvElement {
   constructor() {
     super();
     this.ns = GlobalNS;
+    this.stopContextRequestPropagation = true;
   }
 
   get componentContext(): ComponentContext {
