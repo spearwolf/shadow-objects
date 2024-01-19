@@ -1,4 +1,3 @@
-export type * from './elements/IShadowElement.js';
 export type * from './elements/IShadowEnvElement.js';
 export * from './elements/ShadowEntity.js';
 export * from './elements/ShadowLocalEnv.js';
