@@ -21,11 +21,11 @@ export class ShadowLocalEnv extends ShadowEntity implements IShadowEnvElement {
   }
 
   override connectedCallback(): void {
-    super.connectedCallback();
-
     if (this.#cc == null) {
       this.#createComponentContext();
     }
+
+    super.connectedCallback();
   }
 
   #createComponentContext() {
