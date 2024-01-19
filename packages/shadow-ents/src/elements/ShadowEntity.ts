@@ -1,14 +1,18 @@
 import {connect, createEffect, createSignal, value, type SignalFuncs, type SignalReader} from '@spearwolf/signalize';
+import {signal, signalReader} from '@spearwolf/signalize/decorators';
 import {GlobalNS} from '../constants.js';
 import {generateUUID} from '../generateUUID.js';
 import {toNamespace} from '../toNamespace.js';
 import type {NamespaceType} from '../types.js';
+import type {ComponentContext} from '../view-components/ComponentContext.js';
+import {ViewComponent} from '../view-components/ViewComponent.js';
+import type {IShadowEnvElement} from './IShadowEnvElement.js';
 import {RequestContextEventName, ShadowElementType} from './constants.js';
 import type {RequestContextEvent} from './events.js';
 import {isShadowElement} from './isShadowElement.js';
 
 export class ShadowEntity extends HTMLElement {
-  static observedAttributes = ['ns'];
+  static observedAttributes = ['ns', 'token'];
 
   readonly contextTypes: ShadowElementType[] = [ShadowElementType.ShadowEntity, ShadowElementType.ShadowEnv];
 
@@ -25,9 +29,36 @@ export class ShadowEntity extends HTMLElement {
   #contextElements = new Map<ShadowElementType, SignalFuncs<ShadowEntity | undefined>>();
   #contextChildren = new Map<ShadowElementType, ShadowEntity[]>();
 
+  @signal({readAsValue: true}) accessor componentContext: ComponentContext | undefined;
+  @signalReader() accessor componentContext$: SignalReader<ComponentContext | undefined>;
+
+  @signal({readAsValue: true}) accessor viewComponent: ViewComponent | undefined;
+  @signalReader() accessor viewComponent$: SignalReader<ViewComponent | undefined>;
+
+  @signal({readAsValue: true}) accessor token: string | undefined;
+  @signalReader() accessor token$: SignalReader<string | undefined>;
+
   constructor() {
     super();
+
     connect(this.ns$, this.#changeNamespace);
+
+    createEffect(() => {
+      const {token, componentContext, viewComponent} = this;
+      if (viewComponent != null) {
+        this.viewComponent.disconnectFromContext();
+        this.viewComponent = undefined;
+      }
+      if (componentContext != null && token != null) {
+        this.viewComponent = new ViewComponent(token, {uuid: this.uuid, context: componentContext});
+        console.log('created viewComponent', this.viewComponent);
+      }
+    }, [this.token$, this.componentContext$]);
+
+    this.getContextByType$$(ShadowElementType.ShadowEnv)![0]((env) => {
+      this.componentContext = (env as unknown as IShadowEnvElement).getComponentContext();
+    });
+
     // TODO add context-types as observedAttributes + reactive property
     // TODO add shadow-types as observedAttributes + reactive property
   }
@@ -114,6 +145,9 @@ export class ShadowEntity extends HTMLElement {
             this.#ns[1](nextNs);
           }
         }
+        break;
+      case 'token':
+        this.token = newValue || undefined;
         break;
     }
   }

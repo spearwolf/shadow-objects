@@ -17,7 +17,7 @@ export class ShadowLocalEnv extends ShadowEntity implements IShadowEnvElement {
     this.stopContextRequestPropagation = true;
   }
 
-  get componentContext(): ComponentContext {
+  getComponentContext(): ComponentContext {
     return this.#cc!;
   }
 
