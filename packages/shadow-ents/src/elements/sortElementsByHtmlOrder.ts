@@ -2,6 +2,7 @@
 
 // TODO respect shadow dom?
 // see https://pm.dartus.fr/blog/a-complete-guide-on-shadow-dom-and-event-propagation/
+// see https://medium.com/torq-ai/shadow-dom-events-59a90068e612
 
 class ElementItem {
   container: HTMLElement;
