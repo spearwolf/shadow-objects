@@ -1,6 +1,6 @@
-import {connect, createEffect, createSignal, value, type SignalFuncs, type SignalReader} from '@spearwolf/signalize';
-import {signal, signalReader} from '@spearwolf/signalize/decorators';
-import {GlobalNS} from '../constants.js';
+import {connect, createEffect, createSignal, touch, value, type SignalFuncs, type SignalReader} from '@spearwolf/signalize';
+import {effect, signal, signalReader} from '@spearwolf/signalize/decorators';
+import {GlobalNS, VoidToken} from '../constants.js';
 import {generateUUID} from '../generateUUID.js';
 import {toNamespace} from '../toNamespace.js';
 import type {NamespaceType} from '../types.js';
@@ -14,53 +14,99 @@ import {isShadowElement} from './isShadowElement.js';
 export class ShadowEntity extends HTMLElement {
   static observedAttributes = ['ns', 'token'];
 
-  readonly contextTypes: ShadowElementType[] = [ShadowElementType.ShadowEntity, ShadowElementType.ShadowEnv];
-
   readonly isShadowElement = true;
-
   readonly uuid = generateUUID();
 
   readonly shadowTypes: Set<ShadowElementType> = new Set([ShadowElementType.ShadowEntity]);
+  readonly contextTypes: ShadowElementType[] = [ShadowElementType.ShadowEntity, ShadowElementType.ShadowEnv];
 
   stopContextRequestPropagation = false;
+
+  @signal() accessor token: string | undefined;
+  @signalReader() accessor token$: SignalReader<string | undefined>;
+
+  @signal() accessor componentContext: ComponentContext | undefined;
+
+  @signal() accessor viewComponent: ViewComponent | undefined;
+  @signalReader() accessor viewComponent$: SignalReader<ViewComponent | undefined>;
+
+  @signal() accessor parentViewComponent: ViewComponent | undefined;
+  @signalReader() accessor parentViewComponent$: SignalReader<ViewComponent | undefined>;
 
   readonly #ns: SignalFuncs<NamespaceType> = createSignal(GlobalNS);
 
   #contextElements = new Map<ShadowElementType, SignalFuncs<ShadowEntity | undefined>>();
   #contextChildren = new Map<ShadowElementType, ShadowEntity[]>();
 
-  @signal({readAsValue: true}) accessor componentContext: ComponentContext | undefined;
-  @signalReader() accessor componentContext$: SignalReader<ComponentContext | undefined>;
-
-  @signal({readAsValue: true}) accessor viewComponent: ViewComponent | undefined;
-  @signalReader() accessor viewComponent$: SignalReader<ViewComponent | undefined>;
-
-  @signal({readAsValue: true}) accessor token: string | undefined;
-  @signalReader() accessor token$: SignalReader<string | undefined>;
-
   constructor() {
     super();
 
     connect(this.ns$, this.#changeNamespace);
 
-    createEffect(() => {
-      const {token, componentContext, viewComponent} = this;
-      if (viewComponent != null) {
-        this.viewComponent.disconnectFromContext();
-        this.viewComponent = undefined;
-      }
-      if (componentContext != null && token != null) {
-        this.viewComponent = new ViewComponent(token, {uuid: this.uuid, context: componentContext});
-        console.log('created viewComponent', this.viewComponent);
-      }
-    }, [this.token$, this.componentContext$]);
+    this.#syncTokenAttribute();
 
     this.getContextByType$$(ShadowElementType.ShadowEnv)![0]((env) => {
-      this.componentContext = (env as unknown as IShadowEnvElement).getComponentContext();
+      this.componentContext = (env && (env as unknown as IShadowEnvElement).getComponentContext()) || undefined;
     });
+
+    this.parentEntity$((parent) => this.#onParentEntityChanged(parent));
+
+    this.#createViewComponent();
+    this.#updateViewComponentParent();
 
     // TODO add context-types as observedAttributes + reactive property
     // TODO add shadow-types as observedAttributes + reactive property
+  }
+
+  #onParentEntityChanged(parent: ShadowEntity | undefined) {
+    if (parent) {
+      console.log('parentEntity changed to', parent.uuid, {shadowEntity: this.uuid});
+      const con = connect(parent.viewComponent$, this.parentViewComponent$);
+      return () => {
+        con.destroy();
+      };
+    } else if (this.parentViewComponent) {
+      console.log('parentEntity cleared', {shadowEntity: this.uuid});
+      this.parentViewComponent = undefined;
+    }
+  }
+
+  @effect({deps: ['token', 'componentContext']}) #createViewComponent() {
+    const {componentContext: context} = this;
+    if (context) {
+      const token = this.token ?? VoidToken;
+      if (this.viewComponent?.token === token && this.viewComponent?.context === context) return;
+      const vc = new ViewComponent(token, {uuid: this.uuid, context, parent: this.parentViewComponent});
+      this.viewComponent = vc;
+      console.log('created viewComponent', token, vc.uuid, {viewComponent: vc, parent: this.parentViewComponent?.uuid});
+      return () => {
+        vc.disconnectFromContext();
+        this.viewComponent = undefined;
+        console.log('disconnected viewComponent', token, vc.uuid, vc);
+      };
+    }
+  }
+
+  @effect({signal: 'token'}) #syncTokenAttribute() {
+    if (this.token != null) {
+      this.setAttribute('token', this.token);
+    } else {
+      this.removeAttribute('token');
+    }
+  }
+
+  @effect({signal: 'parentViewComponent'}) #updateViewComponentParent() {
+    const vc = this.viewComponent;
+    const parent = this.parentViewComponent;
+    if (vc && vc.parent !== parent) {
+      console.debug('updated viewComponent.parent', {
+        viewComponent: vc.uuid,
+        parentViewComponent: parent?.uuid,
+        beforeParentViewComponent: vc.parent?.uuid,
+        shadowEntity: this.uuid,
+      });
+      vc.parent = parent;
+    }
   }
 
   /**
@@ -76,6 +122,15 @@ export class ShadowEntity extends HTMLElement {
 
   set ns(value: NamespaceType | null | undefined) {
     this.#ns[1](toNamespace(value));
+  }
+
+  get parentEntity(): ShadowEntity | undefined {
+    const {parentEntity$} = this;
+    return parentEntity$ ? value(parentEntity$) : undefined;
+  }
+
+  get parentEntity$(): SignalReader<ShadowEntity | undefined> {
+    return this.getContextByType$$(ShadowElementType.ShadowEntity)?.[0];
   }
 
   /**
@@ -146,6 +201,7 @@ export class ShadowEntity extends HTMLElement {
           }
         }
         break;
+
       case 'token':
         this.token = newValue || undefined;
         break;
@@ -158,9 +214,19 @@ export class ShadowEntity extends HTMLElement {
     // we want to create our context here:
     // find a parent element for each relevant shadow type
     this.#dispatchRequestContextEvent();
+
+    if (!this.viewComponent) {
+      touch(this.token$);
+    }
   }
 
   disconnectedCallback() {
+    if (this.viewComponent) {
+      this.parentViewComponent = undefined;
+      this.viewComponent.disconnectFromContext();
+      this.viewComponent = undefined;
+    }
+
     // this is the opposite of context finding:
     // we take this element out of the shadow tree
     this.#disconnectFromShadowTree();

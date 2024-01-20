@@ -99,14 +99,14 @@ export class ViewComponent {
 
   removeFromParent() {
     if (this.#parent) {
-      this.#context.removeFromParent(this.uuid, this.#parent);
+      this.#context?.removeFromParent(this.uuid, this.#parent);
       this.#parent = undefined;
     }
   }
 
   addChild(child: ViewComponent) {
     if (child.#context !== this.#context) {
-      throw new ViewComponentError('cannot add child from different context');
+      throw new ViewComponentError('cannot add a child from another context');
     }
     if (!child.isChildOf(this)) {
       child.removeFromParent();
@@ -125,7 +125,9 @@ export class ViewComponent {
 
   disconnectFromContext() {
     this.removeFromParent();
-    this.#context.removeComponent(this);
-    this.#context = undefined;
+    if (this.#context != null) {
+      this.#context.removeComponent(this);
+      this.#context = undefined;
+    }
   }
 }
