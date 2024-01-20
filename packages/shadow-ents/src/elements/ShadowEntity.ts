@@ -1,4 +1,4 @@
-import {connect, createEffect, createSignal, touch, value, type SignalFuncs, type SignalReader} from '@spearwolf/signalize';
+import {connect, createEffect, createSignal, value, type SignalFuncs, type SignalReader} from '@spearwolf/signalize';
 import {effect, signal, signalReader} from '@spearwolf/signalize/decorators';
 import {GlobalNS, VoidToken} from '../constants.js';
 import {generateUUID} from '../generateUUID.js';
@@ -22,9 +22,8 @@ export class ShadowEntity extends HTMLElement {
 
   stopContextRequestPropagation = false;
 
+  @signal() accessor connected: boolean = false;
   @signal() accessor token: string | undefined;
-  @signalReader() accessor token$: SignalReader<string | undefined>;
-
   @signal() accessor componentContext: ComponentContext | undefined;
 
   @signal() accessor viewComponent: ViewComponent | undefined;
@@ -56,34 +55,39 @@ export class ShadowEntity extends HTMLElement {
 
     // TODO add context-types as observedAttributes + reactive property
     // TODO add shadow-types as observedAttributes + reactive property
+
+    // TODO remove debug output ---
+    this.viewComponent$((vc) => {
+      console.log(`viewComponent#${this.uuid}`, vc ? 'created' : 'destroyed', {viewComponent: vc});
+    });
+    // --- end of debug
   }
 
   #onParentEntityChanged(parent: ShadowEntity | undefined) {
     if (parent) {
-      console.log('parentEntity changed to', parent.uuid, {shadowEntity: this.uuid});
       const con = connect(parent.viewComponent$, this.parentViewComponent$);
       return () => {
         con.destroy();
       };
-    } else if (this.parentViewComponent) {
-      console.log('parentEntity cleared', {shadowEntity: this.uuid});
+    } else {
       this.parentViewComponent = undefined;
     }
   }
 
-  @effect({deps: ['token', 'componentContext']}) #createViewComponent() {
+  @effect({deps: ['token', 'componentContext', 'connected']}) #createViewComponent() {
     const {componentContext: context} = this;
-    if (context) {
+    if (this.connected && context) {
       const token = this.token ?? VoidToken;
       if (this.viewComponent?.token === token && this.viewComponent?.context === context) return;
       const vc = new ViewComponent(token, {uuid: this.uuid, context, parent: this.parentViewComponent});
       this.viewComponent = vc;
-      console.log('created viewComponent', token, vc.uuid, {viewComponent: vc, parent: this.parentViewComponent?.uuid});
       return () => {
         vc.disconnectFromContext();
         this.viewComponent = undefined;
-        console.log('disconnected viewComponent', token, vc.uuid, vc);
       };
+    } else if (this.viewComponent) {
+      this.viewComponent.disconnectFromContext();
+      this.viewComponent = undefined;
     }
   }
 
@@ -99,12 +103,6 @@ export class ShadowEntity extends HTMLElement {
     const vc = this.viewComponent;
     const parent = this.parentViewComponent;
     if (vc && vc.parent !== parent) {
-      console.debug('updated viewComponent.parent', {
-        viewComponent: vc.uuid,
-        parentViewComponent: parent?.uuid,
-        beforeParentViewComponent: vc.parent?.uuid,
-        shadowEntity: this.uuid,
-      });
       vc.parent = parent;
     }
   }
@@ -125,8 +123,7 @@ export class ShadowEntity extends HTMLElement {
   }
 
   get parentEntity(): ShadowEntity | undefined {
-    const {parentEntity$} = this;
-    return parentEntity$ ? value(parentEntity$) : undefined;
+    return this.parentEntity$();
   }
 
   get parentEntity$(): SignalReader<ShadowEntity | undefined> {
@@ -209,29 +206,17 @@ export class ShadowEntity extends HTMLElement {
   }
 
   connectedCallback() {
-    this.#registerEventListeners();
+    this.connected = true;
 
-    // we want to create our context here:
-    // find a parent element for each relevant shadow type
+    this.#registerRequestContextListener();
     this.#dispatchRequestContextEvent();
-
-    if (!this.viewComponent) {
-      touch(this.token$);
-    }
   }
 
   disconnectedCallback() {
-    if (this.viewComponent) {
-      this.parentViewComponent = undefined;
-      this.viewComponent.disconnectFromContext();
-      this.viewComponent = undefined;
-    }
+    this.connected = false;
 
-    // this is the opposite of context finding:
-    // we take this element out of the shadow tree
     this.#disconnectFromShadowTree();
-
-    this.#unregisterEventListeners();
+    this.#unregisterRequestContextListener();
   }
 
   adoptedCallback() {
@@ -287,22 +272,28 @@ export class ShadowEntity extends HTMLElement {
     return undefined;
   }
 
-  #registerEventListeners(): void {
+  #registerRequestContextListener(): void {
     this.addEventListener(RequestContextEventName, this.#onRequestContext, {capture: false, passive: false});
   }
 
-  #unregisterEventListeners(): void {
+  #unregisterRequestContextListener(): void {
     this.removeEventListener(RequestContextEventName, this.#onRequestContext, {capture: false});
   }
 
   #changeNamespace = () => {
     // TODO a namespace change should trigger a re-connection of all descendants
+    if (this.isConnected) {
+      this.#reconnectToShadowTree();
+    }
+  };
 
-    if (this.isConnected && this.hasContextElements()) {
+  #reconnectToShadowTree() {
+    // TODO reconnect to shadow tree
+    if (this.hasContextElements()) {
       this.#disconnectFromShadowTree();
       this.#dispatchRequestContextEvent();
     }
-  };
+  }
 
   #onRequestContext = (event: RequestContextEvent) => {
     const requester = event.detail?.requester;
