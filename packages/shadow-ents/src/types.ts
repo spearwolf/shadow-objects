@@ -44,7 +44,7 @@ export interface SyncEvent {
   changeTrail: IComponentChangeType[];
 }
 
-export interface EntityConstructor {
+export interface ShadowObjectConstructor {
   new (...args: any[]): {};
 }
 

@@ -2,29 +2,29 @@ import {Eventize} from '@spearwolf/eventize';
 import {batch} from '@spearwolf/signalize';
 import {ComponentChangeType} from '../constants.js';
 import type {IComponentChangeType, SyncEvent} from '../types.js';
+import {Entity} from './Entity.js';
 import {Registry} from './Registry.js';
-import {Uplink} from './Uplink.js';
 import {OnCreate, OnDestroy, OnInit} from './events.js';
 
 /**
- * The entity kernel manages the lifecycle of all uplinks and entity instances.
+ * The entity kernel manages the lifecycle of all entities and shadow-objects.
  *
- * An uplink is created for each view component. The uplinks act as containers for the entity instances.
+ * An entity is created for each view-component. The entities act as containers for the shadow-objects.
  *
- * Which entities are created is determined by the token.
+ * Which shadow-objects are created is determined by the token.
  */
 export class Kernel extends Eventize {
   registry: Registry;
 
-  #uplinks: Map<string, Uplink> = new Map();
+  #entities: Map<string, Entity> = new Map();
 
   constructor(registry?: Registry) {
     super();
     this.registry = Registry.get(registry);
   }
 
-  getUplink(uuid: string): Uplink {
-    const entity = this.#uplinks.get(uuid);
+  getEntity(uuid: string): Entity {
+    const entity = this.#entities.get(uuid);
     if (!entity) {
       throw new Error(`entity with uuid "${uuid}" not found!`);
     }
@@ -42,11 +42,11 @@ export class Kernel extends Eventize {
   parse(entry: IComponentChangeType) {
     switch (entry.type) {
       case ComponentChangeType.CreateEntities:
-        this.createUplink(entry.uuid, entry.token, entry.parentUuid, entry.order, entry.properties);
+        this.createEntity(entry.uuid, entry.token, entry.parentUuid, entry.order, entry.properties);
         break;
 
       case ComponentChangeType.DestroyEntities:
-        this.destroyUplink(entry.uuid);
+        this.destroyEntity(entry.uuid);
         break;
 
       case ComponentChangeType.SetParent:
@@ -63,57 +63,57 @@ export class Kernel extends Eventize {
     }
   }
 
-  createUplink(uuid: string, token: string, parentUuid?: string, order = 0, properties?: [string, unknown][]) {
-    const uplink = new Uplink(this, uuid);
+  createEntity(uuid: string, token: string, parentUuid?: string, order = 0, properties?: [string, unknown][]) {
+    const entity = new Entity(this, uuid);
 
-    uplink.order = order;
+    entity.order = order;
 
-    this.#uplinks.set(uuid, uplink);
-
-    this.createEntityInstances(token, uplink);
+    this.#entities.set(uuid, entity);
 
     if (parentUuid) {
-      uplink.parentUuid = parentUuid;
+      entity.parentUuid = parentUuid;
     }
 
     if (properties) {
-      uplink.setProperties(properties);
+      entity.setProperties(properties);
     }
 
-    uplink.emit(OnInit, uplink, this);
+    this.createShadowObjects(token, entity);
+
+    entity.emit(OnInit, entity, this);
   }
 
-  destroyUplink(uuid: string) {
-    const uplink = this.getUplink(uuid);
-    uplink.emit(OnDestroy, this);
-    this.#uplinks.delete(uuid);
+  destroyEntity(uuid: string) {
+    const e = this.getEntity(uuid);
+    e.emit(OnDestroy, this);
+    this.#entities.delete(uuid);
   }
 
   setParent(uuid: string, parentUuid?: string, order = 0) {
-    const uplink = this.getUplink(uuid);
-    uplink.removeFromParent();
-    uplink.order = order;
-    uplink.parentUuid = parentUuid;
+    const e = this.getEntity(uuid);
+    e.removeFromParent();
+    e.order = order;
+    e.parentUuid = parentUuid;
   }
 
   updateOrder(uuid: string, order: number) {
-    this.getUplink(uuid).order = order;
+    this.getEntity(uuid).order = order;
   }
 
   changeProperties(uuid: string, properties: [string, unknown][]) {
-    this.getUplink(uuid).setProperties(properties);
+    this.getEntity(uuid).setProperties(properties);
   }
 
-  createEntityInstances(token: string, uplink?: Uplink) {
+  createShadowObjects(token: string, entity?: Entity) {
     return this.registry.findConstructors(token)?.map((constructor) => {
-      const instance = new constructor();
-      if (uplink) {
-        uplink.on(instance);
-        if (typeof (instance as OnCreate)[OnCreate] === 'function') {
-          (instance as OnCreate)[OnCreate](uplink);
+      const shadowObject = new constructor();
+      if (entity) {
+        entity.on(shadowObject);
+        if (typeof (shadowObject as OnCreate)[OnCreate] === 'function') {
+          (shadowObject as OnCreate)[OnCreate](entity);
         }
       }
-      return instance;
+      return shadowObject;
     });
   }
 }

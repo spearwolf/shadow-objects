@@ -1,16 +1,16 @@
 import {isEventized} from '@spearwolf/eventize';
 import {afterEach, describe, expect, it} from 'vitest';
-import {Entity} from './Entity.js';
 import {Kernel} from './Kernel.js';
 import {Registry} from './Registry.js';
+import {ShadowObject} from './ShadowObject.js';
 
-describe('@Entity decorator', () => {
+describe('@ShadowObject decorator', () => {
   afterEach(() => {
     Registry.get().clear();
   });
 
   it('should register a class constructor by token', () => {
-    @Entity({token: 'test'})
+    @ShadowObject({token: 'test'})
     class Foo {}
 
     expect(Foo).toBeDefined();
@@ -18,11 +18,11 @@ describe('@Entity decorator', () => {
     expect(Registry.get().findConstructors('test')).toContain(Foo);
   });
 
-  it('should create an entity component instance', () => {
+  it('should create a shadow-object instance', () => {
     const registry = new Registry();
     const kernel = new Kernel(registry);
 
-    @Entity({registry, token: 'test'})
+    @ShadowObject({registry, token: 'test'})
     class Foo {
       foo: number;
       bar = 666;
@@ -32,13 +32,13 @@ describe('@Entity decorator', () => {
       }
     }
 
-    const entity = kernel.createEntityInstances('test')?.at(-1) as Foo;
+    const so = kernel.createShadowObjects('test')?.at(-1) as Foo;
 
-    expect(entity).toBeDefined();
-    expect(entity).toBeInstanceOf(Foo);
-    expect(isEventized(entity!)).toBeTruthy();
+    expect(so).toBeDefined();
+    expect(so).toBeInstanceOf(Foo);
+    expect(isEventized(so!)).toBeTruthy();
 
-    expect(entity.foo).toBe(23);
-    expect(entity.bar).toBe(666);
+    expect(so.foo).toBe(23);
+    expect(so.bar).toBe(666);
   });
 });

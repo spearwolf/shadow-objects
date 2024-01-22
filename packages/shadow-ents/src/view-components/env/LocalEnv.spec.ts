@@ -3,7 +3,7 @@ import {afterAll, describe, expect, it, vi} from 'vitest';
 import {ComponentChangeType} from '../../constants.js';
 import {Entity} from '../../entities/Entity.js';
 import {Registry} from '../../entities/Registry.js';
-import {Uplink} from '../../entities/Uplink.js';
+import {ShadowObject} from '../../entities/ShadowObject.js';
 import {OnCreate, OnInit, OnRemoveFromParent} from '../../entities/events.js';
 import type {SyncEvent} from '../../types.js';
 import {ComponentContext} from '../ComponentContext.js';
@@ -62,7 +62,7 @@ describe('LocalEnv', () => {
     ]);
   });
 
-  it('should create uplinks and entities', async () => {
+  it('should create entities and shadow-objects', async () => {
     const localEnv = new LocalEnv().start();
 
     const a = new ViewComponent('a');
@@ -73,8 +73,8 @@ describe('LocalEnv', () => {
 
     await localEnv.sync();
 
-    const aa = localEnv.kernel.getUplink(a.uuid);
-    const bb = localEnv.kernel.getUplink(b.uuid);
+    const aa = localEnv.kernel.getEntity(a.uuid);
+    const bb = localEnv.kernel.getEntity(b.uuid);
 
     expect(aa).toBeDefined();
     expect(aa.getProperty('foo')).toBe('bar');
@@ -88,9 +88,9 @@ describe('LocalEnv', () => {
 
     const onRemoveFromParent = vi.fn();
 
-    @Entity({token: 'c'})
-    class EntityCcc implements OnRemoveFromParent {
-      [OnRemoveFromParent](_uplink: Uplink) {
+    @ShadowObject({token: 'c'})
+    class Ccc implements OnRemoveFromParent {
+      [OnRemoveFromParent](_entity: Entity) {
         onRemoveFromParent(this);
       }
     }
@@ -99,7 +99,7 @@ describe('LocalEnv', () => {
 
     await localEnv.sync();
 
-    const cc = localEnv.kernel.getUplink(c.uuid);
+    const cc = localEnv.kernel.getEntity(c.uuid);
 
     expect(aa.children).toHaveLength(2);
     expect(aa.children[0]).toBe(cc);
@@ -107,7 +107,7 @@ describe('LocalEnv', () => {
 
     expect(onRemoveFromParent).not.toHaveBeenCalled();
 
-    const removeFromParent = waitForNext(cc, OnRemoveFromParent).then(([entity]) => (entity as Uplink).uuid);
+    const removeFromParent = waitForNext(cc, OnRemoveFromParent).then(([entity]) => (entity as Entity).uuid);
 
     c.removeFromParent();
 
@@ -117,24 +117,24 @@ describe('LocalEnv', () => {
     expect(cc.parent).toBeUndefined();
 
     expect(onRemoveFromParent).toHaveBeenCalled();
-    expect(onRemoveFromParent.mock.calls[0][0]).toBeInstanceOf(EntityCcc);
+    expect(onRemoveFromParent.mock.calls[0][0]).toBeInstanceOf(Ccc);
 
     await expect(removeFromParent).resolves.toBe(cc.uuid);
   });
 
-  it('should call create and init events on entities', async () => {
+  it('should call create and init events on shadow-objects', async () => {
     const localEnv = new LocalEnv().start();
 
     const onCreateMock = vi.fn();
     const onInitMock = vi.fn();
 
-    @Entity({token: 'a'})
+    @ShadowObject({token: 'a'})
     class Aaa implements OnCreate, OnInit {
-      [OnCreate](uplink: Uplink) {
-        onCreateMock(uplink, this);
+      [OnCreate](entity: Entity) {
+        onCreateMock(entity, this);
       }
-      [OnInit](uplink: Uplink) {
-        onInitMock(uplink, this);
+      [OnInit](entity: Entity) {
+        onInitMock(entity, this);
       }
     }
 
@@ -143,7 +143,7 @@ describe('LocalEnv', () => {
 
     await localEnv.sync();
 
-    const aa = localEnv.kernel.getUplink(a.uuid);
+    const aa = localEnv.kernel.getEntity(a.uuid);
 
     expect(aa).toBeDefined();
     expect(aa.getProperty('foo')).toBe('bar');

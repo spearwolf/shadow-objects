@@ -1,12 +1,12 @@
 import {appendTo} from '../array-utils.js';
-import type {EntityConstructor} from '../types.js';
+import type {ShadowObjectConstructor} from '../types.js';
 
 interface RegistryEntry {
   token: string;
-  constructors: EntityConstructor[];
+  constructors: ShadowObjectConstructor[];
 }
 
-/** The entity registry */
+/** The shadow-object class registry */
 export class Registry {
   /** return the specified registry or, if not defined, the default registry */
   static get(registry?: Registry) {
@@ -15,7 +15,7 @@ export class Registry {
 
   readonly #registry = new Map<string, RegistryEntry>();
 
-  registerEntity(token: string, constructor: EntityConstructor) {
+  define(token: string, constructor: ShadowObjectConstructor) {
     if (this.#registry.has(token)) {
       appendTo(this.#registry.get(token)!.constructors, constructor);
     } else {
@@ -23,7 +23,7 @@ export class Registry {
     }
   }
 
-  findConstructors(token: string): EntityConstructor[] | undefined {
+  findConstructors(token: string): ShadowObjectConstructor[] | undefined {
     return this.#registry.get(token)?.constructors;
   }
 
