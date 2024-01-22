@@ -1,5 +1,13 @@
 import {Eventize, Priority} from '@spearwolf/eventize';
-import {batch, createSignal, destroySignal, value, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
+import {
+  batch,
+  createSignal,
+  destroySignal,
+  value,
+  type SignalFuncs,
+  type SignalReader,
+  type SignalWriter,
+} from '@spearwolf/signalize';
 import {Kernel} from './Kernel.js';
 import {OnAddChild, OnAddToParent, OnDestroy, OnRemoveChild, OnRemoveFromParent} from './events.js';
 
@@ -8,13 +16,13 @@ import {OnAddChild, OnAddToParent, OnDestroy, OnRemoveChild, OnRemoveFromParent}
  *
  * A signal is created for each view-component property.
  *
- * Shadow-objects can receive and use the property signals via the entity.
+ * Shadow-objects can use the signal properties via the entity.
  */
 export class Entity extends Eventize {
   #kernel: Kernel;
   #uuid: string;
 
-  #signals = new Map<string, [get: SignalReader<any>, set: SignalWriter<any>]>();
+  #signals = new Map<string, SignalFuncs<any>>();
 
   #parentUuid?: string;
   #parent?: Entity;

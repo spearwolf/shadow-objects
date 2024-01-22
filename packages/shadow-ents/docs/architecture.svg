@@ -26,7 +26,7 @@
                 <rect x="154.37" y="93.763" width="94.564" height="42.582" style="fill:rgb(255,244,210);stroke:rgb(51,49,59);stroke-width:1px;stroke-linejoin:miter;stroke-miterlimit:1.25;stroke-dasharray:2,2,0,0,0,0;"/>
             </g>
             <g transform="matrix(1,0,0,1,-4.97708,-76.3152)">
-                <text x="193.374px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:8px;fill:rgb(51,49,59);">component</text>
+                <text x="193.374px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:8px;fill:rgb(51,49,59);">Component</text>
                 <g transform="matrix(14,0,0,14,244.374,242.485)">
                 </g>
                 <text x="185.574px" y="242.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:14px;fill:rgb(51,49,59);">Context</text>
@@ -40,30 +40,55 @@
                 <rect x="154.37" y="93.763" width="94.564" height="42.582" style="fill:rgb(255,244,210);stroke:rgb(51,49,59);stroke-width:1px;stroke-linejoin:miter;stroke-miterlimit:1.25;stroke-dasharray:2,2,0,0,0,0;"/>
             </g>
             <g transform="matrix(1,0,0,1,-4.97708,-76.3152)">
-                <text x="195.774px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:8px;fill:rgb(51,49,59);">entities</text>
+                <text x="200.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:8px;fill:rgb(51,49,59);">entity</text>
                 <g transform="matrix(14,0,0,14,240.174,242.485)">
                 </g>
                 <text x="189.774px" y="242.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:14px;fill:rgb(51,49,59);">Kernel</text>
             </g>
         </g>
+        <g transform="matrix(1,0,0,1,26.4034,79.6545)">
+            <g transform="matrix(9,0,0,9,570.886,119.097)">
+            </g>
+            <text x="538.486px" y="119.097px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:9px;fill:rgb(143,117,40);">Entity</text>
+        </g>
+        <g transform="matrix(1,0,0,1,-92.694,179.568)">
+            <g transform="matrix(9,0,0,9,570.886,119.097)">
+            </g>
+            <text x="538.486px" y="119.097px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:9px;fill:rgb(143,117,40);">Entity</text>
+        </g>
+        <g transform="matrix(1,0,0,1,27.6023,179.568)">
+            <g transform="matrix(9,0,0,9,570.886,119.097)">
+            </g>
+            <text x="538.486px" y="119.097px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:9px;fill:rgb(143,117,40);">Entity</text>
+        </g>
+        <g transform="matrix(1,0,0,1,145.9,179.968)">
+            <g transform="matrix(9,0,0,9,570.886,119.097)">
+            </g>
+            <text x="538.486px" y="119.097px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:9px;fill:rgb(143,117,40);">Entity</text>
+        </g>
+        <g transform="matrix(1,0,0,1,-94.6922,260.698)">
+            <g transform="matrix(9,0,0,9,570.886,119.097)">
+            </g>
+            <text x="538.486px" y="119.097px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:9px;fill:rgb(143,117,40);">Entity</text>
+        </g>
         <g id="component" transform="matrix(1,0,0,1,0.821978,0.853458)">
             <g transform="matrix(1,0,0,1,-0.882622,-1.17683)">
                 <path d="M259.332,204.926C259.332,203.309 258.019,201.996 256.402,201.996L163.677,201.996C162.06,201.996 160.747,203.309 160.747,204.926L160.747,257.666C160.747,259.283 162.06,260.596 163.677,260.596L256.402,260.596C258.019,260.596 259.332,259.283 259.332,257.666L259.332,204.926Z" style="fill:rgb(255,232,164);"/>
             </g>
-            <g transform="matrix(1,0,0,1,-10.9771,2.15903)">
-                <g transform="matrix(12,0,0,12,261.774,226.485)">
+            <g transform="matrix(1,0,0,1,-15.7729,3.75765)">
+                <g transform="matrix(9,0,0,9,268.974,226.485)">
                 </g>
-                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:12px;fill:rgb(51,49,59);">&lt;component&gt;</text>
+                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:9px;fill:rgb(51,49,59);">&lt;view-component&gt;</text>
             </g>
         </g>
         <g id="component1" serif:id="component" transform="matrix(0.673837,0,0,0.610218,470.625,88.1852)">
             <g transform="matrix(1,0,0,1,-0.882622,-1.17683)">
                 <path d="M259.332,204.926C259.332,203.309 258.143,201.996 256.679,201.996L163.4,201.996C161.936,201.996 160.747,203.309 160.747,204.926L160.747,257.666C160.747,259.283 161.936,260.596 163.4,260.596L256.679,260.596C258.143,260.596 259.332,259.283 259.332,257.666L259.332,204.926Z" style="fill:rgb(255,232,164);"/>
             </g>
-            <g transform="matrix(1,0,0,1,-7.28388,7.87532)">
-                <g transform="matrix(19.6651,0,0,19.6651,253.368,226.485)">
+            <g transform="matrix(1,0,0,1,-20.3322,5.91051)">
+                <g transform="matrix(13.1101,0,0,13.1101,276.966,226.485)">
                 </g>
-                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:19.665px;fill:rgb(51,49,59);">Entity</text>
+                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:13.11px;fill:rgb(51,49,59);">ShadowObject</text>
             </g>
         </g>
         <g transform="matrix(0.381802,0,0,0.594434,387.951,192.15)">
@@ -80,60 +105,65 @@
             <g transform="matrix(1,0,0,1,-0.882622,-1.17683)">
                 <path d="M259.332,204.926C259.332,203.309 258.143,201.996 256.679,201.996L163.4,201.996C161.936,201.996 160.747,203.309 160.747,204.926L160.747,257.666C160.747,259.283 161.936,260.596 163.4,260.596L256.679,260.596C258.143,260.596 259.332,259.283 259.332,257.666L259.332,204.926Z" style="fill:rgb(255,232,164);"/>
             </g>
-            <g transform="matrix(1,0,0,1,-9.50993,6.23656)">
-                <g transform="matrix(19.6651,0,0,19.6651,253.368,226.485)">
+            <g transform="matrix(1,0,0,1,-21.9651,4.92669)">
+                <g transform="matrix(13.1101,0,0,13.1101,276.966,226.485)">
                 </g>
-                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:19.665px;fill:rgb(51,49,59);">Entity</text>
+                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:13.11px;fill:rgb(51,49,59);">ShadowObject</text>
             </g>
         </g>
-        <g id="component5" serif:id="component" transform="matrix(0.405879,0,0,0.367558,623.94,234.022)">
+        <g id="component5" serif:id="component" transform="matrix(0.405879,0,0,0.367558,621.542,226.828)">
+            <g transform="matrix(1,0,0,1,5.02538,16.2204)">
+                <path d="M259.332,204.926C259.332,203.309 258.143,201.996 256.679,201.996L163.4,201.996C161.936,201.996 160.747,203.309 160.747,204.926L160.747,257.666C160.747,259.283 161.936,260.596 163.4,260.596L256.679,260.596C258.143,260.596 259.332,259.283 259.332,257.666L259.332,204.926Z" style="fill:rgb(255,232,164);"/>
+            </g>
+            <g transform="matrix(1,0,0,1,-4.5866,19.2845)">
+                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:21.765px;fill:rgb(51,49,59);">Shadow</text>
+                <g transform="matrix(21.7652,0,0,21.7652,260.929,248.25)">
+                </g>
+                <text x="182.574px" y="248.25px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:21.765px;fill:rgb(51,49,59);">Object</text>
+            </g>
+            <g transform="matrix(1,0,0,1,-600.274,36.4265)">
+                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:21.765px;fill:rgb(51,49,59);">Shadow</text>
+                <g transform="matrix(21.7652,0,0,21.7652,260.929,248.25)">
+                </g>
+                <text x="182.574px" y="248.25px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:21.765px;fill:rgb(51,49,59);">Object</text>
+            </g>
+            <g transform="matrix(1,0,0,1,-488.851,35.5658)">
+                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:21.765px;fill:rgb(51,49,59);">Shadow</text>
+                <g transform="matrix(21.7652,0,0,21.7652,260.929,248.25)">
+                </g>
+                <text x="182.574px" y="248.25px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:21.765px;fill:rgb(51,49,59);">Object</text>
+            </g>
+        </g>
+        <g id="component6" serif:id="component" transform="matrix(0.405879,0,0,0.367558,624.129,257.968)">
             <g transform="matrix(1,0,0,1,-0.882622,-1.17683)">
                 <path d="M259.332,204.926C259.332,203.309 258.143,201.996 256.679,201.996L163.4,201.996C161.936,201.996 160.747,203.309 160.747,204.926L160.747,257.666C160.747,259.283 161.936,260.596 163.4,260.596L256.679,260.596C258.143,260.596 259.332,259.283 259.332,257.666L259.332,204.926Z" style="fill:rgb(255,232,164);"/>
             </g>
-            <g transform="matrix(1,0,0,1,-9.50993,6.23656)">
-                <g transform="matrix(19.6651,0,0,19.6651,253.368,226.485)">
+            <g transform="matrix(1,0,0,1,-11.4793,-2.46203)">
+                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:21.765px;fill:rgb(51,49,59);">Shadow</text>
+                <g transform="matrix(21.7652,0,0,21.7652,260.929,248.25)">
                 </g>
-                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:19.665px;fill:rgb(51,49,59);">Entity</text>
-            </g>
-            <g transform="matrix(1,0,0,1,-600.274,34.2519)">
-                <g transform="matrix(19.6651,0,0,19.6651,253.368,226.485)">
-                </g>
-                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:19.665px;fill:rgb(51,49,59);">Entity</text>
-            </g>
-            <g transform="matrix(1,0,0,1,-490.82,36.6532)">
-                <g transform="matrix(19.6651,0,0,19.6651,253.368,226.485)">
-                </g>
-                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:19.665px;fill:rgb(51,49,59);">Entity</text>
-            </g>
-        </g>
-        <g id="component6" serif:id="component" transform="matrix(0.405879,0,0,0.367558,624.529,259.566)">
-            <g transform="matrix(1,0,0,1,-0.882622,-1.17683)">
-                <path d="M259.332,204.926C259.332,203.309 258.143,201.996 256.679,201.996L163.4,201.996C161.936,201.996 160.747,203.309 160.747,204.926L160.747,257.666C160.747,259.283 161.936,260.596 163.4,260.596L256.679,260.596C258.143,260.596 259.332,259.283 259.332,257.666L259.332,204.926Z" style="fill:rgb(255,232,164);"/>
-            </g>
-            <g transform="matrix(1,0,0,1,-9.50993,6.23656)">
-                <g transform="matrix(19.6651,0,0,19.6651,253.368,226.485)">
-                </g>
-                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:19.665px;fill:rgb(51,49,59);">Entity</text>
+                <text x="182.574px" y="248.25px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:21.765px;fill:rgb(51,49,59);">Object</text>
             </g>
         </g>
         <g id="component7" serif:id="component" transform="matrix(0.405879,0,0,0.367558,670.063,234.316)">
             <g transform="matrix(1,0,0,1,-0.882622,-1.17683)">
                 <path d="M259.332,204.926C259.332,203.309 258.143,201.996 256.679,201.996L163.4,201.996C161.936,201.996 160.747,203.309 160.747,204.926L160.747,257.666C160.747,259.283 161.936,260.596 163.4,260.596L256.679,260.596C258.143,260.596 259.332,259.283 259.332,257.666L259.332,204.926Z" style="fill:rgb(255,232,164);"/>
             </g>
-            <g transform="matrix(1,0,0,1,-9.50993,6.23656)">
-                <g transform="matrix(19.6651,0,0,19.6651,253.368,226.485)">
+            <g transform="matrix(1,0,0,1,-12.4639,-2.46203)">
+                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:21.765px;fill:rgb(51,49,59);">Shadow</text>
+                <g transform="matrix(21.7652,0,0,21.7652,260.929,248.25)">
                 </g>
-                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:19.665px;fill:rgb(51,49,59);">Entity</text>
+                <text x="182.574px" y="248.25px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:21.765px;fill:rgb(51,49,59);">Object</text>
             </g>
         </g>
         <g id="component8" serif:id="component" transform="matrix(1,0,0,1,0.821978,0.853458)">
             <g transform="matrix(1,0,0,1,-0.882622,97.971)">
                 <path d="M259.332,204.926C259.332,203.309 258.019,201.996 256.402,201.996L163.677,201.996C162.06,201.996 160.747,203.309 160.747,204.926L160.747,257.666C160.747,259.283 162.06,260.596 163.677,260.596L256.402,260.596C258.019,260.596 259.332,259.283 259.332,257.666L259.332,204.926Z" style="fill:rgb(255,232,164);"/>
             </g>
-            <g transform="matrix(1,0,0,1,-11.9241,101.201)">
-                <g transform="matrix(12,0,0,12,261.774,226.485)">
+            <g transform="matrix(1,0,0,1,-15.9206,101.6)">
+                <g transform="matrix(9,0,0,9,268.974,226.485)">
                 </g>
-                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:12px;fill:rgb(51,49,59);">&lt;component&gt;</text>
+                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:9px;fill:rgb(51,49,59);">&lt;view-component&gt;</text>
             </g>
         </g>
         <g transform="matrix(1,0,0,1,401.424,99.2182)">
@@ -165,30 +195,30 @@
             <g transform="matrix(1,0,0,1,120.037,97.6768)">
                 <path d="M259.332,204.926C259.332,203.309 258.019,201.996 256.402,201.996L163.677,201.996C162.06,201.996 160.747,203.309 160.747,204.926L160.747,257.666C160.747,259.283 162.06,260.596 163.677,260.596L256.402,260.596C258.019,260.596 259.332,259.283 259.332,257.666L259.332,204.926Z" style="fill:rgb(255,232,164);"/>
             </g>
-            <g transform="matrix(1,0,0,1,108.579,101.701)">
-                <g transform="matrix(12,0,0,12,261.774,226.485)">
+            <g transform="matrix(1,0,0,1,104.982,100.901)">
+                <g transform="matrix(9,0,0,9,268.974,226.485)">
                 </g>
-                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:12px;fill:rgb(51,49,59);">&lt;component&gt;</text>
+                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:9px;fill:rgb(51,49,59);">&lt;view-component&gt;</text>
             </g>
         </g>
         <g id="component15" serif:id="component" transform="matrix(1,0,0,1,0.821978,0.853458)">
             <g transform="matrix(1,0,0,1,-119.448,198.296)">
                 <path d="M259.332,204.926C259.332,203.309 258.019,201.996 256.402,201.996L163.677,201.996C162.06,201.996 160.747,203.309 160.747,204.926L160.747,257.666C160.747,259.283 162.06,260.596 163.677,260.596L256.402,260.596C258.019,260.596 259.332,259.283 259.332,257.666L259.332,204.926Z" style="fill:rgb(255,232,164);"/>
             </g>
-            <g transform="matrix(1,0,0,1,-131.927,202.901)">
-                <g transform="matrix(12,0,0,12,261.774,226.485)">
+            <g transform="matrix(1,0,0,1,-135.524,201.303)">
+                <g transform="matrix(9,0,0,9,268.974,226.485)">
                 </g>
-                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:12px;fill:rgb(51,49,59);">&lt;component&gt;</text>
+                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:9px;fill:rgb(51,49,59);">&lt;view-component&gt;</text>
             </g>
         </g>
         <g id="component16" serif:id="component" transform="matrix(1,0,0,1,0.821978,0.853458)">
             <g transform="matrix(1,0,0,1,-119.742,97.971)">
                 <path d="M259.332,204.926C259.332,203.309 258.019,201.996 256.402,201.996L163.677,201.996C162.06,201.996 160.747,203.309 160.747,204.926L160.747,257.666C160.747,259.283 162.06,260.596 163.677,260.596L256.402,260.596C258.019,260.596 259.332,259.283 259.332,257.666L259.332,204.926Z" style="fill:rgb(255,232,164);"/>
             </g>
-            <g transform="matrix(1,0,0,1,-132.48,101.201)">
-                <g transform="matrix(12,0,0,12,261.774,226.485)">
+            <g transform="matrix(1,0,0,1,-136.077,101.6)">
+                <g transform="matrix(9,0,0,9,268.974,226.485)">
                 </g>
-                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:12px;fill:rgb(51,49,59);">&lt;component&gt;</text>
+                <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:9px;fill:rgb(51,49,59);">&lt;view-component&gt;</text>
             </g>
         </g>
         <g id="connect-point" transform="matrix(1,0,0,1,1.11619,-5.6191)">
