@@ -6,11 +6,11 @@ import {Registry} from '../../entities/Registry.js';
 import {ShadowObject} from '../../entities/ShadowObject.js';
 import {
   onCreate,
-  onEntityInitialized,
-  onRemovedFromParent,
+  onEntityCreate,
+  onRemoveFromParent,
   type OnCreate,
-  type OnEntityInitialized,
-  type OnRemovedFromParent,
+  type OnEntityCreate,
+  type OnRemoveFromParent,
 } from '../../entities/events.js';
 import type {SyncEvent} from '../../types.js';
 import {ComponentContext} from '../ComponentContext.js';
@@ -96,8 +96,8 @@ describe('LocalEnv', () => {
     const removeFromParentMock = vi.fn();
 
     @ShadowObject({token: 'c'})
-    class Ccc implements OnRemovedFromParent {
-      [onRemovedFromParent](_entity: Entity) {
+    class Ccc implements OnRemoveFromParent {
+      [onRemoveFromParent](_entity: Entity) {
         removeFromParentMock(this);
       }
     }
@@ -114,7 +114,7 @@ describe('LocalEnv', () => {
 
     expect(removeFromParentMock).not.toHaveBeenCalled();
 
-    const resultUuid = waitForNext(cc, onRemovedFromParent).then(([entity]) => (entity as Entity).uuid);
+    const resultUuid = waitForNext(cc, onRemoveFromParent).then(([entity]) => (entity as Entity).uuid);
 
     c.removeFromParent();
 
@@ -132,16 +132,16 @@ describe('LocalEnv', () => {
   it('should call create and init events on shadow-objects', async () => {
     const localEnv = new LocalEnv().start();
 
-    const onCreateShadowObjectMock = vi.fn();
-    const onEntityInitMock = vi.fn();
+    const onCreateMock = vi.fn();
+    const onEntityCreateMock = vi.fn();
 
     @ShadowObject({token: 'a'})
-    class Aaa implements OnCreate, OnEntityInitialized {
+    class Aaa implements OnCreate, OnEntityCreate {
       [onCreate](entity: Entity) {
-        onCreateShadowObjectMock(entity, this);
+        onCreateMock(entity, this);
       }
-      [onEntityInitialized](entity: Entity) {
-        onEntityInitMock(entity, this);
+      [onEntityCreate](entity: Entity) {
+        onEntityCreateMock(entity, this);
       }
     }
 
@@ -155,14 +155,12 @@ describe('LocalEnv', () => {
     expect(aa).toBeDefined();
     expect(aa.getProperty('foo')).toBe('bar');
 
-    expect(Aaa).toBeDefined();
+    expect(onCreateMock).toBeCalled();
+    expect(onCreateMock.mock.calls[0][0]).toBe(aa);
+    expect(onCreateMock.mock.calls[0][1]).toBeInstanceOf(Aaa);
 
-    expect(onCreateShadowObjectMock).toBeCalled();
-    expect(onCreateShadowObjectMock.mock.calls[0][0]).toBe(aa);
-    expect(onCreateShadowObjectMock.mock.calls[0][1]).toBeInstanceOf(Aaa);
-
-    expect(onEntityInitMock).toBeCalled();
-    expect(onEntityInitMock.mock.calls[0][0]).toBe(aa);
-    expect(onEntityInitMock.mock.calls[0][1]).toBeInstanceOf(Aaa);
+    expect(onEntityCreateMock).toBeCalled();
+    expect(onEntityCreateMock.mock.calls[0][0]).toBe(aa);
+    expect(onEntityCreateMock.mock.calls[0][1]).toBeInstanceOf(Aaa);
   });
 });

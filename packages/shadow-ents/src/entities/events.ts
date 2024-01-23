@@ -4,12 +4,15 @@ import type {Entity} from './Entity.js';
 
 export const onCreate = 'onCreate';
 
+// TODO test if OnCreate is called when an entity token is changed
+
 export interface OnCreate {
   /**
    * Is called when the shadow-object instance has been created and attached to the entity.
-   * This happens after the entity instantiation and before the `OnInit` event is called.
    *
-   * This is the only event callback that only the shadow-object gets.
+   * This can be the case when the entity is being initialized, or when the already initialized entity has received a token change.
+   *
+   * Only the shadow-object gets this event.
    * The entity does not get this event.
    */
   [onCreate](entity: Entity): void;
@@ -17,29 +20,31 @@ export interface OnCreate {
 
 // ----------------------------------------------------------------------------
 
-export const onEntityInitialized = 'onEntityInitialized';
+export const onEntityCreate = 'onEntityCreate';
 
-export interface OnEntityInitialized {
+export interface OnEntityCreate {
   /**
    * Is called when the entity has been created and all the shadow-objects have been attached to it.
    *
-   * The `OnInit` is triggered on the entity, therefore all shadow-objects created with the entity receive this event.
+   * The event is triggered on the entity, therefore all shadow-objects created with the entity receive this event.
    *
-   * When the `OnInit` event is triggered, all shadow-objects have been initialized and have already received their individual `OnCreate` event.
+   * When the event is triggered, all shadow-objects have been initialized and have already received their individual `OnCreate` event.
    */
-  [onEntityInitialized](entity: Entity): void;
+  [onEntityCreate](entity: Entity, token: string): void;
 }
 
 // ----------------------------------------------------------------------------
 
-export const onEntityTokenChanged = 'onEntityTokenChanged';
+export const onEntityTokenChange = 'onEntityTokenChange';
 
-export interface OnEntityTokenChanged {
+// TODO test if OnEntityTokenChange is called when an entity token is changed
+
+export interface OnEntityTokenChange {
   /**
    * Is called when the token has changed after an entity has been initialized.
    * The shadow-objects for the entity are updated before the call.
    */
-  [onEntityTokenChanged](entity: Entity): void;
+  [onEntityTokenChange](entity: Entity, token: string, previousToken: string): void;
 }
 
 // ----------------------------------------------------------------------------
@@ -47,7 +52,8 @@ export interface OnEntityTokenChanged {
 export const onDestroy = 'onDestroy';
 
 // TODO distinguish between OnDestroy(shadow-object) and OnDestroyOtherShadowObject ?
-// TODO OnDestroy should be called before entity is removed from kernel
+// TODO test if OnDestroy is called when an entity is destroyed
+// TODO test if OnDestroy is called when a shadow-object is removed from an entity
 
 export interface OnDestroy {
   /**
@@ -58,11 +64,11 @@ export interface OnDestroy {
 
 // ----------------------------------------------------------------------------
 
-export const onAddedToParent = 'onAddToParent';
+export const onAddToParent = 'onAddToParent';
 
 // TODO call OnAddToParent when an entity is added to a parent as child
 
-export interface OnAddedToParent {
+export interface OnAddToParent {
   /**
    * Is called when the entity is added to a parent entity as child.
    *
@@ -70,15 +76,15 @@ export interface OnAddedToParent {
    *
    * The `OnAddToParent` event comes _after_ the `OnAddChild` event.
    */
-  [onAddedToParent](child: Entity, parent: Entity): void;
+  [onAddToParent](child: Entity, parent: Entity): void;
 }
 
 // ----------------------------------------------------------------------------
 
-export const onRemovedFromParent = 'onRemovedFromParent';
+export const onRemoveFromParent = 'onRemoveFromParent';
 
-export interface OnRemovedFromParent {
-  [onRemovedFromParent](child: Entity, parent: Entity): void;
+export interface OnRemoveFromParent {
+  [onRemoveFromParent](child: Entity, parent: Entity): void;
 }
 
 // ----------------------------------------------------------------------------

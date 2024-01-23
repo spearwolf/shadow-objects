@@ -9,9 +9,9 @@ import {
   type SignalWriter,
 } from '@spearwolf/signalize';
 import {Kernel} from './Kernel.js';
-import {onAddChild, onAddedToParent, onDestroy, onEntityInitialized, onRemoveChild, onRemovedFromParent} from './events.js';
+import {onAddChild, onAddToParent, onDestroy, onEntityCreate, onRemoveChild, onRemoveFromParent} from './events.js';
 
-// TODO add token to Entity
+// TODO add token to Entity ?
 
 /**
  * An entity has a parent and children, replicating the hierarchy of view-components.
@@ -96,7 +96,7 @@ export class Entity extends Eventize {
     this.#kernel = kernel;
     this.#uuid = uuid;
     this.once(onDestroy, Priority.Min, this);
-    this.retain(onEntityInitialized);
+    this.retain(onEntityCreate);
   }
 
   onDestroy() {
@@ -119,7 +119,7 @@ export class Entity extends Eventize {
       this.#childrenUuids.add(child.uuid);
       this.#children.push(child);
       this.emit(onAddChild, this, child);
-      child.emit(onAddedToParent, child, this);
+      child.emit(onAddToParent, child, this);
       return;
     }
 
@@ -133,7 +133,7 @@ export class Entity extends Eventize {
     this.resortChildren();
 
     this.emit(onAddChild, this, child);
-    child.emit(onAddedToParent, child, this);
+    child.emit(onAddToParent, child, this);
   }
 
   resortChildren() {
@@ -154,11 +154,11 @@ export class Entity extends Eventize {
       this.#parent.removeChild(this);
       this.#parent = undefined;
       this.#parentUuid = undefined;
-      this.emit(onRemovedFromParent, this, prevParent);
+      this.emit(onRemoveFromParent, this, prevParent);
     }
   }
 
-  getSignal<T = unknown>(key: string): [SignalReader<T>, SignalWriter<T>] {
+  getSignal<T = unknown>(key: string): SignalFuncs<T> {
     if (!this.#signals.has(key)) {
       const signal = createSignal<T>();
       this.#signals.set(key, signal);

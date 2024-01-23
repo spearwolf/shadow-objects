@@ -1,10 +1,10 @@
-import {Eventize} from '@spearwolf/eventize';
+import {Eventize, eventize} from '@spearwolf/eventize';
 import {batch} from '@spearwolf/signalize';
 import {ComponentChangeType} from '../constants.js';
 import type {IComponentChangeType, ShadowObjectConstructor, SyncEvent} from '../types.js';
 import {Entity} from './Entity.js';
 import {Registry} from './Registry.js';
-import {onCreate, onDestroy, onEntityInitialized, type OnCreate, type OnDestroy} from './events.js';
+import {onCreate, onDestroy, onEntityCreate, onEntityTokenChange, type OnCreate, type OnDestroy} from './events.js';
 
 interface EntityEntry {
   token: string;
@@ -92,7 +92,7 @@ export class Kernel extends Eventize {
 
     this.createShadowObjects(token, entityEntry);
 
-    entity.emit(onEntityInitialized, entity, this);
+    entity.emit(onEntityCreate, entity, token);
   }
 
   destroyEntity(uuid: string) {
@@ -120,7 +120,7 @@ export class Kernel extends Eventize {
    * If the entity already exists, but the token is changed, then ..
    * - all shadow-objects created with the previous token are destroyed
    * - new shadow-objects are created based on the new token
-   * - Of course, shadow-objects associated with both the previous and the new token remain in place.
+   * - of course, shadow-objects associated with both the previous and the new token remain in place
    */
   changeToken(uuid: string, token: string) {
     if (!this.#entities.has(uuid)) return;
@@ -154,11 +154,14 @@ export class Kernel extends Eventize {
         }
       }
     }
+
+    entity.emit(onEntityTokenChange, entity, token, previousToken);
   }
 
   createShadowObjects(token: string, entityEntry?: EntityEntry) {
     return this.registry.findConstructors(token)?.map((constructor) => {
       const shadowObject = new constructor();
+      eventize(shadowObject);
 
       if (entityEntry) {
         // We want to keep track which shadow-objects are created by which constructors.
