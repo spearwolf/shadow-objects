@@ -10,6 +10,8 @@ export const OnRemoveFromParent = 'onRemoveFromParent';
 export const OnAddChild = 'onAddChild'; // TODO call OnAddChild when when the entity gets a new child added
 export const OnRemoveChild = 'onRemoveChild'; // TODO call OnRemoveChild when a child is removed from the entity
 
+// TODO add Entity or ShadowObject prefix to all events
+
 /**
  * Is called when the shadow-object instance has been created and attached to the entity (instance).
  * This happens after the entity instantiation and before the `OnInit` event is called.

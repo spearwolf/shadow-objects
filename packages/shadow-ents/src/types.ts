@@ -13,6 +13,11 @@ export interface ICreateEntitiesChange extends IComponentChange {
   properties?: [string, unknown][];
 }
 
+export interface IChangeToken extends IComponentChange {
+  type: ComponentChangeType.ChangeToken;
+  token: string;
+}
+
 export interface IDestroyEntitiesChange extends IComponentChange {
   type: ComponentChangeType.DestroyEntities;
 }
@@ -38,7 +43,8 @@ export type IComponentChangeType =
   | IDestroyEntitiesChange
   | ISetParentChange
   | IUpdateOrderChange
-  | IPropertiesChange;
+  | IPropertiesChange
+  | IChangeToken;
 
 export interface SyncEvent {
   changeTrail: IComponentChangeType[];

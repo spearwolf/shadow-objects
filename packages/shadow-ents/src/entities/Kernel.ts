@@ -1,10 +1,16 @@
 import {Eventize} from '@spearwolf/eventize';
 import {batch} from '@spearwolf/signalize';
 import {ComponentChangeType} from '../constants.js';
-import type {IComponentChangeType, SyncEvent} from '../types.js';
+import type {IComponentChangeType, ShadowObjectConstructor, SyncEvent} from '../types.js';
 import {Entity} from './Entity.js';
 import {Registry} from './Registry.js';
 import {OnCreate, OnDestroy, OnInit} from './events.js';
+
+interface EntityEntry {
+  token: string;
+  entity: Entity;
+  usedConstructors: Map<ShadowObjectConstructor, Set<object>>;
+}
 
 /**
  * The entity kernel manages the lifecycle of all entities and shadow-objects.
@@ -16,7 +22,7 @@ import {OnCreate, OnDestroy, OnInit} from './events.js';
 export class Kernel extends Eventize {
   registry: Registry;
 
-  #entities: Map<string, Entity> = new Map();
+  #entities: Map<string, EntityEntry> = new Map();
 
   constructor(registry?: Registry) {
     super();
@@ -24,7 +30,7 @@ export class Kernel extends Eventize {
   }
 
   getEntity(uuid: string): Entity {
-    const entity = this.#entities.get(uuid);
+    const entity = this.#entities.get(uuid)?.entity;
     if (!entity) {
       throw new Error(`entity with uuid "${uuid}" not found!`);
     }
@@ -60,6 +66,10 @@ export class Kernel extends Eventize {
       case ComponentChangeType.ChangeProperties:
         this.changeProperties(entry.uuid, entry.properties);
         break;
+
+      case ComponentChangeType.ChangeToken:
+        this.changeToken(entry.uuid, entry.token);
+        break;
     }
   }
 
@@ -68,7 +78,9 @@ export class Kernel extends Eventize {
 
     entity.order = order;
 
-    this.#entities.set(uuid, entity);
+    const entityEntry: EntityEntry = {token, entity, usedConstructors: new Map()};
+
+    this.#entities.set(uuid, entityEntry);
 
     if (parentUuid) {
       entity.parentUuid = parentUuid;
@@ -78,7 +90,7 @@ export class Kernel extends Eventize {
       entity.setProperties(properties);
     }
 
-    this.createShadowObjects(token, entity);
+    this.createShadowObjects(token, entityEntry);
 
     entity.emit(OnInit, entity, this);
   }
@@ -104,16 +116,86 @@ export class Kernel extends Eventize {
     this.getEntity(uuid).setProperties(properties);
   }
 
-  createShadowObjects(token: string, entity?: Entity) {
-    return this.registry.findConstructors(token)?.map((constructor) => {
-      const shadowObject = new constructor();
-      if (entity) {
-        entity.on(shadowObject);
-        if (typeof (shadowObject as OnCreate)[OnCreate] === 'function') {
-          (shadowObject as OnCreate)[OnCreate](entity);
+  /**
+   * If the entity already exists, but the token is changed, then ..
+   * - all shadow-objects created with the previous token are destroyed
+   * - new shadow-objects are created based on the new token
+   * - Of course, shadow-objects associated with both the previous and the new token remain in place.
+   */
+  changeToken(uuid: string, token: string) {
+    if (!this.#entities.has(uuid)) return;
+
+    const {token: previousToken, entity, usedConstructors} = this.#entities.get(uuid);
+
+    if (previousToken === token) return;
+
+    const nextConstructors = new Set(this.registry.findConstructors(token));
+
+    // Destroy all shadow-objects that are no longer a match for the new token
+    //
+    for (const [shadowObjectConstructor, shadowObjects] of usedConstructors) {
+      if (!nextConstructors.has(shadowObjectConstructor)) {
+        usedConstructors.delete(shadowObjectConstructor);
+        for (const shadowObject of shadowObjects) {
+          this.destroyShadowObject(shadowObject, entity);
         }
       }
+    }
+
+    // Based on the new token, create the new shadow objects
+    //
+    for (const shadowObjectConstructor of nextConstructors) {
+      if (!usedConstructors.has(shadowObjectConstructor)) {
+        const constructedShadowObjects = new Set<object>();
+        usedConstructors.set(shadowObjectConstructor, constructedShadowObjects);
+        for (const shadowObject of constructedShadowObjects) {
+          constructedShadowObjects.add(shadowObject);
+          this.attachShadowObject(shadowObject, entity);
+        }
+      }
+    }
+  }
+
+  createShadowObjects(token: string, entityEntry?: EntityEntry) {
+    return this.registry.findConstructors(token)?.map((constructor) => {
+      const shadowObject = new constructor();
+
+      if (entityEntry) {
+        // We want to keep track which shadow-objects are created by which constructors.
+        // This will allow us to destroy the shadow-objects at a later time when we change the token.
+        //
+        if (entityEntry.usedConstructors.has(constructor)) {
+          entityEntry.usedConstructors.get(constructor).add(shadowObject);
+        } else {
+          entityEntry.usedConstructors.set(constructor, new Set([shadowObject]));
+        }
+
+        this.attachShadowObject(shadowObject, entityEntry.entity);
+      }
+
       return shadowObject;
     });
+  }
+
+  attachShadowObject(shadowObject: Object, entity: Entity) {
+    // Like all other objects, the new shadow-object should be able to respond to the events that the entity receives.
+    //
+    entity.on(shadowObject);
+
+    // Finally, the `shadowObject.onCreate(entity)` callback is called on the shadow-object.
+    //
+    if (typeof (shadowObject as OnCreate)[OnCreate] === 'function') {
+      (shadowObject as OnCreate)[OnCreate](entity);
+    }
+  }
+
+  destroyShadowObject(shadowObject: Object, entity: Entity) {
+    entity.off(shadowObject);
+
+    if (typeof (shadowObject as OnDestroy)[OnDestroy] === 'function') {
+      (shadowObject as OnDestroy)[OnDestroy](entity);
+    }
+
+    // TODO inform the entity that the shadow-object has been destroyed
   }
 }

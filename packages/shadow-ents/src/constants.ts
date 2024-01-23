@@ -12,6 +12,7 @@ export enum ComponentChangeType {
   SetParent,
   UpdateOrder,
   ChangeProperties,
+  ChangeToken,
 }
 
 export const GlobalNS: NamespaceType = Symbol.for('ShadowEntsGlobalNS');
