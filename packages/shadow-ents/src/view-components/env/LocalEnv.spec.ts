@@ -140,8 +140,8 @@ describe('LocalEnv', () => {
       [onCreate](entity: Entity) {
         onCreateMock(entity, this);
       }
-      [onEntityCreate](entity: Entity) {
-        onEntityCreateMock(entity, this);
+      [onEntityCreate](entity: Entity, token: string) {
+        onEntityCreateMock(entity, this, token);
       }
     }
 
@@ -162,5 +162,6 @@ describe('LocalEnv', () => {
     expect(onEntityCreateMock).toBeCalled();
     expect(onEntityCreateMock.mock.calls[0][0]).toBe(aa);
     expect(onEntityCreateMock.mock.calls[0][1]).toBeInstanceOf(Aaa);
+    expect(onEntityCreateMock.mock.calls[0][2]).toBe('a');
   });
 });
