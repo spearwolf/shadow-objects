@@ -9,7 +9,6 @@ export interface ShadowObjectDecoratorOptions {
 
 /** The `@ShadowObject` decorator */
 export function ShadowObject(options: ShadowObjectDecoratorOptions) {
-  // return function <C extends EntityConstructor>(target: C, _context?: ClassDecoratorContext<C>) {
   return function <C extends ShadowObjectConstructor>(target: C, _context?: any) {
     const SO = class extends target {
       constructor(...args: any[]) {
@@ -23,3 +22,12 @@ export function ShadowObject(options: ShadowObjectDecoratorOptions) {
     return SO;
   };
 }
+
+/**
+ * If you don't want to use the decorator, you can simply call this method instead.
+ */
+export const shadowObjects = {
+  define(token: string, constructor: ShadowObjectConstructor, registry?: Registry) {
+    Registry.get(registry).define(token, constructor);
+  },
+};
