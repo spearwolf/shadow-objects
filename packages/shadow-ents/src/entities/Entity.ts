@@ -9,7 +9,9 @@ import {
   type SignalWriter,
 } from '@spearwolf/signalize';
 import {Kernel} from './Kernel.js';
-import {OnAddChild, OnAddToParent, OnDestroy, OnRemoveChild, OnRemoveFromParent} from './events.js';
+import {onAddChild, onAddedToParent, onDestroy, onEntityInitialized, onRemoveChild, onRemovedFromParent} from './events.js';
+
+// TODO add token to Entity
 
 /**
  * An entity has a parent and children, replicating the hierarchy of view-components.
@@ -93,7 +95,8 @@ export class Entity extends Eventize {
     super();
     this.#kernel = kernel;
     this.#uuid = uuid;
-    this.once(OnDestroy, Priority.Min, this);
+    this.once(onDestroy, Priority.Min, this);
+    this.retain(onEntityInitialized);
   }
 
   onDestroy() {
@@ -115,8 +118,8 @@ export class Entity extends Eventize {
     if (this.#children.length === 0) {
       this.#childrenUuids.add(child.uuid);
       this.#children.push(child);
-      this.emit(OnAddChild, this, child);
-      child.emit(OnAddToParent, child, this);
+      this.emit(onAddChild, this, child);
+      child.emit(onAddedToParent, child, this);
       return;
     }
 
@@ -129,8 +132,8 @@ export class Entity extends Eventize {
 
     this.resortChildren();
 
-    this.emit(OnAddChild, this, child);
-    child.emit(OnAddToParent, child, this);
+    this.emit(onAddChild, this, child);
+    child.emit(onAddedToParent, child, this);
   }
 
   resortChildren() {
@@ -141,7 +144,7 @@ export class Entity extends Eventize {
     if (this.#childrenUuids.has(child.uuid)) {
       this.#childrenUuids.delete(child.uuid);
       this.#children.splice(this.#children.indexOf(child), 1);
-      this.emit(OnRemoveChild, this, child);
+      this.emit(onRemoveChild, this, child);
     }
   }
 
@@ -151,7 +154,7 @@ export class Entity extends Eventize {
       this.#parent.removeChild(this);
       this.#parent = undefined;
       this.#parentUuid = undefined;
-      this.emit(OnRemoveFromParent, this, prevParent);
+      this.emit(onRemovedFromParent, this, prevParent);
     }
   }
 

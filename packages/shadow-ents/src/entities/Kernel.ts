@@ -4,7 +4,7 @@ import {ComponentChangeType} from '../constants.js';
 import type {IComponentChangeType, ShadowObjectConstructor, SyncEvent} from '../types.js';
 import {Entity} from './Entity.js';
 import {Registry} from './Registry.js';
-import {OnCreate, OnDestroy, OnInit} from './events.js';
+import {onCreate, onDestroy, onEntityInitialized, type OnCreate, type OnDestroy} from './events.js';
 
 interface EntityEntry {
   token: string;
@@ -92,12 +92,12 @@ export class Kernel extends Eventize {
 
     this.createShadowObjects(token, entityEntry);
 
-    entity.emit(OnInit, entity, this);
+    entity.emit(onEntityInitialized, entity, this);
   }
 
   destroyEntity(uuid: string) {
     const e = this.getEntity(uuid);
-    e.emit(OnDestroy, this);
+    e.emit(onDestroy, this);
     this.#entities.delete(uuid);
   }
 
@@ -184,18 +184,18 @@ export class Kernel extends Eventize {
 
     // Finally, the `shadowObject.onCreate(entity)` callback is called on the shadow-object.
     //
-    if (typeof (shadowObject as OnCreate)[OnCreate] === 'function') {
-      (shadowObject as OnCreate)[OnCreate](entity);
+    if (typeof (shadowObject as OnCreate)[onCreate] === 'function') {
+      (shadowObject as OnCreate)[onCreate](entity);
     }
   }
 
   destroyShadowObject(shadowObject: Object, entity: Entity) {
-    entity.off(shadowObject);
-
-    if (typeof (shadowObject as OnDestroy)[OnDestroy] === 'function') {
-      (shadowObject as OnDestroy)[OnDestroy](entity);
+    if (typeof (shadowObject as OnDestroy)[onDestroy] === 'function') {
+      (shadowObject as OnDestroy)[onDestroy](entity);
     }
 
     // TODO inform the entity that the shadow-object has been destroyed
+
+    entity.off(shadowObject);
   }
 }

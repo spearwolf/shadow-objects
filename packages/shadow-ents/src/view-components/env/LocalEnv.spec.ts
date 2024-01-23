@@ -4,7 +4,14 @@ import {ComponentChangeType} from '../../constants.js';
 import {Entity} from '../../entities/Entity.js';
 import {Registry} from '../../entities/Registry.js';
 import {ShadowObject} from '../../entities/ShadowObject.js';
-import {OnCreate, OnInit, OnRemoveFromParent} from '../../entities/events.js';
+import {
+  onCreate,
+  onEntityInitialized,
+  onRemovedFromParent,
+  type OnCreate,
+  type OnEntityInitialized,
+  type OnRemovedFromParent,
+} from '../../entities/events.js';
 import type {SyncEvent} from '../../types.js';
 import {ComponentContext} from '../ComponentContext.js';
 import {ViewComponent} from '../ViewComponent.js';
@@ -86,12 +93,12 @@ describe('LocalEnv', () => {
     expect(bb.getProperty('xyz')).toBe(123);
     expect(bb.children).toHaveLength(0);
 
-    const onRemoveFromParent = vi.fn();
+    const removeFromParentMock = vi.fn();
 
     @ShadowObject({token: 'c'})
-    class Ccc implements OnRemoveFromParent {
-      [OnRemoveFromParent](_entity: Entity) {
-        onRemoveFromParent(this);
+    class Ccc implements OnRemovedFromParent {
+      [onRemovedFromParent](_entity: Entity) {
+        removeFromParentMock(this);
       }
     }
 
@@ -105,9 +112,9 @@ describe('LocalEnv', () => {
     expect(aa.children[0]).toBe(cc);
     expect(aa.children[1]).toBe(bb);
 
-    expect(onRemoveFromParent).not.toHaveBeenCalled();
+    expect(removeFromParentMock).not.toHaveBeenCalled();
 
-    const removeFromParent = waitForNext(cc, OnRemoveFromParent).then(([entity]) => (entity as Entity).uuid);
+    const resultUuid = waitForNext(cc, onRemovedFromParent).then(([entity]) => (entity as Entity).uuid);
 
     c.removeFromParent();
 
@@ -116,25 +123,25 @@ describe('LocalEnv', () => {
     expect(aa.children).toHaveLength(1);
     expect(cc.parent).toBeUndefined();
 
-    expect(onRemoveFromParent).toHaveBeenCalled();
-    expect(onRemoveFromParent.mock.calls[0][0]).toBeInstanceOf(Ccc);
+    expect(removeFromParentMock).toHaveBeenCalled();
+    expect(removeFromParentMock.mock.calls[0][0]).toBeInstanceOf(Ccc);
 
-    await expect(removeFromParent).resolves.toBe(cc.uuid);
+    await expect(resultUuid).resolves.toBe(cc.uuid);
   });
 
   it('should call create and init events on shadow-objects', async () => {
     const localEnv = new LocalEnv().start();
 
-    const onCreateMock = vi.fn();
-    const onInitMock = vi.fn();
+    const onCreateShadowObjectMock = vi.fn();
+    const onEntityInitMock = vi.fn();
 
     @ShadowObject({token: 'a'})
-    class Aaa implements OnCreate, OnInit {
-      [OnCreate](entity: Entity) {
-        onCreateMock(entity, this);
+    class Aaa implements OnCreate, OnEntityInitialized {
+      [onCreate](entity: Entity) {
+        onCreateShadowObjectMock(entity, this);
       }
-      [OnInit](entity: Entity) {
-        onInitMock(entity, this);
+      [onEntityInitialized](entity: Entity) {
+        onEntityInitMock(entity, this);
       }
     }
 
@@ -150,12 +157,12 @@ describe('LocalEnv', () => {
 
     expect(Aaa).toBeDefined();
 
-    expect(onCreateMock).toBeCalled();
-    expect(onCreateMock.mock.calls[0][0]).toBe(aa);
-    expect(onCreateMock.mock.calls[0][1]).toBeInstanceOf(Aaa);
+    expect(onCreateShadowObjectMock).toBeCalled();
+    expect(onCreateShadowObjectMock.mock.calls[0][0]).toBe(aa);
+    expect(onCreateShadowObjectMock.mock.calls[0][1]).toBeInstanceOf(Aaa);
 
-    expect(onInitMock).toBeCalled();
-    expect(onInitMock.mock.calls[0][0]).toBe(aa);
-    expect(onInitMock.mock.calls[0][1]).toBeInstanceOf(Aaa);
+    expect(onEntityInitMock).toBeCalled();
+    expect(onEntityInitMock.mock.calls[0][0]).toBe(aa);
+    expect(onEntityInitMock.mock.calls[0][1]).toBeInstanceOf(Aaa);
   });
 });
