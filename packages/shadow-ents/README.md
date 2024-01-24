@@ -7,7 +7,7 @@
 
 ![architecture overview](./docs/architecture@2x.png)
 
-> Each _entity_ belongs to a _html dom element_, but exists in a _web worker_ (therefore called _shadow-entity_, because they are outside the main document, analogous to the elements in a _html shadow dom_).
+> Each _entity_ belongs to a _view component_, but exists in a _web worker_ (therefore called _shadow-entity_, because they are outside the main document, analogous to the elements in a _html shadow dom_).
 
 A `<view-component/>` inside in the browser window is a _custom element_ and serves as an access point for the entities.
 A _shadow-entity_ in the worker thread is always associated with exactly one view-component in the main document of the browser.
