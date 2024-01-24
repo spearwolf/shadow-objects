@@ -1,5 +1,8 @@
 # shadow-ents
 
+**_Shadow-ents_ moves your components into WebWorker** :rocket:
+
+
 > _ents_ is short for latin _"entitatis"_, which translates to _"shadow entities"_
 
 ![architecture overview](./docs/architecture@2x.png)

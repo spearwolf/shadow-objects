@@ -289,6 +289,14 @@
                 <path d="M86.645,402.385L90.176,409.446L83.115,409.446L86.645,402.385Z" style="fill:rgb(51,49,59);"/>
             </g>
         </g>
+        <g id="bottom-arrow3" serif:id="bottom arrow" transform="matrix(1,0,0,1,520.696,-93.0682)">
+            <g transform="matrix(1,0,0,0.572368,0,154.081)">
+                <path d="M90.47,360.313L90.47,405.033" style="fill:none;stroke:rgb(51,49,59);stroke-width:1.23px;"/>
+            </g>
+            <g transform="matrix(1,0,0,-1,3.8247,792.193)">
+                <path d="M86.645,402.385L90.176,409.446L83.115,409.446L86.645,402.385Z" style="fill:rgb(51,49,59);"/>
+            </g>
+        </g>
         <g transform="matrix(1,0,0,1,77.152,-107.675)">
             <g transform="matrix(12,0,0,12,283.374,226.485)">
             </g>
@@ -298,6 +306,26 @@
             <g transform="matrix(12,0,0,12,254.574,226.485)">
             </g>
             <text x="182.574px" y="226.485px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:12px;fill:rgb(51,49,59);">web worker</text>
+        </g>
+        <g transform="matrix(1,0,0,1,-145.848,141.601)">
+            <g transform="matrix(64,0,0,64,549.208,376.076)">
+            </g>
+            <text x="165.208px" y="376.076px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:64px;fill:rgb(161,71,99);">Components</text>
+        </g>
+        <g transform="matrix(1,0,0,1,294.972,142.001)">
+            <g transform="matrix(64,0,0,64,472.408,376.076)">
+            </g>
+            <text x="165.208px" y="376.076px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:64px;fill:rgb(161,71,99);">Entities</text>
+        </g>
+        <g transform="matrix(1,0,0,1,96.3431,93.6424)">
+            <g transform="matrix(30,0,0,30,237.208,376.076)">
+            </g>
+            <text x="165.208px" y="376.076px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:30px;fill:rgb(161,71,99);">your</text>
+        </g>
+        <g transform="matrix(1,0,0,1,470.021,93.2428)">
+            <g transform="matrix(30,0,0,30,237.208,376.076)">
+            </g>
+            <text x="165.208px" y="376.076px" style="font-family:'BlexMonoSmBldNF', 'BlexMonoSmBld Nerd Font', monospace;font-weight:600;font-size:30px;fill:rgb(161,71,99);">your</text>
         </g>
     </g>
 </svg>
