@@ -1,7 +1,14 @@
 # shadow-ents
 
-**_Shadow-ents_ moves your components into WebWorker** :rocket:
+**_Shadow-ents_ moves your components into WebWorker<sup>**</sup>** :rocket:
 
+---
+
+<sup>**</sup>_No,_ Shadow-ents moves the heavy work to the worker, the components stay :hibiscus:
+
+<sup>**</sup>_And yes,_ we have entities too :heart_eyes:
+
+:confused::question:
 
 > _ents_ is short for latin _"entitatis"_, which translates to _"shadow entities"_
 
