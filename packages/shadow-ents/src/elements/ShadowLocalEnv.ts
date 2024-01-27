@@ -31,6 +31,5 @@ export class ShadowLocalEnv extends ShadowEntity implements IShadowEnvElement {
 
   #createComponentContext() {
     this.#cc = ComponentContext.get(this.ns);
-    console.debug(`ShadowLocalEnv#${this.ns.toString()}`, this.#cc);
   }
 }

@@ -55,12 +55,6 @@ export class ShadowEntity extends HTMLElement {
 
     // TODO add context-types as observedAttributes + reactive property
     // TODO add shadow-types as observedAttributes + reactive property
-
-    // TODO remove debug output ---
-    this.viewComponent$((vc) => {
-      console.log(`viewComponent#${this.uuid}`, vc ? 'created' : 'destroyed', {viewComponent: vc});
-    });
-    // --- end of debug
   }
 
   #onParentEntityChanged(parent: ShadowEntity | undefined) {
