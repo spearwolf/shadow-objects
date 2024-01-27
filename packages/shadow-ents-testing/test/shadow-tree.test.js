@@ -26,14 +26,13 @@ describe('shadow-ents-tree', () => {
     await Promise.all([customElements.whenDefined('shadow-local-env'), customElements.whenDefined('shadow-entity')]);
   });
 
-  it('localEnv has a component-context', () => {
-    const localEnv = document.getElementById('localEnv');
-    expect(localEnv.getComponentContext(), 'getComponentContext()').to.exist;
+  it('localEnv is a ShadowLocalEnv element', () => {
+    expect(document.getElementById('localEnv')).to.be.an.instanceof(ShadowLocalEnv);
   });
 
-  it('localEnv is a ShadowLocalEnv element', () => {
+  it('localEnv has a component-context', () => {
     const localEnv = document.getElementById('localEnv');
-    expect(localEnv).to.be.an.instanceof(ShadowLocalEnv);
+    expect(localEnv.getComponentContext(), 'localEnv.getComponentContext()').to.exist;
   });
 
   it('a is a ShadowEntity element', () => {
