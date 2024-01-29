@@ -1,8 +1,17 @@
 import {removeFrom} from '../array-utils.js';
-import {ChangeTrailPhase} from '../constants.js';
+import {ChangeTrailPhase, ComponentChangeType} from '../constants.js';
 import {toNamespace} from '../toNamespace.js';
-import type {IComponentChangeType, NamespaceType} from '../types.js';
+import type {
+  IChangeToken,
+  IComponentChangeType,
+  ICreateEntitiesChange,
+  IPropertiesChange,
+  ISetParentChange,
+  IUpdateOrderChange,
+  NamespaceType,
+} from '../types.js';
 import {ComponentChanges} from './ComponentChanges.js';
+import {ComponentMemory} from './ComponentMemory.js';
 import type {ViewComponent} from './ViewComponent.js';
 
 interface ViewInstance {
@@ -40,6 +49,8 @@ export class ComponentContext {
   #rootComponents: string[] = []; // we use an Array here and not a Set, because we want to keep the insertion order
 
   #removedComponentsChanges: ComponentChanges[] = [];
+
+  readonly #changeTrailState = new ComponentMemory();
 
   addComponent(component: ViewComponent) {
     if (this.hasComponent(component)) {
@@ -142,6 +153,7 @@ export class ComponentContext {
   }
 
   clear() {
+    this.#changeTrailState.clear();
     this.#rootComponents.slice(0).forEach((uuid) => this.removeSubTree(uuid));
 
     if (this.#rootComponents.length !== 0) {
@@ -154,8 +166,8 @@ export class ComponentContext {
   }
 
   buildChangeTrails() {
-    const trail: IComponentChangeType[] = [];
     const pathOfChanges = this.#buildPathOfChanges();
+    let trail: IComponentChangeType[] = [];
 
     for (const changes of pathOfChanges) {
       changes.buildChangeTrail(trail, ChangeTrailPhase.StructuralChanges);
@@ -172,6 +184,92 @@ export class ComponentContext {
     }
 
     this.#removedComponentsChanges.length = 0;
+
+    trail = this.#removeCreateDestroyTuples(trail);
+
+    this.#changeTrailState.write(trail);
+
+    return trail;
+  }
+
+  /**
+   * Entities that are both destroyed and re-created within a single change-trail cycle
+   * have most likely been reassigned in the DOM. In this case, the create and destroy events
+   * are removed from the trail and converted to set-parent, change-token and set-properties events.
+   *
+   * However, it can happen that unnecessary update events are created that set the same values as before.
+   * Filtering these out is time-consuming, so it is simply not done.
+   * The kernel can ignore such unnecessary events later.
+   */
+  #removeCreateDestroyTuples(trail: IComponentChangeType[]): IComponentChangeType[] {
+    const removeCreateUuid = new Set<string>();
+    trail = trail.filter((change) => {
+      if (change.type === ComponentChangeType.DestroyEntities && this.#components.has(change.uuid)) {
+        const create = trail.find((c) => c.type === ComponentChangeType.CreateEntities && c.uuid === change.uuid);
+        if (create != null) {
+          removeCreateUuid.add(create.uuid);
+          return false;
+        }
+      }
+      return true;
+    });
+
+    const removedCreateChanges: ICreateEntitiesChange[] = [];
+    trail = trail.filter((c) => {
+      if (c.type === ComponentChangeType.CreateEntities && removeCreateUuid.has(c.uuid)) {
+        removedCreateChanges.push(c);
+        return false;
+      }
+      return true;
+    });
+
+    for (const createChange of removedCreateChanges) {
+      const vc = this.#components.get(createChange.uuid)?.component;
+      if (vc == null) continue;
+
+      const prevState = this.#changeTrailState.getComponent(createChange.uuid);
+
+      if (prevState == null || prevState.parentUuid !== createChange.parentUuid) {
+        const setParentChange: ISetParentChange = {
+          type: ComponentChangeType.SetParent,
+          uuid: createChange.uuid,
+          parentUuid: createChange.parentUuid,
+        };
+
+        if (createChange.order !== undefined) {
+          setParentChange.order = createChange.order;
+        }
+
+        trail.push(setParentChange);
+      } else if (prevState != null && createChange.order != null && prevState.order !== createChange.order) {
+        const changeToken: IUpdateOrderChange = {
+          type: ComponentChangeType.UpdateOrder,
+          uuid: createChange.uuid,
+          order: createChange.order ?? 0,
+        };
+        trail.push(changeToken);
+      }
+
+      if (prevState == null || prevState.token !== createChange.token) {
+        const changeToken: IChangeToken = {
+          type: ComponentChangeType.ChangeToken,
+          uuid: createChange.uuid,
+          token: createChange.token,
+        };
+
+        trail.push(changeToken);
+      }
+
+      if (createChange.properties) {
+        const changeProperties: IPropertiesChange = {
+          type: ComponentChangeType.ChangeProperties,
+          uuid: createChange.uuid,
+          properties: createChange.properties,
+        };
+
+        trail.push(changeProperties);
+      }
+    }
 
     return trail;
   }

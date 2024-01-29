@@ -2,11 +2,10 @@ import {expect} from '@esm-bundle/chai';
 import {ShadowEntity, ShadowLocalEnv} from '@spearwolf/shadow-ents';
 import '@spearwolf/shadow-ents/shadow-entity.js';
 import {html, render} from 'lit-html';
-
-const findElementsById = (...ids) => ids.map((id) => document.getElementById(id));
+import {findElementsById} from '../src/findElementsById.js';
 
 describe('local-env entities', () => {
-  before(async () => {
+  beforeEach(async () => {
     render(
       html`<shadow-local-env id="localEnv">
         <shadow-entity id="a" token="a">
@@ -21,6 +20,8 @@ describe('local-env entities', () => {
       </shadow-local-env>`,
       document.body,
     );
+
+    document.body.style.backgroundColor = '#124';
 
     await Promise.all([customElements.whenDefined('shadow-local-env'), customElements.whenDefined('shadow-entity')]);
   });
@@ -97,5 +98,20 @@ describe('local-env entities', () => {
 
     expect(a.parentEntity, 'a.parentEntity').to.be.undefined;
     expect(e.parentEntity, 'e.parentEntity').to.be.undefined;
+  });
+
+  it('append e to b', () => {
+    const [a, b, e, f] = findElementsById('a', 'b', 'e', 'f');
+
+    expect(b.parentEntity, 'b.parentEntity').to.equal(a);
+    expect(e.parentEntity, 'e.parentEntity').to.undefined;
+
+    b.append(e);
+
+    expect(e.parentEntity, 'e.parentEntity').to.equal(b);
+    expect(e.viewComponent.parent, 'e.viewComponent.parent').to.equal(b.viewComponent);
+
+    expect(f.parentEntity, 'f.parentEntity').to.equal(e);
+    expect(f.viewComponent.parent, 'f.viewComponent.parent').to.equal(e.viewComponent);
   });
 });
