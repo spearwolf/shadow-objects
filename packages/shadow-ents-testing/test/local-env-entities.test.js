@@ -5,7 +5,7 @@ import {html, render} from 'lit-html';
 
 const findElementsById = (...ids) => ids.map((id) => document.getElementById(id));
 
-describe('local-env entities tree', () => {
+describe('local-env entities', () => {
   before(async () => {
     render(
       html`<shadow-local-env id="localEnv">
