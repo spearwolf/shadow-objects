@@ -1,13 +1,13 @@
 import {expect} from '@esm-bundle/chai';
 import {ComponentChangeType} from '@spearwolf/shadow-ents';
 import '@spearwolf/shadow-ents/shadow-entity.js';
-import {html, render} from 'lit-html';
 import {findElementsById} from '../src/findElementsById.js';
+import {render} from '../src/render.js';
 
 describe('build-change-trail', () => {
   beforeEach(async () => {
-    render(
-      html`<shadow-local-env id="localEnv">
+    render(`
+      <shadow-local-env id="localEnv">
         <shadow-entity id="a" token="a">
           <shadow-entity id="b" token="b">
             <shadow-entity id="c" token="c"></shadow-entity>
@@ -17,29 +17,21 @@ describe('build-change-trail', () => {
         <shadow-entity id="e" token="e">
           <shadow-entity id="f" token="f"></shadow-entity>
         </shadow-entity>
-      </shadow-local-env>`,
-      document.body,
-    );
-
-    document.body.style.backgroundColor = '#142';
+      </shadow-local-env>`);
 
     await Promise.all([customElements.whenDefined('shadow-local-env'), customElements.whenDefined('shadow-entity')]);
   });
 
   it('append e to b', () => {
-    console.group('append e to b');
-
     const [b, e, localEnv] = findElementsById('b', 'e', 'localEnv');
 
-    console.log('before', localEnv.getComponentContext().buildChangeTrails());
+    localEnv.getComponentContext().buildChangeTrails();
 
     e.token = 'bee';
 
     b.append(e);
 
     const changeTrail = localEnv.getComponentContext().buildChangeTrails();
-
-    console.log('after(append e to b)', changeTrail);
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
       {
@@ -53,21 +45,17 @@ describe('build-change-trail', () => {
         token: 'bee',
       },
     ]);
-
-    console.groupEnd();
   });
 
   it('a: set properties', () => {
-    console.group('a: set properties');
-
     const [a, localEnv] = findElementsById('a', 'localEnv');
+
+    localEnv.getComponentContext().buildChangeTrails();
 
     a.viewComponent.setProperty('foo', 'bar');
     a.viewComponent.setProperty('plah', [1, 2, 3]);
 
     const changeTrail = localEnv.getComponentContext().buildChangeTrails();
-
-    console.log('after(a: set properties)', changeTrail);
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
       {
@@ -79,14 +67,10 @@ describe('build-change-trail', () => {
         ],
       },
     ]);
-
-    console.groupEnd();
   });
 
   it('destroy a', () => {
-    console.group('destroy a');
-
-    const [a, b, c, d, e, f, localEnv] = findElementsById('a', 'b', 'c', 'd', 'e', 'f', 'localEnv');
+    const [a, b, c, d, localEnv] = findElementsById('a', 'b', 'c', 'd', 'localEnv');
 
     localEnv.getComponentContext().buildChangeTrails();
 
@@ -94,11 +78,9 @@ describe('build-change-trail', () => {
 
     a.viewComponent.setProperty('foo', 'bar');
     d.viewComponent.setProperty('plah', 'plah!');
-    localEnv.remove(a);
+    a.remove();
 
     const changeTrail = localEnv.getComponentContext().buildChangeTrails();
-
-    console.log('after(destroy a)', changeTrail);
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
       {
@@ -117,16 +99,6 @@ describe('build-change-trail', () => {
         type: ComponentChangeType.DestroyEntities,
         uuid: d.uuid,
       },
-      {
-        type: ComponentChangeType.DestroyEntities,
-        uuid: e.uuid,
-      },
-      {
-        type: ComponentChangeType.DestroyEntities,
-        uuid: f.uuid,
-      },
     ]);
-
-    console.groupEnd();
   });
 });

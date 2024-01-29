@@ -1,13 +1,13 @@
 import {expect} from '@esm-bundle/chai';
 import {ShadowEntity, ShadowLocalEnv} from '@spearwolf/shadow-ents';
 import '@spearwolf/shadow-ents/shadow-entity.js';
-import {html, render} from 'lit-html';
 import {findElementsById} from '../src/findElementsById.js';
+import {render} from '../src/render.js';
 
 describe('local-env entities', () => {
   beforeEach(async () => {
-    render(
-      html`<shadow-local-env id="localEnv">
+    render(`
+      <shadow-local-env id="localEnv">
         <shadow-entity id="a" token="a">
           <shadow-entity id="b" token="b">
             <shadow-entity id="c" token="c"></shadow-entity>
@@ -17,11 +17,7 @@ describe('local-env entities', () => {
         <shadow-entity id="e" token="e">
           <shadow-entity id="f" token="f"></shadow-entity>
         </shadow-entity>
-      </shadow-local-env>`,
-      document.body,
-    );
-
-    document.body.style.backgroundColor = '#124';
+      </shadow-local-env>`);
 
     await Promise.all([customElements.whenDefined('shadow-local-env'), customElements.whenDefined('shadow-entity')]);
   });
