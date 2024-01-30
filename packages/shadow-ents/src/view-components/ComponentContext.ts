@@ -26,9 +26,22 @@ declare global {
 }
 
 /**
- * The `ComponentContext` is the container for all _view components_ for a given namespace.
+ * The {@link ComponentContext} represents the current real-time state of the _view components_.
  *
- * If no namespace is specified when creating a `ComponentContext`, the global namespace is used.
+ * Changes to the components and their hierarchy are also logged to the {@link ComponentChanges}.
+ *
+ * Each time a change trail is created (a call to {@link ComponentContext.buildChangeTrails}),
+ * the past changes are summarized and returned as the result. This means that the change trail
+ * is always the path of changes from the time of the previous change trail (or from the beginning)
+ * to the current call to the {@link ComponentContext.buildChangeTrails} method.
+ *
+ * In addition, there is the {@link ComponentMemory}. The memory represents the component state at
+ * the time of the last change trail, as opposed to the {@link ComponentContext}, which represents
+ * the current real-time state of the _view components_.
+ *
+ * A context is always associated with a namespace.
+ * If no namespace is specified when creating a {@link ComponentContext}, the global namespace is used.
+ * There is only one {@link ComponentContext} (a singleton) for each namespace.
  */
 export class ComponentContext {
   static get(namespace?: NamespaceType): ComponentContext {

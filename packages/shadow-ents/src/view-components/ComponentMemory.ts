@@ -12,8 +12,15 @@ export interface ComponentState {
   token: string;
   parentUuid?: string;
   order?: number;
+  // TODO add properties
 }
 
+/**
+ * Stores the state of components and their hierarchy. The state is updated using a _change trail_.
+ *
+ * @internal
+ * @see ComponentContext.buildChangeTrails
+ */
 export class ComponentMemory {
   #components: Map<string, ComponentState> = new Map();
 
