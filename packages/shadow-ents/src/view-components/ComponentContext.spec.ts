@@ -26,7 +26,7 @@ describe('ComponentContext', () => {
       {type: ComponentChangeType.CreateEntities, uuid: b.uuid, token: 'b', parentUuid: a.uuid},
     ]);
 
-    a.disconnectFromContext();
+    a.destroy();
 
     changes = cc.buildChangeTrails();
 
@@ -134,7 +134,7 @@ describe('ComponentContext', () => {
 
     console.log('a:before', a);
 
-    a.disconnectFromContext();
+    a.destroy();
     a = new ViewComponent('a', {uuid: a.uuid});
 
     a.setProperty('x', 0);

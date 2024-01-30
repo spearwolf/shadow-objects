@@ -76,11 +76,11 @@ export class ShadowEntity extends HTMLElement {
       const vc = new ViewComponent(token, {uuid: this.uuid, context, parent: this.parentViewComponent});
       this.viewComponent = vc;
       return () => {
-        vc.disconnectFromContext();
+        vc.destroy();
         this.viewComponent = undefined;
       };
     } else if (this.viewComponent) {
-      this.viewComponent.disconnectFromContext();
+      this.viewComponent.destroy();
       this.viewComponent = undefined;
     }
   }

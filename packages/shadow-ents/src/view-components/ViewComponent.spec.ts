@@ -54,7 +54,7 @@ describe('EntityProxy', () => {
   it('should destroy entity', () => {
     const entity = new ViewComponent('test');
     expect(ctx.hasComponent(entity)).toBeTruthy();
-    entity.disconnectFromContext();
+    entity.destroy();
     expect(ctx.hasComponent(entity)).toBeFalsy();
   });
 

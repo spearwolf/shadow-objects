@@ -47,7 +47,7 @@ export class ViewComponent {
   set context(context: ComponentContext | null | undefined) {
     if (this.#context != context) {
       if (this.#context) {
-        this.disconnectFromContext();
+        this.destroy();
       }
       this.#context = context;
       if (context) {
@@ -123,11 +123,9 @@ export class ViewComponent {
     this.#context.removeProperty(this, name);
   }
 
-  disconnectFromContext() {
+  destroy() {
     this.removeFromParent();
-    if (this.#context != null) {
-      this.#context.removeComponent(this);
-      this.#context = undefined;
-    }
+    this.#context?.removeComponent(this);
+    this.#context = undefined;
   }
 }

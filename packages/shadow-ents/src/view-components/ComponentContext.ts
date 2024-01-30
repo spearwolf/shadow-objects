@@ -62,6 +62,8 @@ export class ComponentContext {
   #components: Map<string, ViewInstance> = new Map();
   #rootComponents: string[] = []; // we use an Array here and not a Set, because we want to keep the insertion order
 
+  #markedForDestruction: Set<string> = new Set();
+
   #removedComponentsChanges: ComponentChanges[] = [];
 
   readonly #changeTrailState = new ComponentMemory();
@@ -91,6 +93,10 @@ export class ComponentContext {
 
   isRootComponent(component: ViewComponent) {
     return this.#rootComponents.includes(component.uuid);
+  }
+
+  isMarkedForDestruction(uuid: string) {
+    return this.#markedForDestruction.has(uuid);
   }
 
   removeComponent(component: ViewComponent) {
