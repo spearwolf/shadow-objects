@@ -1,18 +1,21 @@
 import {ComponentChangeType, VoidToken} from '../constants.js';
 import type {
+  ComponentPropertiesType,
   IChangeToken,
   IComponentChange,
   ICreateEntitiesChange,
   IDestroyEntitiesChange,
+  IPropertiesChange,
   ISetParentChange,
   IUpdateOrderChange,
 } from '../types.js';
+import {applyPropsChanges} from './props-utils.js';
 
 export interface ComponentState {
   token: string;
   parentUuid?: string;
   order?: number;
-  // TODO add properties
+  properties?: ComponentPropertiesType;
 }
 
 /**
@@ -28,7 +31,7 @@ export class ComponentMemory {
     this.#components.clear();
   }
 
-  getComponent(uuid: string) {
+  getComponentState(uuid: string) {
     return this.#components.get(uuid);
   }
 
@@ -54,29 +57,47 @@ export class ComponentMemory {
         case ComponentChangeType.ChangeToken:
           this.changeToken(change as IChangeToken);
           break;
+
+        case ComponentChangeType.ChangeProperties:
+          this.changeProperties(change as IPropertiesChange);
+          break;
       }
     }
   }
 
-  changeToken({uuid, token}: IChangeToken) {
-    this.getComponent(uuid)!.token = token || VoidToken;
+  // propsEqual(uuid: string, changes: ComponentPropertiesType | undefined): boolean {
+  //   return propsEqual(this.getComponentState(uuid).properties, changes);
+  // }
+
+  private changeProperties({uuid, properties}: IPropertiesChange) {
+    const c = this.getComponentState(uuid)!;
+    c.properties = applyPropsChanges(c.properties, properties);
   }
 
-  updateOrder({uuid, order}: IUpdateOrderChange) {
-    this.getComponent(uuid)!.order = order ?? 0;
+  private changeToken({uuid, token}: IChangeToken) {
+    this.getComponentState(uuid)!.token = token || VoidToken;
   }
 
-  setParent({uuid, parentUuid, order}: ISetParentChange) {
-    const c = this.getComponent(uuid)!;
+  private updateOrder({uuid, order}: IUpdateOrderChange) {
+    this.getComponentState(uuid)!.order = order ?? 0;
+  }
+
+  private setParent({uuid, parentUuid, order}: ISetParentChange) {
+    const c = this.getComponentState(uuid)!;
     c.parentUuid = parentUuid;
     c.order = order ?? 0;
   }
 
-  destroyEntity({uuid}: IDestroyEntitiesChange) {
+  private destroyEntity({uuid}: IDestroyEntitiesChange) {
     this.#components.delete(uuid);
   }
 
-  createEntity({uuid, token, parentUuid, order}: ICreateEntitiesChange) {
-    this.#components.set(uuid, {token: token || VoidToken, parentUuid, order: order ?? 0});
+  private createEntity({uuid, token, parentUuid, order, properties}: ICreateEntitiesChange) {
+    this.#components.set(uuid, {
+      token: token || VoidToken,
+      parentUuid,
+      order: order ?? 0,
+      properties: applyPropsChanges(undefined, properties),
+    });
   }
 }

@@ -72,6 +72,20 @@ describe('ComponentContext', () => {
         ],
       },
     ]);
+
+    a.removeProperty('gibsnich');
+    b.removeProperty('numberOfTheBeast');
+
+    changes = cc.buildChangeTrails();
+
+    expect(changes).toHaveLength(1);
+    expect(changes).toEqual([
+      {
+        type: ComponentChangeType.ChangeProperties,
+        uuid: b.uuid,
+        properties: [['numberOfTheBeast', undefined]],
+      },
+    ]);
   });
 
   it('should insert update-orders in change trail', () => {
@@ -102,5 +116,34 @@ describe('ComponentContext', () => {
       {type: ComponentChangeType.SetParent, uuid: c.uuid, parentUuid: undefined, order: 15},
       {type: ComponentChangeType.UpdateOrder, uuid: b.uuid, order: 1},
     ]);
+  });
+
+  it.skip('should restore props from memory', () => {
+    let a = new ViewComponent('a');
+
+    a.setProperty('foo', 'bar');
+
+    let changes = cc.buildChangeTrails();
+
+    expect(changes).toHaveLength(1);
+    expect(changes).toEqual([{type: ComponentChangeType.CreateEntities, uuid: a.uuid, token: 'a', properties: [['foo', 'bar']]}]);
+
+    // ---
+
+    a.setProperty('y', 1);
+
+    console.log('a:before', a);
+
+    a.disconnectFromContext();
+    a = new ViewComponent('a', {uuid: a.uuid});
+
+    a.setProperty('x', 0);
+
+    console.log('a:after', a);
+
+    changes = cc.buildChangeTrails();
+
+    expect(changes).toHaveLength(1);
+    expect(changes).toEqual([{type: ComponentChangeType.ChangeProperties, uuid: a.uuid, properties: [['x', 0]]}]);
   });
 });

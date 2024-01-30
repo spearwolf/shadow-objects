@@ -13,6 +13,7 @@ import type {
 import {ComponentChanges} from './ComponentChanges.js';
 import {ComponentMemory} from './ComponentMemory.js';
 import type {ViewComponent} from './ViewComponent.js';
+import {propsEqual} from './props-utils.js';
 
 interface ViewInstance {
   component: ViewComponent;
@@ -64,6 +65,7 @@ export class ComponentContext {
   #removedComponentsChanges: ComponentChanges[] = [];
 
   readonly #changeTrailState = new ComponentMemory();
+  // readonly #componentProperties: Map<string, Record<string, unknown>> = new Map();
 
   addComponent(component: ViewComponent) {
     if (this.hasComponent(component)) {
@@ -153,6 +155,10 @@ export class ComponentContext {
     this.#components.get(component.uuid)?.changes.removeProperty(propKey);
   }
 
+  // restorePropertiesFromMemory(uuid: string): ComponentPropertiesType | undefined {
+  //   return this.#changeTrailState.getComponent(uuid)?.properties;
+  // }
+
   changeOrder(component: ViewComponent) {
     if (component.parent) {
       const parentEntry = this.#components.get(component.parent.uuid)!;
@@ -209,10 +215,6 @@ export class ComponentContext {
    * Entities that are both destroyed and re-created within a single change-trail cycle
    * have most likely been reassigned in the DOM. In this case, the create and destroy events
    * are removed from the trail and converted to set-parent, change-token and set-properties events.
-   *
-   * However, it can happen that unnecessary update events are created that set the same values as before.
-   * Filtering these out is time-consuming, so it is simply not done.
-   * The kernel can ignore such unnecessary events later.
    */
   #removeCreateDestroyTuples(trail: IComponentChangeType[]): IComponentChangeType[] {
     const removeCreateUuid = new Set<string>();
@@ -240,7 +242,7 @@ export class ComponentContext {
       const vc = this.#components.get(createChange.uuid)?.component;
       if (vc == null) continue;
 
-      const prevState = this.#changeTrailState.getComponent(createChange.uuid);
+      const prevState = this.#changeTrailState.getComponentState(createChange.uuid);
 
       if (prevState == null || prevState.parentUuid !== createChange.parentUuid) {
         const setParentChange: ISetParentChange = {
@@ -273,7 +275,7 @@ export class ComponentContext {
         trail.push(changeToken);
       }
 
-      if (createChange.properties) {
+      if (createChange.properties && (prevState == null || !propsEqual(prevState.properties, createChange.properties))) {
         const changeProperties: IPropertiesChange = {
           type: ComponentChangeType.ChangeProperties,
           uuid: createChange.uuid,

@@ -5,12 +5,14 @@ export interface IComponentChange {
   uuid: string;
 }
 
+export type ComponentPropertiesType = [string, unknown][];
+
 export interface ICreateEntitiesChange extends IComponentChange {
   type: ComponentChangeType.CreateEntities;
   token: string;
   parentUuid?: string;
   order?: number;
-  properties?: [string, unknown][];
+  properties?: ComponentPropertiesType;
 }
 
 export interface IChangeToken extends IComponentChange {
@@ -35,7 +37,7 @@ export interface IUpdateOrderChange extends IComponentChange {
 
 export interface IPropertiesChange extends IComponentChange {
   type: ComponentChangeType.ChangeProperties;
-  properties: [string, unknown][];
+  properties: ComponentPropertiesType;
 }
 
 export type IComponentChangeType =
