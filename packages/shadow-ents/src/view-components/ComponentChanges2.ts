@@ -11,12 +11,14 @@ import type {
 
 export class ComponentChanges {
   #uuid: string;
-  #token: string;
-  #order: number;
 
-  #serial = 1;
+  #serial = 0;
 
-  #isCreate = true;
+  #isCreate = false;
+
+  #token?: string;
+  #order?: number;
+
   #isDestroy = false;
 
   #parentUuid: string | null | undefined = undefined;
@@ -26,18 +28,26 @@ export class ComponentChanges {
 
   #orderChanged = false;
 
-  get uuid() {
-    return this.#uuid;
+  constructor(uuid: string) {
+    this.#uuid = uuid;
   }
 
-  constructor(uuid: string, token: string, order: number) {
-    this.#uuid = uuid;
+  create(token: string, order: number) {
+    this.#isCreate = true;
+    this.#isDestroy = false;
+
     this.#token = token;
     this.#order = order;
+
+    this.#serial++;
   }
 
-  destroyEntities() {
-    if (!this.#isDestroy) {
+  destroy() {
+    if (this.#isCreate) {
+      this.#isCreate = false;
+      this.#isDestroy = false;
+      this.#serial++;
+    } else if (!this.#isDestroy) {
       this.#isDestroy = true;
       this.#serial++;
     }
@@ -94,7 +104,7 @@ export class ComponentChanges {
   buildChangeTrail(trail: IComponentChangeType[], trailPhase: ChangeTrailPhase) {
     switch (trailPhase) {
       case ChangeTrailPhase.StructuralChanges:
-        if (!this.#isDestroy && this.#isCreate) {
+        if (this.#isCreate) {
           trail.push(this.makeCreateEntityChange());
         }
         if (!this.#isCreate && !this.#isDestroy) {
@@ -106,12 +116,12 @@ export class ComponentChanges {
         }
         break;
       case ChangeTrailPhase.ContentUpdates:
-        if (!this.#isCreate && this.#changedProperties.length > 0) {
+        if (!this.#isCreate && !this.#isDestroy && this.#changedProperties.length > 0) {
           trail.push(this.makeChangePropertyChange());
         }
         break;
       case ChangeTrailPhase.Removal:
-        if (this.#isDestroy && !this.#isCreate) {
+        if (this.#isCreate) {
           trail.push(this.makeDestroyEntityChange());
         }
         break;
