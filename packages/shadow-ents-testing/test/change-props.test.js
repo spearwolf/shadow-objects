@@ -72,6 +72,8 @@ describe('change props', () => {
 
     // a.viewComponent.setProperty('phoenix', 23);
     // b.append(a);
+    // a.viewComponent.setProperty('neu', 'new');
+    // a.viewComponent.removeProperty('null');
 
     // changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
 
@@ -86,7 +88,11 @@ describe('change props', () => {
     //   {
     //     type: ComponentChangeType.ChangeProperties,
     //     uuid: a.uuid,
-    //     properties: [['phoenix', 23]],
+    //     properties: [
+    //       ['plah', 999],
+    //       ['phoenix', 23],
+    //       ['neu', 'new'],
+    //     ],
     //   },
     // ]);
   });

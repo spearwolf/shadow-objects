@@ -5,7 +5,6 @@ import type {
   IChangeToken,
   IComponentChangeType,
   ICreateEntitiesChange,
-  IPropertiesChange,
   ISetParentChange,
   IUpdateOrderChange,
   NamespaceType,
@@ -13,7 +12,6 @@ import type {
 import {ComponentChanges} from './ComponentChanges.js';
 import {ComponentMemory} from './ComponentMemory.js';
 import type {ViewComponent} from './ViewComponent.js';
-import {propsEqual} from './props-utils.js';
 
 interface ViewInstance {
   component: ViewComponent;
@@ -62,17 +60,16 @@ export class ComponentContext {
   #components: Map<string, ViewInstance> = new Map();
   #rootComponents: string[] = []; // we use an Array here and not a Set, because we want to keep the insertion order
 
-  #markedForDestruction: Set<string> = new Set();
-
   #removedComponentsChanges: ComponentChanges[] = [];
 
   readonly #changeTrailState = new ComponentMemory();
-  // readonly #componentProperties: Map<string, Record<string, unknown>> = new Map();
+  readonly #componentProperties: Map<string, Map<string, unknown>> = new Map();
 
   addComponent(component: ViewComponent) {
     if (this.hasComponent(component)) {
       throw new Error(`a view component already exists with the uuid:${component.uuid}`);
     }
+    // TODO reuse the component-changes if available
     const changes = new ComponentChanges(component.uuid, component.token, component.order);
     this.#components.set(component.uuid, {
       component: component,
@@ -95,11 +92,7 @@ export class ComponentContext {
     return this.#rootComponents.includes(component.uuid);
   }
 
-  isMarkedForDestruction(uuid: string) {
-    return this.#markedForDestruction.has(uuid);
-  }
-
-  removeComponent(component: ViewComponent) {
+  destroyComponent(component: ViewComponent) {
     if (this.hasComponent(component)) {
       const entry = this.#components.get(component.uuid)!;
 
@@ -107,6 +100,8 @@ export class ComponentContext {
 
       this.#components.delete(component.uuid);
       removeFrom(this.#rootComponents, component.uuid);
+
+      // TODO do not destroy the component-changes - delay this until the next change-trail cycle
 
       this.#removedComponentsChanges.push(entry.changes);
       entry.changes.destroyEntities();
@@ -149,21 +144,28 @@ export class ComponentContext {
     const entry = this.#components.get(uuid);
     if (entry) {
       entry.children.slice(0).forEach((childUuid) => this.removeSubTree(childUuid));
-      this.removeComponent(entry.component);
+      this.destroyComponent(entry.component);
     }
   }
 
   setProperty<T = unknown>(component: ViewComponent, propKey: string, value: T, isEqual?: (a: T, b: T) => boolean) {
     this.#components.get(component.uuid)?.changes.changeProperty(propKey, value, isEqual);
+    this.#getProps(component.uuid).set(propKey, value);
   }
 
   removeProperty(component: ViewComponent, propKey: string) {
     this.#components.get(component.uuid)?.changes.removeProperty(propKey);
+    this.#getProps(component.uuid).delete(propKey);
   }
 
-  // restorePropertiesFromMemory(uuid: string): ComponentPropertiesType | undefined {
-  //   return this.#changeTrailState.getComponent(uuid)?.properties;
-  // }
+  #getProps(uuid: string): Map<string, unknown> {
+    let props = this.#componentProperties.get(uuid);
+    if (props == null) {
+      props = new Map();
+      this.#componentProperties.set(uuid, props);
+    }
+    return props;
+  }
 
   changeOrder(component: ViewComponent) {
     if (component.parent) {
@@ -213,6 +215,8 @@ export class ComponentContext {
     trail = this.#removeCreateDestroyTuples(trail);
 
     this.#changeTrailState.write(trail);
+
+    this.#componentProperties.clear();
 
     return trail;
   }
@@ -279,16 +283,6 @@ export class ComponentContext {
         };
 
         trail.push(changeToken);
-      }
-
-      if (createChange.properties && (prevState == null || !propsEqual(prevState.properties, createChange.properties))) {
-        const changeProperties: IPropertiesChange = {
-          type: ComponentChangeType.ChangeProperties,
-          uuid: createChange.uuid,
-          properties: createChange.properties,
-        };
-
-        trail.push(changeProperties);
       }
     }
 

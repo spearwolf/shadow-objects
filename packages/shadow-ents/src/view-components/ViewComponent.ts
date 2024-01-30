@@ -125,7 +125,7 @@ export class ViewComponent {
 
   destroy() {
     this.removeFromParent();
-    this.#context?.removeComponent(this);
+    this.#context?.destroyComponent(this);
     this.#context = undefined;
   }
 }
