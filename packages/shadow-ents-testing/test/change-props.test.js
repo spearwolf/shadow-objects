@@ -1,5 +1,5 @@
 import {expect} from '@esm-bundle/chai';
-import {ComponentChangeType, VoidToken} from '@spearwolf/shadow-ents';
+import {ComponentChangeType, ComponentContext, VoidToken} from '@spearwolf/shadow-ents';
 import '@spearwolf/shadow-ents/shadow-entity.js';
 import {findElementsById} from '../src/findElementsById.js';
 import {nextChangeTrail} from '../src/nextSyncEvent.js';
@@ -16,6 +16,10 @@ describe('change props', () => {
     await Promise.all([customElements.whenDefined('shadow-local-env'), customElements.whenDefined('shadow-entity')]);
   });
 
+  afterEach(() => {
+    ComponentContext.get().clear();
+  });
+
   it('works as expected', async () => {
     const [a, b, localEnv] = findElementsById('a', 'b', 'localEnv');
 
@@ -24,8 +28,6 @@ describe('change props', () => {
     b.viewComponent.setProperty('xyz', [1, 2, 3]);
 
     let changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
-
-    console.log('A', JSON.stringify(changeTrail, null, 2));
 
     expect(changeTrail, 'changeTrail:before').to.deep.equal([
       {
@@ -53,8 +55,6 @@ describe('change props', () => {
     b.viewComponent.removeProperty('gibsnich');
 
     changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
-
-    console.log('B', JSON.stringify(changeTrail, null, 2));
 
     expect(changeTrail, 'changeTrail:after').to.deep.equal([
       {

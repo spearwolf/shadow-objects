@@ -1,11 +1,11 @@
-import {afterAll, describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it} from 'vitest';
 import {ComponentContext} from './ComponentContext.js';
 import {ViewComponent} from './ViewComponent.js';
 
-describe('EntityProxy', () => {
+describe('ViewComponent', () => {
   const ctx = ComponentContext.get();
 
-  afterAll(() => {
+  afterEach(() => {
     ctx.clear();
   });
 
@@ -13,55 +13,57 @@ describe('EntityProxy', () => {
     expect(ViewComponent).toBeDefined();
   });
 
-  it('should create new entity', () => {
-    const entity = new ViewComponent('test');
-    expect(entity.uuid).toBeDefined();
-    expect(entity.token).toBe('test');
-    expect(entity.parent).toBeUndefined();
-    expect(ctx.hasComponent(entity)).toBeTruthy();
-    expect(ctx.isRootComponent(entity)).toBeTruthy();
+  it('should create', () => {
+    const c = new ViewComponent('test');
+    expect(c.uuid).toBeDefined();
+    expect(c.token).toBe('test');
+    expect(c.parent).toBeUndefined();
+    expect(ctx.hasComponent(c)).toBeTruthy();
+    expect(ctx.isRootComponent(c)).toBeTruthy();
   });
 
   it('should use uuid from params', () => {
-    const entity = new ViewComponent('test', {uuid: 'fooBar123'});
-    expect(entity.uuid).toBe('fooBar123');
+    const c = new ViewComponent('test', {uuid: 'fooBar123'});
+    expect(c.uuid).toBe('fooBar123');
   });
 
   it('should use order from params', () => {
-    const entity = new ViewComponent('test', {order: 66});
-    expect(entity.order).toBe(66);
+    const c = new ViewComponent('test', {order: 66});
+    expect(c.order).toBe(66);
   });
 
   it('should use parent from params', () => {
     const parent = new ViewComponent('parent');
-    const entity = new ViewComponent('test', {parent});
-    expect(entity.parent).toBe(parent);
+    const child = new ViewComponent('test', {parent});
+    expect(child.parent).toBe(parent);
   });
 
   it('should use parent param as alternative to options', () => {
     const parent = new ViewComponent('parent');
-    const entity = new ViewComponent('test', parent);
-    expect(entity.parent).toBe(parent);
+    const child = new ViewComponent('test', parent);
+    expect(child.parent).toBe(parent);
   });
 
   it('should use context from params', () => {
     const context = ComponentContext.get('myCtx');
-    const entity = new ViewComponent('test', {context});
-    expect(entity.context).toBe(context);
+    const child = new ViewComponent('test', {context});
+    expect(child.context).toBe(context);
     context.clear();
   });
 
-  it('should destroy entity', () => {
-    const entity = new ViewComponent('test');
-    expect(ctx.hasComponent(entity)).toBeTruthy();
-    entity.destroy();
-    expect(ctx.hasComponent(entity)).toBeFalsy();
+  it('should destroy after changeTrail', () => {
+    const c = new ViewComponent('test');
+    expect(ctx.hasComponent(c)).toBeTruthy();
+    // TODO write test for create + destroy in same changeTrail
+    ctx.buildChangeTrails();
+    c.destroy();
+    ctx.buildChangeTrails();
+    expect(ctx.hasComponent(c)).toBeFalsy();
   });
 
-  it('should add entity as child (constructor)', () => {
+  it('should add as child (constructor)', () => {
     const parent = new ViewComponent('test');
     const child = new ViewComponent('test', parent);
-    const ctx = ComponentContext.get();
 
     expect(ctx.hasComponent(parent)).toBeTruthy();
     expect(ctx.hasComponent(child)).toBeTruthy();
@@ -69,7 +71,7 @@ describe('EntityProxy', () => {
     expect(ctx.isRootComponent(child)).toBeFalsy();
   });
 
-  it('should add entity as child (addChild)', () => {
+  it('should add as child (addChild)', () => {
     const parent = new ViewComponent('test');
     const child = new ViewComponent('test');
 

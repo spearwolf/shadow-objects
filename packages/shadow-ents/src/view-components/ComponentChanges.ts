@@ -137,8 +137,7 @@ export class ComponentChanges {
       if (!propExists) {
         removeFrom(this.#propsChangeOrder, key);
       }
-    }
-    if (propExists) {
+    } else if (propExists) {
       appendToEnd(this.#propsChangeOrder, key);
       this.#serial++;
     }
@@ -193,7 +192,8 @@ export class ComponentChanges {
     }
 
     if (this.#nextProperties.size > 0) {
-      entry.properties = Array.from(this.#nextProperties.entries());
+      entry.properties = Array.from(this.#nextProperties.entries()).filter(([, value]) => value !== undefined);
+      entry.properties.forEach(([key, value]) => this.#properties.set(key, value));
     }
 
     if (this.#nextOrder !== undefined && this.#nextOrder !== this.#order) {

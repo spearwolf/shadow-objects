@@ -175,10 +175,10 @@ export class ComponentContext {
     const pathOfChanges = this.#buildPathOfChanges();
     const trail: IComponentChangeType[] = [];
 
-    console.log(
-      'path of changes:',
-      pathOfChanges.map((c) => c.uuid),
-    );
+    // console.log(
+    //   'path of changes:',
+    //   pathOfChanges.map((c) => c.uuid),
+    // );
 
     for (const changes of pathOfChanges) {
       changes.buildChangeTrail(trail, ChangeTrailPhase.StructuralChanges);
@@ -206,20 +206,15 @@ export class ComponentContext {
       }
     }
 
-    // for (const uuid of Array.from(this.#components.keys()).slice(0)) {
-    //   const changes = this.#components.get(uuid)!.changes;
-    //   if (changes.isDead || changes.isDestroyed) {
-    //     this.#deleteComponent(uuid);
-    //   }
-    // }
-
     return trail;
   }
 
   #deleteComponent(uuid: string) {
-    console.log('deleteComponent:', uuid);
-    this.#components.delete(uuid);
-    removeFrom(this.#rootComponents, uuid);
+    // console.log('deleteComponent:', uuid, this.#components.has(uuid) ? 'x' : '');
+    if (this.#components.has(uuid)) {
+      this.#components.delete(uuid);
+      removeFrom(this.#rootComponents, uuid);
+    }
   }
 
   #buildPathOfChanges(): ComponentChanges[] {

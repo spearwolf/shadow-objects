@@ -37,30 +37,30 @@ export class ComponentMemory {
 
   write(changes: IComponentChange[]) {
     for (const change of changes) {
-      switch (change.type) {
-        case ComponentChangeType.CreateEntities:
-          this.createEntity(change as ICreateEntitiesChange);
-          break;
+      if (change.type === ComponentChangeType.CreateEntities) {
+        this.createEntity(change as ICreateEntitiesChange);
+      } else if (this.#components.has(change.uuid)) {
+        switch (change.type) {
+          case ComponentChangeType.DestroyEntities:
+            this.destroyEntity(change as IDestroyEntitiesChange);
+            break;
 
-        case ComponentChangeType.DestroyEntities:
-          this.destroyEntity(change as IDestroyEntitiesChange);
-          break;
+          case ComponentChangeType.SetParent:
+            this.setParent(change as ISetParentChange);
+            break;
 
-        case ComponentChangeType.SetParent:
-          this.setParent(change as ISetParentChange);
-          break;
+          case ComponentChangeType.UpdateOrder:
+            this.updateOrder(change as IUpdateOrderChange);
+            break;
 
-        case ComponentChangeType.UpdateOrder:
-          this.updateOrder(change as IUpdateOrderChange);
-          break;
+          case ComponentChangeType.ChangeToken:
+            this.changeToken(change as IChangeToken);
+            break;
 
-        case ComponentChangeType.ChangeToken:
-          this.changeToken(change as IChangeToken);
-          break;
-
-        case ComponentChangeType.ChangeProperties:
-          this.changeProperties(change as IPropertiesChange);
-          break;
+          case ComponentChangeType.ChangeProperties:
+            this.changeProperties(change as IPropertiesChange);
+            break;
+        }
       }
     }
   }

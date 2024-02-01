@@ -1,5 +1,5 @@
 import {expect} from '@esm-bundle/chai';
-import {ComponentChangeType} from '@spearwolf/shadow-ents';
+import {ComponentChangeType, ComponentContext} from '@spearwolf/shadow-ents';
 import '@spearwolf/shadow-ents/shadow-entity.js';
 import {findElementsById} from '../src/findElementsById.js';
 import {render} from '../src/render.js';
@@ -22,12 +22,14 @@ describe('remove and append e', () => {
     await Promise.all([customElements.whenDefined('shadow-local-env'), customElements.whenDefined('shadow-entity')]);
   });
 
+  afterEach(() => {
+    ComponentContext.get().clear();
+  });
+
   it('remove and append e', () => {
     const [b, e, localEnv] = findElementsById('b', 'e', 'localEnv');
 
     let changeTrail = localEnv.getComponentContext().buildChangeTrails();
-
-    console.log('A', changeTrail);
 
     e.remove();
 
@@ -36,8 +38,6 @@ describe('remove and append e', () => {
     b.append(e);
 
     changeTrail = localEnv.getComponentContext().buildChangeTrails();
-
-    console.log('B', changeTrail);
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
       {

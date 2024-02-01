@@ -18,8 +18,6 @@ describe('ComponentContext', () => {
 
     let changes = cc.buildChangeTrails();
 
-    console.log('create 2x view components: a, a > b', changes);
-
     expect(changes).to.deep.equal([
       {type: ComponentChangeType.CreateEntities, uuid: a.uuid, token: 'a'},
       {type: ComponentChangeType.CreateEntities, uuid: b.uuid, token: 'b', parentUuid: a.uuid},
@@ -29,17 +27,13 @@ describe('ComponentContext', () => {
 
     changes = cc.buildChangeTrails();
 
-    console.log('destroy view component: a', changes);
-
-    debugger;
-
     expect(changes).to.deep.equal([
       {type: ComponentChangeType.SetParent, uuid: b.uuid, parentUuid: undefined},
       {type: ComponentChangeType.DestroyEntities, uuid: a.uuid},
     ]);
   });
 
-  it.skip('should insert change-properties in change trail', () => {
+  it('should insert change-properties in change trail', () => {
     const a = new ViewComponent('a');
     const b = new ViewComponent('b', a);
 
@@ -48,8 +42,6 @@ describe('ComponentContext', () => {
     a.removeProperty('plah');
 
     let changes = cc.buildChangeTrails();
-
-    console.log('C', changes);
 
     expect(changes).to.deep.equal([
       {type: ComponentChangeType.CreateEntities, uuid: a.uuid, token: 'a', properties: [['foo', 'bar']]},
@@ -62,8 +54,6 @@ describe('ComponentContext', () => {
     b.setProperty('numberOfTheBeast', 666);
 
     changes = cc.buildChangeTrails();
-
-    console.log('D', changes);
 
     expect(changes).to.deep.equal([
       {type: ComponentChangeType.ChangeProperties, uuid: a.uuid, properties: [['plah', 42]]},
@@ -82,8 +72,6 @@ describe('ComponentContext', () => {
 
     changes = cc.buildChangeTrails();
 
-    console.log('E', changes);
-
     expect(changes).to.deep.equal([
       {
         type: ComponentChangeType.ChangeProperties,
@@ -93,7 +81,7 @@ describe('ComponentContext', () => {
     ]);
   });
 
-  it.skip('should insert update-orders in change trail', () => {
+  it('should insert update-orders in change trail', () => {
     const a = new ViewComponent('a', {order: 100});
     const b = new ViewComponent('b', a);
     const c = new ViewComponent('c', {parent: a, order: 3});
@@ -121,7 +109,7 @@ describe('ComponentContext', () => {
     ]);
   });
 
-  it.skip('should restore props from memory', () => {
+  it('should restore props from memory', () => {
     let a = new ViewComponent('a');
 
     a.setProperty('foo', 'bar');
@@ -136,17 +124,22 @@ describe('ComponentContext', () => {
 
     a.setProperty('y', 1);
 
-    console.log('a:before', a);
-
     a.destroy();
     a = new ViewComponent('a', {uuid: a.uuid});
 
     a.setProperty('x', 0);
 
-    console.log('a:after', a);
-
     changes = cc.buildChangeTrails();
 
-    expect(changes).to.deep.equal([{type: ComponentChangeType.ChangeProperties, uuid: a.uuid, properties: [['x', 0]]}]);
+    expect(changes).to.deep.equal([
+      {
+        type: ComponentChangeType.ChangeProperties,
+        uuid: a.uuid,
+        properties: [
+          ['y', 1],
+          ['x', 0],
+        ],
+      },
+    ]);
   });
 });

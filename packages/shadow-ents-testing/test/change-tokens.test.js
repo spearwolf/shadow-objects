@@ -1,5 +1,5 @@
 import {expect} from '@esm-bundle/chai';
-import {ComponentChangeType, VoidToken} from '@spearwolf/shadow-ents';
+import {ComponentChangeType, ComponentContext, VoidToken} from '@spearwolf/shadow-ents';
 import '@spearwolf/shadow-ents/shadow-entity.js';
 import {findElementsById} from '../src/findElementsById.js';
 import {nextChangeTrail} from '../src/nextSyncEvent.js';
@@ -16,12 +16,14 @@ describe('change tokens', () => {
     await Promise.all([customElements.whenDefined('shadow-local-env'), customElements.whenDefined('shadow-entity')]);
   });
 
+  afterEach(() => {
+    ComponentContext.get().clear();
+  });
+
   it('void-token works as expected', async () => {
     const [a, b, localEnv] = findElementsById('a', 'b', 'localEnv');
 
     let changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
-
-    console.log('A', changeTrail);
 
     expect(changeTrail, 'changeTrail:before').to.deep.equal([
       {
@@ -40,8 +42,6 @@ describe('change tokens', () => {
     b.token = 'B';
 
     changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
-
-    console.log('B', changeTrail);
 
     expect(changeTrail, 'changeTrail:after').to.deep.equal([
       {
