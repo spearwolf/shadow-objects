@@ -21,6 +21,8 @@ describe('change tokens', () => {
 
     let changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
 
+    console.log('A', changeTrail);
+
     expect(changeTrail, 'changeTrail:before').to.deep.equal([
       {
         type: ComponentChangeType.CreateEntities,
@@ -38,6 +40,8 @@ describe('change tokens', () => {
     b.token = 'B';
 
     changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
+
+    console.log('B', changeTrail);
 
     expect(changeTrail, 'changeTrail:after').to.deep.equal([
       {

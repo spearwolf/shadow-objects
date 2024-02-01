@@ -1,5 +1,5 @@
 import {expect} from '@esm-bundle/chai';
-import {ShadowEntity, ShadowLocalEnv} from '@spearwolf/shadow-ents';
+import {ComponentContext, ShadowEntity, ShadowLocalEnv} from '@spearwolf/shadow-ents';
 import '@spearwolf/shadow-ents/shadow-entity.js';
 import {findElementsById} from '../src/findElementsById.js';
 import {render} from '../src/render.js';
@@ -20,6 +20,10 @@ describe('local-env entities', () => {
       </shadow-local-env>`);
 
     await Promise.all([customElements.whenDefined('shadow-local-env'), customElements.whenDefined('shadow-entity')]);
+  });
+
+  afterEach(() => {
+    ComponentContext.get().clear();
   });
 
   it('localEnv is a ShadowLocalEnv element', () => {

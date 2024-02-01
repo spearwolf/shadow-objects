@@ -25,6 +25,8 @@ describe('change props', () => {
 
     let changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
 
+    console.log('A', JSON.stringify(changeTrail, null, 2));
+
     expect(changeTrail, 'changeTrail:before').to.deep.equal([
       {
         type: ComponentChangeType.CreateEntities,
@@ -51,6 +53,8 @@ describe('change props', () => {
     b.viewComponent.removeProperty('gibsnich');
 
     changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
+
+    console.log('B', JSON.stringify(changeTrail, null, 2));
 
     expect(changeTrail, 'changeTrail:after').to.deep.equal([
       {

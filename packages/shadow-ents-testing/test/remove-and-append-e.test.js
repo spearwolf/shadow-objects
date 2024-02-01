@@ -25,7 +25,9 @@ describe('remove and append e', () => {
   it('remove and append e', () => {
     const [b, e, localEnv] = findElementsById('b', 'e', 'localEnv');
 
-    localEnv.getComponentContext().buildChangeTrails();
+    let changeTrail = localEnv.getComponentContext().buildChangeTrails();
+
+    console.log('A', changeTrail);
 
     e.remove();
 
@@ -33,7 +35,9 @@ describe('remove and append e', () => {
 
     b.append(e);
 
-    const changeTrail = localEnv.getComponentContext().buildChangeTrails();
+    changeTrail = localEnv.getComponentContext().buildChangeTrails();
+
+    console.log('B', changeTrail);
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
       {

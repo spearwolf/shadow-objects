@@ -1,14 +1,7 @@
 import {removeFrom} from '../array-utils.js';
-import {ChangeTrailPhase, ComponentChangeType} from '../constants.js';
+import {ChangeTrailPhase} from '../constants.js';
 import {toNamespace} from '../toNamespace.js';
-import type {
-  IChangeToken,
-  IComponentChangeType,
-  ICreateEntitiesChange,
-  ISetParentChange,
-  IUpdateOrderChange,
-  NamespaceType,
-} from '../types.js';
+import type {IComponentChangeType, NamespaceType} from '../types.js';
 import {ComponentChanges} from './ComponentChanges.js';
 import {ComponentMemory} from './ComponentMemory.js';
 import type {ViewComponent} from './ViewComponent.js';
@@ -60,25 +53,29 @@ export class ComponentContext {
   #components: Map<string, ViewInstance> = new Map();
   #rootComponents: string[] = []; // we use an Array here and not a Set, because we want to keep the insertion order
 
-  #removedComponentsChanges: ComponentChanges[] = [];
-
   readonly #changeTrailState = new ComponentMemory();
-  readonly #componentProperties: Map<string, Map<string, unknown>> = new Map();
 
   addComponent(component: ViewComponent) {
-    if (this.hasComponent(component)) {
-      throw new Error(`a view component already exists with the uuid:${component.uuid}`);
+    let viewInstance: ViewInstance | undefined;
+
+    if (this.#components.has(component.uuid)) {
+      viewInstance = this.#components.get(component.uuid);
+      viewInstance.component = component;
+      viewInstance.children = [];
+    } else {
+      viewInstance = {
+        component: component,
+        children: [],
+        changes: new ComponentChanges(component.uuid),
+      };
+      this.#components.set(component.uuid, viewInstance);
     }
-    // TODO reuse the component-changes if available
-    const changes = new ComponentChanges(component.uuid, component.token, component.order);
-    this.#components.set(component.uuid, {
-      component: component,
-      children: [],
-      changes,
-    });
+
+    viewInstance.changes.create(component.token, component.parent?.uuid, component.order);
+
     if (component.parent) {
       this.addToChildren(component.parent, component);
-      changes.setParent(component.parent.uuid);
+      viewInstance.changes.setParent(component.parent.uuid);
     } else {
       this.#appendToOrdered(component, this.#rootComponents);
     }
@@ -95,16 +92,8 @@ export class ComponentContext {
   destroyComponent(component: ViewComponent) {
     if (this.hasComponent(component)) {
       const entry = this.#components.get(component.uuid)!;
-
       entry.children.slice(0).forEach((childUuid) => this.#components.get(childUuid)?.component.removeFromParent());
-
-      this.#components.delete(component.uuid);
-      removeFrom(this.#rootComponents, component.uuid);
-
-      // TODO do not destroy the component-changes - delay this until the next change-trail cycle
-
-      this.#removedComponentsChanges.push(entry.changes);
-      entry.changes.destroyEntities();
+      entry.changes.destroy();
     }
   }
 
@@ -145,26 +134,16 @@ export class ComponentContext {
     if (entry) {
       entry.children.slice(0).forEach((childUuid) => this.removeSubTree(childUuid));
       this.destroyComponent(entry.component);
+      this.#deleteComponent(uuid);
     }
   }
 
   setProperty<T = unknown>(component: ViewComponent, propKey: string, value: T, isEqual?: (a: T, b: T) => boolean) {
     this.#components.get(component.uuid)?.changes.changeProperty(propKey, value, isEqual);
-    this.#getProps(component.uuid).set(propKey, value);
   }
 
   removeProperty(component: ViewComponent, propKey: string) {
     this.#components.get(component.uuid)?.changes.removeProperty(propKey);
-    this.#getProps(component.uuid).delete(propKey);
-  }
-
-  #getProps(uuid: string): Map<string, unknown> {
-    let props = this.#componentProperties.get(uuid);
-    if (props == null) {
-      props = new Map();
-      this.#componentProperties.set(uuid, props);
-    }
-    return props;
   }
 
   changeOrder(component: ViewComponent) {
@@ -194,7 +173,12 @@ export class ComponentContext {
 
   buildChangeTrails() {
     const pathOfChanges = this.#buildPathOfChanges();
-    let trail: IComponentChangeType[] = [];
+    const trail: IComponentChangeType[] = [];
+
+    console.log(
+      'path of changes:',
+      pathOfChanges.map((c) => c.uuid),
+    );
 
     for (const changes of pathOfChanges) {
       changes.buildChangeTrail(trail, ChangeTrailPhase.StructuralChanges);
@@ -202,91 +186,40 @@ export class ComponentContext {
 
     for (const changes of pathOfChanges) {
       changes.buildChangeTrail(trail, ChangeTrailPhase.ContentUpdates);
-      changes.clear();
     }
 
-    for (const changes of this.#removedComponentsChanges) {
+    for (const changes of pathOfChanges) {
       changes.buildChangeTrail(trail, ChangeTrailPhase.Removal);
-      changes.dispose();
     }
-
-    this.#removedComponentsChanges.length = 0;
-
-    trail = this.#removeCreateDestroyTuples(trail);
 
     this.#changeTrailState.write(trail);
 
-    this.#componentProperties.clear();
+    for (const changes of pathOfChanges) {
+      if (changes.isDestroyed) {
+        this.#deleteComponent(changes.uuid);
+      }
+
+      changes.clear();
+
+      if (changes.isDead) {
+        this.#deleteComponent(changes.uuid);
+      }
+    }
+
+    // for (const uuid of Array.from(this.#components.keys()).slice(0)) {
+    //   const changes = this.#components.get(uuid)!.changes;
+    //   if (changes.isDead || changes.isDestroyed) {
+    //     this.#deleteComponent(uuid);
+    //   }
+    // }
 
     return trail;
   }
 
-  /**
-   * Entities that are both destroyed and re-created within a single change-trail cycle
-   * have most likely been reassigned in the DOM. In this case, the create and destroy events
-   * are removed from the trail and converted to set-parent, change-token and set-properties events.
-   */
-  #removeCreateDestroyTuples(trail: IComponentChangeType[]): IComponentChangeType[] {
-    const removeCreateUuid = new Set<string>();
-    trail = trail.filter((change) => {
-      if (change.type === ComponentChangeType.DestroyEntities && this.#components.has(change.uuid)) {
-        const create = trail.find((c) => c.type === ComponentChangeType.CreateEntities && c.uuid === change.uuid);
-        if (create != null) {
-          removeCreateUuid.add(create.uuid);
-          return false;
-        }
-      }
-      return true;
-    });
-
-    const removedCreateChanges: ICreateEntitiesChange[] = [];
-    trail = trail.filter((c) => {
-      if (c.type === ComponentChangeType.CreateEntities && removeCreateUuid.has(c.uuid)) {
-        removedCreateChanges.push(c);
-        return false;
-      }
-      return true;
-    });
-
-    for (const createChange of removedCreateChanges) {
-      const vc = this.#components.get(createChange.uuid)?.component;
-      if (vc == null) continue;
-
-      const prevState = this.#changeTrailState.getComponentState(createChange.uuid);
-
-      if (prevState == null || prevState.parentUuid !== createChange.parentUuid) {
-        const setParentChange: ISetParentChange = {
-          type: ComponentChangeType.SetParent,
-          uuid: createChange.uuid,
-          parentUuid: createChange.parentUuid,
-        };
-
-        if (createChange.order !== undefined) {
-          setParentChange.order = createChange.order;
-        }
-
-        trail.push(setParentChange);
-      } else if (prevState != null && createChange.order != null && prevState.order !== createChange.order) {
-        const changeToken: IUpdateOrderChange = {
-          type: ComponentChangeType.UpdateOrder,
-          uuid: createChange.uuid,
-          order: createChange.order ?? 0,
-        };
-        trail.push(changeToken);
-      }
-
-      if (prevState == null || prevState.token !== createChange.token) {
-        const changeToken: IChangeToken = {
-          type: ComponentChangeType.ChangeToken,
-          uuid: createChange.uuid,
-          token: createChange.token,
-        };
-
-        trail.push(changeToken);
-      }
-    }
-
-    return trail;
+  #deleteComponent(uuid: string) {
+    console.log('deleteComponent:', uuid);
+    this.#components.delete(uuid);
+    removeFrom(this.#rootComponents, uuid);
   }
 
   #buildPathOfChanges(): ComponentChanges[] {

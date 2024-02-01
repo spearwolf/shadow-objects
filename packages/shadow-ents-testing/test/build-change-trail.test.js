@@ -25,13 +25,17 @@ describe('build-change-trail', () => {
   it('append e to b', () => {
     const [b, e, localEnv] = findElementsById('b', 'e', 'localEnv');
 
-    localEnv.getComponentContext().buildChangeTrails();
+    let changeTrail = localEnv.getComponentContext().buildChangeTrails();
+
+    console.log('A', changeTrail);
 
     e.token = 'bee';
 
     b.append(e);
 
-    const changeTrail = localEnv.getComponentContext().buildChangeTrails();
+    changeTrail = localEnv.getComponentContext().buildChangeTrails();
+
+    console.log('B', changeTrail);
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
       {

@@ -1,6 +1,7 @@
-import {appendTo} from '../array-utils.js';
-import {ChangeTrailPhase, ComponentChangeType} from '../constants.js';
+import {appendToEnd, removeFrom} from '../array-utils.js';
+import {ChangeTrailPhase, ComponentChangeType, VoidToken} from '../constants.js';
 import type {
+  IChangeToken,
   IComponentChangeType,
   ICreateEntitiesChange,
   IDestroyEntitiesChange,
@@ -10,108 +11,168 @@ import type {
 } from '../types.js';
 
 export class ComponentChanges {
-  #uuid: string;
-  #token: string;
-  #order: number;
+  readonly #uuid: string;
 
-  #serial = 1;
-
-  #isCreate = true;
-  #isDestroy = false;
-
-  #parentUuid: string | null | undefined = undefined;
-
-  #properties: Map<string, unknown> = new Map();
-  #changedProperties: string[] = []; // we use an Array here and not a Set, because we want to keep the insertion order
-
-  #orderChanged = false;
-
-  get uuid() {
+  get uuid(): string {
     return this.#uuid;
   }
 
-  constructor(uuid: string, token: string, order: number) {
+  #serial = 0;
+
+  constructor(uuid: string) {
     this.#uuid = uuid;
-    this.#token = token;
-    this.#order = order;
   }
 
-  destroyEntities() {
-    if (!this.#isDestroy) {
-      this.#isDestroy = true;
+  #isDead = true;
+
+  #createCount = 0;
+  #destroyCount = 0;
+
+  hasChanges(): boolean {
+    return this.#serial > 0;
+  }
+
+  get isCreated(): boolean {
+    return this.#createCount > 0 && this.#createCount > this.#destroyCount;
+  }
+
+  get isDestroyed(): boolean {
+    return this.#destroyCount > 0 && this.#destroyCount > this.#createCount;
+  }
+
+  get isDead(): boolean {
+    return this.#isDead;
+  }
+
+  #token: string = VoidToken;
+  #parentUuid?: string;
+  #order: number = 0;
+
+  #nextToken?: string;
+  #nextParentUuid?: string;
+  #nextOrder?: number;
+
+  create(token: string = VoidToken, parentUuid?: string, order: number = 0) {
+    this.#serial++;
+    this.#createCount++;
+    this.#isDead = false;
+
+    this.#nextToken = token;
+    this.#nextParentUuid = parentUuid;
+    this.#nextOrder = !order ? undefined : order;
+  }
+
+  destroy() {
+    this.#destroyCount++;
+    this.#serial++;
+  }
+
+  clear() {
+    this.#serial = 0;
+
+    if (this.isDestroyed) {
+      this.#isDead = true;
+    }
+
+    this.#createCount = 0;
+    this.#destroyCount = 0;
+
+    this.#nextToken = undefined;
+    this.#nextParentUuid = undefined;
+    this.#nextOrder = undefined;
+
+    this.#nextProperties.clear();
+    this.#propsChangeOrder.length = 0;
+  }
+
+  changeToken(token: string) {
+    if (token === this.#token) {
+      this.#nextToken = undefined;
+    } else {
+      this.#nextToken = token;
       this.#serial++;
     }
   }
 
   setParent(parentUuid?: string) {
-    this.#parentUuid = parentUuid ?? null;
-    this.#serial++;
-  }
-
-  changeProperty<T = unknown>(key: string, value: T, isEqual?: (a: T, b: T) => boolean) {
-    const prevValue = this.#properties.get(key) as T;
-    if ((isEqual == null && value !== prevValue) || (isEqual != null && !isEqual(value, prevValue))) {
-      this.#properties.set(key, value);
-      appendTo(this.#changedProperties, key);
+    if (parentUuid === this.#parentUuid) {
+      this.#nextParentUuid = undefined;
+    } else {
+      this.#nextParentUuid = parentUuid ?? null;
       this.#serial++;
     }
   }
 
   changeOrder(order: number) {
-    if (this.#order !== order) {
-      this.#order = order;
-      this.#orderChanged = true;
+    if (order === this.#order) {
+      this.#nextOrder = undefined;
+    } else {
+      this.#nextOrder = order;
       this.#serial++;
+    }
+  }
+
+  #properties: Map<string, unknown> = new Map();
+  #nextProperties: Map<string, unknown> = new Map();
+  #propsChangeOrder: string[] = []; // we use an Array here and not a Set, because we want to keep the change order
+
+  changeProperty<T = unknown>(key: string, value: T, isEqual?: (a: T, b: T) => boolean) {
+    const prevValue = this.#properties.get(key) as T;
+    const valueChanged = (isEqual == null && value !== prevValue) || (isEqual != null && !isEqual(value, prevValue));
+
+    if (valueChanged) {
+      this.#nextProperties.set(key, value);
+      appendToEnd(this.#propsChangeOrder, key);
+      this.#serial++;
+    } else {
+      this.#nextProperties.delete(key);
+      removeFrom(this.#propsChangeOrder, key);
     }
   }
 
   removeProperty(key: string) {
-    if (this.#properties.has(key)) {
-      this.#properties.delete(key);
-      appendTo(this.#changedProperties, key);
+    const propExists = this.#properties.has(key);
+    if (this.#nextProperties.has(key)) {
+      this.#nextProperties.delete(key);
+      if (!propExists) {
+        removeFrom(this.#propsChangeOrder, key);
+      }
+    }
+    if (propExists) {
+      appendToEnd(this.#propsChangeOrder, key);
       this.#serial++;
     }
   }
 
-  hasChanges() {
-    return this.#serial > 0;
-  }
-
-  clear() {
-    this.#isCreate = false;
-    this.#isDestroy = false;
-    this.#parentUuid = undefined;
-    this.#changedProperties.length = 0;
-    this.#orderChanged = false;
-    this.#serial = 0;
-  }
-
-  dispose() {
-    this.clear();
-    this.#properties.clear();
-  }
-
   buildChangeTrail(trail: IComponentChangeType[], trailPhase: ChangeTrailPhase) {
+    const {isCreated, isDestroyed, isDead} = this;
+    const isAlive = !isCreated && !isDestroyed && !isDead;
+
     switch (trailPhase) {
       case ChangeTrailPhase.StructuralChanges:
-        if (!this.#isDestroy && this.#isCreate) {
+        if (isCreated) {
           trail.push(this.makeCreateEntityChange());
         }
-        if (!this.#isCreate && !this.#isDestroy) {
-          if (this.#parentUuid !== undefined) {
+        if (isAlive) {
+          if (this.#nextParentUuid !== undefined && this.#nextParentUuid !== this.#parentUuid) {
             trail.push(this.makeSetParentChange());
-          } else if (this.#orderChanged) {
+          } else if (this.#nextOrder !== undefined && this.#nextOrder !== this.#order) {
             trail.push(this.makeUpdateOrderChange());
+          }
+          if (this.#nextToken !== undefined && this.#nextToken !== this.#token) {
+            trail.push(this.makeChangeToken());
           }
         }
         break;
+
       case ChangeTrailPhase.ContentUpdates:
-        if (!this.#isCreate && this.#changedProperties.length > 0) {
+        if (isAlive && this.#propsChangeOrder.length > 0) {
           trail.push(this.makeChangePropertyChange());
         }
         break;
+
       case ChangeTrailPhase.Removal:
-        if (this.#isDestroy && !this.#isCreate) {
+        if (isDestroyed) {
           trail.push(this.makeDestroyEntityChange());
         }
         break;
@@ -122,19 +183,21 @@ export class ComponentChanges {
     const entry: ICreateEntitiesChange = {
       type: ComponentChangeType.CreateEntities,
       uuid: this.#uuid,
-      token: this.#token,
+      token: this.#nextToken,
     };
 
-    if (this.#parentUuid) {
-      entry.parentUuid = this.#parentUuid;
+    this.#token = this.#nextToken;
+
+    if (this.#nextParentUuid !== undefined) {
+      entry.parentUuid = this.#parentUuid = this.#nextParentUuid;
     }
 
-    if (this.#properties.size > 0) {
-      entry.properties = Array.from(this.#properties.entries());
+    if (this.#nextProperties.size > 0) {
+      entry.properties = Array.from(this.#nextProperties.entries());
     }
 
-    if (this.#order !== 0) {
-      entry.order = this.#order;
+    if (this.#nextOrder !== undefined && this.#nextOrder !== this.#order) {
+      entry.order = this.#order = this.#nextOrder;
     }
 
     return entry;
@@ -148,18 +211,24 @@ export class ComponentChanges {
   }
 
   makeSetParentChange(): ISetParentChange {
+    this.#parentUuid = this.#nextParentUuid ?? undefined;
+
     const entry: ISetParentChange = {
       type: ComponentChangeType.SetParent,
       uuid: this.#uuid,
-      parentUuid: this.#parentUuid ?? undefined,
+      parentUuid: this.#parentUuid,
     };
-    if (this.#orderChanged) {
-      entry.order = this.#order;
+
+    if (this.#nextOrder !== undefined && this.#nextOrder !== this.#order) {
+      entry.order = this.#order = this.#nextOrder;
     }
+
     return entry;
   }
 
   makeUpdateOrderChange(): IUpdateOrderChange {
+    this.#order = this.#nextOrder ?? 0;
+
     return {
       type: ComponentChangeType.UpdateOrder,
       uuid: this.#uuid,
@@ -167,14 +236,34 @@ export class ComponentChanges {
     };
   }
 
+  makeChangeToken(): IChangeToken {
+    this.#token = this.#nextToken ?? VoidToken;
+
+    return {
+      type: ComponentChangeType.ChangeToken,
+      uuid: this.#uuid,
+      token: this.#token,
+    };
+  }
+
   makeChangePropertyChange(): IPropertiesChange {
+    const properties = this.#propsChangeOrder.map((key) => {
+      if (this.#nextProperties.has(key)) {
+        // set prop
+        const nextValue = this.#nextProperties.get(key);
+        this.#properties.set(key, nextValue);
+        return [key, nextValue] as [string, unknown];
+      } else {
+        // remove prop
+        this.#properties.delete(key);
+        return [key, undefined] as [string, unknown];
+      }
+    });
+
     return {
       type: ComponentChangeType.ChangeProperties,
       uuid: this.#uuid,
-      properties: this.#changedProperties.reduce(
-        (entries, key) => [...entries, [key, this.#properties.get(key)]],
-        [] as [string, unknown][],
-      ),
+      properties,
     };
   }
 }
