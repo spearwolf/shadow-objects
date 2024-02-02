@@ -23,8 +23,7 @@ export class ComponentChanges {
     this.#uuid = uuid;
   }
 
-  #isDead = true;
-
+  #isNew = true;
   #createCount = 0;
   #destroyCount = 0;
 
@@ -32,16 +31,16 @@ export class ComponentChanges {
     return this.#serial > 0;
   }
 
+  get isNew(): boolean {
+    return this.#isNew;
+  }
+
   get isCreated(): boolean {
     return this.#createCount > 0 && this.#createCount > this.#destroyCount;
   }
 
   get isDestroyed(): boolean {
-    return this.#destroyCount > 0 && this.#destroyCount > this.#createCount;
-  }
-
-  get isDead(): boolean {
-    return this.#isDead;
+    return this.#destroyCount > 0 && this.#destroyCount >= this.#createCount;
   }
 
   #token: string = VoidToken;
@@ -55,7 +54,6 @@ export class ComponentChanges {
   create(token: string = VoidToken, parentUuid?: string, order: number = 0) {
     this.#serial++;
     this.#createCount++;
-    this.#isDead = false;
 
     this.#nextToken = token;
     this.#nextParentUuid = parentUuid;
@@ -70,12 +68,7 @@ export class ComponentChanges {
   clear() {
     this.#serial = 0;
 
-    if (this.isDestroyed) {
-      this.#isDead = true;
-    }
-
-    this.#createCount = 0;
-    this.#destroyCount = 0;
+    this.#isNew = false;
 
     this.#nextToken = undefined;
     this.#nextParentUuid = undefined;
@@ -144,15 +137,15 @@ export class ComponentChanges {
   }
 
   buildChangeTrail(trail: IComponentChangeType[], trailPhase: ChangeTrailPhase) {
-    const {isCreated, isDestroyed, isDead} = this;
-    const isAlive = !isCreated && !isDestroyed && !isDead;
+    const {isNew, isCreated, isDestroyed} = this;
+
+    if (isNew && isDestroyed) return;
 
     switch (trailPhase) {
       case ChangeTrailPhase.StructuralChanges:
-        if (isCreated) {
+        if (isNew) {
           trail.push(this.makeCreateEntityChange());
-        }
-        if (isAlive) {
+        } else if (!isDestroyed) {
           if (this.#nextParentUuid !== undefined && this.#nextParentUuid !== this.#parentUuid) {
             trail.push(this.makeSetParentChange());
           } else if (this.#nextOrder !== undefined && this.#nextOrder !== this.#order) {
@@ -165,7 +158,7 @@ export class ComponentChanges {
         break;
 
       case ChangeTrailPhase.ContentUpdates:
-        if (isAlive && this.#propsChangeOrder.length > 0) {
+        if (!isNew && isCreated && this.#propsChangeOrder.length > 0) {
           trail.push(this.makeChangePropertyChange());
         }
         break;

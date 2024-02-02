@@ -142,4 +142,14 @@ describe('ComponentContext', () => {
       },
     ]);
   });
+
+  it('should ignore create and destroy in same change trail', () => {
+    const a = new ViewComponent('a');
+
+    a.destroy();
+
+    let changes = cc.buildChangeTrails();
+
+    expect(changes).to.deep.equal([]);
+  });
 });

@@ -190,21 +190,15 @@ export class ComponentContext {
 
     for (const changes of pathOfChanges) {
       changes.buildChangeTrail(trail, ChangeTrailPhase.Removal);
-    }
 
-    this.#changeTrailState.write(trail);
-
-    for (const changes of pathOfChanges) {
-      if (changes.isDestroyed) {
+      if (changes.isDestroyed || (changes.isNew && !changes.isCreated)) {
         this.#deleteComponent(changes.uuid);
       }
 
       changes.clear();
-
-      if (changes.isDead) {
-        this.#deleteComponent(changes.uuid);
-      }
     }
+
+    this.#changeTrailState.write(trail);
 
     return trail;
   }

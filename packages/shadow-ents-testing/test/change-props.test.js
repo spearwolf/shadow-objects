@@ -29,6 +29,8 @@ describe('change props', () => {
 
     let changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
 
+    // console.log('changeTrail:before', JSON.stringify(changeTrail, null, 2));
+
     expect(changeTrail, 'changeTrail:before').to.deep.equal([
       {
         type: ComponentChangeType.CreateEntities,
@@ -56,6 +58,8 @@ describe('change props', () => {
 
     changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
 
+    // console.log('changeTrail:after', JSON.stringify(changeTrail, null, 2));
+
     expect(changeTrail, 'changeTrail:after').to.deep.equal([
       {
         type: ComponentChangeType.ChangeProperties,
@@ -74,30 +78,30 @@ describe('change props', () => {
 
     // ---
 
-    // a.viewComponent.setProperty('phoenix', 23);
-    // b.append(a);
-    // a.viewComponent.setProperty('neu', 'new');
-    // a.viewComponent.removeProperty('null');
+    a.viewComponent.setProperty('phoenix', 23);
+    b.append(a);
+    a.viewComponent.setProperty('neu', 'new');
+    a.viewComponent.removeProperty('null');
 
-    // changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
+    changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
 
-    // console.log(changeTrail);
+    // console.log('changeTrail:after:2', JSON.stringify(changeTrail, null, 2));
 
-    // expect(changeTrail, 'changeTrail:after').to.deep.equal([
-    //   {
-    //     type: ComponentChangeType.SetParent,
-    //     uuid: a.uuid,
-    //     parentUuid: b.uuid,
-    //   },
-    //   {
-    //     type: ComponentChangeType.ChangeProperties,
-    //     uuid: a.uuid,
-    //     properties: [
-    //       ['plah', 999],
-    //       ['phoenix', 23],
-    //       ['neu', 'new'],
-    //     ],
-    //   },
-    // ]);
+    expect(changeTrail, 'changeTrail:after:2').to.deep.equal([
+      {
+        type: ComponentChangeType.SetParent,
+        uuid: a.uuid,
+        parentUuid: b.uuid,
+      },
+      {
+        type: ComponentChangeType.ChangeProperties,
+        uuid: a.uuid,
+        properties: [
+          ['phoenix', 23],
+          ['neu', 'new'],
+          ['null', undefined],
+        ],
+      },
+    ]);
   });
 });

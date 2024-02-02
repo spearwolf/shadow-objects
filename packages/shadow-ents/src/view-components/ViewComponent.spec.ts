@@ -54,10 +54,17 @@ describe('ViewComponent', () => {
   it('should destroy after changeTrail', () => {
     const c = new ViewComponent('test');
     expect(ctx.hasComponent(c)).toBeTruthy();
-    // TODO write test for create + destroy in same changeTrail
     ctx.buildChangeTrails();
     c.destroy();
     ctx.buildChangeTrails();
+    expect(ctx.hasComponent(c)).toBeFalsy();
+  });
+
+  it('should create and destroy in same changeTrail', () => {
+    const c = new ViewComponent('ttt123');
+    expect(ctx.hasComponent(c)).toBeTruthy();
+    c.destroy();
+    expect(ctx.buildChangeTrails()).toHaveLength(0);
     expect(ctx.hasComponent(c)).toBeFalsy();
   });
 

@@ -31,6 +31,10 @@ export class ComponentMemory {
     this.#components.clear();
   }
 
+  hasComponentState(uuid: string) {
+    return this.#components.has(uuid);
+  }
+
   getComponentState(uuid: string) {
     return this.#components.get(uuid);
   }
