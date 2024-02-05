@@ -22,10 +22,10 @@ declare global {
  *
  * Changes to the components and their hierarchy are also logged to the {@link ComponentChanges}.
  *
- * Each time a change trail is created (a call to {@link ComponentContext.buildChangeTrails}),
+ * Each time a change trail is created (a call to {@link ComponentContext#buildChangeTrails}),
  * the past changes are summarized and returned as the result. This means that the change trail
  * is always the path of changes from the time of the previous change trail (or from the beginning)
- * to the current call to the {@link ComponentContext.buildChangeTrails} method.
+ * to the current call to the {@link ComponentContext#buildChangeTrails} method.
  *
  * In addition, there is the {@link ComponentMemory}. The memory represents the component state at
  * the time of the last change trail, as opposed to the {@link ComponentContext}, which represents
