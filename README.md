@@ -1,8 +1,8 @@
-# visual-fx-web-components
+# visual-fx-web-components 👀
 
 ![spearwolf](spearwolf.svg)
 
-> 👀 Home of a variety of _custom elements_ and _npm packages_ to create visually spectacular websites :boom:
+> Home of a variety of _custom elements_ and _npm packages_ to create visually spectacular websites :boom:
 
 ## How To
 
@@ -23,11 +23,9 @@ $ pnpm cbt  # => clean build test
 
 ## Content
 
-see [`./packages/`](packages/)
-
-- [shadow-ents](packages/shadow-ents/)
-    - [shadow-ents-testing](packages/shadow-ents-testing/)
-    - [shadow-ents-e2e](packages/shadow-ents-e2e/)
+- [shadow-ents](packages/shadow-ents/) &mdash; _Shadow-ents moves your components into WebWorker_
+- [shadow-ents-testing](packages/shadow-ents-testing/)
+- [shadow-ents-e2e](packages/shadow-ents-e2e/)
 
 ---
 
