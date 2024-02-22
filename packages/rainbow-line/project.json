@@ -1,0 +1,17 @@
+{
+  "name": "rainbow-line",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "root": "packages/rainbow-line",
+  "sourceRoot": "{projectRoot}/src",
+  "projectType": "library",
+  "targets": {
+    "lint": {
+      "executor": "@nx/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["{projectRoot}/**/*.js"]
+      }
+    }
+  },
+  "tags": []
+}
