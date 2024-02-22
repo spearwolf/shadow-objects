@@ -11,6 +11,13 @@
       "options": {
         "lintFilePatterns": ["{projectRoot}/**/*.js"]
       }
+    },
+    "dev": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "dev"
+      },
+      "dependsOn": ["^build"]
     }
   },
   "tags": []

@@ -117,6 +117,9 @@ importers:
       '@spearwolf/eventize':
         specifier: ^3.4.1
         version: 3.4.1
+      '@spearwolf/offscreen-display':
+        specifier: workspace:*
+        version: link:../offscreen-display
       '@spearwolf/signalize':
         specifier: ^0.13.0
         version: 0.13.0(@spearwolf/eventize@3.4.1)

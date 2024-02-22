@@ -1,4 +1,4 @@
-import {OffscreenWorkerDisplay} from './lib/OffscreenWorkerDisplay.js';
+import {OffscreenWorkerDisplay} from '@spearwolf/offscreen-display/worker.js';
 
 const display = new OffscreenWorkerDisplay();
 

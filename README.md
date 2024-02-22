@@ -23,9 +23,13 @@ $ pnpm cbt  # => clean build test
 
 ## Content
 
-- [shadow-ents](packages/shadow-ents/) &mdash; _Shadow-ents moves your components into WebWorker_
-- [shadow-ents-testing](packages/shadow-ents-testing/)
-- [shadow-ents-e2e](packages/shadow-ents-e2e/)
+| package | description |
+|-|-|
+| [`offscreen-display`](packages/offscreen-display/) | Helpers for creating custom offscreen canvas elements |
+| [`rainbow-line`](packages/rainbow-line/) | A custom element that displays a cut line animated with rainbow colors |
+| [`shadow-ents`](packages/shadow-ents/) | Shadow-ents moves your components into WebWorker |
+| [`shadow-ents-testing`](packages/shadow-ents-testing/) | functional tests for _shadow-ents_ |
+| [`shadow-ents-e2e`](packages/shadow-ents-e2e/) | blackbox tests for _shadow-ents_ |
 
 ---
 

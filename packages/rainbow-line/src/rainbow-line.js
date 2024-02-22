@@ -1,4 +1,4 @@
-import {OffscreenDisplay} from './lib/OffscreenDisplay.js';
+import {OffscreenDisplay} from '@spearwolf/offscreen-display';
 
 const toCycleDirection = (direction) => (direction === 'left' ? 1 : -1);
 
