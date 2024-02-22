@@ -6,7 +6,7 @@
 > 
 > ‼️ but dear user, be warned: while some packages are stable and usable, other things here are highly experimental. this is more of an active sketchbook than a polished end product
 
-## Local Dev Setup
+## ⚙️ Local Dev Setup
 
 This is a monorepo based on [nx](https://nx.dev/) and [pnpm](https://pnpm.io/).
 
@@ -23,7 +23,7 @@ $ pnpm install
 $ pnpm cbt  # => clean build test
 ```
 
-## Content
+## 📖 Content
 
 | package | description |
 |-|-|
