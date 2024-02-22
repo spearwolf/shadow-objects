@@ -4,7 +4,7 @@
 
 > Home of a variety of _custom elements_ and _npm packages_ to create visually spectacular websites :boom:
 
-## How To
+## Local Dev Setup
 
 This is a monorepo based on [nx](https://nx.dev/) and [pnpm](https://pnpm.io/).
 
@@ -29,5 +29,6 @@ $ pnpm cbt  # => clean build test
 
 ---
 
-<small>Thank you and have a nice day</small> :-)
-:rocket::seedling:
+<small>Thank you and have a nice day</small> 😄
+
+🚀🌱
