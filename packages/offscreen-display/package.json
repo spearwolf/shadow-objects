@@ -1,0 +1,31 @@
+{
+  "name": "@spearwolf/offscreen-display",
+  "description": "offscreen canvas display helpers",
+  "version": "0.0.1-dev",
+  "author": {
+    "name": "Wolfger Schramm",
+    "email": "wolfger@spearwolf.de",
+    "url": "https://www.spearwolf.de"
+  },
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "offscreen-display.js",
+  "module": "offscreen-display.js",
+  "exports": {
+    ".": {
+      "default": "./offscreen-display.js"
+    },
+    "./worker.js": {
+      "default": "./offscreen-display-worker.js"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "echo TODO create build task",
+    "clean": "pnpm exec rimraf build types dist lib tests"
+  },
+  "dependencies": {
+    "@spearwolf/eventize": "^3.4.1",
+    "@spearwolf/signalize": "^0.13.0"
+  }
+}
