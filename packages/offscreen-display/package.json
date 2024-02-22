@@ -9,23 +9,26 @@
   },
   "license": "Apache-2.0",
   "type": "module",
-  "main": "offscreen-display.js",
-  "module": "offscreen-display.js",
+  "main": "dist/offscreen-display.js",
+  "module": "dist/offscreen-display.js",
   "exports": {
     ".": {
-      "default": "./offscreen-display.js"
+      "default": "./dist/offscreen-display.js"
     },
     "./worker.js": {
-      "default": "./offscreen-display-worker.js"
+      "default": "./dist/offscreen-display-worker.js"
     }
   },
   "sideEffects": false,
   "scripts": {
-    "build": "echo TODO create build task",
+    "build": "pnpm node scripts/build.mjs",
     "clean": "pnpm exec rimraf build types dist lib tests"
   },
   "dependencies": {
     "@spearwolf/eventize": "^3.4.1",
     "@spearwolf/signalize": "^0.13.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.1"
   }
 }
