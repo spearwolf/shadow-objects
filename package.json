@@ -24,7 +24,8 @@
     "cbt": "pnpm run-s clean build test",
     "site": "pnpm nx dev site",
     "start": "pnpm nx dev site",
-    "ci": "pnpm run-s build lint test:ci"
+    "ci": "pnpm run-s build lint test:ci",
+    "publishNpmPkg": "pnpm nx run-many -t publishNpmPkg"
   },
   "devDependencies": {
     "@nx/eslint-plugin": "^18.0.4",
