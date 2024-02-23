@@ -22,7 +22,8 @@
   "sideEffects": false,
   "scripts": {
     "build": "pnpm node scripts/build.mjs",
-    "clean": "pnpm exec rimraf build types dist lib tests"
+    "clean": "pnpm exec rimraf build types dist lib tests",
+    "test": "echo NO TESTS YET FOR @spearwolf/offscreen-display"
   },
   "dependencies": {
     "@spearwolf/eventize": "^3.4.1",
