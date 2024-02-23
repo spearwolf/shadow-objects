@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# build artifacts
+rainbow-line-*.tgz
+rainbow-line-worker.js
+rainbow-line.js

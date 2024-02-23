@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>rainbow-line test</title>
+    <style>
+      :root {
+        --sky-margin: 100px;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        background-color: #212121;
+        color: #f0f0f0;
+      }
+      h1 {
+        font-family: 'Arial Black', sans-serif;
+        font-weight: 900;
+        font-size: 80px;
+        background: linear-gradient(180deg, #fff, #aaa), #f0f0f0;
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .sky {
+        position: relative;
+        top: var(--sky-margin);
+        bottom: var(--sky-margin);
+        width: 100%;
+        height: calc(100vh - 2 * var(--sky-margin));
+        overflow: hidden;
+        background-color: #000000;
+      }
+      .first,
+      .third {
+        height: 4px;
+      }
+      .second {
+        height: 20px;
+        opacity: 0.5;
+        filter: blur(20px);
+      }
+      .third {
+        position: absolute;
+        bottom: 0;
+      }
+      .info {
+        max-width: 1000px;
+        margin: auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sky">
+      <rainbow-line class="first" slice-cycle-time="5"></rainbow-line>
+      <rainbow-line class="second" slice-cycle-time="5"></rainbow-line>
+
+      <div class="info">
+        <h1>rainbow-line</h1>
+      </div>
+
+      <rainbow-line class="third" slice-cycle-time="5" cycle-direction="left"></rainbow-line>
+    </div>
+    <script type="module" src="rainbow-line.js"></script>
+  </body>
+</html>

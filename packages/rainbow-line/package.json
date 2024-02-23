@@ -1,13 +1,25 @@
 {
   "name": "rainbow-line",
   "description": "A custom element that displays a cut line animated with rainbow colors",
-  "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "main": "src/RainbowLineElement.js",
+  "module": "src/RainbowLineElement.js",
+  "exports": {
+    ".": {
+      "default": "./src/RainbowLineElement.js"
+    },
+    "./rainbow-line.js": {
+      "default": "./rainbow-line.js"
+    },
+    "./rainbow-line-worker.js": {
+      "default": "./rainbow-line-worker.js"
+    }
+  },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "pnpm node scripts/build.mjs",
+    "clean": "pnpm exec rimraf dist rainbow-line.js rainbow-line-worker.js"
   },
   "devDependencies": {
     "vite": "^5.1.0"
