@@ -9,6 +9,9 @@
     ".": {
       "default": "./src/RainbowLineElement.js"
     },
+    "./RainbowLineWorkerDisplay.js": {
+      "default": "./src/RainbowLineWorkerDisplay.js"
+    },
     "./rainbow-line.js": {
       "default": "./rainbow-line.js"
     },
