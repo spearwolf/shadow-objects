@@ -4,7 +4,7 @@
 
 > Home of a variety of _custom elements_ and _npm packages_ to create visually spectacular websites :boom:
 > 
-> ‼️ but dear user, be warned: while some packages are stable and usable, other things here are highly experimental. this is more of an active sketchbook than a polished end product
+> ‼️ But dear user, be warned: while some packages are stable and usable, other things here are highly experimental. this is more of an active sketchbook than a polished end product
 
 ## ⚙️ Local Dev Setup
 
