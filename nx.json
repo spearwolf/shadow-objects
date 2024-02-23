@@ -28,6 +28,13 @@
     "test": {
       "dependsOn": ["^build"],
       "inputs": ["default", "^default", "{workspaceRoot}/package.json", "{workspaceRoot}/tsconfig.json"]
+    },
+    "publishNpmPkg": {
+      "executor": "nx:run-script",
+      "dependsOn": ["build"],
+      "options": {
+        "script": "publishNpmPkg"
+      }
     }
   }
 }

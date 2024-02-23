@@ -22,7 +22,8 @@
   "scripts": {
     "dev": "vite",
     "build": "pnpm node scripts/build.mjs",
-    "clean": "pnpm exec rimraf dist rainbow-line.js rainbow-line-worker.js"
+    "clean": "pnpm exec rimraf dist rainbow-line.js rainbow-line-worker.js",
+    "publishNpmPkg": "pnpm node ../../scripts/publishNpmPkg.mjs ."
   },
   "devDependencies": {
     "vite": "^5.1.0"
