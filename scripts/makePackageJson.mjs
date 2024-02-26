@@ -2,9 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import {fileURLToPath} from 'url';
 
+const targetSubDir = process.argv[2] || '.npm-pkg';
+
 const workspaceRoot = path.resolve(fileURLToPath(import.meta.url), '../../');
 const projectRoot = path.resolve(process.cwd());
-const packageRoot = path.resolve(process.cwd(), '.npm-pkg');
+const packageRoot = path.resolve(process.cwd(), targetSubDir);
 
 console.log('workspaceRoot:', workspaceRoot);
 console.log('projectRoot:', projectRoot);
@@ -97,7 +99,7 @@ function remmoveDistPathPrefix([section, keys]) {
   }
 }
 
-function removePathPrefixAt(section, key, prefix = '.npm-pkg/') {
+function removePathPrefixAt(section, key, prefix = `${targetSubDir}/`) {
   if (section[key]) {
     section[key] = section[key].replace(prefix, '');
   }
