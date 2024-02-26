@@ -31,7 +31,7 @@
     },
     "publishNpmPkg": {
       "executor": "nx:run-script",
-      "dependsOn": ["build", "buildNpmPkg"],
+      "dependsOn": ["^build", "build", "buildNpmPkg"],
       "options": {
         "script": "publishNpmPkg"
       }
