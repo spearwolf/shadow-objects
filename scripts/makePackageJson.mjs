@@ -4,9 +4,12 @@ import {fileURLToPath} from 'url';
 
 const workspaceRoot = path.resolve(fileURLToPath(import.meta.url), '../../');
 const projectRoot = path.resolve(process.cwd());
+const packageRoot = path.resolve(process.cwd(), '.npm-pkg');
 
 console.log('workspaceRoot:', workspaceRoot);
 console.log('projectRoot:', projectRoot);
+console.log('packageRoot:', packageRoot);
+console.log('- - -');
 
 const packageJsonPath = path.resolve(projectRoot, 'package.json');
 const inPackageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
@@ -33,7 +36,7 @@ for (const [key, value] of Object.entries(packageJsonOverride)) {
   }
 }
 
-const releasePackageJsonPath = path.resolve(projectRoot, 'dist/package.json');
+const releasePackageJsonPath = path.resolve(packageRoot, 'package.json');
 console.log('Write to', releasePackageJsonPath);
 fs.writeFileSync(releasePackageJsonPath, JSON.stringify(outPackageJson, null, 2));
 
@@ -58,11 +61,11 @@ function resolvePackageVersion(pkgName) {
   if (fs.existsSync(pkgJsonPath)) {
     const pkgJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
     const pkgVersion = `^${pkgJson.version.replace(/-dev$/, '')}`;
-    console.log('resolve package version', pkgName, '->', pkgVersion);
+    console.log('Resolve package version', pkgName, '->', pkgVersion);
     return pkgVersion;
   } else {
     console.warn(
-      'oops.. workspace package not found:',
+      'Oops.. workspace package not found:',
       pkgName,
       '->',
       pkgNameWithoutScope,
@@ -94,7 +97,7 @@ function remmoveDistPathPrefix([section, keys]) {
   }
 }
 
-function removePathPrefixAt(section, key, prefix = 'dist/') {
+function removePathPrefixAt(section, key, prefix = '.npm-pkg/') {
   if (section[key]) {
     section[key] = section[key].replace(prefix, '');
   }

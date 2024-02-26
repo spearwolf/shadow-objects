@@ -35,33 +35,39 @@ exec(`npm show ${pkgJson.name} versions --json`, (error, stdout, stderr) => {
       console.warn('skip publishing, version', pkgJson.version, 'is already released');
       process.exit(0);
     } else {
-      publishPackage(packageRoot);
+      publishPackage();
     }
   } else if (stderr && stderr.toString().includes('npm ERR! code E404')) {
     console.log('oh it looks like this is the first time to publish the package');
-    publishPackage(packageRoot);
+    publishPackage();
   } else {
     console.error(`exec() panic: ${stderr}`);
     process.exit(1);
   }
 });
 
-function publishPackage(cwd, dryRun = DRY_RUN) {
-  copyFile(path.resolve(workspaceRoot, '.npmrc'), path.resolve(cwd, '.npmrc'));
-  copyFile(path.resolve(workspaceRoot, 'LICENSE'), path.resolve(cwd, 'LICENSE'));
-  copyFile(path.resolve(projectRoot, 'CHANGELOG.md'), path.resolve(cwd, 'CHANGELOG.md'));
+function publishPackage(dryRun = DRY_RUN) {
+  if (packageRoot !== projectRoot) {
+    preparePackageRoot();
+  }
+
+  execSync(`npm publish --access public${dryRun ? ' --dry-run' : ''}`, {cwd: packageRoot});
+
+  process.exit(0);
+}
+
+function preparePackageRoot() {
+  copyFile(path.resolve(workspaceRoot, '.npmrc'), path.resolve(packageRoot, '.npmrc'));
+  copyFile(path.resolve(workspaceRoot, 'LICENSE'), path.resolve(packageRoot, 'LICENSE'));
+  copyFile(path.resolve(projectRoot, 'CHANGELOG.md'), path.resolve(packageRoot, 'CHANGELOG.md'));
 
   const readmePkgPath = path.resolve(projectRoot, 'README-pkg.md');
-  const readmeDstPath = path.resolve(cwd, 'README.md');
+  const readmeDstPath = path.resolve(packageRoot, 'README.md');
   if (fs.existsSync(readmePkgPath)) {
     copyFile(readmePkgPath, readmeDstPath);
   } else {
     copyFile(path.resolve(projectRoot, 'README.md'), readmeDstPath);
   }
-
-  execSync(`npm publish --access public${dryRun ? ' --dry-run' : ''}`, {cwd});
-
-  process.exit(0);
 }
 
 function copyFile(src, dst) {

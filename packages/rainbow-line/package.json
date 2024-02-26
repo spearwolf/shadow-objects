@@ -1,8 +1,14 @@
 {
   "name": "rainbow-line",
   "description": "A custom element that displays a cut line animated with rainbow colors",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Wolfger Schramm",
+    "email": "wolfger@spearwolf.de",
+    "url": "https://www.spearwolf.de"
+  },
   "main": "src/RainbowLineElement.js",
   "module": "src/RainbowLineElement.js",
   "exports": {
@@ -22,8 +28,12 @@
   "scripts": {
     "dev": "vite",
     "build": "pnpm node scripts/build.mjs",
-    "clean": "pnpm exec rimraf dist rainbow-line.js rainbow-line-worker.js",
-    "publishNpmPkg": "pnpm node ../../scripts/publishNpmPkg.mjs ."
+    "build:pkg:prepare": "pnpm node ./scripts/buildPackage.mjs",
+    "build:pkg:json": "pnpm node ../../scripts/makePackageJson.mjs",
+    "build:pkg:clean": "pnpm exec rimraf .npm-pkg",
+    "clean": "pnpm exec rimraf dist rainbow-line.js rainbow-line-worker.js .npm-pkg",
+    "buildNpmPkg": "pnpm exec run-s build:pkg:clean build:pkg:prepare build:pkg:json",
+    "publishNpmPkg": "pnpm node ../../scripts/publishNpmPkg.mjs .npm-pkg"
   },
   "devDependencies": {
     "vite": "^5.1.0"
