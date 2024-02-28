@@ -31,14 +31,6 @@ class AwesomeDisplay extends OffscreenDisplay {
       type: 'module',
     });
   }
-
-  // override or leave as it is ..
-  // getContextAttributes() {
-  //   if (this.hasAttribute('no-alpha')) {
-  //     return {alpha: false};
-  //   }
-  //   return {alpha: true};
-  // }
 }
 
 customElements.define('awesome-display', AwesomeDisplay);
@@ -93,8 +85,17 @@ There are other features not listed here. For a complete example, see the [rainb
 
 Copyright &copy; 2024 by [Wolfger Schramm](mailto:wolfger@spearwolf.de?subject=[GitHub]%20@spearwolf/offscreen-display).
 
-The source code is licensed under the [Apache-2.0 License](./LICENSE).
+The source code and npm package is licensed under the [Apache-2.0 License](./LICENSE).
 
 
 <small>have fun!</small>
 🚀🌱
+
+
+- - -
+
+## CHANGELOG
+
+### `v0.1.2`
+
+- add JSDocs to `OffscreenDisplay` class

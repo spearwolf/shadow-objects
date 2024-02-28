@@ -28,6 +28,9 @@ export class OffscreenDisplay extends HTMLElement {
 
   #rafID = 0;
 
+  /**
+   * @param {string=} [initialHTML] The initial HTML of the shadow root. Should contain a canvas element.
+   */
   constructor(initialHTML = OffscreenDisplay.InitialHTML) {
     super();
 
@@ -35,18 +38,36 @@ export class OffscreenDisplay extends HTMLElement {
     this.shadow.innerHTML = initialHTML;
   }
 
+  /**
+   * You may want to override this method if you provide a different initial HTML.
+   *
+   * @returns {HTMLCanvasElement} The canvas element in the shadow root.
+   */
   queryCanvasElement() {
     return this.shadow.querySelector('canvas');
   }
 
+  /**
+   * Must be implemented by subclass to create a Worker instance.
+   *
+   * @returns {Worker} the worker instance to be used for rendering.
+   *
+   * @example
+   * ```js
+   *   createWorker() {
+   *     return new Worker(new URL("./rainbow-line-worker.js", import.meta.url), {type: "module"});
+   *   }
+   * ```
+   */
   createWorker() {
     throw new Error('createWorker() must be implemented by subclass');
-    // Example:
-    //   return new Worker(new URL("./rainbow-line-worker.js", import.meta.url), {
-    //     type: "module",
-    //   });
   }
 
+  /**
+   * You may want to override this method.
+   *
+   * @returns {Record<string, unknown>} the unbiased context attributes to be used for the canvas.
+   */
   getContextAttributes() {
     if (this.hasAttribute('no-alpha')) {
       return {alpha: false};
@@ -101,6 +122,11 @@ export class OffscreenDisplay extends HTMLElement {
     );
   }
 
+  /**
+   * You may want to override this method.
+   *
+   * @returns {Record<string, unknown>} the un-opinionated initial attributes to be sent to the worker with the initial `canvas` message event.
+   */
   getInitialWorkerAttributes() {
     return {};
   }
