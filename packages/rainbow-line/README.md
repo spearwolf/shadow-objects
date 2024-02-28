@@ -10,6 +10,8 @@ A custom element that displays a cut line animated with rainbow colors ..
   slice-cycle-time="7"
   cycle-direction="left"
 ></rainbow-line>
+
+<script type="module" src="https://www.unpkg.com/rainbow-line@latest/bundle.js"></script>
 ```
 
 ![rainbow-line elements preview](preview.png)

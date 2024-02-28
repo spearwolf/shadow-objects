@@ -1,13 +1,19 @@
 import {build} from 'esbuild';
-import {dirname} from 'node:path';
+import inlineWorkerPlugin from 'esbuild-plugin-inline-worker';
+import {dirname, resolve} from 'node:path';
 import {chdir} from 'node:process';
 import {fileURLToPath} from 'node:url';
+
+import {makeBanner} from '../../../scripts/makeBanner.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 chdir(__dirname);
 
+const banner = {js: makeBanner(resolve(__dirname, '..'), 'vanilla')};
+
 const sharedBuildOptions = {
+  banner,
   bundle: true,
   minify: true,
   sourcemap: false,
@@ -23,7 +29,14 @@ await Promise.all([
   }),
   build({
     ...sharedBuildOptions,
-    entryPoints: ['src/rainbow-line-worker.js'],
-    outfile: 'rainbow-line-worker.js',
+    entryPoints: ['src/rainbow-line.worker.js'],
+    outfile: 'rainbow-line.worker.js',
   }),
 ]);
+
+await build({
+  ...sharedBuildOptions,
+  entryPoints: ['src/bundle.js'],
+  outfile: 'bundle.js',
+  plugins: [inlineWorkerPlugin()],
+});

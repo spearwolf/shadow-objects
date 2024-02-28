@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-import {createBanner} from '../../scripts/rollup/createBanner.mjs';
-import {makeVersionWithBuild} from '../../scripts/rollup/makeVersionWithBuild.mjs';
+import {banner} from '../../scripts/makeBanner/banner.mjs';
+import {makeVersionWithBuild} from '../../scripts/makeBanner/makeVersionWithBuild.mjs';
 
 const projectDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)));
 const packageJson = JSON.parse(fs.readFileSync(path.join(projectDir, 'package.json')));
@@ -14,7 +14,7 @@ const distDir = path.join(projectDir, 'dist');
 
 const makeBanner = (build) => {
   const version = makeVersionWithBuild(build)(packageJson.version);
-  return createBanner({...packageJson, version});
+  return banner({...packageJson, version});
 };
 
 await esbuild.build({

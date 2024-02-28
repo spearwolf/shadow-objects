@@ -27,4 +27,5 @@ dist-ssr
 rainbow-line-*.tgz
 rainbow-line-worker.js
 rainbow-line.js
+bundle.js
 .npm-pkg

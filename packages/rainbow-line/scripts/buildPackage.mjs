@@ -18,8 +18,9 @@ const COPY_FILES = [
   'LICENSE',
   'README.md',
   'example.html',
-  'rainbow-line-worker.js',
+  'rainbow-line.worker.js',
   'rainbow-line.js',
+  'bundle.js',
 ];
 
 fs.mkdirSync(resolve(packageRoot, 'src'), {recursive: true});
