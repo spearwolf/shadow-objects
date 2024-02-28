@@ -28,4 +28,5 @@ rainbow-line-*.tgz
 rainbow-line-worker.js
 rainbow-line.js
 bundle.js
+!src/bundle.js
 .npm-pkg
