@@ -21,7 +21,7 @@ see [example.html](example.html) for usage examples
 
 Copyright &copy; 2024 by [Wolfger Schramm](mailto:wolfger@spearwolf.de?subject=[GitHub]%20@spearwolf/offscreen-display).
 
-The source code is licensed under the [Apache-2.0 License](./LICENSE).
+The source code and npm package is licensed under the [Apache-2.0 License](./LICENSE).
 
 
 <small>have fun!</small>
