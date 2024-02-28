@@ -14,7 +14,7 @@ A custom element that displays a cut line animated with rainbow colors ..
 
 ![rainbow-line elements preview](preview.png)
 
-see [example.html](example.html) for usage examples
+see [example.html](example.html) for more usage examples
 
 
 ## Copyright and License
