@@ -1,4 +1,4 @@
 {
   "extends": ["../../.eslintrc.json"],
-  "ignorePatterns": ["!**/*", "rainbow-line.js", "rainbow-line-worker.js"]
+  "ignorePatterns": ["!**/*", "rainbow-line.js", "rainbow-line-worker.js", "bundle.js"]
 }
