@@ -25,7 +25,8 @@ dist-ssr
 
 # build artifacts
 rainbow-line-*.tgz
-rainbow-line-worker.js
+rainbow-line.worker.js
+!src/rainbow-line.worker.js
 rainbow-line.js
 bundle.js
 !src/bundle.js
