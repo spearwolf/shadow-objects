@@ -11,7 +11,7 @@ A custom element that displays a cut line animated with rainbow colors ..
   cycle-direction="left"
 ></rainbow-line>
 
-<script type="module" src="https://www.unpkg.com/rainbow-line@latest/bundle.js"></script>
+<script type="module" src="https://www.unpkg.com/rainbow-line@latest"></script>
 ```
 
 ![rainbow-line elements preview](preview.png)
