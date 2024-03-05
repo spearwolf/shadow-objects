@@ -17,6 +17,8 @@ Whether webgl, webgpu or 2d context is up to the user, the class takes care of t
 
 To get started quickly, [vite](https://vitejs.dev/) is recommended, but this is purely optional and a matter of taste.
 
+> just updated? there is also a [CHANGELOG](https://github.com/spearwolf/visual-fx-web-components/blob/main/packages/offscreen-display/CHANGELOG.md)
+
 
 ### 2. Create custom element
 
@@ -90,12 +92,3 @@ The source code and npm package is licensed under the [Apache-2.0 License](./LIC
 
 <small>have fun!</small>
 🚀🌱
-
-
-- - -
-
-## CHANGELOG
-
-### `v0.1.2`
-
-- add JSDocs to `OffscreenDisplay` class
