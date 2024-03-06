@@ -178,6 +178,28 @@ importers:
         specifier: ^3.1.2
         version: 3.1.2
 
+  packages/vfx:
+    dependencies:
+      '@spearwolf/eventize':
+        specifier: ^3.4.1
+        version: 3.4.1
+      '@spearwolf/offscreen-display':
+        specifier: workspace:*
+        version: link:../offscreen-display
+      '@spearwolf/shadow-ents':
+        specifier: workspace:*
+        version: link:../shadow-ents
+      '@spearwolf/signalize':
+        specifier: ^0.13.0
+        version: 0.13.0(@spearwolf/eventize@3.4.1)
+    devDependencies:
+      esbuild-plugin-inline-worker:
+        specifier: ^0.1.1
+        version: 0.1.1
+      vite:
+        specifier: ^5.1.0
+        version: 5.1.4(@types/node@20.11.19)
+
 packages:
 
   /@75lb/deep-merge@1.1.1:

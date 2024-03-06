@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>rainbow-line test</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        background-color: #212121;
+        color: #f0f0f0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p>hello @spearwolf/vfx !</p>
+      <vfx-ctx src="src/worker-sample.js">
+        <vfx-display></vfx-display>
+      </vfx-ctx>
+    </main>
+    <script type="module" src="src/bundle.js"></script>
+  </body>
+</html>

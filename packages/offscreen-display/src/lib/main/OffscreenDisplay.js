@@ -36,6 +36,8 @@ export class OffscreenDisplay extends HTMLElement {
 
     this.shadow = this.attachShadow({mode: 'open'});
     this.shadow.innerHTML = initialHTML;
+
+    this.worker = undefined;
   }
 
   /**
