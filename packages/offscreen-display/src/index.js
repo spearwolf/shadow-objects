@@ -1,1 +1,1 @@
-export * from './OffscreenDisplay.js';
+export * from './lib/main/OffscreenDisplay.js';

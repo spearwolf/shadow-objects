@@ -29,9 +29,16 @@
       "dependsOn": ["^build"],
       "inputs": ["default", "^default", "{workspaceRoot}/package.json", "{workspaceRoot}/tsconfig.json"]
     },
+    "buildNpmPkg": {
+      "executor": "nx:run-script",
+      "dependsOn": ["^build", "build"],
+      "options": {
+        "script": "buildNpmPkg"
+      }
+    },
     "publishNpmPkg": {
       "executor": "nx:run-script",
-      "dependsOn": ["^build", "build", "buildNpmPkg"],
+      "dependsOn": ["buildNpmPkg"],
       "options": {
         "script": "publishNpmPkg"
       }

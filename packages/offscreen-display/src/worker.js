@@ -1,1 +1,1 @@
-export * from './OffscreenWorkerDisplay.js';
+export * from './lib/worker/OffscreenWorkerDisplay.js';

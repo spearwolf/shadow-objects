@@ -12,7 +12,7 @@ console.log('- - -');
 
 chdir(projectRoot);
 
-const COPY_FILES = ['dist/offscreen-display-worker.js', 'dist/offscreen-display.js', 'LICENSE', 'README.md'];
+const COPY_FILES = ['dist/offscreen-display-worker.js', 'dist/offscreen-display.js', 'LICENSE', 'README.md', 'CHANGELOG.md'];
 
 fs.mkdirSync(resolve(packageRoot, 'dist'), {recursive: true});
 
