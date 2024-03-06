@@ -10,21 +10,15 @@ export class VfxCtxElement extends HTMLElement {
     this.shadow = this.attachShadow({mode: 'open'});
     this.shadow.innerHTML = initialHTML;
 
-    this.worker = undefined;
+    this.worker = this.createWorker();
   }
 
   connectedCallback() {
-    if (!this.worker) {
-      this.#setupWorker();
-    }
+    this.#setupWorker();
   }
 
   disconnectedCallback() {
-    this.worker.postMessage({
-      message: 'bye bye!',
-    });
-    this.worker?.terminate();
-    this.worker = undefined;
+    this.#destroyWorker();
   }
 
   createWorker() {
@@ -32,10 +26,20 @@ export class VfxCtxElement extends HTMLElement {
   }
 
   #setupWorker() {
-    this.worker = this.createWorker();
+    this.worker ??= this.createWorker();
     this.worker.postMessage({
       message: 'hello hello',
       importVfxSrc: new URL(this.getAttribute('src'), window.location).href,
     });
+  }
+
+  #destroyWorker() {
+    this.worker.postMessage({
+      message: 'bye bye!',
+    });
+    // TODO wait for worker to finish or timeout
+    this.worker.terminate();
+
+    this.worker = undefined;
   }
 }
