@@ -8,7 +8,7 @@ _thinktank_
 ```html
 <html>
   <body>
-    <vfx-ctx src="vfx-display.worker.js">
+    <vfx-ctx src="my-vfx-shadow-objects.js">
     
       <t.5d-assets-store src="textures.json" />
     
@@ -26,7 +26,7 @@ _thinktank_
 
     </vfx-ctx>
 
-    <script type="module" src="vf-xdisplay.js"></script>
+    <script type="module" src="vfx.js"></script>
   </body>
 </html>
 ```
