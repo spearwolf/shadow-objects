@@ -177,6 +177,7 @@ export class Kernel extends Eventize {
       };
 
       const shadowObject = new constructor({
+        // TODO add provideContext()
         useContext(name: string) {
           return makeSignal(contexts, name);
         },
