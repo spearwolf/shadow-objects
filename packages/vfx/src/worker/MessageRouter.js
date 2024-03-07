@@ -48,7 +48,7 @@ export class MessageRouter {
 
   #onDestroy(data) {
     console.debug('[MessageRouter] on destroy', data);
-    // TODO cleanup ?
+    // TODO do we need cleanup here ?
     this.postMessage({type: Closed});
   }
 
@@ -58,12 +58,12 @@ export class MessageRouter {
     console.debug('[MessageRouter] imported', vfxMod);
 
     if (typeof vfxMod.onload === 'function') {
-      // TODO remember constructors for later cleanup (src changed, maybe hotswap?)
       vfxMod.onload({
         shadowObjects: {define: (token, constructor) => shadowObjects.define(token, constructor, this.kernel.registry)},
         kernel: this.kernel,
         registry: this.kernel.registry,
       });
+      // TODO remember constructors from define() for later cleanup (src changed, maybe we should support hotswap here?)
     }
 
     this.postMessage({type: Ready});

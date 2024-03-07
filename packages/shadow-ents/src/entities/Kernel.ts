@@ -1,10 +1,10 @@
-import {Eventize, eventize} from '@spearwolf/eventize';
-import {batch} from '@spearwolf/signalize';
+import {Eventize, eventize, type EventizeApi} from '@spearwolf/eventize';
+import {batch, createEffect, createSignal, value, type SignalFuncs} from '@spearwolf/signalize';
 import {ComponentChangeType} from '../constants.js';
 import type {IComponentChangeType, ShadowObjectConstructor, SyncEvent} from '../types.js';
 import {Entity} from './Entity.js';
-import {Registry} from './Registry.js';
 import {onCreate, onDestroy, onEntityCreate, onEntityTokenChange, type OnCreate, type OnDestroy} from './events.js';
+import {Registry} from './Registry.js';
 
 interface EntityEntry {
   token: string;
@@ -161,8 +161,46 @@ export class Kernel extends Eventize {
 
   createShadowObjects(token: string, entityEntry?: EntityEntry) {
     return this.registry.findConstructors(token)?.map((constructor) => {
-      const shadowObject = new constructor();
+      // const shadowObject = new constructor();
+      const contexts = new Map<string, SignalFuncs<unknown>>();
+      const properties = new Map<string, SignalFuncs<unknown>>();
+
+      const makeSignal = (collection: Map<string, SignalFuncs<unknown>>, name: string) => {
+        let sigfuncs: SignalFuncs<unknown>;
+        if (!collection.has(name)) {
+          sigfuncs = createSignal();
+          collection.set(name, sigfuncs);
+        } else {
+          sigfuncs = contexts.get(name);
+        }
+        return sigfuncs[0];
+      };
+
+      const shadowObject = new constructor({
+        useContext(name: string) {
+          return makeSignal(contexts, name);
+        },
+        useProperty(name: string) {
+          return makeSignal(properties, name);
+        },
+      });
+
       eventize(shadowObject);
+
+      for (const [contextName] of contexts) {
+        console.warn('TODO connect context', contextName, 'to', shadowObject);
+        // TODO connect entity context!
+      }
+
+      for (const [propName, [, sigWrite]] of properties) {
+        (shadowObject as EventizeApi).on(onEntityCreate, (entity: Entity) => {
+          // connect(entity.getSignalReader(propName), sigRead);
+          // entity.getSignalReader(propName)?.((value) => sigWrite(value));
+          const entitySignalReader = entity.getSignalReader(propName);
+          const [, unsubscribe] = createEffect(() => sigWrite(value(entitySignalReader)), [entitySignalReader]);
+          (shadowObject as EventizeApi).once(onDestroy, unsubscribe);
+        });
+      }
 
       if (entityEntry) {
         // We want to keep track which shadow-objects are created by which constructors.
