@@ -64,9 +64,10 @@ export class BaseEnv extends Eventize {
     });
   }
 
-  protected start() {
+  start() {
     this.#isReady = true;
     this.#readyResolve(this);
+    return this;
   }
 
   protected getChangeTrail(): IComponentChangeType[] {

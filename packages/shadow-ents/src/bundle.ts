@@ -1,4 +1,5 @@
 import './shadow-entity.js';
+import './shadow-env.js';
 import './shadow-local-env.js';
 
 declare global {

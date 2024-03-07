@@ -1,5 +1,5 @@
 import {Kernel} from '@spearwolf/shadow-ents/shadow-objects.js';
-import {Closed, Destroy, Init} from '../constants.js';
+import {ChangeTrail, Closed, Destroy, Init, Ready} from '../constants.js';
 
 export class MessageRouter {
   constructor(kernel = new Kernel()) {
@@ -16,8 +16,16 @@ export class MessageRouter {
       case Init:
         console.debug('[MessageRouter] init', event.data);
         if ('importVfxSrc' in event.data) {
-          this.#importVfxSrc(event.data.importVfxSrc);
+          this.#importVfxSrc(event.data.importVfxSrc).then(() => {
+            self.postMessage({type: Ready});
+          });
+        } else {
+          console.error('[MessageRouter] missing importVfxSrc property!');
         }
+        break;
+
+      case ChangeTrail:
+        this.#parseChangeTrail(event.data);
         break;
 
       case Destroy:
@@ -31,12 +39,17 @@ export class MessageRouter {
     }
   }
 
-  /**
-   * @param {string} src
-   */
-  #importVfxSrc(src) {
-    import(/* @vite-ignore */ src).then((module) => {
-      console.debug('[MessageRouter] imported', module);
-    });
+  #parseChangeTrail(data) {
+    console.debug('[MessageRouter] parseChangeTrail', data);
+
+    this.kernel.run(data);
+
+    // TODO next steps!
+    // - setup entity factories
+  }
+
+  async #importVfxSrc(src) {
+    const module = await import(/* @vite-ignore */ src);
+    console.debug('[MessageRouter] imported', module);
   }
 }

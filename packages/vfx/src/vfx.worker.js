@@ -1,4 +1,4 @@
-import {Ready} from './constants.js';
+import {Loaded} from './constants.js';
 import {MessageRouter} from './worker/MessageRouter.js';
 
 const router = new MessageRouter();
@@ -9,4 +9,4 @@ onmessage = (event) => {
   router.parseMessage(event);
 };
 
-self.postMessage({type: Ready});
+self.postMessage({type: Loaded});

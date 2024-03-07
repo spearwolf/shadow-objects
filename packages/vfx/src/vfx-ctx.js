@@ -1,3 +1,5 @@
 import {VfxCtxElement} from './elements/VfxCtxElement.js';
 
-customElements.define('vfx-ctx', VfxCtxElement);
+Promise.all([customElements.whenDefined('shadow-env'), customElements.whenDefined('shadow-entity')]).then(() => {
+  customElements.define('vfx-ctx', VfxCtxElement);
+});

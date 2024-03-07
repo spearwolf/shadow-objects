@@ -43,11 +43,6 @@ export class LocalEnv extends BaseEnv {
     this.on(BaseEnv.OnSync, (event: SyncEvent) => this.kernel.run(event));
   }
 
-  public override start(): LocalEnv {
-    super.start();
-    return this;
-  }
-
   protected override getChangeTrail(): IComponentChangeType[] {
     const changeTrail = super.getChangeTrail();
     return this.useStructuredClone && checkStructuredClone() ? structuredClone(changeTrail) : changeTrail;
