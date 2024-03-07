@@ -17,7 +17,6 @@ import {
 import {waitForMessageOfType} from '../waitForMessageOfType.js';
 
 const InitialHTML = `
-  <p><code>vfx-ctx</code></p>
   <shadow-env id="env">
     <shadow-entity id="root" token="vfx-ctx">
       <slot></slot>
@@ -91,7 +90,7 @@ export class VfxCtxElement extends HTMLElement {
   connectedCallback() {
     this.#setupWorker();
 
-    // TODO start shadow-env sync loop
+    // TODO start shadow-env sync loop (configure via attribute? "sync-on-frame", "sync-interval=")
   }
 
   disconnectedCallback() {
@@ -110,7 +109,7 @@ export class VfxCtxElement extends HTMLElement {
    * @param {import('@spearwolf/shadow-ents').ViewComponent} vc view component
    */
   #onViewComponent(vc) {
-    console.log('[vfx-ctx] onViewComponent', {viewComponent: vc, shadowEnv: this.shadowEnv});
+    console.debug('[vfx-ctx] onViewComponent', {viewComponent: vc, shadowEnv: this.shadowEnv});
 
     // TODO set additional properties on view component ?
 
@@ -118,7 +117,7 @@ export class VfxCtxElement extends HTMLElement {
   }
 
   #onEnvSync(data) {
-    console.log('[vfx-ctx] shadowEnv on sync, changeTrail=', data);
+    console.debug('[vfx-ctx] shadowEnv on sync, changeTrail=', data);
     this.#postMessageToWorker(ChangeTrail, data);
   }
 

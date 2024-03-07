@@ -40,16 +40,15 @@ export class MessageRouter {
   }
 
   #parseChangeTrail(data) {
-    console.debug('[MessageRouter] parseChangeTrail', data);
-
+    console.debug('[MessageRouter] parseChangeTrail', {data, kernel: this.kernel});
     this.kernel.run(data);
-
-    // TODO next steps!
-    // - setup entity factories
   }
 
   async #importVfxSrc(src) {
     const module = await import(/* @vite-ignore */ src);
+
     console.debug('[MessageRouter] imported', module);
+
+    // TODO setup shadow-objects from module
   }
 }
