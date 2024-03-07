@@ -1,11 +1,9 @@
-console.log('hej @spearwolf/vfx/worker.js 🚀');
+import {MessageRouter} from './worker/MessageRouter.js';
+
+const router = new MessageRouter();
+
+console.log('hej @spearwolf/vfx/worker.js 🚀', router);
 
 onmessage = (event) => {
-  console.log('worker got message', event.data);
-
-  if ('importVfxSrc' in event.data) {
-    import(/* @vite-ignore */ event.data.importVfxSrc).then((module) => {
-      console.log('imported', module);
-    });
-  }
+  router.parseMessage(event);
 };

@@ -1,3 +1,6 @@
+import {Closed, Destroy, Init, WorkerDestroyTimeout} from '../constants.js';
+import {waitForMessageOfType} from '../waitForMessageOfType.js';
+
 const InitialHTML = `
   <p><code>vfx-ctx</code></p>
   <slot></slot>
@@ -28,18 +31,24 @@ export class VfxCtxElement extends HTMLElement {
   #setupWorker() {
     this.worker ??= this.createWorker();
     this.worker.postMessage({
-      message: 'hello hello',
+      type: Init,
       importVfxSrc: new URL(this.getAttribute('src'), window.location).href,
     });
   }
 
-  #destroyWorker() {
-    this.worker.postMessage({
-      message: 'bye bye!',
-    });
-    // TODO wait for worker to finish or timeout
-    this.worker.terminate();
-
+  async #destroyWorker() {
+    const {worker} = this;
     this.worker = undefined;
+
+    worker.postMessage({type: Destroy});
+
+    waitForMessageOfType(worker, Closed, WorkerDestroyTimeout)
+      .catch(() => {
+        console.warn('[vfx-ctx] worker timeout', worker);
+      })
+      .finally(() => {
+        console.log('[vfx-ctx] terminate worker', worker);
+        worker.terminate();
+      });
   }
 }
