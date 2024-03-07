@@ -1,4 +1,4 @@
-import {Closed, Destroy, Init, WorkerDestroyTimeout} from '../constants.js';
+import {Closed, Destroy, Init, Ready, WorkerDestroyTimeout, WorkerReadyTimeout} from '../constants.js';
 import {waitForMessageOfType} from '../waitForMessageOfType.js';
 
 const InitialHTML = `
@@ -28,9 +28,13 @@ export class VfxCtxElement extends HTMLElement {
     return new Worker(new URL('../vfx.worker.js', import.meta.url), {type: 'module'});
   }
 
-  #setupWorker() {
+  async #setupWorker() {
     this.worker ??= this.createWorker();
-    this.worker.postMessage({
+
+    const {worker} = this;
+
+    await waitForMessageOfType(worker, Ready, WorkerReadyTimeout);
+    worker.postMessage({
       type: Init,
       importVfxSrc: new URL(this.getAttribute('src'), window.location).href,
     });
@@ -47,7 +51,7 @@ export class VfxCtxElement extends HTMLElement {
         console.warn('[vfx-ctx] worker timeout', worker);
       })
       .finally(() => {
-        console.log('[vfx-ctx] terminate worker', worker);
+        console.debug('[vfx-ctx] terminate worker', worker);
         worker.terminate();
       });
   }

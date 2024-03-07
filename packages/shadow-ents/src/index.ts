@@ -4,6 +4,7 @@ export * from './elements/ShadowEntity.js';
 export * from './elements/ShadowLocalEnv.js';
 export * from './elements/constants.js';
 export * from './elements/isShadowElement.js';
+export * from './entities/Kernel.js';
 export * from './entities/Registry.js';
 export * from './entities/ShadowObject.js';
 export * from './entities/events.js';

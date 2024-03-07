@@ -21,6 +21,10 @@
       "default": "./dist/bundle.js",
       "types": "./dist/src/bundle.d.ts"
     },
+    "./shadow-objects.js": {
+      "default": "./dist/src/shadow-objects.js",
+      "types": "./dist/src/shadow-objects.d.ts"
+    },
     "./shadow-entity.js": {
       "default": "./dist/src/shadow-entity.js",
       "types": "./dist/src/shadow-entity.d.ts"

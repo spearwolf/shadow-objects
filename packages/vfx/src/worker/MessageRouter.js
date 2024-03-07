@@ -1,23 +1,29 @@
+import {Kernel} from '@spearwolf/shadow-ents/shadow-objects.js';
 import {Closed, Destroy, Init} from '../constants.js';
 
 export class MessageRouter {
+  constructor(kernel = new Kernel()) {
+    this.kernel = kernel;
+  }
+
   /**
    * @param {MessageEvent} event
    */
   parseMessage(event) {
-    console.log('[MessageRouter] worker got message', event.data);
+    console.debug('[MessageRouter] got message', event.data);
 
     switch (event.data.type) {
       case Init:
+        console.debug('[MessageRouter] init', event.data);
         if ('importVfxSrc' in event.data) {
           this.#importVfxSrc(event.data.importVfxSrc);
         }
         break;
 
       case Destroy:
-        console.log('[MessageRouter] destroy', event.data);
-        // TODO cleanup
-        postMessage({type: Closed});
+        console.debug('[MessageRouter] destroy', event.data);
+        // TODO cleanup ?
+        self.postMessage({type: Closed});
         break;
 
       default:
@@ -30,7 +36,7 @@ export class MessageRouter {
    */
   #importVfxSrc(src) {
     import(/* @vite-ignore */ src).then((module) => {
-      console.log('[MessageRouter] imported', module);
+      console.debug('[MessageRouter] imported', module);
     });
   }
 }
