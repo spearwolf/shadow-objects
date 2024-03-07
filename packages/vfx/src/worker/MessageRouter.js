@@ -1,9 +1,10 @@
-import {Kernel} from '@spearwolf/shadow-ents/shadow-objects.js';
-import {ChangeTrail, Closed, Destroy, Init, Ready} from '../constants.js';
+import {Kernel, shadowObjects} from '@spearwolf/shadow-ents/shadow-objects.js';
+import {ChangeTrail, Closed, Destroy, Init, Ready} from '../shared/constants.js';
 
 export class MessageRouter {
-  constructor(kernel = new Kernel()) {
-    this.kernel = kernel;
+  constructor(options) {
+    this.kernel = options?.kernel ?? new Kernel();
+    this.postMessage = options?.postMessage ?? self.postMessage.bind(self);
   }
 
   /**
@@ -14,24 +15,15 @@ export class MessageRouter {
 
     switch (event.data.type) {
       case Init:
-        console.debug('[MessageRouter] init', event.data);
-        if ('importVfxSrc' in event.data) {
-          this.#importVfxSrc(event.data.importVfxSrc).then(() => {
-            self.postMessage({type: Ready});
-          });
-        } else {
-          console.error('[MessageRouter] missing importVfxSrc property!');
-        }
+        this.#onInit(event.data);
         break;
 
       case ChangeTrail:
-        this.#parseChangeTrail(event.data);
+        this.#onChangeTrail(event.data);
         break;
 
       case Destroy:
-        console.debug('[MessageRouter] destroy', event.data);
-        // TODO cleanup ?
-        self.postMessage({type: Closed});
+        this.#onDestroy(event.data);
         break;
 
       default:
@@ -39,16 +31,41 @@ export class MessageRouter {
     }
   }
 
-  #parseChangeTrail(data) {
+  #onChangeTrail(data) {
     console.debug('[MessageRouter] parseChangeTrail', {data, kernel: this.kernel});
     this.kernel.run(data);
   }
 
+  #onInit(data) {
+    console.debug('[MessageRouter] on init', data);
+
+    if ('importVfxSrc' in data) {
+      this.#importVfxSrc(data.importVfxSrc);
+    } else {
+      console.error('[MessageRouter] missing importVfxSrc property!');
+    }
+  }
+
+  #onDestroy(data) {
+    console.debug('[MessageRouter] on destroy', data);
+    // TODO cleanup ?
+    this.postMessage({type: Closed});
+  }
+
   async #importVfxSrc(src) {
-    const module = await import(/* @vite-ignore */ src);
+    const vfxMod = await import(/* @vite-ignore */ src);
 
-    console.debug('[MessageRouter] imported', module);
+    console.debug('[MessageRouter] imported', vfxMod);
 
-    // TODO setup shadow-objects from module
+    if (typeof vfxMod.onload === 'function') {
+      // TODO remember constructors for later cleanup (src changed, maybe hotswap?)
+      vfxMod.onload({
+        shadowObjects: {define: (token, constructor) => shadowObjects.define(token, constructor, this.kernel.registry)},
+        kernel: this.kernel,
+        registry: this.kernel.registry,
+      });
+    }
+
+    this.postMessage({type: Ready});
   }
 }

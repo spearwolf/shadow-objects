@@ -13,8 +13,8 @@ import {
   WorkerDestroyTimeout,
   WorkerLoadTimeout,
   WorkerReadyTimeout,
-} from '../constants.js';
-import {waitForMessageOfType} from '../waitForMessageOfType.js';
+} from '../shared/constants.js';
+import {waitForMessageOfType} from './waitForMessageOfType.js';
 
 const InitialHTML = `
   <shadow-env id="env">
@@ -25,6 +25,8 @@ const InitialHTML = `
 `;
 
 export class VfxCtxElement extends HTMLElement {
+  #needsUpdate = false;
+
   constructor(initialHTML = InitialHTML) {
     super();
     eventize(this);
@@ -62,7 +64,7 @@ export class VfxCtxElement extends HTMLElement {
 
     shadowEntityElement((el) => {
       if (el) {
-        const con = connect([el, 'viewComponent'], setViewComponent);
+        const con = connect(el.viewComponent$, viewComponent);
         return () => {
           console.log('[vfx-ctx] shadowEntityElement: change-cleanup =>', el);
           con.destroy();
@@ -78,7 +80,7 @@ export class VfxCtxElement extends HTMLElement {
 
     this.shadowEntityElement = this.shadow.getElementById('root');
 
-    this.shadowEnv.on(BaseEnv.OnSync, this.#onEnvSync.bind(this));
+    this.shadowEnv.on(BaseEnv.OnSync, this.#onEnvSync, this);
 
     this.worker = this.createWorker();
   }
@@ -104,6 +106,23 @@ export class VfxCtxElement extends HTMLElement {
   }
 
   /**
+   * sync shadow-env on microtask
+   *
+   * @link https://developer.mozilla.org/en-US/docs/Web/API/HTML_DOM_API/Microtask_guide
+   */
+  update() {
+    if (!this.#needsUpdate) {
+      queueMicrotask(() => {
+        if (this.#needsUpdate) {
+          this.#needsUpdate = false;
+          this.shadowEnv.sync();
+        }
+      });
+      this.#needsUpdate = true;
+    }
+  }
+
+  /**
    * if called, then viewComponent is set and can be used
    *
    * @param {import('@spearwolf/shadow-ents').ViewComponent} vc view component
@@ -113,7 +132,7 @@ export class VfxCtxElement extends HTMLElement {
 
     // TODO set additional properties on view component ?
 
-    this.shadowEnv.sync(); // initial sync
+    this.update(); // initial sync
   }
 
   #onEnvSync(data) {
