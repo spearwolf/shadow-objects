@@ -1,10 +1,10 @@
-export class VfxCtxElement extends HTMLElement {
-  static InitialHTML = `
-    <p><code>vfx-ctx</code></p>
-    <slot></slot>
-  `;
+const InitialHTML = `
+  <p><code>vfx-ctx</code></p>
+  <slot></slot>
+`;
 
-  constructor(initialHTML = VfxCtxElement.InitialHTML) {
+export class VfxCtxElement extends HTMLElement {
+  constructor(initialHTML = InitialHTML) {
     super();
 
     this.shadow = this.attachShadow({mode: 'open'});
