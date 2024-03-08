@@ -12,12 +12,13 @@ export class VfxDisplay {
   constructor({useContext, useProperty}) {
     eventize(this);
 
-    this.getCanvas = useContext('vfx.canvas');
+    this.getSharedCanvas = useContext('vfx.canvas'); // TODO use shared vfx.canvas|multiViewRenderer
 
     this.#subscribeToCanvasSize(useProperty('canvasWidth'), useProperty('canvasHeight'));
   }
 
   // TODO next steps: on animation frame render canvas
+  // - use start|stop events from <vfx-display>
 
   onCreate(entity) {
     this.#uuid = entity.uuid;

@@ -38,6 +38,8 @@ export class VfxDisplayElement extends HTMLElement {
     super();
     eventize(this);
 
+    this.retain('shadowEntityElement');
+
     this.shadow = this.attachShadow({mode: 'open'});
     this.shadow.innerHTML = initialHTML;
 
@@ -71,10 +73,13 @@ export class VfxDisplayElement extends HTMLElement {
       console.debug('[vfx-display] shadowEntityElement=', el);
       if (el) {
         const con = connect(el.viewComponent$, viewComponent);
+        this.emit('shadowEntityElement', el);
         return () => {
           console.log('[vfx-display] shadowEntityElement: change-cleanup =>', el);
           con.destroy();
         };
+      } else {
+        this.retainClear('shadowEntityElement');
       }
     });
 
@@ -91,10 +96,18 @@ export class VfxDisplayElement extends HTMLElement {
 
   connectedCallback() {
     this.#requestAnimationFrame();
+
+    this.once('shadowEntityElement', (el) => {
+      el.sendShadowEvent('start');
+    });
   }
 
   disconnectedCallback() {
     this.#cancelAnimationFrame();
+
+    this.once('shadowEntityElement', (el) => {
+      el.sendShadowEvent('stop');
+    });
   }
 
   #lastCanvasWidth = 0;
