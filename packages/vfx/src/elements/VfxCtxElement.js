@@ -130,6 +130,8 @@ export class VfxCtxElement extends HTMLElement {
   #onViewComponent(vc) {
     console.debug('[vfx-ctx] onViewComponent', {viewComponent: vc, shadowEnv: this.shadowEnv});
 
+    vc.setProperty('bar', 666); // TODO remove me!
+
     // TODO set additional properties on view component ?
 
     this.update(); // initial sync

@@ -1,5 +1,5 @@
 import {Eventize, eventize, type EventizeApi} from '@spearwolf/eventize';
-import {batch, createEffect, createSignal, value, type SignalFuncs} from '@spearwolf/signalize';
+import {batch, createSignal, type SignalFuncs, connect} from '@spearwolf/signalize';
 import {ComponentChangeType} from '../constants.js';
 import type {IComponentChangeType, ShadowObjectConstructor, SyncEvent} from '../types.js';
 import {Entity} from './Entity.js';
@@ -193,13 +193,10 @@ export class Kernel extends Eventize {
         // TODO connect entity context!
       }
 
-      for (const [propName, [, sigWrite]] of properties) {
+      for (const [propName, [sig]] of properties) {
         (shadowObject as EventizeApi).on(onEntityCreate, (entity: Entity) => {
-          // connect(entity.getSignalReader(propName), sigRead);
-          // entity.getSignalReader(propName)?.((value) => sigWrite(value));
-          const entitySignalReader = entity.getSignalReader(propName);
-          const [, unsubscribe] = createEffect(() => sigWrite(value(entitySignalReader)), [entitySignalReader]);
-          (shadowObject as EventizeApi).once(onDestroy, unsubscribe);
+          const con = connect(entity.getSignalReader(propName), sig);
+          (shadowObject as EventizeApi).once(onDestroy, () => con.destroy());
         });
       }
 
