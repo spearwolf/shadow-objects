@@ -1,6 +1,13 @@
 import {Kernel, shadowObjects} from '@spearwolf/shadow-ents/shadow-objects.js';
 import {ChangeTrail, Closed, Destroy, Init, Ready} from '../shared/constants.js';
 
+/**
+ * @typedef {{kernel?: import('@spearwolf/shadow-ents').Kernel, postMessage?: typeof postMessage}} MessageRouterOptions
+ */
+
+/**
+ * @param {MessageRouterOptions=} options
+ */
 export class MessageRouter {
   constructor(options) {
     this.kernel = options?.kernel ?? new Kernel();
@@ -10,7 +17,7 @@ export class MessageRouter {
   /**
    * @param {MessageEvent} event
    */
-  parseMessage(event) {
+  route(event) {
     console.debug('[MessageRouter] got message', event.data);
 
     switch (event.data.type) {
