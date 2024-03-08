@@ -168,6 +168,8 @@ export class VfxCtxElement extends HTMLElement {
     this.worker = undefined;
     this.retainClear('worker');
 
+    // TODO shadowEnv.reset() - reset change-trail but leave view-components state as it is
+
     worker.postMessage({type: Destroy});
 
     waitForMessageOfType(worker, Closed, WorkerDestroyTimeout)
