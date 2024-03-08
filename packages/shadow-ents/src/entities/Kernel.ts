@@ -1,10 +1,10 @@
-import {Eventize, eventize, type EventizeApi} from '@spearwolf/eventize';
-import {batch, createSignal, type SignalFuncs, connect} from '@spearwolf/signalize';
+import {Eventize, eventize} from '@spearwolf/eventize';
+import {batch, connect, createSignal, type SignalFuncs} from '@spearwolf/signalize';
 import {ComponentChangeType} from '../constants.js';
 import type {IComponentChangeType, ShadowObjectConstructor, SyncEvent} from '../types.js';
 import {Entity} from './Entity.js';
-import {onCreate, onDestroy, onEntityCreate, onEntityTokenChange, type OnCreate, type OnDestroy} from './events.js';
 import {Registry} from './Registry.js';
+import {onCreate, onDestroy, onEntityCreate, onEntityTokenChange, type OnCreate, type OnDestroy} from './events.js';
 
 interface EntityEntry {
   token: string;
@@ -176,17 +176,17 @@ export class Kernel extends Eventize {
         return sigfuncs[0];
       };
 
-      const shadowObject = new constructor({
-        // TODO add provideContext()
-        useContext(name: string) {
-          return makeSignal(contexts, name);
-        },
-        useProperty(name: string) {
-          return makeSignal(properties, name);
-        },
-      });
-
-      eventize(shadowObject);
+      const shadowObject = eventize(
+        new constructor({
+          // TODO add provideContext()
+          useContext(name: string) {
+            return makeSignal(contexts, name);
+          },
+          useProperty(name: string) {
+            return makeSignal(properties, name);
+          },
+        }),
+      );
 
       for (const [contextName] of contexts) {
         console.warn('TODO connect context', contextName, 'to', shadowObject);
@@ -194,9 +194,9 @@ export class Kernel extends Eventize {
       }
 
       for (const [propName, [sig]] of properties) {
-        (shadowObject as EventizeApi).on(onEntityCreate, (entity: Entity) => {
+        shadowObject.on(onEntityCreate, (entity: Entity) => {
           const con = connect(entity.getSignalReader(propName), sig);
-          (shadowObject as EventizeApi).once(onDestroy, () => con.destroy());
+          shadowObject.once(onDestroy, () => con.destroy());
         });
       }
 

@@ -32,7 +32,7 @@ describe('@ShadowObject decorator', () => {
       }
     }
 
-    const so = kernel.createShadowObjects('test')?.at(-1) as Foo;
+    const so = kernel.createShadowObjects('test')?.at(-1) as unknown as Foo;
 
     expect(so).toBeDefined();
     expect(so).toBeInstanceOf(Foo);
@@ -73,7 +73,7 @@ describe('shadowObject.define API', () => {
 
     shadowObjects.define('test2', Foo, registry);
 
-    const so = kernel.createShadowObjects('test2')?.at(-1) as Foo;
+    const so = kernel.createShadowObjects('test2')?.at(-1) as unknown as Foo;
 
     expect(so).toBeDefined();
     expect(so).toBeInstanceOf(Foo);
