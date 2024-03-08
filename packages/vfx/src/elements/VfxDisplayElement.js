@@ -125,12 +125,10 @@ export class VfxDisplayElement extends HTMLElement {
    *
    * @param {import('@spearwolf/shadow-ents').ViewComponent} vc view component
    */
-  #onViewComponent(vc) {
-    console.debug('[vfx-display] onViewComponent', {viewComponent: vc});
+  #onViewComponent(_vc) {
+    // console.debug('[vfx-display] onViewComponent', {viewComponent: vc});
 
-    // TODO next steps: transfer offscreen-canvas to worker entity
-    // - const offscreen = canvas.transferControlToOffscreen();
-    // - worker.postMessage({canvas: offscreen}, [offscreen]);
+    // XXX maybe we find a better place for this ?
     const offscreen = this.canvasElement.transferControlToOffscreen();
     this.shadowEntityElement.sendShadowEvent('offscreenCanvas', {canvas: offscreen}, [offscreen]);
   }
