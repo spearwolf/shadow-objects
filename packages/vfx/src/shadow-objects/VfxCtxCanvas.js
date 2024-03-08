@@ -13,7 +13,7 @@ export class VfxCtxCanvas {
   }
 
   onCreate(...args) {
-    console.log('[VfxCtxCanvas] onCreate, args=', args);
+    console.debug('[VfxCtxCanvas] onCreate, args=', args);
     console.log('[VfxCtxCanvas] bar is initially set to', this.getBar());
   }
 }

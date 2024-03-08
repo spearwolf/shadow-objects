@@ -32,6 +32,8 @@ const InitialHTML = `
 `;
 
 export class VfxDisplayElement extends HTMLElement {
+  #rafID = 0;
+
   constructor(initialHTML = InitialHTML) {
     super();
     eventize(this);
@@ -87,9 +89,36 @@ export class VfxDisplayElement extends HTMLElement {
     });
   }
 
-  // connectedCallback() {}
+  connectedCallback() {
+    this.#requestAnimationFrame();
+  }
 
-  // disconnectedCallback() {}
+  disconnectedCallback() {
+    this.#cancelAnimationFrame();
+  }
+
+  #lastCanvasWidth = 0;
+  #lastCanvasHeight = 0;
+
+  #onFrame = () => {
+    const clientRect = this.canvasElement.getBoundingClientRect();
+    if (this.#lastCanvasWidth !== clientRect.width || this.#lastCanvasHeight !== clientRect.height) {
+      this.#lastCanvasWidth = clientRect.width;
+      this.#lastCanvasHeight = clientRect.height;
+      this.viewComponent.setProperty('canvasWidth', clientRect.width);
+      this.viewComponent.setProperty('canvasHeight', clientRect.height);
+      this.shadowEntityElement.shadowEnvElement?.update();
+    }
+    this.#requestAnimationFrame();
+  };
+
+  #requestAnimationFrame() {
+    this.#rafID = requestAnimationFrame(this.#onFrame);
+  }
+
+  #cancelAnimationFrame() {
+    cancelAnimationFrame(this.#rafID);
+  }
 
   /**
    * if called, then viewComponent is set and can be used
