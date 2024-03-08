@@ -1,5 +1,5 @@
-import {VfxCtxCanvas} from './worker/VfxCtxCanvas.js';
-import {VfxDisplay} from './worker/VfxDisplay.js';
+import {VfxCtxCanvas} from './shadow-objects/VfxCtxCanvas.js';
+import {VfxDisplay} from './shadow-objects/VfxDisplay.js';
 
 console.log('moin moin @spearwolf/vfx/worker-sample.js');
 
