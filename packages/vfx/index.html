@@ -6,19 +6,37 @@
     <title>spearwolf/vfx playground</title>
     <style>
       body {
-        margin: 0 1em;
+        margin: 0;
         padding: 0;
         height: 100vh;
         background-color: #212121;
         color: #f0f0f0;
       }
+      main {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+      .hello {
+        margin: 0;
+        padding: 0.5em 1em 0.75em;
+        background-color: #28292a;
+      }
+      .display {
+        position: relative;
+        flex-grow: 1;
+      }
+      .layer {
+        position: absolute;
+      }
     </style>
   </head>
   <body>
     <main>
-      <p>hello spearwolf/vfx ❗</p>
-      <vfx-ctx src="src/worker-sample.js">
-        <vfx-display></vfx-display>
+      <p class="hello">hello spearwolf/vfx ❗</p>
+      <vfx-ctx class="display" src="src/worker-sample.js">
+        <vfx-display class="layer"></vfx-display>
+        <vfx-display class="layer"></vfx-display>
       </vfx-ctx>
     </main>
     <script type="module" src="src/bundle.js"></script>
