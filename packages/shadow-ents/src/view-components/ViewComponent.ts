@@ -123,6 +123,10 @@ export class ViewComponent {
     this.#context.removeProperty(this, name);
   }
 
+  sendEvent(type: string, data: unknown, transferables?: Object[]) {
+    this.#context.sendEvent(this, type, data, transferables);
+  }
+
   destroy() {
     this.removeFromParent();
     this.#context?.destroyComponent(this);

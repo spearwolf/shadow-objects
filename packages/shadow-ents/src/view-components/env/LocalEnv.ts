@@ -45,6 +45,12 @@ export class LocalEnv extends BaseEnv {
 
   protected override getChangeTrail(): IComponentChangeType[] {
     const changeTrail = super.getChangeTrail();
-    return this.useStructuredClone && checkStructuredClone() ? structuredClone(changeTrail) : changeTrail;
+    if (this.useStructuredClone && checkStructuredClone()) {
+      changeTrail.forEach((change) => {
+        delete change.transferables;
+      });
+      return structuredClone(changeTrail);
+    }
+    return changeTrail;
   }
 }

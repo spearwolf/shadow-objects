@@ -8,8 +8,9 @@ import {
   type SignalReader,
   type SignalWriter,
 } from '@spearwolf/signalize';
+import type {IComponentEvent} from '../types.js';
 import {Kernel} from './Kernel.js';
-import {onAddChild, onAddToParent, onDestroy, onEntityCreate, onRemoveChild, onRemoveFromParent} from './events.js';
+import {onAddChild, onAddToParent, onDestroy, onEntityCreate, onEvent, onRemoveChild, onRemoveFromParent} from './events.js';
 
 // TODO add token to Entity ?
 
@@ -155,6 +156,12 @@ export class Entity extends Eventize {
       this.#parent = undefined;
       this.#parentUuid = undefined;
       this.emit(onRemoveFromParent, this, prevParent);
+    }
+  }
+
+  emitEvents(events: IComponentEvent[]) {
+    for (const {type, data} of events) {
+      this.emit(onEvent, type, data);
     }
   }
 

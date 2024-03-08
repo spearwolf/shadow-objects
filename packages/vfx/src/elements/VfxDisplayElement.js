@@ -39,6 +39,8 @@ export class VfxDisplayElement extends HTMLElement {
     this.shadow = this.attachShadow({mode: 'open'});
     this.shadow.innerHTML = initialHTML;
 
+    this.canvasElement = this.shadow.getElementById('display');
+
     const [shadowEntityElement, setShadowEntityElement] = createSignal();
     const [viewComponent, setViewComponent] = createSignal();
 
@@ -96,5 +98,11 @@ export class VfxDisplayElement extends HTMLElement {
    */
   #onViewComponent(vc) {
     console.debug('[vfx-display] onViewComponent', {viewComponent: vc});
+
+    // TODO next steps: transfer offscreen-canvas to worker entity
+    // - const offscreen = canvas.transferControlToOffscreen();
+    // - worker.postMessage({canvas: offscreen}, [offscreen]);
+    const offscreen = this.canvasElement.transferControlToOffscreen();
+    this.shadowEntityElement.sendShadowEvent('offscreenCanvas', {canvas: offscreen}, [offscreen]);
   }
 }

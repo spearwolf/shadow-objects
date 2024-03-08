@@ -108,3 +108,11 @@ export const onRemoveChild = 'onRemoveChild';
 export interface OnRemoveChild {
   [onRemoveChild](parent: Entity, child: Entity): void;
 }
+
+// ----------------------------------------------------------------------------
+
+export const onEvent = 'onEvent';
+
+export interface OnEvent {
+  [onEvent](type: string, data: unknown): void;
+}

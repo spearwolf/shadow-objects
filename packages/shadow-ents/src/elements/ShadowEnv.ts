@@ -8,6 +8,8 @@ import {ShadowEntity} from './ShadowEntity.js';
 import {ShadowElementType} from './constants.js';
 
 export class ShadowEnv extends ShadowEntity implements IShadowEnvElement {
+  #needsUpdate = false;
+
   override readonly contextTypes: ShadowElementType[] = [];
 
   override readonly shadowTypes = new Set([ShadowElementType.ShadowEnv]);
@@ -16,7 +18,11 @@ export class ShadowEnv extends ShadowEntity implements IShadowEnvElement {
   @signalReader() accessor shadowEnv$: SignalReader<BaseEnv | undefined>;
 
   get hasShadowEnv(): boolean {
-    return value(this.shadowEnv$) != null;
+    return this.getShadowEnv() != null;
+  }
+
+  getShadowEnv(): BaseEnv {
+    return value(this.shadowEnv$);
   }
 
   constructor() {
@@ -27,6 +33,23 @@ export class ShadowEnv extends ShadowEntity implements IShadowEnvElement {
 
   getComponentContext(): ComponentContext {
     return this.shadowEnv!.view;
+  }
+
+  /**
+   * sync shadow-env on microtask
+   *
+   * @link https://developer.mozilla.org/en-US/docs/Web/API/HTML_DOM_API/Microtask_guide
+   */
+  update() {
+    if (!this.#needsUpdate && this.hasShadowEnv) {
+      queueMicrotask(() => {
+        if (this.#needsUpdate) {
+          this.#needsUpdate = false;
+          this.shadowEnv?.sync();
+        }
+      });
+      this.#needsUpdate = true;
+    }
   }
 
   override connectedCallback(): void {

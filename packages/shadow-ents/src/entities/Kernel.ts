@@ -1,7 +1,7 @@
 import {Eventize, eventize} from '@spearwolf/eventize';
 import {batch, connect, createSignal, type SignalFuncs} from '@spearwolf/signalize';
 import {ComponentChangeType} from '../constants.js';
-import type {IComponentChangeType, ShadowObjectConstructor, SyncEvent} from '../types.js';
+import type {IComponentChangeType, IComponentEvent, ShadowObjectConstructor, SyncEvent} from '../types.js';
 import {Entity} from './Entity.js';
 import {Registry} from './Registry.js';
 import {onCreate, onDestroy, onEntityCreate, onEntityTokenChange, type OnCreate, type OnDestroy} from './events.js';
@@ -20,6 +20,12 @@ interface EntityEntry {
  * Which shadow-objects are created is determined by the token.
  */
 export class Kernel extends Eventize {
+  /**
+   * The `message` event is triggered when the kernel receives a message from the entities
+   * XXX kernel message event is not used yet
+   */
+  static Message = 'message';
+
   registry: Registry;
 
   #entities: Map<string, EntityEntry> = new Map();
@@ -70,6 +76,10 @@ export class Kernel extends Eventize {
       case ComponentChangeType.ChangeToken:
         this.changeToken(entry.uuid, entry.token);
         break;
+
+      case ComponentChangeType.SendEvents:
+        this.emitEventsToEntity(entry.uuid, entry.events);
+        break;
     }
   }
 
@@ -111,6 +121,10 @@ export class Kernel extends Eventize {
 
   updateOrder(uuid: string, order: number) {
     this.getEntity(uuid).order = order;
+  }
+
+  emitEventsToEntity(uuid: string, events: IComponentEvent[]) {
+    this.getEntity(uuid)?.emitEvents(events);
   }
 
   changeProperties(uuid: string, properties: [string, unknown][]) {

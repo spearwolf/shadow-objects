@@ -22,6 +22,8 @@ export class ShadowEntity extends HTMLElement {
 
   stopContextRequestPropagation = false;
 
+  shadowEnvElement?: IShadowEnvElement;
+
   @signal() accessor connected: boolean = false;
   @signal() accessor token: string | undefined;
   @signal() accessor componentContext: ComponentContext | undefined;
@@ -45,6 +47,7 @@ export class ShadowEntity extends HTMLElement {
     this.#syncTokenAttribute();
 
     this.getContextByType$$(ShadowElementType.ShadowEnv)![0]((env) => {
+      this.shadowEnvElement = env as unknown as IShadowEnvElement;
       this.componentContext = (env && (env as unknown as IShadowEnvElement).getComponentContext()) || undefined;
     });
 
@@ -55,6 +58,28 @@ export class ShadowEntity extends HTMLElement {
 
     // TODO add context-types as observedAttributes + reactive property
     // TODO add shadow-types as observedAttributes + reactive property
+  }
+
+  sendShadowEvent(type: string, data: unknown, transferables?: Object[]) {
+    if (this.viewComponent) {
+      this.viewComponent.sendEvent(type, data, transferables);
+      this.shadowEnvElement?.update();
+    } else {
+      console.warn('no viewComponent to send event', {type, data, transferables});
+    }
+  }
+
+  sendShadowEvents(events: {type: string; data: unknown; transferables?: Object[]}[]) {
+    if (this.viewComponent) {
+      if (events.length > 0) {
+        for (const {type, data, transferables} of events) {
+          this.viewComponent.sendEvent(type, data, transferables);
+        }
+        this.shadowEnvElement?.update();
+      }
+    } else {
+      console.warn('no viewComponent to send events', events);
+    }
   }
 
   #onParentEntityChanged(parent: ShadowEntity | undefined) {

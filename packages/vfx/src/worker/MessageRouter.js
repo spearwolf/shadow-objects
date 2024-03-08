@@ -12,6 +12,8 @@ export class MessageRouter {
   constructor(options) {
     this.kernel = options?.kernel ?? new Kernel();
     this.postMessage = options?.postMessage ?? self.postMessage.bind(self);
+
+    // TODO subscribe to kernel "message" events
   }
 
   /**

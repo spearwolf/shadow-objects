@@ -3,6 +3,12 @@ import type {ComponentChangeType} from './constants.js';
 export interface IComponentChange {
   type: ComponentChangeType;
   uuid: string;
+  transferables?: Object[];
+}
+
+export interface IComponentEvent {
+  type: string;
+  data: unknown;
 }
 
 export type ComponentPropertiesType = [string, unknown][];
@@ -40,13 +46,19 @@ export interface IPropertiesChange extends IComponentChange {
   properties: ComponentPropertiesType;
 }
 
+export interface ISendEvents extends IComponentChange {
+  type: ComponentChangeType.SendEvents;
+  events: IComponentEvent[];
+}
+
 export type IComponentChangeType =
   | ICreateEntitiesChange
   | IDestroyEntitiesChange
   | ISetParentChange
   | IUpdateOrderChange
   | IPropertiesChange
-  | IChangeToken;
+  | IChangeToken
+  | ISendEvents;
 
 export interface SyncEvent {
   changeTrail: IComponentChangeType[];

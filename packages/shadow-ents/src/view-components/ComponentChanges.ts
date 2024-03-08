@@ -3,9 +3,11 @@ import {ChangeTrailPhase, ComponentChangeType, VoidToken} from '../constants.js'
 import type {
   IChangeToken,
   IComponentChangeType,
+  IComponentEvent,
   ICreateEntitiesChange,
   IDestroyEntitiesChange,
   IPropertiesChange,
+  ISendEvents,
   ISetParentChange,
   IUpdateOrderChange,
 } from '../types.js';
@@ -76,6 +78,9 @@ export class ComponentChanges {
 
     this.#nextProperties.clear();
     this.#propsChangeOrder.length = 0;
+
+    this.#events.length = 0;
+    this.#transferables.clear();
   }
 
   changeToken(token: string) {
@@ -136,6 +141,15 @@ export class ComponentChanges {
     }
   }
 
+  #events: IComponentEvent[] = [];
+  #transferables = new Set<Object>();
+
+  sendEvent(type: string, data: unknown, transferables?: Object[]) {
+    this.#events.push({type, data});
+    transferables?.forEach((transferable) => this.#transferables.add(transferable));
+    this.#serial++;
+  }
+
   buildChangeTrail(trail: IComponentChangeType[], trailPhase: ChangeTrailPhase) {
     const {isNew, isCreated, isDestroyed} = this;
 
@@ -161,6 +175,9 @@ export class ComponentChanges {
         if (!isNew && isCreated && this.#propsChangeOrder.length > 0) {
           trail.push(this.makeChangePropertyChange());
         }
+        if (this.#events.length > 0) {
+          trail.push(this.makeSendEvents());
+        }
         break;
 
       case ChangeTrailPhase.Removal:
@@ -169,6 +186,18 @@ export class ComponentChanges {
         }
         break;
     }
+  }
+
+  makeSendEvents(): ISendEvents {
+    const event: ISendEvents = {
+      type: ComponentChangeType.SendEvents,
+      uuid: this.#uuid,
+      events: this.#events.slice(0),
+    };
+    if (this.#transferables.size > 0) {
+      event.transferables = Array.from(this.#transferables);
+    }
+    return event;
   }
 
   makeCreateEntityChange(): ICreateEntitiesChange {

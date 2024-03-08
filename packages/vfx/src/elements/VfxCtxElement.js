@@ -25,8 +25,6 @@ const InitialHTML = `
 `;
 
 export class VfxCtxElement extends HTMLElement {
-  #needsUpdate = false;
-
   constructor(initialHTML = InitialHTML) {
     super();
     eventize(this);
@@ -105,21 +103,8 @@ export class VfxCtxElement extends HTMLElement {
     return new Worker(new URL('../vfx.worker.js', import.meta.url), {type: 'module'});
   }
 
-  /**
-   * sync shadow-env on microtask
-   *
-   * @link https://developer.mozilla.org/en-US/docs/Web/API/HTML_DOM_API/Microtask_guide
-   */
   update() {
-    if (!this.#needsUpdate) {
-      queueMicrotask(() => {
-        if (this.#needsUpdate) {
-          this.#needsUpdate = false;
-          this.shadowEnv.sync();
-        }
-      });
-      this.#needsUpdate = true;
-    }
+    this.shadowEnvElement.update();
   }
 
   /**
@@ -138,12 +123,29 @@ export class VfxCtxElement extends HTMLElement {
   }
 
   #onEnvSync(data) {
-    console.debug('[vfx-ctx] shadowEnv on sync, changeTrail=', data);
-    this.#postMessageToWorker(ChangeTrail, data);
+    if (Array.isArray(data.changeTrail) && data.changeTrail.length > 0) {
+      let transferables;
+
+      data.changeTrail.forEach((changeItem) => {
+        if (changeItem.transferables) {
+          if (!transferables) {
+            transferables = changeItem.transferables;
+          } else {
+            transferables = [...transferables, ...changeItem.transferables];
+          }
+          delete changeItem.transferables;
+        }
+      });
+
+      console.debug('[vfx-ctx] shadowEnv on sync, changeTrail=', data, 'transferables=', transferables);
+
+      this.#postMessageToWorker(ChangeTrail, data, transferables);
+    }
   }
 
-  #postMessageToWorker(type, data) {
-    this.once('worker', (worker) => worker.postMessage({type, ...data}));
+  #postMessageToWorker(type, data, transfer) {
+    const options = Array.isArray(transfer) ? {transfer} : undefined;
+    this.once('worker', (worker) => worker.postMessage({type, ...data}, options));
   }
 
   async #setupWorker() {

@@ -146,6 +146,10 @@ export class ComponentContext {
     this.#components.get(component.uuid)?.changes.removeProperty(propKey);
   }
 
+  sendEvent(component: ViewComponent, type: string, data: unknown, transferables?: Object[]) {
+    this.#components.get(component.uuid)?.changes.sendEvent(type, data, transferables);
+  }
+
   changeOrder(component: ViewComponent) {
     if (component.parent) {
       const parentEntry = this.#components.get(component.parent.uuid)!;
