@@ -132,7 +132,7 @@ export class VfxCtxElement extends HTMLElement {
 
     vc.setProperty('bar', 666); // TODO remove me!
 
-    // TODO set additional properties on view component ?
+    // XXX set additional properties on view component ?
 
     this.update(); // initial sync
   }

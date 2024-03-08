@@ -22,6 +22,8 @@ export interface OnCreate {
 
 export const onEntityCreate = 'onEntityCreate';
 
+// TODO delay OnEntityCreate until all initial properties have been set
+
 export interface OnEntityCreate {
   /**
    * Is called when the entity has been created and all the shadow-objects have been attached to it.

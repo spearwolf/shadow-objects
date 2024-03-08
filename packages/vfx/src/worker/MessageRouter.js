@@ -55,7 +55,7 @@ export class MessageRouter {
 
   #onDestroy(data) {
     console.debug('[MessageRouter] on destroy', data);
-    // TODO do we need cleanup here ?
+    // XXX do we need cleanup here ?
     this.postMessage({type: Closed});
   }
 
