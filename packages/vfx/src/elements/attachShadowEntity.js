@@ -16,6 +16,14 @@ export function attachShadowEntity(target, element) {
     target.shadowEntity?.syncShadowObjects();
   };
 
+  target.sendEventToShadows = (...args) => {
+    target.once('shadowEntity', (el) => el.sendEventToShadows(...args));
+  };
+
+  target.sendEventsToShadows = (...args) => {
+    target.once('shadowEntity', (el) => el.sendEventsToShadows(...args));
+  };
+
   if (element) {
     target.shadowEntity = element;
   }

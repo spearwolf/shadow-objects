@@ -53,12 +53,12 @@ export class VfxDisplayElement extends HTMLElement {
 
   connectedCallback() {
     this.#frameLoop.start(this);
-    this.once('shadowEntity', (el) => el.sendEventToShadows('start'));
+    this.sendEventToShadows('start');
   }
 
   disconnectedCallback() {
     this.#frameLoop.stop(this);
-    this.once('shadowEntity', (el) => el.sendEventToShadows('stop'));
+    this.sendEventToShadows('stop');
   }
 
   #lastCanvasWidth = 0;
@@ -79,6 +79,6 @@ export class VfxDisplayElement extends HTMLElement {
 
   transferCanvasToShadow() {
     const offscreen = this.canvas.transferControlToOffscreen();
-    this.shadowEntity.sendEventToShadows('offscreenCanvas', {canvas: offscreen}, [offscreen]);
+    this.sendEventToShadows('offscreenCanvas', {canvas: offscreen}, [offscreen]);
   }
 }
