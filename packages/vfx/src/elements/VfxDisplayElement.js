@@ -1,8 +1,7 @@
 import {eventize} from '@spearwolf/eventize';
 import '@spearwolf/shadow-ents/shadow-entity.js';
-import {connect} from '@spearwolf/signalize';
 import {FrameLoop} from '../shared/FrameLoop.js';
-import {attachSignal} from '../shared/attachSignal.js';
+import {attachShadowEntity} from './attachShadowEntity.js';
 
 const InitialHTML = `
   <style>
@@ -33,9 +32,6 @@ const InitialHTML = `
   </div>
 `;
 
-const _shadowEntity_ = 'shadowEntity';
-const _viewComponent_ = 'viewComponent';
-
 const DISPLAY_ID = 'display';
 const ENTITY_ID = 'entity';
 
@@ -46,29 +42,19 @@ export class VfxDisplayElement extends HTMLElement {
     super();
     eventize(this);
 
-    attachSignal(this, _viewComponent_);
-    attachSignal(this, _shadowEntity_, {
-      effect: (el) => {
-        const con = connect(el.viewComponent$, this.viewComponent$);
-        return () => {
-          con.destroy();
-        };
-      },
-    });
-
-    this.on(_viewComponent_, this.transferCanvasToWorker.bind(this));
-
     this.shadow = this.attachShadow({mode: 'open'});
     this.shadow.innerHTML = initialHTML;
 
     this.canvas = this.shadow.getElementById(DISPLAY_ID);
-    this.shadowEntity = this.shadow.getElementById(ENTITY_ID);
+    attachShadowEntity(this, this.shadow.getElementById(ENTITY_ID));
+
+    this.on('viewComponent', this.transferCanvasToWorker.bind(this));
   }
 
   connectedCallback() {
     this.#frameLoop.start(this);
 
-    this.once(_shadowEntity_, (el) => {
+    this.once('shadowEntity', (el) => {
       el.sendShadowEvent('start');
     });
   }
@@ -76,7 +62,7 @@ export class VfxDisplayElement extends HTMLElement {
   disconnectedCallback() {
     this.#frameLoop.stop(this);
 
-    this.once(_shadowEntity_, (el) => {
+    this.once('shadowEntity', (el) => {
       el.sendShadowEvent('stop');
     });
   }
