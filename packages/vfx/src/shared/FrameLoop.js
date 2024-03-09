@@ -11,7 +11,6 @@ export class FrameLoop {
   constructor() {
     if (gUniqInstance) return gUniqInstance;
     eventize(this);
-    console.log('[FrameLoop] new', this);
     gUniqInstance = this;
   }
 
@@ -20,7 +19,6 @@ export class FrameLoop {
 
     if (getSubscriptionCount(this) === 0) {
       this.#requestAnimationFrame();
-      console.log('[FrameLoop] start frame loop');
     }
 
     this.on(OnFrame, target);
@@ -37,7 +35,6 @@ export class FrameLoop {
 
     if (getSubscriptionCount(this) === 0) {
       this.#cancelAnimationFrame();
-      console.log('[FrameLoop] stop frame loop');
     }
   }
 

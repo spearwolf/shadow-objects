@@ -1,8 +1,9 @@
 import {eventize} from '@spearwolf/eventize';
 import {createEffect} from '@spearwolf/signalize';
+import {FrameLoop} from '../shared/FrameLoop.js';
 
 export class VfxDisplay {
-  #rafID = 0;
+  #frameLoop = new FrameLoop();
 
   entity = null;
 
@@ -55,14 +56,14 @@ export class VfxDisplay {
       case 'start':
         if (!this.isRunning) {
           this.isRunning = true;
-          this.#requestAnimationFrame();
+          this.#frameLoop.subscribe(this);
         }
         break;
 
       case 'stop':
         if (this.isRunning) {
           this.isRunning = false;
-          this.#cancelAnimationFrame();
+          this.#frameLoop.unsubscribe(this);
         }
     }
   }
@@ -79,8 +80,13 @@ export class VfxDisplay {
     this.#updateCanvasSize();
   }
 
-  onFrame() {
-    // TODO remove me!
+  onFrame(now) {
+    if (!this.canRender) return;
+
+    this.now = now / 1000;
+    this.frameNo++;
+
+    // TODO remove me: ---
 
     this.ctx ??= this.canvas.getContext('2d');
 
@@ -91,6 +97,8 @@ export class VfxDisplay {
 
     this.ctx.fillStyle = this.fillStyle1;
     this.ctx.fillRect(0, halfHeight, this.width, this.height - halfHeight);
+
+    // -------------------
   }
 
   #updateCanvasSize() {
@@ -113,22 +121,5 @@ export class VfxDisplay {
       console.debug(`[VfxDisplay] ${this.uuid} unsubscribe from canvas size change`);
       unsubscribe();
     });
-  }
-
-  #renderFrame(now) {
-    if (this.canRender) {
-      this.now = now / 1000;
-      this.frameNo++;
-      this.onFrame();
-    }
-    this.#requestAnimationFrame();
-  }
-
-  #requestAnimationFrame() {
-    this.#rafID = requestAnimationFrame(this.#renderFrame.bind(this));
-  }
-
-  #cancelAnimationFrame() {
-    cancelAnimationFrame(this.#rafID);
   }
 }

@@ -1,7 +1,7 @@
 import {eventize} from '@spearwolf/eventize';
 import '@spearwolf/shadow-ents/shadow-entity.js';
 import {connect, createSignal, value} from '@spearwolf/signalize';
-import {FrameLoop} from './FrameLoop.js';
+import {FrameLoop} from '../shared/FrameLoop.js';
 
 const InitialHTML = `
   <style>
