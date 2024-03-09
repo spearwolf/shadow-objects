@@ -48,23 +48,17 @@ export class VfxDisplayElement extends HTMLElement {
     this.canvas = this.shadow.getElementById(DISPLAY_ID);
     attachShadowEntity(this, this.shadow.getElementById(ENTITY_ID));
 
-    this.on('viewComponent', this.transferCanvasToWorker.bind(this));
+    this.on('viewComponent', this.transferCanvasToShadow.bind(this));
   }
 
   connectedCallback() {
     this.#frameLoop.start(this);
-
-    this.once('shadowEntity', (el) => {
-      el.sendShadowEvent('start');
-    });
+    this.once('shadowEntity', (el) => el.sendShadowEvent('start'));
   }
 
   disconnectedCallback() {
     this.#frameLoop.stop(this);
-
-    this.once('shadowEntity', (el) => {
-      el.sendShadowEvent('stop');
-    });
+    this.once('shadowEntity', (el) => el.sendShadowEvent('stop'));
   }
 
   #lastCanvasWidth = 0;
@@ -83,7 +77,7 @@ export class VfxDisplayElement extends HTMLElement {
     }
   }
 
-  transferCanvasToWorker() {
+  transferCanvasToShadow() {
     const offscreen = this.canvas.transferControlToOffscreen();
     this.shadowEntity.sendShadowEvent('offscreenCanvas', {canvas: offscreen}, [offscreen]);
   }
