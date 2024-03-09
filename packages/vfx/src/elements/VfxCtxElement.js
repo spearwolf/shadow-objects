@@ -63,11 +63,7 @@ export class VfxCtxElement extends HTMLElement {
   }
 
   onFrame() {
-    this.update();
-  }
-
-  update() {
-    this.shadowEnvElement.update();
+    this.syncShadowObjects();
   }
 
   createWorker() {
@@ -86,7 +82,7 @@ export class VfxCtxElement extends HTMLElement {
 
     // XXX set additional properties on view component ?
 
-    this.update(); // initial sync
+    this.syncShadowObjects(); // initial sync
   }
 
   #onEnvSync(data) {

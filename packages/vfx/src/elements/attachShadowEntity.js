@@ -12,6 +12,10 @@ export function attachShadowEntity(target, element) {
     },
   });
 
+  target.syncShadowObjects = () => {
+    target.shadowEntity?.syncShadowObjects();
+  };
+
   if (element) {
     target.shadowEntity = element;
   }

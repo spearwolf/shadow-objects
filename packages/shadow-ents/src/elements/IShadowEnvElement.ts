@@ -6,5 +6,5 @@ export interface IShadowEnvElement extends ShadowEntity {
   getComponentContext(): ComponentContext;
   getShadowEnv(): BaseEnv | undefined;
   get hasShadowEnv(): boolean;
-  update(): void;
+  syncShadowObjects(): void;
 }

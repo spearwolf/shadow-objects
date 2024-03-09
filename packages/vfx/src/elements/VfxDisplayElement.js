@@ -78,13 +78,9 @@ export class VfxDisplayElement extends HTMLElement {
       if (this.viewComponent) {
         this.viewComponent.setProperty('canvasWidth', clientRect.width);
         this.viewComponent.setProperty('canvasHeight', clientRect.height);
-        this.syncViewComponent();
+        this.syncShadowObjects();
       }
     }
-  }
-
-  syncViewComponent() {
-    this.shadowEntity?.shadowEnvElement?.update();
   }
 
   transferCanvasToWorker() {

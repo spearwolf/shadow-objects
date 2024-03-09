@@ -60,10 +60,14 @@ export class ShadowEntity extends HTMLElement {
     // TODO add shadow-types as observedAttributes + reactive property
   }
 
+  syncShadowObjects() {
+    this.shadowEnvElement?.syncShadowObjects();
+  }
+
   sendShadowEvent(type: string, data: unknown, transferables?: Object[]) {
     if (this.viewComponent) {
       this.viewComponent.sendEvent(type, data, transferables);
-      this.shadowEnvElement?.update();
+      this.syncShadowObjects();
     } else {
       console.warn('no viewComponent to send event', {type, data, transferables});
     }
@@ -75,7 +79,7 @@ export class ShadowEntity extends HTMLElement {
         for (const {type, data, transferables} of events) {
           this.viewComponent.sendEvent(type, data, transferables);
         }
-        this.shadowEnvElement?.update();
+        this.syncShadowObjects();
       }
     } else {
       console.warn('no viewComponent to send events', events);
