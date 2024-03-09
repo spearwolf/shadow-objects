@@ -56,14 +56,14 @@ export class VfxDisplay {
       case 'start':
         if (!this.isRunning) {
           this.isRunning = true;
-          this.#frameLoop.subscribe(this);
+          this.#frameLoop.start(this);
         }
         break;
 
       case 'stop':
         if (this.isRunning) {
           this.isRunning = false;
-          this.#frameLoop.unsubscribe(this);
+          this.#frameLoop.stop(this);
         }
     }
   }

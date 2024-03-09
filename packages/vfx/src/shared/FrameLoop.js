@@ -14,7 +14,7 @@ export class FrameLoop {
     gUniqInstance = this;
   }
 
-  subscribe(target) {
+  start(target) {
     if (target == null) return;
 
     if (getSubscriptionCount(this) === 0) {
@@ -26,11 +26,11 @@ export class FrameLoop {
     this.#subscriptionCount++;
 
     return () => {
-      this.unsubscribe(target);
+      this.stop(target);
     };
   }
 
-  unsubscribe(target) {
+  stop(target) {
     this.off(OnFrame, target);
 
     if (getSubscriptionCount(this) === 0) {

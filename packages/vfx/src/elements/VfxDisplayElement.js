@@ -1,7 +1,8 @@
 import {eventize} from '@spearwolf/eventize';
 import '@spearwolf/shadow-ents/shadow-entity.js';
-import {connect, createSignal, value} from '@spearwolf/signalize';
+import {connect} from '@spearwolf/signalize';
 import {FrameLoop} from '../shared/FrameLoop.js';
+import {attachSignal} from '../shared/attachSignal.js';
 
 const InitialHTML = `
   <style>
@@ -32,10 +33,11 @@ const InitialHTML = `
   </div>
 `;
 
-const shadowEntity$ = 'shadowEntity';
-const viewComponent$ = 'viewComponent';
+const _shadowEntity_ = 'shadowEntity';
+const _viewComponent_ = 'viewComponent';
 
 const DISPLAY_ID = 'display';
+const ENTITY_ID = 'entity';
 
 export class VfxDisplayElement extends HTMLElement {
   #frameLoop = new FrameLoop();
@@ -44,74 +46,37 @@ export class VfxDisplayElement extends HTMLElement {
     super();
     eventize(this);
 
-    this.retain(shadowEntity$, viewComponent$);
+    attachSignal(this, _viewComponent_);
+    attachSignal(this, _shadowEntity_, {
+      effect: (el) => {
+        const con = connect(el.viewComponent$, this.viewComponent$);
+        return () => {
+          con.destroy();
+        };
+      },
+    });
+
+    this.on(_viewComponent_, this.transferCanvasToWorker.bind(this));
 
     this.shadow = this.attachShadow({mode: 'open'});
     this.shadow.innerHTML = initialHTML;
 
     this.canvas = this.shadow.getElementById(DISPLAY_ID);
-
-    const [getShadowEntityElement, setShadowEntityElement] = createSignal();
-    const [getViewComponent, setViewComponent] = createSignal();
-
-    Object.defineProperties(this, {
-      shadowEntity: {
-        enumerable: true,
-        get() {
-          return value(getShadowEntityElement);
-        },
-        set(value) {
-          setShadowEntityElement(value);
-        },
-      },
-      viewComponent: {
-        enumerable: true,
-        get() {
-          return value(getViewComponent);
-        },
-        set(value) {
-          setViewComponent(value);
-        },
-      },
-    });
-
-    getShadowEntityElement((el) => {
-      if (el) {
-        const con = connect(el.viewComponent$, getViewComponent);
-        this.emit(shadowEntity$, el);
-        return () => {
-          con.destroy();
-        };
-      } else {
-        this.retainClear(shadowEntity$);
-      }
-    });
-
-    getViewComponent((vc) => {
-      if (vc) {
-        this.emit(viewComponent$, vc);
-      }
-    });
-
-    customElements.whenDefined('shadow-entity').then(() => {
-      setShadowEntityElement(this.shadow.getElementById('entity'));
-    });
-
-    this.on(viewComponent$, this.transferCanvasToWorker.bind(this));
+    this.shadowEntity = this.shadow.getElementById(ENTITY_ID);
   }
 
   connectedCallback() {
-    this.#frameLoop.subscribe(this);
+    this.#frameLoop.start(this);
 
-    this.once(shadowEntity$, (el) => {
+    this.once(_shadowEntity_, (el) => {
       el.sendShadowEvent('start');
     });
   }
 
   disconnectedCallback() {
-    this.#frameLoop.unsubscribe(this);
+    this.#frameLoop.stop(this);
 
-    this.once(shadowEntity$, (el) => {
+    this.once(_shadowEntity_, (el) => {
       el.sendShadowEvent('stop');
     });
   }
@@ -127,9 +92,13 @@ export class VfxDisplayElement extends HTMLElement {
       if (this.viewComponent) {
         this.viewComponent.setProperty('canvasWidth', clientRect.width);
         this.viewComponent.setProperty('canvasHeight', clientRect.height);
-        this.shadowEntity.shadowEnvElement?.update();
+        this.syncViewComponent();
       }
     }
+  }
+
+  syncViewComponent() {
+    this.shadowEntity?.shadowEnvElement?.update();
   }
 
   transferCanvasToWorker() {
