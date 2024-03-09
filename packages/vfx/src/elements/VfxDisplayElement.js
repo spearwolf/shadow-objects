@@ -31,6 +31,11 @@ const InitialHTML = `
   </div>
 `;
 
+const shadowEntity$ = 'shadowEntity';
+const viewComponent$ = 'viewComponent';
+
+const DISPLAY_ID = 'display';
+
 export class VfxDisplayElement extends HTMLElement {
   #rafID = 0;
 
@@ -38,21 +43,21 @@ export class VfxDisplayElement extends HTMLElement {
     super();
     eventize(this);
 
-    this.retain('shadowEntityElement');
+    this.retain(shadowEntity$, viewComponent$);
 
     this.shadow = this.attachShadow({mode: 'open'});
     this.shadow.innerHTML = initialHTML;
 
-    this.canvasElement = this.shadow.getElementById('display');
+    this.canvas = this.shadow.getElementById(DISPLAY_ID);
 
-    const [shadowEntityElement, setShadowEntityElement] = createSignal();
-    const [viewComponent, setViewComponent] = createSignal();
+    const [getShadowEntityElement, setShadowEntityElement] = createSignal();
+    const [getViewComponent, setViewComponent] = createSignal();
 
     Object.defineProperties(this, {
-      shadowEntityElement: {
+      shadowEntity: {
         enumerable: true,
         get() {
-          return value(shadowEntityElement);
+          return value(getShadowEntityElement);
         },
         set(value) {
           setShadowEntityElement(value);
@@ -61,7 +66,7 @@ export class VfxDisplayElement extends HTMLElement {
       viewComponent: {
         enumerable: true,
         get() {
-          return value(viewComponent);
+          return value(getViewComponent);
         },
         set(value) {
           setViewComponent(value);
@@ -69,35 +74,35 @@ export class VfxDisplayElement extends HTMLElement {
       },
     });
 
-    shadowEntityElement((el) => {
-      console.debug('[vfx-display] shadowEntityElement=', el);
+    getShadowEntityElement((el) => {
       if (el) {
-        const con = connect(el.viewComponent$, viewComponent);
-        this.emit('shadowEntityElement', el);
+        const con = connect(el.viewComponent$, getViewComponent);
+        this.emit(shadowEntity$, el);
         return () => {
-          console.log('[vfx-display] shadowEntityElement: change-cleanup =>', el);
           con.destroy();
         };
       } else {
-        this.retainClear('shadowEntityElement');
+        this.retainClear(shadowEntity$);
       }
     });
 
-    viewComponent((vc) => {
+    getViewComponent((vc) => {
       if (vc) {
-        this.#onViewComponent(vc);
+        this.emit(viewComponent$, vc);
       }
     });
 
     customElements.whenDefined('shadow-entity').then(() => {
       setShadowEntityElement(this.shadow.getElementById('entity'));
     });
+
+    this.on(viewComponent$, this.#onViewComponent.bind(this));
   }
 
   connectedCallback() {
     this.#requestAnimationFrame();
 
-    this.once('shadowEntityElement', (el) => {
+    this.once(shadowEntity$, (el) => {
       el.sendShadowEvent('start');
     });
   }
@@ -105,7 +110,7 @@ export class VfxDisplayElement extends HTMLElement {
   disconnectedCallback() {
     this.#cancelAnimationFrame();
 
-    this.once('shadowEntityElement', (el) => {
+    this.once(shadowEntity$, (el) => {
       el.sendShadowEvent('stop');
     });
   }
@@ -114,13 +119,15 @@ export class VfxDisplayElement extends HTMLElement {
   #lastCanvasHeight = 0;
 
   #onFrame = () => {
-    const clientRect = this.canvasElement.getBoundingClientRect();
+    const clientRect = this.canvas.getBoundingClientRect();
     if (this.#lastCanvasWidth !== clientRect.width || this.#lastCanvasHeight !== clientRect.height) {
       this.#lastCanvasWidth = clientRect.width;
       this.#lastCanvasHeight = clientRect.height;
-      this.viewComponent.setProperty('canvasWidth', clientRect.width);
-      this.viewComponent.setProperty('canvasHeight', clientRect.height);
-      this.shadowEntityElement.shadowEnvElement?.update();
+      if (this.viewComponent) {
+        this.viewComponent.setProperty('canvasWidth', clientRect.width);
+        this.viewComponent.setProperty('canvasHeight', clientRect.height);
+        this.shadowEntity.shadowEnvElement?.update();
+      }
     }
     this.#requestAnimationFrame();
   };
@@ -139,10 +146,8 @@ export class VfxDisplayElement extends HTMLElement {
    * @param {import('@spearwolf/shadow-ents').ViewComponent} vc view component
    */
   #onViewComponent(_vc) {
-    // console.debug('[vfx-display] onViewComponent', {viewComponent: vc});
-
     // XXX maybe we find a better place for this ?
-    const offscreen = this.canvasElement.transferControlToOffscreen();
-    this.shadowEntityElement.sendShadowEvent('offscreenCanvas', {canvas: offscreen}, [offscreen]);
+    const offscreen = this.canvas.transferControlToOffscreen();
+    this.shadowEntity.sendShadowEvent('offscreenCanvas', {canvas: offscreen}, [offscreen]);
   }
 }
