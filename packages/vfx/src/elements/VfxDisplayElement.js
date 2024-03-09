@@ -1,6 +1,7 @@
 import {eventize} from '@spearwolf/eventize';
 import '@spearwolf/shadow-ents/shadow-entity.js';
 import {connect, createSignal, value} from '@spearwolf/signalize';
+import {FrameLoop} from './FrameLoop.js';
 
 const InitialHTML = `
   <style>
@@ -37,7 +38,7 @@ const viewComponent$ = 'viewComponent';
 const DISPLAY_ID = 'display';
 
 export class VfxDisplayElement extends HTMLElement {
-  #rafID = 0;
+  #frameLoop = new FrameLoop();
 
   constructor(initialHTML = InitialHTML) {
     super();
@@ -96,11 +97,11 @@ export class VfxDisplayElement extends HTMLElement {
       setShadowEntityElement(this.shadow.getElementById('entity'));
     });
 
-    this.on(viewComponent$, this.#onViewComponent.bind(this));
+    this.on(viewComponent$, this.transferCanvasToWorker.bind(this));
   }
 
   connectedCallback() {
-    this.#requestAnimationFrame();
+    this.#frameLoop.subscribe(this);
 
     this.once(shadowEntity$, (el) => {
       el.sendShadowEvent('start');
@@ -108,7 +109,7 @@ export class VfxDisplayElement extends HTMLElement {
   }
 
   disconnectedCallback() {
-    this.#cancelAnimationFrame();
+    this.#frameLoop.unsubscribe(this);
 
     this.once(shadowEntity$, (el) => {
       el.sendShadowEvent('stop');
@@ -118,7 +119,7 @@ export class VfxDisplayElement extends HTMLElement {
   #lastCanvasWidth = 0;
   #lastCanvasHeight = 0;
 
-  #onFrame = () => {
+  onFrame() {
     const clientRect = this.canvas.getBoundingClientRect();
     if (this.#lastCanvasWidth !== clientRect.width || this.#lastCanvasHeight !== clientRect.height) {
       this.#lastCanvasWidth = clientRect.width;
@@ -129,24 +130,9 @@ export class VfxDisplayElement extends HTMLElement {
         this.shadowEntity.shadowEnvElement?.update();
       }
     }
-    this.#requestAnimationFrame();
-  };
-
-  #requestAnimationFrame() {
-    this.#rafID = requestAnimationFrame(this.#onFrame);
   }
 
-  #cancelAnimationFrame() {
-    cancelAnimationFrame(this.#rafID);
-  }
-
-  /**
-   * if called, then viewComponent is set and can be used
-   *
-   * @param {import('@spearwolf/shadow-ents').ViewComponent} vc view component
-   */
-  #onViewComponent(_vc) {
-    // XXX maybe we find a better place for this ?
+  transferCanvasToWorker() {
     const offscreen = this.canvas.transferControlToOffscreen();
     this.shadowEntity.sendShadowEvent('offscreenCanvas', {canvas: offscreen}, [offscreen]);
   }
