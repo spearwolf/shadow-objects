@@ -20,8 +20,6 @@ export class MessageRouter {
    * @param {MessageEvent} event
    */
   route(event) {
-    console.debug('[MessageRouter] got message', event.data);
-
     switch (event.data.type) {
       case Init:
         this.#onInit(event.data);
@@ -46,7 +44,7 @@ export class MessageRouter {
   }
 
   #onInit(data) {
-    console.debug('[MessageRouter] on init', data);
+    // console.debug('[MessageRouter] on init', data);
 
     if ('importVfxSrc' in data) {
       this.#importVfxSrc(data.importVfxSrc);
@@ -64,7 +62,7 @@ export class MessageRouter {
   async #importVfxSrc(src) {
     const vfxMod = await import(/* @vite-ignore */ src);
 
-    console.debug('[MessageRouter] imported', vfxMod);
+    // console.debug('[MessageRouter] imported', vfxMod);
 
     if (typeof vfxMod.onload === 'function') {
       vfxMod.onload({
