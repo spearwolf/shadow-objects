@@ -2,7 +2,7 @@ import {eventize} from '@spearwolf/eventize';
 import {BaseEnv} from '@spearwolf/shadow-ents';
 import '@spearwolf/shadow-ents/shadow-entity.js';
 import '@spearwolf/shadow-ents/shadow-env.js';
-import {connect, createSignal, value} from '@spearwolf/signalize';
+import {FrameLoop} from '../shared/FrameLoop.js';
 import {
   ChangeTrail,
   Closed,
@@ -14,6 +14,7 @@ import {
   WorkerLoadTimeout,
   WorkerReadyTimeout,
 } from '../shared/constants.js';
+import {attachShadowEntity} from './attachShadowEntity.js';
 import {waitForMessageOfType} from './waitForMessageOfType.js';
 
 const InitialHTML = `
@@ -25,6 +26,8 @@ const InitialHTML = `
 `;
 
 export class VfxCtxElement extends HTMLElement {
+  #frameLoop = new FrameLoop();
+
   constructor(initialHTML = InitialHTML) {
     super();
     eventize(this);
@@ -35,48 +38,9 @@ export class VfxCtxElement extends HTMLElement {
     this.shadow.innerHTML = initialHTML;
 
     this.shadowEnvElement = this.shadow.getElementById('env');
+    attachShadowEntity(this, this.shadow.getElementById('root'));
 
-    const [shadowEntityElement, setShadowEntityElement] = createSignal();
-    const [viewComponent, setViewComponent] = createSignal();
-
-    Object.defineProperties(this, {
-      shadowEntityElement: {
-        enumerable: true,
-        get() {
-          return value(shadowEntityElement);
-        },
-        set(value) {
-          setShadowEntityElement(value);
-        },
-      },
-      viewComponent: {
-        enumerable: true,
-        get() {
-          return value(viewComponent);
-        },
-        set(value) {
-          setViewComponent(value);
-        },
-      },
-    });
-
-    shadowEntityElement((el) => {
-      if (el) {
-        const con = connect(el.viewComponent$, viewComponent);
-        return () => {
-          console.log('[vfx-ctx] shadowEntityElement: change-cleanup =>', el);
-          con.destroy();
-        };
-      }
-    });
-
-    viewComponent((vc) => {
-      if (vc) {
-        this.#onViewComponent(vc);
-      }
-    });
-
-    this.shadowEntityElement = this.shadow.getElementById('root');
+    this.on('viewComponent', this.#onViewComponent.bind(this));
 
     this.shadowEnv.on(BaseEnv.OnSync, this.#onEnvSync, this);
 
@@ -89,22 +53,25 @@ export class VfxCtxElement extends HTMLElement {
 
   connectedCallback() {
     this.#setupWorker();
-
     // TODO start shadow-env sync loop (configure via attribute? "sync-on-frame", "sync-interval=")
+    this.#frameLoop.start(this);
   }
 
   disconnectedCallback() {
     this.#destroyWorker();
-
-    // TODO stop shadow-env sync loop
+    this.#frameLoop.stop(this);
   }
 
-  createWorker() {
-    return new Worker(new URL('../vfx.worker.js', import.meta.url), {type: 'module'});
+  onFrame() {
+    this.update();
   }
 
   update() {
     this.shadowEnvElement.update();
+  }
+
+  createWorker() {
+    return new Worker(new URL('../vfx.worker.js', import.meta.url), {type: 'module'});
   }
 
   /**
