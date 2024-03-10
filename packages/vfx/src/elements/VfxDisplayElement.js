@@ -48,7 +48,7 @@ export class VfxDisplayElement extends HTMLElement {
     this.canvas = this.shadow.getElementById(DISPLAY_ID);
     attachShadowEntity(this, this.shadow.getElementById(ENTITY_ID));
 
-    this.on('viewComponent', this.transferCanvasToShadow.bind(this));
+    this.on('viewComponent', this.transferCanvasToShadows.bind(this));
   }
 
   connectedCallback() {
@@ -77,7 +77,7 @@ export class VfxDisplayElement extends HTMLElement {
     }
   }
 
-  transferCanvasToShadow() {
+  transferCanvasToShadows() {
     const offscreen = this.canvas.transferControlToOffscreen();
     this.sendEventToShadows('offscreenCanvas', {canvas: offscreen}, [offscreen]);
   }
