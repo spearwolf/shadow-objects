@@ -44,7 +44,7 @@ describe('SignalsPath', () => {
     expect(valueFn).toHaveBeenCalledWith(undefined);
   });
 
-  it('clear() should work as expected', () => {
+  it('add signals to path', () => {
     const path = new SignalsPath();
 
     const [a, setA] = createSignal();
@@ -53,8 +53,7 @@ describe('SignalsPath', () => {
 
     const valueFn = vi.fn();
 
-    path.add(a);
-    path.add(b);
+    path.add(a, b);
 
     path.on(SignalsPath.Value, valueFn);
 
@@ -66,6 +65,48 @@ describe('SignalsPath', () => {
     valueFn.mockClear();
 
     path.add(c);
+
+    expect(valueFn).not.toBeCalled();
+
+    setC('c');
+
+    expect(valueFn).not.toBeCalled();
+
+    setB(undefined);
+
+    expect(valueFn).toHaveBeenCalledWith('c');
+    valueFn.mockClear();
+
+    setA('a');
+
+    expect(valueFn).toHaveBeenCalledWith('a');
+  });
+
+  it('clear() should work as expected', () => {
+    const path = new SignalsPath();
+
+    const [a, setA] = createSignal();
+    const [b, setB] = createSignal();
+    const [c, setC] = createSignal();
+
+    const valueFn = vi.fn();
+
+    path.add(a, b);
+
+    path.on(SignalsPath.Value, valueFn);
+
+    expect(valueFn).not.toBeCalled();
+
+    setB('b');
+
+    expect(valueFn).toHaveBeenCalledWith('b');
+    valueFn.mockClear();
+
+    path.clear();
+
+    expect(valueFn).not.toBeCalled();
+
+    path.add(a, b, c);
 
     expect(valueFn).not.toBeCalled();
 

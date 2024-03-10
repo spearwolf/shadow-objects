@@ -19,8 +19,10 @@ export class SignalsPath {
     this.value$((val) => this.emit(SignalsPath.Value, val));
   }
 
-  add(signal: SignalReader<unknown>) {
-    this.#signals.push(signal);
+  add(...signals: SignalReader<unknown>[]) {
+    for (const sig of signals) {
+      this.#signals.push(sig);
+    }
     this.#updateEffect();
   }
 
