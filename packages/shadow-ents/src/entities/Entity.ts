@@ -1,15 +1,8 @@
 import {Eventize, Priority} from '@spearwolf/eventize';
-import {
-  batch,
-  createSignal,
-  destroySignal,
-  value,
-  type SignalFuncs,
-  type SignalReader,
-  type SignalWriter,
-} from '@spearwolf/signalize';
+import {batch, value, type SignalFuncs, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
 import type {IComponentEvent} from '../types.js';
 import {Kernel} from './Kernel.js';
+import {SignalsMap} from './SignalsMap.js';
 import {onAddChild, onAddToParent, onDestroy, onEntityCreate, onEvent, onRemoveChild, onRemoveFromParent} from './events.js';
 
 // TODO add token to Entity ?
@@ -25,7 +18,7 @@ export class Entity extends Eventize {
   #kernel: Kernel;
   #uuid: string;
 
-  #signals = new Map<string, SignalFuncs<any>>();
+  #propSignals = new SignalsMap();
 
   #parentUuid?: string;
   #parent?: Entity;
@@ -101,11 +94,7 @@ export class Entity extends Eventize {
   }
 
   onDestroy() {
-    for (const [sig] of this.#signals.values()) {
-      destroySignal(sig);
-    }
-    this.#signals.clear();
-
+    this.#propSignals.clear();
     this.off();
 
     this.#parentUuid = undefined;
@@ -165,21 +154,16 @@ export class Entity extends Eventize {
     }
   }
 
-  getSignal<T = unknown>(key: string): SignalFuncs<T> {
-    if (!this.#signals.has(key)) {
-      const signal = createSignal<T>();
-      this.#signals.set(key, signal);
-      return signal;
-    }
-    return this.#signals.get(key)!;
+  getPropertySignal<T = unknown>(key: string): SignalFuncs<T> {
+    return this.#propSignals.getSignal<T>(key);
   }
 
-  getSignalReader<T = unknown>(key: string): SignalReader<T> {
-    return this.getSignal<T>(key)[0];
+  getPropertySignalReader<T = unknown>(key: string): SignalReader<T> {
+    return this.getPropertySignal<T>(key)[0];
   }
 
-  getSignalWriter<T = unknown>(key: string): SignalWriter<T> {
-    return this.getSignal<T>(key)[1];
+  getPropertySignalWriter<T = unknown>(key: string): SignalWriter<T> {
+    return this.getPropertySignal<T>(key)[1];
   }
 
   setProperties(properties: [string, unknown][]) {
@@ -191,18 +175,18 @@ export class Entity extends Eventize {
   }
 
   setProperty<T = unknown>(key: string, value: T) {
-    this.getSignalWriter<T>(key)(value);
+    this.getPropertySignalWriter<T>(key)(value);
   }
 
   getProperty<T = unknown>(key: string): T {
-    return value(this.getSignalReader<T>(key));
+    return value(this.getPropertySignalReader<T>(key));
   }
 
   propertyKeys(): string[] {
-    return Array.from(this.#signals.keys());
+    return Array.from(this.#propSignals.keys());
   }
 
   propertyEntries(): [string, unknown][] {
-    return Array.from(this.#signals.entries()).map(([key, [get]]) => [key, value(get)]);
+    return Array.from(this.#propSignals.entries()).map(([key, [get]]) => [key, value(get)]);
   }
 }

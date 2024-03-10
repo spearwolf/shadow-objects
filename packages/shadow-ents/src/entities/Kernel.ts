@@ -209,7 +209,7 @@ export class Kernel extends Eventize {
 
       for (const [propName, [sig]] of properties) {
         shadowObject.on(onEntityCreate, (entity: Entity) => {
-          const con = connect(entity.getSignalReader(propName), sig);
+          const con = connect(entity.getPropertySignalReader(propName), sig);
           shadowObject.once(onDestroy, () => con.destroy());
         });
       }
