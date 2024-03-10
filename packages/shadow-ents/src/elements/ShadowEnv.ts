@@ -1,8 +1,8 @@
 import {value, type SignalReader} from '@spearwolf/signalize';
 import {signal, signalReader} from '@spearwolf/signalize/decorators';
 import {GlobalNS} from '../constants.js';
-import {ComponentContext} from '../view-components/ComponentContext.js';
-import {BaseEnv} from '../view-components/env/BaseEnv.js';
+import {ComponentContext} from '../view/ComponentContext.js';
+import {BaseEnv} from '../view/env/BaseEnv.js';
 import type {IShadowEnvElement} from './IShadowEnvElement.js';
 import {ShadowEntity} from './ShadowEntity.js';
 import {ShadowElementType} from './constants.js';

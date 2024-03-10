@@ -1,5 +1,5 @@
-import type {ComponentContext} from '../view-components/ComponentContext.js';
-import type {BaseEnv} from '../view-components/env/BaseEnv.js';
+import type {ComponentContext} from '../view/ComponentContext.js';
+import type {BaseEnv} from '../view/env/BaseEnv.js';
 import type {ShadowEntity} from './ShadowEntity.js';
 
 export interface IShadowEnvElement extends ShadowEntity {

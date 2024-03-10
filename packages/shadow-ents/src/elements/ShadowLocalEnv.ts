@@ -1,6 +1,6 @@
 import {GlobalNS} from '../constants.js';
-import {ComponentContext} from '../view-components/ComponentContext.js';
-import {LocalEnv} from '../view-components/env/LocalEnv.js';
+import {ComponentContext} from '../view/ComponentContext.js';
+import {LocalEnv} from '../view/env/LocalEnv.js';
 import type {IShadowEnvElement} from './IShadowEnvElement.js';
 import {ShadowEntity} from './ShadowEntity.js';
 import {ShadowElementType} from './constants.js';

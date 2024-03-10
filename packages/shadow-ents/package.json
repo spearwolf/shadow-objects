@@ -39,13 +39,13 @@
     }
   },
   "sideEffects": [
-    "build/src/view-components/ComponentContext.js",
+    "build/src/view/ComponentContext.js",
     "build/src/shadow-entity.js",
     "build/src/shadow-local-env.js",
     "build/src/shadow-env.js",
     "build/src/bundle.js",
     "build/src/index.js",
-    "dist/src/view-components/ComponentContext.js",
+    "dist/src/view/ComponentContext.js",
     "dist/src/shadow-entity.js",
     "dist/src/shadow-local-env.js",
     "dist/src/shadow-env.js",
