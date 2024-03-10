@@ -18,6 +18,10 @@ export class SignalsMap {
     this.#signals.clear();
   }
 
+  hasSignal(key: string): boolean {
+    return this.#signals.has(key);
+  }
+
   getSignal<T = unknown>(key: string): SignalFuncs<T> {
     if (!this.#signals.has(key)) {
       const signal = createSignal<T>();

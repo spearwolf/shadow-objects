@@ -45,7 +45,7 @@ export class SignalsPath {
 
   #updateEffect() {
     this.#clearEffect();
-    const [, unsubscribe] = createEffect(() => {
+    const [run, unsubscribe] = createEffect(() => {
       for (const sig of this.#signals) {
         const val = value(sig);
         if (val != null) {
@@ -56,5 +56,6 @@ export class SignalsPath {
       this.value = undefined;
     }, this.#signals);
     this.#unsubscribeEffect = unsubscribe;
+    run();
   }
 }

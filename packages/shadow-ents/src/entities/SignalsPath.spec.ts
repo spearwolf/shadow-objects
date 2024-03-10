@@ -44,6 +44,23 @@ describe('SignalsPath', () => {
     expect(valueFn).toHaveBeenCalledWith(undefined);
   });
 
+  it('initial value event', () => {
+    const path = new SignalsPath();
+
+    const [a] = createSignal();
+    const [b] = createSignal<unknown>('b');
+
+    const valueFn = vi.fn();
+
+    path.add(a, b);
+
+    expect(path.value).toBe('b');
+
+    path.on(SignalsPath.Value, valueFn);
+
+    expect(valueFn).toHaveBeenCalledWith('b');
+  });
+
   it('add signals to path', () => {
     const path = new SignalsPath();
 

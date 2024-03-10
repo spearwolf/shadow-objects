@@ -18,8 +18,9 @@ export class Entity extends Eventize {
   #kernel: Kernel;
   #uuid: string;
 
-  #propSignals = new SignalsMap();
-  #ctxSignals = new SignalsMap();
+  #props = new SignalsMap();
+  // TODO #contexts: Map<string, SignalsPath> = new Map();
+  // TODO #ctxProviders = new SignalsMap();
 
   #parentUuid?: string;
   #parent?: Entity;
@@ -95,8 +96,8 @@ export class Entity extends Eventize {
   }
 
   onDestroy() {
-    this.#propSignals.clear();
-    this.#ctxSignals.clear();
+    this.#props.clear();
+    // this.#contexts.clear();
     this.off();
 
     this.#parentUuid = undefined;
@@ -157,7 +158,7 @@ export class Entity extends Eventize {
   }
 
   getPropertySignal<T = unknown>(key: string): SignalFuncs<T> {
-    return this.#propSignals.getSignal<T>(key);
+    return this.#props.getSignal<T>(key);
   }
 
   getPropertySignalReader<T = unknown>(key: string): SignalReader<T> {
@@ -185,22 +186,22 @@ export class Entity extends Eventize {
   }
 
   propertyKeys(): string[] {
-    return Array.from(this.#propSignals.keys());
+    return Array.from(this.#props.keys());
   }
 
   propertyEntries(): [string, unknown][] {
-    return Array.from(this.#propSignals.entries()).map(([key, [get]]) => [key, value(get)]);
+    return Array.from(this.#props.entries()).map(([key, [get]]) => [key, value(get)]);
   }
 
-  getContextSignal<T = unknown>(key: string): SignalFuncs<T> {
-    return this.#ctxSignals.getSignal<T>(key);
-  }
+  // getContextSignal<T = unknown>(key: string): SignalFuncs<T> {
+  //   return this.#contexts.getSignal<T>(key);
+  // }
 
-  getContextSignalReader<T = unknown>(key: string): SignalReader<T> {
-    return this.getContextSignal<T>(key)[0];
-  }
+  // getContextSignalReader<T = unknown>(key: string): SignalReader<T> {
+  //   return this.getContextSignal<T>(key)[0];
+  // }
 
-  getContextSignalWriter<T = unknown>(key: string): SignalWriter<T> {
-    return this.getContextSignal<T>(key)[1];
-  }
+  // getContextSignalWriter<T = unknown>(key: string): SignalWriter<T> {
+  //   return this.getContextSignal<T>(key)[1];
+  // }
 }
