@@ -19,6 +19,7 @@ export class Entity extends Eventize {
   #uuid: string;
 
   #propSignals = new SignalsMap();
+  #ctxSignals = new SignalsMap();
 
   #parentUuid?: string;
   #parent?: Entity;
@@ -95,6 +96,7 @@ export class Entity extends Eventize {
 
   onDestroy() {
     this.#propSignals.clear();
+    this.#ctxSignals.clear();
     this.off();
 
     this.#parentUuid = undefined;
@@ -188,5 +190,17 @@ export class Entity extends Eventize {
 
   propertyEntries(): [string, unknown][] {
     return Array.from(this.#propSignals.entries()).map(([key, [get]]) => [key, value(get)]);
+  }
+
+  getContextSignal<T = unknown>(key: string): SignalFuncs<T> {
+    return this.#ctxSignals.getSignal<T>(key);
+  }
+
+  getContextSignalReader<T = unknown>(key: string): SignalReader<T> {
+    return this.getContextSignal<T>(key)[0];
+  }
+
+  getContextSignalWriter<T = unknown>(key: string): SignalWriter<T> {
+    return this.getContextSignal<T>(key)[1];
   }
 }
