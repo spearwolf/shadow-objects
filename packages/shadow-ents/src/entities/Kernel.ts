@@ -175,8 +175,6 @@ export class Kernel extends Eventize {
 
   createShadowObjects(token: string, entityEntry?: EntityEntry) {
     return this.registry.findConstructors(token)?.map((constructor) => {
-      // const shadowObject = new constructor();
-      // const contexts = new Map<string, SignalFuncs<unknown>>();
       const properties = new Map<string, SignalFuncs<unknown>>();
 
       const makeSignal = (collection: Map<string, SignalFuncs<unknown>>, name: string) => {
@@ -204,10 +202,7 @@ export class Kernel extends Eventize {
         }),
       );
 
-      // for (const [contextName] of contexts) {
-      //   console.warn('TODO connect context', contextName, 'to', shadowObject);
-      //   // TODO connect entity context!
-      // }
+      // TODO connect props on construtor!
 
       for (const [propName, [sig]] of properties) {
         shadowObject.on(onEntityCreate, (entity: Entity) => {

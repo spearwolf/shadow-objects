@@ -237,9 +237,13 @@ export class Entity extends Eventize {
     return this.#context.has(name);
   }
 
+  // TODO write tests for useContext()
+
   useContext<T = unknown>(name: ContextNameType): SignalReader<T> {
     return this.#getContext(name).context$$[0] as SignalReader<T>;
   }
+
+  // TODO write tests for provideContext()
 
   provideContext<T = unknown>(name: ContextNameType): SignalFuncs<T> {
     return this.#getContext(name).provide$$.slice(0) as SignalFuncs<T>;
