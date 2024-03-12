@@ -32,7 +32,11 @@ export class VfxDisplay {
   constructor({useContext, useProperty}) {
     eventize(this);
 
-    this.getSharedCanvas = useContext('vfx.canvas'); // TODO use shared vfx.canvas|multiViewRenderer
+    this.getMultiViewRenderer = useContext('multiViewRenderer'); // TODO use shared vfx.canvas|multiViewRenderer
+
+    this.getMultiViewRenderer((val) => {
+      console.log('[VfxDisplay] multiViewRenderer changed to', val);
+    });
 
     this.#subscribeToCanvasSize(useProperty('canvasWidth'), useProperty('canvasHeight'));
   }

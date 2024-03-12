@@ -1,11 +1,32 @@
 import {Eventize, Priority} from '@spearwolf/eventize';
-import {batch, value, type SignalFuncs, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
+import {
+  batch,
+  createSignal,
+  destroySignals,
+  value,
+  type SignalFuncs,
+  type SignalReader,
+  type SignalWriter,
+} from '@spearwolf/signalize';
 import type {IComponentEvent} from '../types.js';
 import {Kernel} from './Kernel.js';
 import {SignalsMap} from './SignalsMap.js';
+import {SignalsPath} from './SignalsPath.js';
 import {onAddChild, onAddToParent, onDestroy, onEntityCreate, onEvent, onRemoveChild, onRemoveFromParent} from './events.js';
 
 // TODO add token to Entity ?
+//
+type ContextNameType = string | symbol;
+
+interface IContext {
+  name: ContextNameType;
+  inherited$$: SignalFuncs<unknown>;
+  provide$$: SignalFuncs<unknown>;
+  context$$: SignalFuncs<unknown>;
+  ctxPath: SignalsPath;
+  unsubscribeFromPath: () => void;
+  unsubscribeFromParent?: () => void;
+}
 
 /**
  * An entity has a parent and children, replicating the hierarchy of view-components.
@@ -19,8 +40,7 @@ export class Entity extends Eventize {
   #uuid: string;
 
   #props = new SignalsMap();
-  // TODO #contexts: Map<string, SignalsPath> = new Map();
-  // TODO #ctxProviders = new SignalsMap();
+  #context: Map<ContextNameType, IContext> = new Map();
 
   #parentUuid?: string;
   #parent?: Entity;
@@ -97,8 +117,14 @@ export class Entity extends Eventize {
 
   onDestroy() {
     this.#props.clear();
-    // this.#contexts.clear();
     this.off();
+
+    for (const ctx of this.#context.values()) {
+      ctx.unsubscribeFromPath();
+      ctx.unsubscribeFromParent?.();
+      ctx.ctxPath.dispose();
+      destroySignals(ctx.inherited$$, ctx.provide$$);
+    }
 
     this.#parentUuid = undefined;
     this.#parent = undefined;
@@ -125,6 +151,10 @@ export class Entity extends Eventize {
 
     this.resortChildren();
 
+    for (const [, ctx] of child.#context) {
+      child.#subscribeToParentContext(ctx);
+    }
+
     this.emit(onAddChild, this, child);
     child.emit(onAddToParent, child, this);
   }
@@ -144,9 +174,19 @@ export class Entity extends Eventize {
   removeFromParent() {
     if (this.#parent) {
       const prevParent = this.#parent;
+
       this.#parent.removeChild(this);
+
       this.#parent = undefined;
       this.#parentUuid = undefined;
+
+      for (const [, ctx] of this.#context) {
+        if (ctx.unsubscribeFromParent) {
+          ctx.unsubscribeFromParent();
+          ctx.unsubscribeFromParent = undefined;
+        }
+      }
+
       this.emit(onRemoveFromParent, this, prevParent);
     }
   }
@@ -193,15 +233,48 @@ export class Entity extends Eventize {
     return Array.from(this.#props.entries()).map(([key, [get]]) => [key, value(get)]);
   }
 
-  // getContextSignal<T = unknown>(key: string): SignalFuncs<T> {
-  //   return this.#contexts.getSignal<T>(key);
-  // }
+  hasContext(name: ContextNameType): boolean {
+    return this.#context.has(name);
+  }
 
-  // getContextSignalReader<T = unknown>(key: string): SignalReader<T> {
-  //   return this.getContextSignal<T>(key)[0];
-  // }
+  useContext<T = unknown>(name: ContextNameType): SignalReader<T> {
+    return this.#getContext(name).context$$[0] as SignalReader<T>;
+  }
 
-  // getContextSignalWriter<T = unknown>(key: string): SignalWriter<T> {
-  //   return this.getContextSignal<T>(key)[1];
-  // }
+  provideContext<T = unknown>(name: ContextNameType): SignalFuncs<T> {
+    return this.#getContext(name).provide$$.slice(0) as SignalFuncs<T>;
+  }
+
+  #getContext(name: ContextNameType): IContext {
+    let ctx = this.#context.get(name);
+    if (ctx == null) {
+      const inherited$$ = createSignal();
+      const provide$$ = createSignal();
+      const context$$ = createSignal();
+
+      const ctxPath = new SignalsPath();
+      ctxPath.add(provide$$[0], inherited$$[0]);
+
+      const unsubscribeFromPath = ctxPath.on(SignalsPath.Value, (val) => {
+        queueMicrotask(() => {
+          context$$[1](val);
+        });
+      });
+
+      ctx = {name, inherited$$, provide$$, context$$, ctxPath, unsubscribeFromPath};
+      this.#context.set(name, ctx);
+
+      this.#subscribeToParentContext(ctx);
+    }
+    return ctx;
+  }
+
+  #subscribeToParentContext(ctx: IContext) {
+    if (this.parent) {
+      ctx.unsubscribeFromParent?.();
+      ctx.unsubscribeFromParent = this.parent.#getContext(ctx.name).ctxPath.on(SignalsPath.Value, (val) => {
+        ctx.inherited$$[1](val);
+      });
+    }
+  }
 }

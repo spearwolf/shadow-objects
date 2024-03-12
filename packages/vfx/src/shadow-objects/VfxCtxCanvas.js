@@ -1,6 +1,9 @@
 export class VfxCtxCanvas {
-  constructor({useProperty}) {
+  constructor({useProperty, provideContext}) {
     this.getBar = useProperty('bar');
+
+    const [, setMultiViewRenderer] = provideContext('multiViewRenderer');
+    setMultiViewRenderer(this);
 
     // TODO implement provideContext() --> spearwolf/shadow-ents::Kernel
     // - provideContext('multiViewRenderer') // => context value defaults to this
