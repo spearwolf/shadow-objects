@@ -1,6 +1,7 @@
 import {eventize} from '@spearwolf/eventize';
 import {createEffect} from '@spearwolf/signalize';
 import {FrameLoop} from '../shared/FrameLoop.js';
+import {OffscreenCanvas, StartFrameLoop, StopFrameLoop} from '../shared/constants.js';
 
 export class VfxDisplay {
   #frameLoop = new FrameLoop();
@@ -29,8 +30,10 @@ export class VfxDisplay {
     return this.isRunning && this.canvas && this.width > 0 && this.height > 0;
   }
 
-  constructor({useContext, useProperty}) {
+  constructor({entity, useContext, useProperty}) {
     eventize(this);
+
+    this.entity = entity;
 
     this.getMultiViewRenderer = useContext('multiViewRenderer'); // TODO use shared vfx.canvas|multiViewRenderer
 
@@ -41,34 +44,28 @@ export class VfxDisplay {
     this.#subscribeToCanvasSize(useProperty('canvasWidth'), useProperty('canvasHeight'));
   }
 
-  // TODO next steps: on animation frame render canvas
-  // - use start|stop events from <vfx-display>
-
-  onCreate(entity) {
-    this.entity = entity;
-  }
-
   onEvent(type, data) {
     console.debug(`[VfxCtxDisplay] ${this.uuid} onEvent, type=`, type, 'data=', data);
 
     switch (type) {
-      case 'offscreenCanvas':
+      case OffscreenCanvas:
         this.canvas = data.canvas;
         this.onCanvasChange(this.canvas);
         break;
 
-      case 'start':
+      case StartFrameLoop:
         if (!this.isRunning) {
           this.isRunning = true;
           this.#frameLoop.start(this);
         }
         break;
 
-      case 'stop':
+      case StopFrameLoop:
         if (this.isRunning) {
           this.isRunning = false;
           this.#frameLoop.stop(this);
         }
+        break;
     }
   }
 

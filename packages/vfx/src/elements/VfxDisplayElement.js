@@ -1,6 +1,7 @@
 import {eventize} from '@spearwolf/eventize';
 import '@spearwolf/shadow-ents/shadow-entity.js';
 import {FrameLoop} from '../shared/FrameLoop.js';
+import {OffscreenCanvas, StartFrameLoop, StopFrameLoop} from '../shared/constants.js';
 import {attachShadowEntity} from './attachShadowEntity.js';
 
 const InitialHTML = `
@@ -53,12 +54,12 @@ export class VfxDisplayElement extends HTMLElement {
 
   connectedCallback() {
     this.#frameLoop.start(this);
-    this.sendEventToShadows('start');
+    this.sendEventToShadows(StartFrameLoop);
   }
 
   disconnectedCallback() {
     this.#frameLoop.stop(this);
-    this.sendEventToShadows('stop');
+    this.sendEventToShadows(StopFrameLoop);
   }
 
   #lastCanvasWidth = 0;
@@ -79,6 +80,6 @@ export class VfxDisplayElement extends HTMLElement {
 
   transferCanvasToShadows() {
     const offscreen = this.canvas.transferControlToOffscreen();
-    this.sendEventToShadows('offscreenCanvas', {canvas: offscreen}, [offscreen]);
+    this.sendEventToShadows(OffscreenCanvas, {canvas: offscreen}, [offscreen]);
   }
 }

@@ -64,7 +64,7 @@ describe('chasend events', () => {
 
     changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
 
-    console.log('changeTrail:after', JSON.stringify(changeTrail, null, 2));
+    // console.log('changeTrail:after', JSON.stringify(changeTrail, null, 2));
 
     expect(changeTrail, 'changeTrail:after').to.deep.equal([
       {
