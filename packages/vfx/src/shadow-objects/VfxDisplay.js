@@ -44,8 +44,8 @@ export class VfxDisplay {
     this.#subscribeToCanvasSize(useProperty('canvasWidth'), useProperty('canvasHeight'));
   }
 
-  onEvent(type, data) {
-    console.debug(`[VfxCtxDisplay] ${this.uuid} onEvent, type=`, type, 'data=', data);
+  onViewEvent(type, data) {
+    console.debug(`[VfxCtxDisplay] ${this.uuid} onViewEvent, type=`, type, 'data=', data);
 
     switch (type) {
       case OffscreenCanvas:

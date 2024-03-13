@@ -12,7 +12,7 @@ import type {IComponentEvent} from '../types.js';
 import {Kernel} from './Kernel.js';
 import {SignalsMap} from './SignalsMap.js';
 import {SignalsPath} from './SignalsPath.js';
-import {onAddChild, onAddToParent, onDestroy, onEntityCreate, onEvent, onRemoveChild, onRemoveFromParent} from './events.js';
+import {onAddChild, onAddToParent, onDestroy, onEntityCreate, onRemoveChild, onRemoveFromParent, onViewEvent} from './events.js';
 
 // TODO add token to Entity ?
 //
@@ -191,9 +191,9 @@ export class Entity extends Eventize {
     }
   }
 
-  emitEvents(events: IComponentEvent[]) {
+  emitViewEvents(events: IComponentEvent[]) {
     for (const {type, data} of events) {
-      this.emit(onEvent, type, data);
+      this.emit(onViewEvent, type, data);
     }
   }
 

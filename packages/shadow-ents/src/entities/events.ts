@@ -4,6 +4,7 @@ import type {Entity} from './Entity.js';
 
 export const onCreate = 'onCreate';
 
+// TODO do we need the OnCreate really? maybe the constructor is enough?
 // TODO test if OnCreate is called when an entity token is changed
 
 export interface OnCreate {
@@ -22,7 +23,7 @@ export interface OnCreate {
 
 export const onEntityCreate = 'onEntityCreate';
 
-// TODO delay OnEntityCreate until all initial properties have been set
+// TODO maybe we should remove the OnEntityCreate event?
 
 export interface OnEntityCreate {
   /**
@@ -111,8 +112,8 @@ export interface OnRemoveChild {
 
 // ----------------------------------------------------------------------------
 
-export const onEvent = 'onEvent';
+export const onViewEvent = 'onViewEvent';
 
-export interface OnEvent {
-  [onEvent](type: string, data: unknown): void;
+export interface OnViewEvent {
+  [onViewEvent](type: string, data: unknown): void;
 }

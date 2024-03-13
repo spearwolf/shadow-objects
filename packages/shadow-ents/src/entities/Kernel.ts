@@ -124,7 +124,7 @@ export class Kernel extends Eventize {
   }
 
   emitEventsToEntity(uuid: string, events: IComponentEvent[]) {
-    this.getEntity(uuid)?.emitEvents(events);
+    this.getEntity(uuid)?.emitViewEvents(events);
   }
 
   changeProperties(uuid: string, properties: [string, unknown][]) {
