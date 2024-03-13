@@ -31,7 +31,7 @@ export class VfxDisplay {
     this.getMultiViewRenderer = useContext('multiViewRenderer'); // TODO use shared vfx.canvas|multiViewRenderer
 
     this.getMultiViewRenderer((val) => {
-      console.log('[VfxDisplay] multiViewRenderer changed to', val);
+      console.debug('[VfxDisplay] multiViewRenderer changed to', val);
     });
 
     // TODO provideContext('canvas')

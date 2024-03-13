@@ -192,6 +192,8 @@ export class Kernel extends Eventize {
                 useProperty(name: string) {
                   return entityEntry.entity.getPropertyReader(name);
                 },
+
+                // TODO onDestroy <- shadow-object
               }
             : undefined,
         ),
