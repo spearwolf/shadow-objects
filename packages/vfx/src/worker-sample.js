@@ -1,3 +1,4 @@
+import {TestImageOnCanvas2D} from './shadow-objects/TestImageOnCanvas2D.js';
 import {VfxCtxCanvas} from './shadow-objects/VfxCtxCanvas.js';
 import {VfxDisplay} from './shadow-objects/VfxDisplay.js';
 
@@ -10,4 +11,5 @@ export const onload = ({shadowObjects, kernel, registry}) => {
 
   shadowObjects.define('vfx-ctx', VfxCtxCanvas);
   shadowObjects.define('vfx-display', VfxDisplay);
+  shadowObjects.define('vfx-display', TestImageOnCanvas2D);
 };

@@ -1,10 +1,12 @@
 import {eventize} from '@spearwolf/eventize';
-import {createEffect} from '@spearwolf/signalize';
+import {createEffect, value} from '@spearwolf/signalize';
 import {FrameLoop} from '../shared/FrameLoop.js';
 import {OffscreenCanvas, StartFrameLoop, StopFrameLoop} from '../shared/constants.js';
 
 export class VfxDisplay {
   #frameLoop = new FrameLoop();
+
+  isRunning = false;
 
   entity = null;
 
@@ -12,25 +14,16 @@ export class VfxDisplay {
     return this.entity?.uuid ?? '?';
   }
 
-  width = 0;
-  height = 0;
-
   canvas = null;
-
-  isRunning = false;
 
   now = 0;
   frameNo = 0;
 
-  ctx = null; // TODO remove me!
-  fillStyle0 = 'rgb(255 0 0)'; // TODO remove me!
-  fillStyle1 = 'rgb(0 0 255)'; // TODO remove me!
-
   get canRender() {
-    return this.isRunning && this.canvas && this.width > 0 && this.height > 0;
+    return this.isRunning && this.canvas != null && this.getCanvasWidth() > 0 && this.getCanvasHeight() > 0;
   }
 
-  constructor({entity, useContext, useProperty}) {
+  constructor({entity, useContext, useProperty, provideContext}) {
     eventize(this);
 
     this.entity = entity;
@@ -40,6 +33,15 @@ export class VfxDisplay {
     this.getMultiViewRenderer((val) => {
       console.log('[VfxDisplay] multiViewRenderer changed to', val);
     });
+
+    const [canvasSize, setCanvasSize] = provideContext('canvasSize', [0, 0]);
+
+    this.getCanvasWidth = () => value(canvasSize)[0];
+    this.getCanvasHeight = () => value(canvasSize)[1];
+
+    this.setCanvasSize = (w, h) => {
+      setCanvasSize([w, h]);
+    };
 
     this.#subscribeToCanvasSize(useProperty('canvasWidth'), useProperty('canvasHeight'));
   }
@@ -69,16 +71,11 @@ export class VfxDisplay {
     }
   }
 
-  onCanvasChange(_canvas) {
-    this.#updateCanvasSize();
-
-    const [r, g, b] = [Math.floor(Math.random() * 255), Math.floor(Math.random() * 255), Math.floor(Math.random() * 255)];
-    this.fillStyle0 = `rgb(${r} ${g} ${b})`;
-    this.fillStyle1 = `rgb(${255 - r} ${255 - g} ${255 - b})`;
-  }
-
-  onCanvasSizeChange(_w, _h) {
-    this.#updateCanvasSize();
+  onCanvasChange(canvas) {
+    if (canvas) {
+      canvas.width = this.getCanvasWidth();
+      canvas.height = this.getCanvasHeight();
+    }
   }
 
   onFrame(now) {
@@ -87,26 +84,7 @@ export class VfxDisplay {
     this.now = now / 1000;
     this.frameNo++;
 
-    // TODO remove me: ---
-
-    this.ctx ??= this.canvas.getContext('2d');
-
-    const halfHeight = Math.floor(this.height / 2);
-
-    this.ctx.fillStyle = this.fillStyle0;
-    this.ctx.fillRect(0, 0, this.width, halfHeight);
-
-    this.ctx.fillStyle = this.fillStyle1;
-    this.ctx.fillRect(0, halfHeight, this.width, this.height - halfHeight);
-
-    // -------------------
-  }
-
-  #updateCanvasSize() {
-    if (this.canvas) {
-      this.canvas.width = this.width;
-      this.canvas.height = this.height;
-    }
+    this.entity.emit('onRenderFrame', {canvas: this.canvas, now: this.now, frameNo: this.frameNo});
   }
 
   #subscribeToCanvasSize(getCanvasWidth, getCanvasHeight) {
@@ -114,9 +92,11 @@ export class VfxDisplay {
       const w = getCanvasWidth();
       const h = getCanvasHeight();
       if (isNaN(w) || isNaN(h)) return;
-      this.width = w;
-      this.height = h;
-      this.onCanvasSizeChange(w, h);
+      if (this.canvas) {
+        this.canvas.width = w;
+        this.canvas.height = h;
+      }
+      this.setCanvasSize(w, h);
     }, [getCanvasWidth, getCanvasHeight]);
     this.once('onDestroy', () => {
       console.debug(`[VfxDisplay] ${this.uuid} unsubscribe from canvas size change`);
