@@ -7,6 +7,7 @@ import type {NamespaceType} from '../types.js';
 import type {ComponentContext} from '../view/ComponentContext.js';
 import {ViewComponent} from '../view/ViewComponent.js';
 import type {IShadowEnvElement} from './IShadowEnvElement.js';
+import {ReRequestContext} from './ReRequestContext.js';
 import {RequestContextEventName, ShadowElementType} from './constants.js';
 import type {RequestContextEvent} from './events.js';
 import {isShadowElement} from './isShadowElement.js';
@@ -38,6 +39,9 @@ export class ShadowEntity extends HTMLElement {
 
   #contextElements = new Map<ShadowElementType, SignalFuncs<ShadowEntity | undefined>>();
   #contextChildren = new Map<ShadowElementType, ShadowEntity[]>();
+
+  #reRequestContext = new ReRequestContext();
+  #unsubscribeReRequestContext?: () => void;
 
   constructor() {
     super();
@@ -233,6 +237,7 @@ export class ShadowEntity extends HTMLElement {
 
     this.#registerRequestContextListener();
     this.#dispatchRequestContextEvent();
+    this.#subscribeToReRequestContext();
   }
 
   disconnectedCallback() {
@@ -240,6 +245,9 @@ export class ShadowEntity extends HTMLElement {
 
     this.#disconnectFromShadowTree();
     this.#unregisterRequestContextListener();
+
+    this.#unsubscribeReRequestContext?.();
+    this.#unsubscribeReRequestContext = undefined;
   }
 
   adoptedCallback() {
@@ -350,7 +358,7 @@ export class ShadowEntity extends HTMLElement {
         new CustomEvent(RequestContextEventName, {
           bubbles: true,
           composed: true,
-          detail: {requester: this, types: [...this.contextTypes]},
+          detail: {requester: this, types: this.contextTypes.slice(0)},
         }),
       );
     }
@@ -361,5 +369,14 @@ export class ShadowEntity extends HTMLElement {
       setContext(undefined);
     }
     this.#contextChildren.clear();
+  }
+
+  #subscribeToReRequestContext() {
+    this.#unsubscribeReRequestContext?.();
+    this.#unsubscribeReRequestContext = this.#reRequestContext.onReRequestContext(this.contextTypes, () => {
+      if (this.connected) {
+        this.#dispatchRequestContextEvent();
+      }
+    });
   }
 }

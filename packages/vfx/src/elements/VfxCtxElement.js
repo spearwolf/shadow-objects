@@ -14,6 +14,7 @@ import {
   WorkerLoadTimeout,
   WorkerReadyTimeout,
 } from '../shared/constants.js';
+import {VfxElement} from './VfxElement.js';
 import {attachShadowEntity} from './attachShadowEntity.js';
 import {waitForMessageOfType} from './waitForMessageOfType.js';
 
@@ -25,8 +26,10 @@ const InitialHTML = `
   </shadow-env>
 `;
 
-export class VfxCtxElement extends HTMLElement {
+export class VfxCtxElement extends VfxElement {
   #frameLoop = new FrameLoop();
+
+  reRequestContextTypes = [1, 2]; // we use <shadow-env> and <shadow-entity> components in this element
 
   constructor(initialHTML = InitialHTML) {
     super();
@@ -52,6 +55,7 @@ export class VfxCtxElement extends HTMLElement {
   }
 
   connectedCallback() {
+    super.connectedCallback();
     this.#setupWorker();
     // TODO start shadow-env sync loop (configure via attribute? "sync-on-frame", "sync-interval=")
     this.#frameLoop.start(this);
