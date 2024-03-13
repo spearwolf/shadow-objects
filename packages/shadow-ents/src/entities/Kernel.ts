@@ -194,6 +194,7 @@ export class Kernel extends Eventize {
                 },
 
                 // TODO onDestroy <- shadow-object
+                // TODO onEvent ? (auto destroy subscription)
               }
             : undefined,
         ),
