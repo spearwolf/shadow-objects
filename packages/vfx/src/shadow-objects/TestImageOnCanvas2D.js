@@ -1,35 +1,26 @@
-import {eventize} from '@spearwolf/eventize';
+export function TestImageOnCanvas2D({entity, useContext}) {
+  const [r, g, b] = [Math.floor(Math.random() * 255), Math.floor(Math.random() * 255), Math.floor(Math.random() * 255)];
+  const fillStyle0 = `rgb(${r} ${g} ${b})`;
+  const fillStyle1 = `rgb(${255 - r} ${255 - g} ${255 - b})`;
 
-export class TestImageOnCanvas2D {
-  ctx = null;
+  let ctx = null;
 
-  fillStyle0 = 'rgb(255 0 0)';
-  fillStyle1 = 'rgb(0 0 255)';
+  const canvasSize = useContext('canvasSize');
 
-  constructor({entity, useContext}) {
-    eventize(this);
+  canvasSize((val) => {
+    console.debug(`[TestImageOnCanvas2D()] ${entity.uuid} canvas size changed to`, val);
+  });
 
-    this.getCanvasSize = useContext('canvasSize');
-
-    this.getCanvasSize((val) => {
-      console.log(`[TestImageOnCanvas2D] ${entity.uuid} canvas size changed to`, val);
-    });
-
-    const [r, g, b] = [Math.floor(Math.random() * 255), Math.floor(Math.random() * 255), Math.floor(Math.random() * 255)];
-    this.fillStyle0 = `rgb(${r} ${g} ${b})`;
-    this.fillStyle1 = `rgb(${255 - r} ${255 - g} ${255 - b})`;
-  }
-
-  onRenderFrame({canvas}) {
-    this.ctx ??= canvas.getContext('2d');
+  entity.on('onRenderFrame', ({canvas}) => {
+    ctx ??= canvas.getContext('2d');
 
     const [w, h] = [canvas.width, canvas.height];
     const halfH = Math.floor(h / 2);
 
-    this.ctx.fillStyle = this.fillStyle0;
-    this.ctx.fillRect(0, 0, w, halfH);
+    ctx.fillStyle = fillStyle0;
+    ctx.fillRect(0, 0, w, halfH);
 
-    this.ctx.fillStyle = this.fillStyle1;
-    this.ctx.fillRect(0, halfH, w, h - halfH);
-  }
+    ctx.fillStyle = fillStyle1;
+    ctx.fillRect(0, halfH, w, h - halfH);
+  });
 }

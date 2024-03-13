@@ -34,6 +34,8 @@ export class VfxDisplay {
       console.log('[VfxDisplay] multiViewRenderer changed to', val);
     });
 
+    // TODO provideContext('canvas')
+
     const [canvasSize, setCanvasSize] = provideContext('canvasSize', [0, 0]);
 
     this.getCanvasWidth = () => value(canvasSize)[0];
