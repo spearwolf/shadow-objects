@@ -1,5 +1,5 @@
 import {Eventize, eventize} from '@spearwolf/eventize';
-import {batch, connect, createSignal, type SignalFuncs} from '@spearwolf/signalize';
+import {batch} from '@spearwolf/signalize';
 import {ComponentChangeType} from '../constants.js';
 import type {IComponentChangeType, IComponentEvent, ShadowObjectConstructor, SyncEvent} from '../types.js';
 import {Entity} from './Entity.js';
@@ -175,41 +175,27 @@ export class Kernel extends Eventize {
 
   createShadowObjects(token: string, entityEntry?: EntityEntry) {
     return this.registry.findConstructors(token)?.map((constructor) => {
-      const properties = new Map<string, SignalFuncs<unknown>>();
-
-      const makeSignal = (collection: Map<string, SignalFuncs<unknown>>, name: string) => {
-        let sigfuncs: SignalFuncs<unknown>;
-        if (!collection.has(name)) {
-          sigfuncs = createSignal();
-          collection.set(name, sigfuncs);
-        } else {
-          sigfuncs = collection.get(name);
-        }
-        return sigfuncs[0];
-      };
-
       const shadowObject = eventize(
-        new constructor({
-          provideContext(name: string | symbol) {
-            return entityEntry.entity.provideContext(name);
-          },
-          useContext(name: string | symbol) {
-            return entityEntry.entity.useContext(name);
-          },
-          useProperty(name: string) {
-            return makeSignal(properties, name);
-          },
-        }),
+        new constructor(
+          entityEntry?.entity != null
+            ? {
+                entity: entityEntry.entity,
+
+                provideContext<T = unknown>(name: string | symbol, initialValue?: T) {
+                  return entityEntry.entity.provideContext(name, initialValue);
+                },
+
+                useContext(name: string | symbol) {
+                  return entityEntry.entity.useContext(name);
+                },
+
+                useProperty(name: string) {
+                  return entityEntry.entity.getPropertyReader(name);
+                },
+              }
+            : undefined,
+        ),
       );
-
-      // TODO connect props on construtor!
-
-      for (const [propName, [sig]] of properties) {
-        shadowObject.on(onEntityCreate, (entity: Entity) => {
-          const con = connect(entity.getPropertySignalReader(propName), sig);
-          shadowObject.once(onDestroy, () => con.destroy());
-        });
-      }
 
       if (entityEntry) {
         // We want to keep track which shadow-objects are created by which constructors.

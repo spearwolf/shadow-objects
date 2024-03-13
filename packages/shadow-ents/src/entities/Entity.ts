@@ -197,16 +197,16 @@ export class Entity extends Eventize {
     }
   }
 
-  getPropertySignal<T = unknown>(key: string): SignalFuncs<T> {
+  #getPropSignal<T = unknown>(key: string): SignalFuncs<T> {
     return this.#props.getSignal<T>(key);
   }
 
-  getPropertySignalReader<T = unknown>(key: string): SignalReader<T> {
-    return this.getPropertySignal<T>(key)[0];
+  getPropertyReader<T = unknown>(key: string): SignalReader<T> {
+    return this.#getPropSignal<T>(key)[0];
   }
 
-  getPropertySignalWriter<T = unknown>(key: string): SignalWriter<T> {
-    return this.getPropertySignal<T>(key)[1];
+  getPropertyWriter<T = unknown>(key: string): SignalWriter<T> {
+    return this.#getPropSignal<T>(key)[1];
   }
 
   setProperties(properties: [string, unknown][]) {
@@ -217,19 +217,19 @@ export class Entity extends Eventize {
     });
   }
 
-  setProperty<T = unknown>(key: string, value: T) {
-    this.getPropertySignalWriter<T>(key)(value);
+  setProperty(key: string, value: unknown) {
+    this.getPropertyWriter(key)(value);
   }
 
   getProperty<T = unknown>(key: string): T {
-    return value(this.getPropertySignalReader<T>(key));
+    return value(this.getPropertyReader<T>(key));
   }
 
-  propertyKeys(): string[] {
+  propKeys(): string[] {
     return Array.from(this.#props.keys());
   }
 
-  propertyEntries(): [string, unknown][] {
+  propEntries(): [string, unknown][] {
     return Array.from(this.#props.entries()).map(([key, [get]]) => [key, value(get)]);
   }
 
@@ -245,8 +245,12 @@ export class Entity extends Eventize {
 
   // TODO write tests for provideContext()
 
-  provideContext<T = unknown>(name: ContextNameType): SignalFuncs<T> {
-    return this.#getContext(name).provide$$.slice(0) as SignalFuncs<T>;
+  provideContext<T = unknown>(name: ContextNameType, initialValue?: T): SignalFuncs<T> {
+    const sig = this.#getContext(name).provide$$.slice(0) as SignalFuncs<T>;
+    if (initialValue !== undefined) {
+      sig[1](initialValue);
+    }
+    return sig;
   }
 
   #getContext(name: ContextNameType): IContext {
