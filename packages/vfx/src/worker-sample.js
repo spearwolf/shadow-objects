@@ -11,5 +11,5 @@ export const onload = ({shadowObjects, kernel, registry}) => {
 
   shadowObjects.define('vfx-ctx', VfxCtxCanvas);
   shadowObjects.define('vfx-display', VfxDisplay);
-  shadowObjects.define('vfx-display', TestImageOnCanvas2D);
+  shadowObjects.define('TestImageOnCanvas2D', TestImageOnCanvas2D);
 };

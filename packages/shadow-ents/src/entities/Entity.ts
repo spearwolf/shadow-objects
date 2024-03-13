@@ -115,6 +115,13 @@ export class Entity extends Eventize {
     this.retain(onEntityCreate);
   }
 
+  traverse(callback: (entity: Entity) => void) {
+    callback(this);
+    for (const child of this.#children) {
+      child.traverse(callback);
+    }
+  }
+
   onDestroy() {
     this.#props.clear();
     this.off();
