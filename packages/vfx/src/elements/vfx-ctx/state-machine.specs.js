@@ -39,12 +39,23 @@ describe('vfx-ctx/state-machine', () => {
   });
 
   describe('new', () => {
-    it('initialized :src -> loading', () => {
-      const actor = createActor(machine);
-      const loadWorker = sinon.spy();
+    let actor;
+    let loadWorker;
+
+    beforeEach(() => {
+      actor = createActor(machine);
+      loadWorker = sinon.spy();
 
       actor.on('loadWorker', loadWorker);
       actor.start();
+    });
+
+    afterEach(() => {
+      actor.stop();
+      sinon.restore();
+    });
+
+    it('initialized :src -> loading', () => {
       actor.send({type: 'initialized', src: 'foo.js'});
 
       expect(getState(actor)).to.equal('loading');
@@ -55,11 +66,6 @@ describe('vfx-ctx/state-machine', () => {
     });
 
     it('initialized -> constructed', () => {
-      const actor = createActor(machine);
-      const loadWorker = sinon.spy();
-
-      actor.on('loadWorker', loadWorker);
-      actor.start();
       actor.send({type: 'initialized'});
 
       expect(getState(actor)).to.equal('constructed');

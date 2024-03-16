@@ -3,6 +3,13 @@
 import {actions} from './state-machine.override.js';
 
 // https://stately.ai/registry/editor/7c13ed70-5aa0-4b15-8b82-a5919fd6563d?mode=design&machineId=0f2eeab0-7e63-426d-aebf-796d139012e9
+//
+// How to apply:
+// =============
+// - export the generated state-machine source code (javascript, xstate v5, import) from the stately.ai editor
+// - copy the source code into this file after this comment
+// - override the actions from the stately.ai editor with the actions from the state-machine.override.js file
+//---------------------------------------------------------------------------------------------------------------
 
 import {assign, createMachine} from 'xstate';
 
