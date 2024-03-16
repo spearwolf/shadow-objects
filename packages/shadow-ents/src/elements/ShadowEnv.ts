@@ -60,6 +60,12 @@ export class ShadowEnv extends ShadowEntity implements IShadowEnvElement {
     super.connectedCallback();
   }
 
+  resetEnv() {
+    console.log('[shadow-env] TODO resetEnv');
+    // TODO we need to reset the env - view-components must be re-created
+    this.#createEnv();
+  }
+
   #createEnv() {
     const env = new BaseEnv(this.ns);
     env.start();

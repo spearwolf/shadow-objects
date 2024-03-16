@@ -189,6 +189,8 @@ export class VfxCtxElement extends VfxElement {
     this.worker = undefined;
 
     this.retainClear('worker');
+
+    this.shadowEnvElement.resetEnv();
   }
 
   /*
