@@ -10,7 +10,6 @@ import {actions} from './state-machine.override.js';
 // - copy the source code into this file after this comment
 // - override the actions from the stately.ai editor with the actions from the state-machine.override.js file
 //---------------------------------------------------------------------------------------------------------------
-
 import {assign, createMachine} from 'xstate';
 
 export const machine = createMachine(
@@ -184,6 +183,12 @@ export const machine = createMachine(
         },
       },
       idle: {
+        entry: {
+          type: 'setSrc',
+          params: {
+            src: '',
+          },
+        },
         on: {
           srcChanged: [
             {
@@ -215,6 +220,21 @@ export const machine = createMachine(
               },
             ],
           },
+          srcChanged: [
+            {
+              target: 'loading',
+              guard: 'srcDefined',
+              actions: {
+                type: 'destroyWorker',
+              },
+            },
+            {
+              target: 'idle',
+              actions: {
+                type: 'destroyWorker',
+              },
+            },
+          ],
         },
       },
       workerInitialized: {
@@ -232,14 +252,9 @@ export const machine = createMachine(
             {
               target: 'loading',
               guard: 'srcDefined',
-              actions: [
-                {
-                  type: 'destroyWorker',
-                },
-                {
-                  type: 'setSrc',
-                },
-              ],
+              actions: {
+                type: 'destroyWorker',
+              },
             },
             {
               target: 'constructed',
@@ -266,17 +281,17 @@ export const machine = createMachine(
   },
   {
     actions: {
+      setSrc: assign({
+        src: ({context, event}, params) => params?.src ?? event.src ?? context.src ?? '',
+      }),
       initialize: ({context, event}) => {},
       loadWorker: ({context, event}) => {},
       destroyWorker: ({context, event}) => {},
       initializeWorker: ({context, event}) => {},
-      createShadowObjects: ({context, event}) => {},
       setConnectedState: assign({
         connected: ({event}, params) => Boolean(params?.connected ?? event.connected),
       }),
-      setSrc: assign({
-        src: ({context, event}, params) => params?.src ?? event.src ?? context.src ?? '',
-      }),
+      createShadowObjects: ({context, event}) => {},
       ...actions,
     },
     actors: {},
