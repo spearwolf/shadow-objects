@@ -168,11 +168,16 @@ describe('build-change-trail', () => {
 
     e.append(c);
 
+    a.viewComponent.sendEvent('event2', 123, ['abc']);
+    b.viewComponent.sendEvent('event4', null, [1, 2, 3]);
+
     cc.resetChangesFromMemory();
+
+    a.viewComponent.sendEvent('event3', {abc: 'def'}, ['xyz', 666]);
 
     changeTrail = cc.buildChangeTrails();
 
-    // console.log('resetChangesFromMemory with change gap', JSON.stringify(changeTrail, null, 2));
+    console.log('resetChangesFromMemory with change gap', JSON.stringify(changeTrail, null, 2));
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
       {
@@ -208,6 +213,21 @@ describe('build-change-trail', () => {
         uuid: c.uuid,
         token: 'c',
         parentUuid: e.uuid,
+      },
+      {
+        type: ComponentChangeType.SendEvents,
+        uuid: a.uuid,
+        events: [
+          {type: 'event2', data: 123},
+          {type: 'event3', data: {abc: 'def'}},
+        ],
+        transferables: ['abc', 'xyz', 666],
+      },
+      {
+        type: ComponentChangeType.SendEvents,
+        uuid: b.uuid,
+        events: [{type: 'event4', data: null}],
+        transferables: [1, 2, 3],
       },
     ]);
   });

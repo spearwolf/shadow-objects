@@ -150,6 +150,17 @@ export class ComponentChanges {
     this.#serial++;
   }
 
+  transferEventsTo(changes: ComponentChanges) {
+    if (this.#events.length > 0) {
+      changes.#events.push(...this.#events);
+      this.#events.length = 0;
+    }
+    if (this.#transferables.size > 0) {
+      changes.#transferables = new Set([...changes.#transferables, ...this.#transferables]);
+      this.#transferables.clear();
+    }
+  }
+
   buildChangeTrail(trail: IComponentChangeType[], trailPhase: ChangeTrailPhase) {
     const {isNew, isCreated, isDestroyed} = this;
 

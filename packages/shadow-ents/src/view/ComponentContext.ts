@@ -188,7 +188,7 @@ export class ComponentContext {
     }
   }
 
-  buildChangeTrails() {
+  buildChangeTrails(clearChanges = true) {
     const pathOfChanges = this.#buildPathOfChanges();
     const trail: IComponentChangeType[] = [];
 
@@ -212,7 +212,7 @@ export class ComponentContext {
         this.#deleteComponent(changes.uuid);
       }
 
-      changes.clear();
+      if (clearChanges) changes.clear();
     }
 
     this.#componentMemory.write(trail);
@@ -221,19 +221,23 @@ export class ComponentContext {
   }
 
   resetChangesFromMemory() {
-    /* const trail = */ this.buildChangeTrails();
-    // TODO what to do with the content changes (which are not in the memory) from trail?
+    this.buildChangeTrails(false);
 
     for (const [uuid, cMem] of this.#componentMemory) {
       const c = this.#components.get(uuid);
       if (c) {
         const changes = new ComponentChanges(uuid);
         changes.create(cMem.token, cMem.parentUuid, cMem.order);
+
         if (cMem.properties) {
           for (const [key, value] of cMem.properties) {
             changes.changeProperty(key, value, c.propIsEqual?.get(key));
           }
         }
+
+        c.changes.transferEventsTo(changes);
+        c.changes.clear();
+
         c.changes = changes;
       }
     }
