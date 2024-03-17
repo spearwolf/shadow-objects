@@ -177,7 +177,7 @@ describe('build-change-trail', () => {
 
     changeTrail = cc.buildChangeTrails();
 
-    console.log('resetChangesFromMemory with change gap', JSON.stringify(changeTrail, null, 2));
+    // console.log('resetChangesFromMemory with change gap', JSON.stringify(changeTrail, null, 2));
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
       {
