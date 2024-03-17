@@ -18,8 +18,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "test": "web-test-runner \"src/**/*.specs.js\" --node-resolve",
-    "watch": "web-test-runner \"src/**/*.specs.js\" --node-resolve --watch",
+    "test": "web-test-runner \"src/**/*.specs.js\" --node-resolve --port 8001",
+    "watch": "web-test-runner \"src/**/*.specs.js\" --node-resolve --watch --port 8001",
     "_build": "pnpm node scripts/build.mjs",
     "_build:pkg:prepare": "pnpm node ./scripts/buildPackage.mjs",
     "_build:pkg:json": "pnpm node ../../scripts/makePackageJson.mjs",
