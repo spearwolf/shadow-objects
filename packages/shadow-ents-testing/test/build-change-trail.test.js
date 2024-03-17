@@ -105,4 +105,110 @@ describe('build-change-trail', () => {
       },
     ]);
   });
+
+  it('resetChangesFromMemory', () => {
+    const [a, b, c, d, e, f, localEnv] = findElementsById('a', 'b', 'c', 'd', 'e', 'f', 'localEnv');
+    const cc = localEnv.getComponentContext();
+
+    let changeTrail = cc.buildChangeTrails();
+
+    cc.resetChangesFromMemory();
+
+    changeTrail = cc.buildChangeTrails();
+
+    // console.log('resetChangesFromMemory', JSON.stringify(changeTrail, null, 2));
+
+    expect(changeTrail, 'changeTrail').to.deep.equal([
+      {
+        type: ComponentChangeType.CreateEntities,
+        uuid: a.uuid,
+        token: 'a',
+      },
+      {
+        type: ComponentChangeType.CreateEntities,
+        uuid: b.uuid,
+        token: 'b',
+        parentUuid: a.uuid,
+      },
+      {
+        type: ComponentChangeType.CreateEntities,
+        uuid: c.uuid,
+        token: 'c',
+        parentUuid: b.uuid,
+      },
+      {
+        type: ComponentChangeType.CreateEntities,
+        uuid: d.uuid,
+        token: '#void',
+        parentUuid: b.uuid,
+      },
+      {
+        type: ComponentChangeType.CreateEntities,
+        uuid: e.uuid,
+        token: 'e',
+      },
+      {
+        type: ComponentChangeType.CreateEntities,
+        uuid: f.uuid,
+        token: 'f',
+        parentUuid: e.uuid,
+      },
+    ]);
+  });
+
+  it('resetChangesFromMemory with change gap', () => {
+    const [a, b, c, d, e, f, localEnv] = findElementsById('a', 'b', 'c', 'd', 'e', 'f', 'localEnv');
+    const cc = localEnv.getComponentContext();
+
+    let changeTrail = cc.buildChangeTrails();
+
+    d.token = 'd';
+
+    a.viewComponent.setProperty('foo', 'bar');
+
+    e.append(c);
+
+    cc.resetChangesFromMemory();
+
+    changeTrail = cc.buildChangeTrails();
+
+    // console.log('resetChangesFromMemory with change gap', JSON.stringify(changeTrail, null, 2));
+
+    expect(changeTrail, 'changeTrail').to.deep.equal([
+      {
+        type: ComponentChangeType.CreateEntities,
+        uuid: a.uuid,
+        token: 'a',
+      },
+      {
+        type: ComponentChangeType.CreateEntities,
+        uuid: b.uuid,
+        token: 'b',
+        parentUuid: a.uuid,
+      },
+      {
+        type: ComponentChangeType.CreateEntities,
+        uuid: d.uuid,
+        token: 'd',
+        parentUuid: b.uuid,
+      },
+      {
+        type: ComponentChangeType.CreateEntities,
+        uuid: e.uuid,
+        token: 'e',
+      },
+      {
+        type: ComponentChangeType.CreateEntities,
+        uuid: f.uuid,
+        token: 'f',
+        parentUuid: e.uuid,
+      },
+      {
+        type: ComponentChangeType.CreateEntities,
+        uuid: c.uuid,
+        token: 'c',
+        parentUuid: e.uuid,
+      },
+    ]);
+  });
 });

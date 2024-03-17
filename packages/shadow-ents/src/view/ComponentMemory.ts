@@ -27,6 +27,10 @@ export interface ComponentState {
 export class ComponentMemory {
   #components: Map<string, ComponentState> = new Map();
 
+  get [Symbol.iterator]() {
+    return this.#components.entries.bind(this.#components);
+  }
+
   clear() {
     this.#components.clear();
   }
@@ -68,10 +72,6 @@ export class ComponentMemory {
       }
     }
   }
-
-  // propsEqual(uuid: string, changes: ComponentPropertiesType | undefined): boolean {
-  //   return propsEqual(this.getComponentState(uuid).properties, changes);
-  // }
 
   private changeProperties({uuid, properties}: IPropertiesChange) {
     const c = this.getComponentState(uuid)!;

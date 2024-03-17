@@ -10,6 +10,7 @@ interface ViewInstance {
   component: ViewComponent;
   children: string[]; // we use an Array here and not a Set, because we want to keep the insertion order
   changes: ComponentChanges;
+  propIsEqual?: Map<string, (a: any, b: any) => boolean>;
 }
 
 declare global {
@@ -53,7 +54,7 @@ export class ComponentContext {
   #components: Map<string, ViewInstance> = new Map();
   #rootComponents: string[] = []; // we use an Array here and not a Set, because we want to keep the insertion order
 
-  readonly #changeTrailState = new ComponentMemory();
+  readonly #componentMemory = new ComponentMemory();
 
   addComponent(component: ViewComponent) {
     let viewInstance: ViewInstance | undefined;
@@ -67,6 +68,7 @@ export class ComponentContext {
         component: component,
         children: [],
         changes: new ComponentChanges(component.uuid),
+        propIsEqual: undefined,
       };
       this.#components.set(component.uuid, viewInstance);
     }
@@ -139,7 +141,17 @@ export class ComponentContext {
   }
 
   setProperty<T = unknown>(component: ViewComponent, propKey: string, value: T, isEqual?: (a: T, b: T) => boolean) {
-    this.#components.get(component.uuid)?.changes.changeProperty(propKey, value, isEqual);
+    const vi = this.#components.get(component.uuid);
+    if (vi != null) {
+      if (isEqual != null) {
+        vi.propIsEqual ??= new Map();
+        vi.propIsEqual.set(propKey, isEqual);
+      } else if (vi.propIsEqual?.has(propKey)) {
+        vi.propIsEqual.delete(propKey);
+      }
+      return vi.changes.changeProperty(propKey, value, isEqual);
+    }
+    return false;
   }
 
   removeProperty(component: ViewComponent, propKey: string) {
@@ -163,7 +175,8 @@ export class ComponentContext {
   }
 
   clear() {
-    this.#changeTrailState.clear();
+    this.#componentMemory.clear();
+
     this.#rootComponents.slice(0).forEach((uuid) => this.removeSubTree(uuid));
 
     if (this.#rootComponents.length !== 0) {
@@ -202,9 +215,30 @@ export class ComponentContext {
       changes.clear();
     }
 
-    this.#changeTrailState.write(trail);
+    this.#componentMemory.write(trail);
 
     return trail;
+  }
+
+  resetChangesFromMemory() {
+    /* const trail = */ this.buildChangeTrails();
+    // TODO what to do with the content changes (which are not in the memory) from trail?
+
+    for (const [uuid, cMem] of this.#componentMemory) {
+      const c = this.#components.get(uuid);
+      if (c) {
+        const changes = new ComponentChanges(uuid);
+        changes.create(cMem.token, cMem.parentUuid, cMem.order);
+        if (cMem.properties) {
+          for (const [key, value] of cMem.properties) {
+            changes.changeProperty(key, value, c.propIsEqual?.get(key));
+          }
+        }
+        c.changes = changes;
+      }
+    }
+
+    this.#componentMemory.clear();
   }
 
   #deleteComponent(uuid: string) {
