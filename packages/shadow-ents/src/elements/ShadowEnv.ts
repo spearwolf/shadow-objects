@@ -55,19 +55,17 @@ export class ShadowEnv extends ShadowEntity implements IShadowEnvElement {
   resetEnv() {
     const env = this.getShadowEnv();
     if (env) {
-      console.log('[shadow-env] TODO resetEnv');
+      console.debug('[shadow-env] resetEnv');
 
       env.view.resetChangesFromMemory();
       this.syncShadowObjects();
       // TODO inform the viewComponent that the env has been reset !!
       // maybe this should be a custom event (dom)
-    } else {
-      this.createShadowEnv();
     }
   }
 
   protected createShadowEnv() {
-    // TODO change namespace ?
+    // TODO waht if we change namespace ?
     const env = new BaseEnv(this.ns);
     env.start();
     this.#env = env;

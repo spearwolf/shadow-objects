@@ -141,6 +141,7 @@ export class VfxCtxElement extends VfxElement {
         this.#postMessageToWorker(ChangeTrail, ...prepareChangeTrail(data));
       } else {
         this.#changeTrailQueue.push(data);
+
         if (!this.#waitingForNextWorker) {
           this.#waitingForNextWorker = true;
           this.once('worker', () => {
@@ -156,6 +157,7 @@ export class VfxCtxElement extends VfxElement {
     if (this.worker && this.#changeTrailQueue.length > 0) {
       const changeTrail = [];
       const transfer = [];
+
       for (const data of this.#changeTrailQueue) {
         const segment = prepareChangeTrail(data);
         changeTrail.push(...segment[0].changeTrail);
@@ -163,8 +165,10 @@ export class VfxCtxElement extends VfxElement {
           transfer.push(...segment[1]);
         }
       }
-      this.#postMessageToWorker(ChangeTrail, {changeTrail}, transfer.length > 0 ? transfer : undefined);
+
       this.#changeTrailQueue.length = 0;
+
+      this.#postMessageToWorker(ChangeTrail, {changeTrail}, transfer.length > 0 ? transfer : undefined);
     }
   }
 
@@ -175,7 +179,7 @@ export class VfxCtxElement extends VfxElement {
   }
 
   async #loadWorker(src) {
-    console.log('[vfx-ctx] loadWorker', src);
+    console.debug('[vfx-ctx] loadWorker', src);
 
     this.preWorker = this.createWorker();
 
@@ -189,8 +193,6 @@ export class VfxCtxElement extends VfxElement {
 
       await waitForMessageOfType(this.preWorker, Ready, WorkerReadyTimeout);
 
-      console.log('[vfx-ctx] workerLoaded!');
-
       this.actor.send({type: 'workerLoaded'});
     } catch (error) {
       console.warn('[vfx-ctx] workerFailed!', error);
@@ -200,13 +202,9 @@ export class VfxCtxElement extends VfxElement {
   }
 
   async #initializeWorker() {
-    console.log('[vfx-ctx] initializeWorker');
-
     // TODO initialize worker ?
 
     queueMicrotask(() => {
-      console.log('[vfx-ctx] workerReady!');
-
       this.actor.send({type: 'workerReady'});
     });
 
@@ -214,7 +212,7 @@ export class VfxCtxElement extends VfxElement {
   }
 
   #createShadowObjects() {
-    console.log('[vfx-ctx] createShadowObjects');
+    console.debug('[vfx-ctx] createShadowObjects, resetEnvNext=', this.#resetEnvNext);
 
     // we do this by publishing the worker instance
     // this will trigger the shadow-objects syncronization
@@ -231,7 +229,7 @@ export class VfxCtxElement extends VfxElement {
   }
 
   async #destroyWorker() {
-    console.log('[vfx-ctx] destroyWorker');
+    console.debug('[vfx-ctx] destroyWorker');
 
     if (this.worker) {
       this.#resetEnvNext = true;

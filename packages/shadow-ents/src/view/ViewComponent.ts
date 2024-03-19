@@ -123,8 +123,8 @@ export class ViewComponent {
     this.#context.removeProperty(this, name);
   }
 
-  sendEvent(type: string, data: unknown, transferables?: Object[]) {
-    this.#context.sendEvent(this, type, data, transferables);
+  sendEventToShadows(type: string, data: unknown, transferables?: Object[]) {
+    this.#context.sendEventToShadows(this, type, data, transferables);
   }
 
   destroy() {

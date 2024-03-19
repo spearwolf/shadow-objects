@@ -158,9 +158,14 @@ export class ComponentContext {
     this.#components.get(component.uuid)?.changes.removeProperty(propKey);
   }
 
-  sendEvent(component: ViewComponent, type: string, data: unknown, transferables?: Object[]) {
+  /**
+   * Send events to the shadow-objects in the shadow-env
+   */
+  sendEventToShadows(component: ViewComponent, type: string, data: unknown, transferables?: Object[]) {
     this.#components.get(component.uuid)?.changes.sendEvent(type, data, transferables);
   }
+
+  // TODO send event to view (components)
 
   changeOrder(component: ViewComponent) {
     if (component.parent) {
