@@ -29,7 +29,7 @@ describe('chasend events', () => {
 
     a.viewComponent.sendEvent('event1', {foo: 'bar'});
 
-    let changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
+    let changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
 
     // console.log('changeTrail:before', JSON.stringify(changeTrail, null, 2));
 
@@ -62,7 +62,7 @@ describe('chasend events', () => {
     b.viewComponent.sendEvent('event4', null, [1, 2, 3]);
     a.viewComponent.sendEvent('event3', {abc: 'def'}, ['xyz', 666]);
 
-    changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
+    changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
 
     // console.log('changeTrail:after', JSON.stringify(changeTrail, null, 2));
 

@@ -23,4 +23,6 @@ export function TestImageOnCanvas2D({entity, useContext}) {
     ctx.fillStyle = fillStyle1;
     ctx.fillRect(0, halfH, w, h - halfH);
   });
+
+  console.debug(`[TestImageOnCanvas2D] ${entity.uuid} ready`);
 }

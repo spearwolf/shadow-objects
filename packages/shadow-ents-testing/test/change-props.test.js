@@ -27,7 +27,7 @@ describe('change props', () => {
     a.viewComponent.setProperty('plah', 666);
     b.viewComponent.setProperty('xyz', [1, 2, 3]);
 
-    let changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
+    let changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
 
     // console.log('changeTrail:before', JSON.stringify(changeTrail, null, 2));
 
@@ -56,7 +56,7 @@ describe('change props', () => {
     b.viewComponent.removeProperty('xyz');
     b.viewComponent.removeProperty('gibsnich');
 
-    changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
+    changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
 
     // console.log('changeTrail:after', JSON.stringify(changeTrail, null, 2));
 
@@ -83,7 +83,7 @@ describe('change props', () => {
     a.viewComponent.setProperty('neu', 'new');
     a.viewComponent.removeProperty('null');
 
-    changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
+    changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
 
     // console.log('changeTrail:after:2', JSON.stringify(changeTrail, null, 2));
 

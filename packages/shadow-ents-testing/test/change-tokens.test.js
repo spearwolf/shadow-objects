@@ -23,7 +23,7 @@ describe('change tokens', () => {
   it('void-token works as expected', async () => {
     const [a, b, localEnv] = findElementsById('a', 'b', 'localEnv');
 
-    let changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
+    let changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
 
     expect(changeTrail, 'changeTrail:before').to.deep.equal([
       {
@@ -41,7 +41,7 @@ describe('change tokens', () => {
     a.token = undefined;
     b.token = 'B';
 
-    changeTrail = await nextChangeTrail(localEnv.getLocalEnv());
+    changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
 
     expect(changeTrail, 'changeTrail:after').to.deep.equal([
       {

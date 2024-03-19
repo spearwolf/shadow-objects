@@ -4,6 +4,7 @@ import '@spearwolf/shadow-ents/shadow-entity.js';
 import '@spearwolf/shadow-ents/shadow-env.js';
 import {createActor} from 'xstate';
 import {FrameLoop} from '../shared/FrameLoop.js';
+import {attachSignal} from '../shared/attachSignal.js';
 import {ChangeTrail, Init, Loaded, Ready, WorkerLoadTimeout, WorkerReadyTimeout} from '../shared/constants.js';
 import {VfxElement} from './VfxElement.js';
 import {attachShadowEntity} from './attachShadowEntity.js';
@@ -18,10 +19,14 @@ const InitialHTML = `
   </shadow-env>
 `;
 
+const isANoneEmptyArray = (value) => Array.isArray(value) && value.length > 0;
+
 export class VfxCtxElement extends VfxElement {
   static observedAttributes = ['src'];
 
   reRequestContextTypes = [1, 2]; // we use <shadow-env> and <shadow-entity> components in this element
+
+  #changeTrailQueue = [];
 
   constructor(initialHTML = InitialHTML) {
     super();
@@ -37,9 +42,11 @@ export class VfxCtxElement extends VfxElement {
 
     this.on('viewComponent', this.#onViewComponent.bind(this));
 
+    this.preWorker = undefined;
+    attachSignal(this, 'worker');
+
     this.shadowEnv.on(BaseEnv.OnSync, this.#onEnvSync, this);
 
-    this.worker = undefined;
     this.actor = createActor(machine);
     this.actor.on('loadWorker', ({src}) => this.#loadWorker(src));
     this.actor.on('initializeWorker', () => this.#initializeWorker());
@@ -60,7 +67,7 @@ export class VfxCtxElement extends VfxElement {
   }
 
   get shadowEnv() {
-    return this.shadowEnvElement.shadowEnv;
+    return this.shadowEnvElement?.getShadowEnv();
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -102,51 +109,92 @@ export class VfxCtxElement extends VfxElement {
 
     vc.setProperty('bar', 666); // TODO remove me!
 
-    // XXX set additional properties on view component ?
+    // XXX do we need to set additional properties on view component ?
+    // or can we just throw away this method?
 
     this.syncShadowObjects(); // initial sync
   }
 
-  #onEnvSync(data) {
-    if (Array.isArray(data.changeTrail) && data.changeTrail.length > 0) {
-      let transferables;
+  #prepareChangeTrail(data) {
+    let transferables;
 
-      data.changeTrail.forEach((changeItem) => {
-        if (changeItem.transferables) {
-          if (!transferables) {
-            transferables = changeItem.transferables;
-          } else {
-            transferables = [...transferables, ...changeItem.transferables];
-          }
-          delete changeItem.transferables;
+    data.changeTrail.forEach((changeItem) => {
+      if (changeItem.transferables) {
+        if (!transferables) {
+          transferables = changeItem.transferables;
+        } else {
+          transferables = [...transferables, ...changeItem.transferables];
         }
-      });
+        delete changeItem.transferables;
+      }
+    });
 
-      console.debug('[vfx-ctx] shadowEnv on sync, changeTrail=', data, 'transferables=', transferables);
+    return [data, transferables];
+  }
 
-      this.#postMessageToWorker(ChangeTrail, data, transferables);
+  #onNextWorker = undefined;
+  #resetEnvOnNextWorker = false;
+
+  #onEnvSync(data) {
+    if (isANoneEmptyArray(data.changeTrail)) {
+      if (this.worker) {
+        this.#postMessageToWorker(ChangeTrail, ...this.#prepareChangeTrail(data));
+      } else {
+        this.#changeTrailQueue.push(data);
+        if (!this.#onNextWorker) {
+          this.#onNextWorker = this.once('worker', () => {
+            if (this.#resetEnvOnNextWorker) {
+              console.debug('[vfx-ctx] onNextWorker: reset-env');
+              this.shadowEnvElement.resetEnv();
+              // TODO what should happen with the events ?
+              // maybe we should collect them all (from queue) and re-emit ?
+              this.#changeTrailQueue.length = 0;
+            } else {
+              this.#postChangeTrailQueueToWorker();
+            }
+            this.#onNextWorker = undefined;
+          });
+        }
+      }
+    }
+  }
+
+  #postChangeTrailQueueToWorker() {
+    if (this.worker && this.#changeTrailQueue.length > 0) {
+      const changeTrail = [];
+      const transfer = [];
+      for (const data of this.#changeTrailQueue) {
+        const segment = this.#prepareChangeTrail(data);
+        changeTrail.push(...segment[0].changeTrail);
+        if (isANoneEmptyArray(segment[1])) {
+          transfer.push(...segment[1]);
+        }
+      }
+      this.#postMessageToWorker(ChangeTrail, {changeTrail}, transfer.length > 0 ? transfer : undefined);
+      this.#changeTrailQueue.length = 0;
     }
   }
 
   #postMessageToWorker(type, data, transfer) {
     const options = Array.isArray(transfer) ? {transfer} : undefined;
-    this.once('worker', (worker) => worker.postMessage({type, ...data}, options));
+    console.debug(`[vfx-ctx] postMessage:${type}, data=`, data, 'transfer=', options);
+    this.worker.postMessage({type, ...data}, options);
   }
 
   async #loadWorker(src) {
     console.log('[vfx-ctx] loadWorker', src);
 
-    this.worker = this.createWorker();
+    this.preWorker = this.createWorker();
 
     try {
-      await waitForMessageOfType(this.worker, Loaded, WorkerLoadTimeout);
+      await waitForMessageOfType(this.preWorker, Loaded, WorkerLoadTimeout);
 
-      this.worker.postMessage({
+      this.preWorker.postMessage({
         type: Init,
         importVfxSrc: new URL(src, window.location).href,
       });
 
-      await waitForMessageOfType(this.worker, Ready, WorkerReadyTimeout);
+      await waitForMessageOfType(this.preWorker, Ready, WorkerReadyTimeout);
 
       console.log('[vfx-ctx] workerLoaded!');
 
@@ -169,17 +217,19 @@ export class VfxCtxElement extends VfxElement {
       this.actor.send({type: 'workerReady'});
     });
 
-    // TODO this.actor.send({type: 'workerFailed'});
+    // TODO this.actor.send({type: 'workerFailed'}) ?
   }
 
   #createShadowObjects() {
     console.log('[vfx-ctx] createShadowObjects');
 
-    // TODO reset the change-trail but leave view-components state as it is
-
     // we do this by publishing the worker instance
     // this will trigger the shadow-objects syncronization
-    this.emit('worker', this.worker);
+    const worker = this.preWorker;
+    this.preWorker = undefined;
+    this.worker = worker;
+
+    // TODO trigger resetEnv
   }
 
   async #destroyWorker() {
@@ -190,46 +240,9 @@ export class VfxCtxElement extends VfxElement {
 
     this.retainClear('worker');
 
-    this.shadowEnvElement.resetEnv();
+    this.preWorker?.terminate();
+    this.preWorker = undefined;
+
+    this.#resetEnvOnNextWorker = true;
   }
-
-  /*
-  async #setupWorker() {
-    this.worker ??= this.createWorker();
-
-    const {worker} = this;
-
-    await waitForMessageOfType(worker, Loaded, WorkerLoadTimeout);
-
-    worker.postMessage({
-      type: Init,
-      importVfxSrc: new URL(this.getAttribute('src'), window.location).href,
-    });
-
-    await waitForMessageOfType(worker, Ready, WorkerReadyTimeout);
-
-    console.debug('[vfx-ctx] worker is ready');
-
-    this.emit('worker', worker);
-  }
-
-  async #destroyWorker() {
-    const {worker} = this;
-    this.worker = undefined;
-    this.retainClear('worker');
-
-    // TODO shadowEnv.reset() - reset change-trail but leave view-components state as it is
-
-    worker.postMessage({type: Destroy});
-
-    waitForMessageOfType(worker, Closed, WorkerDestroyTimeout)
-      .catch(() => {
-        console.warn('[vfx-ctx] worker timeout', worker);
-      })
-      .finally(() => {
-        console.debug('[vfx-ctx] terminate worker', worker);
-        worker.terminate();
-      });
-  }
-  */
 }
