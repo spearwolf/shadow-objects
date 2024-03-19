@@ -21,12 +21,32 @@ const InitialHTML = `
 
 const isANoneEmptyArray = (value) => Array.isArray(value) && value.length > 0;
 
+const prepareChangeTrail = (data) => {
+  let transferables;
+
+  data.changeTrail.forEach((changeItem) => {
+    if (changeItem.transferables) {
+      if (!transferables) {
+        transferables = changeItem.transferables;
+      } else {
+        transferables = [...transferables, ...changeItem.transferables];
+      }
+      delete changeItem.transferables;
+    }
+  });
+
+  return [data, transferables];
+};
+
 export class VfxCtxElement extends VfxElement {
   static observedAttributes = ['src'];
 
   reRequestContextTypes = [1, 2]; // we use <shadow-env> and <shadow-entity> components in this element
 
   #changeTrailQueue = [];
+
+  #resetEnvNext = false;
+  #waitingForNextWorker = false;
 
   constructor(initialHTML = InitialHTML) {
     super();
@@ -115,44 +135,17 @@ export class VfxCtxElement extends VfxElement {
     this.syncShadowObjects(); // initial sync
   }
 
-  #prepareChangeTrail(data) {
-    let transferables;
-
-    data.changeTrail.forEach((changeItem) => {
-      if (changeItem.transferables) {
-        if (!transferables) {
-          transferables = changeItem.transferables;
-        } else {
-          transferables = [...transferables, ...changeItem.transferables];
-        }
-        delete changeItem.transferables;
-      }
-    });
-
-    return [data, transferables];
-  }
-
-  #onNextWorker = undefined;
-  #resetEnvOnNextWorker = false;
-
   #onEnvSync(data) {
     if (isANoneEmptyArray(data.changeTrail)) {
       if (this.worker) {
-        this.#postMessageToWorker(ChangeTrail, ...this.#prepareChangeTrail(data));
+        this.#postMessageToWorker(ChangeTrail, ...prepareChangeTrail(data));
       } else {
         this.#changeTrailQueue.push(data);
-        if (!this.#onNextWorker) {
-          this.#onNextWorker = this.once('worker', () => {
-            if (this.#resetEnvOnNextWorker) {
-              console.debug('[vfx-ctx] onNextWorker: reset-env');
-              this.shadowEnvElement.resetEnv();
-              // TODO what should happen with the events ?
-              // maybe we should collect them all (from queue) and re-emit ?
-              this.#changeTrailQueue.length = 0;
-            } else {
-              this.#postChangeTrailQueueToWorker();
-            }
-            this.#onNextWorker = undefined;
+        if (!this.#waitingForNextWorker) {
+          this.#waitingForNextWorker = true;
+          this.once('worker', () => {
+            this.#waitingForNextWorker = false;
+            this.#postChangeTrailQueueToWorker();
           });
         }
       }
@@ -164,7 +157,7 @@ export class VfxCtxElement extends VfxElement {
       const changeTrail = [];
       const transfer = [];
       for (const data of this.#changeTrailQueue) {
-        const segment = this.#prepareChangeTrail(data);
+        const segment = prepareChangeTrail(data);
         changeTrail.push(...segment[0].changeTrail);
         if (isANoneEmptyArray(segment[1])) {
           transfer.push(...segment[1]);
@@ -229,12 +222,22 @@ export class VfxCtxElement extends VfxElement {
     this.preWorker = undefined;
     this.worker = worker;
 
-    // TODO trigger resetEnv
+    if (this.#resetEnvNext) {
+      this.shadowEnvElement.resetEnv();
+      // TODO what should happen with the events ?
+      // maybe we should collect them all (from queue) and re-emit ?
+      this.#changeTrailQueue.length = 0;
+    }
   }
 
   async #destroyWorker() {
     console.log('[vfx-ctx] destroyWorker');
 
+    if (this.worker) {
+      this.#resetEnvNext = true;
+    }
+
+    // TODO find a more friendly way to destroy the worker before termination
     this.worker?.terminate();
     this.worker = undefined;
 
@@ -242,7 +245,5 @@ export class VfxCtxElement extends VfxElement {
 
     this.preWorker?.terminate();
     this.preWorker = undefined;
-
-    this.#resetEnvOnNextWorker = true;
   }
 }
