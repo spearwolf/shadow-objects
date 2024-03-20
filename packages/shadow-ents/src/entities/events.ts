@@ -20,20 +20,6 @@ export interface OnCreate {
 
 // ----------------------------------------------------------------------------
 
-export const onEntityTokenChange = 'onEntityTokenChange';
-
-// TODO test if OnEntityTokenChange is called when an entity token is changed
-
-export interface OnEntityTokenChange {
-  /**
-   * Is called when the token has changed after an entity has been initialized.
-   * The shadow-objects for the entity are updated before the call.
-   */
-  [onEntityTokenChange](entity: Entity, token: string, previousToken: string): void;
-}
-
-// ----------------------------------------------------------------------------
-
 export const onDestroy = 'onDestroy';
 
 // TODO distinguish between OnDestroy(shadow-object) and OnDestroyOtherShadowObject ?
