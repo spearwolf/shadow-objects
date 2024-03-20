@@ -14,7 +14,7 @@ import type {IComponentEvent} from '../types.js';
 import {Kernel} from './Kernel.js';
 import {SignalsMap} from './SignalsMap.js';
 import {SignalsPath} from './SignalsPath.js';
-import {onAddChild, onDestroy, onRemoveChild, onRemoveFromParent, onViewEvent} from './events.js';
+import {onDestroy, onViewEvent} from './events.js';
 
 // TODO add token to Entity ?
 //
@@ -145,7 +145,7 @@ export class Entity extends Eventize {
     if (this.#children.length === 0) {
       this.#childrenUuids.add(child.uuid);
       this.#children.push(child);
-      this.emit(onAddChild, this, child);
+      // this.emit(onAddChild, this, child);
       // child.emit(onAddToParent, child, this);
       return;
     }
@@ -163,7 +163,7 @@ export class Entity extends Eventize {
       child.#subscribeToParentContext(ctx);
     }
 
-    this.emit(onAddChild, this, child);
+    // this.emit(onAddChild, this, child);
     // child.emit(onAddToParent, child, this);
   }
 
@@ -175,13 +175,13 @@ export class Entity extends Eventize {
     if (this.#childrenUuids.has(child.uuid)) {
       this.#childrenUuids.delete(child.uuid);
       this.#children.splice(this.#children.indexOf(child), 1);
-      this.emit(onRemoveChild, this, child);
+      // this.emit(onRemoveChild, this, child);
     }
   }
 
   removeFromParent() {
     if (this.#parent) {
-      const prevParent = this.#parent;
+      // const prevParent = this.#parent;
 
       this.#parent.removeChild(this);
 
@@ -195,7 +195,7 @@ export class Entity extends Eventize {
         }
       }
 
-      this.emit(onRemoveFromParent, this, prevParent);
+      // this.emit(onRemoveFromParent, this, prevParent);
     }
   }
 

@@ -22,7 +22,6 @@ export interface OnCreate {
 
 export const onDestroy = 'onDestroy';
 
-// TODO distinguish between OnDestroy(shadow-object) and OnDestroyOtherShadowObject ?
 // TODO test if OnDestroy is called when an entity is destroyed
 // TODO test if OnDestroy is called when a shadow-object is removed from an entity (token-change)
 
@@ -33,34 +32,6 @@ export interface OnDestroy {
    * The entity does not get this event.
    */
   [onDestroy](entity: Entity): void;
-}
-
-// ----------------------------------------------------------------------------
-
-export const onRemoveFromParent = 'onRemoveFromParent';
-
-export interface OnRemoveFromParent {
-  [onRemoveFromParent](child: Entity, parent: Entity): void;
-}
-
-// ----------------------------------------------------------------------------
-
-export const onAddChild = 'onAddChild';
-
-// TODO call OnAddChild when when the entity gets a new child added
-
-export interface OnAddChild {
-  [onAddChild](parent: Entity, child: Entity): void;
-}
-
-// ----------------------------------------------------------------------------
-
-export const onRemoveChild = 'onRemoveChild';
-
-// TODO call OnRemoveChild when a child is removed from the entity
-
-export interface OnRemoveChild {
-  [onRemoveChild](parent: Entity, child: Entity): void;
 }
 
 // ----------------------------------------------------------------------------

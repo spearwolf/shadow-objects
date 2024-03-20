@@ -1,10 +1,9 @@
-import {type EventizeApi} from '@spearwolf/eventize';
 import {afterAll, describe, expect, it, vi} from 'vitest';
 import {ComponentChangeType} from '../../constants.js';
 import {Entity} from '../../entities/Entity.js';
 import {Registry} from '../../entities/Registry.js';
 import {ShadowObject} from '../../entities/ShadowObject.js';
-import {onCreate, onRemoveFromParent, type OnCreate, type OnRemoveFromParent} from '../../entities/events.js';
+import {onCreate, type OnCreate} from '../../entities/events.js';
 import type {SyncEvent} from '../../types.js';
 import {ComponentContext} from '../ComponentContext.js';
 import {ViewComponent} from '../ViewComponent.js';
@@ -16,10 +15,10 @@ const nextSyncEvent = (env: BaseEnv): Promise<SyncEvent> =>
     env.once(BaseEnv.OnSync, resolve);
   });
 
-const waitForNext = (obj: EventizeApi, event: string | symbol): Promise<unknown[]> =>
-  new Promise((resolve) => {
-    obj.once(event, (...args: unknown[]) => resolve(args));
-  });
+// const waitForNext = (obj: EventizeApi, event: string | symbol): Promise<unknown[]> =>
+//   new Promise((resolve) => {
+//     obj.once(event, (...args: unknown[]) => resolve(args));
+//   });
 
 describe('LocalEnv', () => {
   afterAll(() => {
@@ -86,12 +85,12 @@ describe('LocalEnv', () => {
     expect(bb.getProperty('xyz')).toBe(123);
     expect(bb.children).toHaveLength(0);
 
-    const removeFromParentMock = vi.fn();
+    const createMock = vi.fn();
 
     @ShadowObject({token: 'c'})
-    class Ccc implements OnRemoveFromParent {
-      [onRemoveFromParent](_entity: Entity) {
-        removeFromParentMock(this);
+    class Ccc {
+      [onCreate](_entity: Entity) {
+        createMock(this);
       }
     }
 
@@ -105,10 +104,6 @@ describe('LocalEnv', () => {
     expect(aa.children[0]).toBe(cc);
     expect(aa.children[1]).toBe(bb);
 
-    expect(removeFromParentMock).not.toHaveBeenCalled();
-
-    const resultUuid = waitForNext(cc, onRemoveFromParent).then(([entity]) => (entity as Entity).uuid);
-
     c.removeFromParent();
 
     await localEnv.sync();
@@ -116,10 +111,8 @@ describe('LocalEnv', () => {
     expect(aa.children).toHaveLength(1);
     expect(cc.parent).toBeUndefined();
 
-    expect(removeFromParentMock).toHaveBeenCalled();
-    expect(removeFromParentMock.mock.calls[0][0]).toBeInstanceOf(Ccc);
-
-    await expect(resultUuid).resolves.toBe(cc.uuid);
+    expect(createMock).toHaveBeenCalled();
+    expect(createMock.mock.calls[0][0]).toBeInstanceOf(Ccc);
   });
 
   it('should call create and init events on shadow-objects', async () => {
