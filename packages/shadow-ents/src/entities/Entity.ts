@@ -14,7 +14,7 @@ import type {IComponentEvent} from '../types.js';
 import {Kernel} from './Kernel.js';
 import {SignalsMap} from './SignalsMap.js';
 import {SignalsPath} from './SignalsPath.js';
-import {onAddChild, onAddToParent, onDestroy, onEntityCreate, onRemoveChild, onRemoveFromParent, onViewEvent} from './events.js';
+import {onAddChild, onAddToParent, onDestroy, onRemoveChild, onRemoveFromParent, onViewEvent} from './events.js';
 
 // TODO add token to Entity ?
 //
@@ -114,7 +114,6 @@ export class Entity extends Eventize {
     this.#kernel = kernel;
     this.#uuid = uuid;
     this.once(onDestroy, Priority.Min, this);
-    this.retain(onEntityCreate);
   }
 
   traverse(callback: (entity: Entity) => void) {

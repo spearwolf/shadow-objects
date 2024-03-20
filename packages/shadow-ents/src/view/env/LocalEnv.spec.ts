@@ -4,14 +4,7 @@ import {ComponentChangeType} from '../../constants.js';
 import {Entity} from '../../entities/Entity.js';
 import {Registry} from '../../entities/Registry.js';
 import {ShadowObject} from '../../entities/ShadowObject.js';
-import {
-  onCreate,
-  onEntityCreate,
-  onRemoveFromParent,
-  type OnCreate,
-  type OnEntityCreate,
-  type OnRemoveFromParent,
-} from '../../entities/events.js';
+import {onCreate, onRemoveFromParent, type OnCreate, type OnRemoveFromParent} from '../../entities/events.js';
 import type {SyncEvent} from '../../types.js';
 import {ComponentContext} from '../ComponentContext.js';
 import {ViewComponent} from '../ViewComponent.js';
@@ -133,15 +126,11 @@ describe('LocalEnv', () => {
     const localEnv = new LocalEnv().start();
 
     const onCreateMock = vi.fn();
-    const onEntityCreateMock = vi.fn();
 
     @ShadowObject({token: 'a'})
-    class Aaa implements OnCreate, OnEntityCreate {
+    class Aaa implements OnCreate {
       [onCreate](entity: Entity) {
         onCreateMock(entity, this);
-      }
-      [onEntityCreate](entity: Entity, token: string) {
-        onEntityCreateMock(entity, this, token);
       }
     }
 
@@ -158,10 +147,5 @@ describe('LocalEnv', () => {
     expect(onCreateMock).toBeCalled();
     expect(onCreateMock.mock.calls[0][0]).toBe(aa);
     expect(onCreateMock.mock.calls[0][1]).toBeInstanceOf(Aaa);
-
-    expect(onEntityCreateMock).toBeCalled();
-    expect(onEntityCreateMock.mock.calls[0][0]).toBe(aa);
-    expect(onEntityCreateMock.mock.calls[0][1]).toBeInstanceOf(Aaa);
-    expect(onEntityCreateMock.mock.calls[0][2]).toBe('a');
   });
 });

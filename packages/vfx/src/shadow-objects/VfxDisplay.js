@@ -1,4 +1,3 @@
-import {eventize} from '@spearwolf/eventize';
 import {createEffect, createSignal} from '@spearwolf/signalize';
 import {FrameLoop} from '../shared/FrameLoop.js';
 import {OffscreenCanvas, StartFrameLoop, StopFrameLoop} from '../shared/constants.js';
@@ -22,8 +21,6 @@ export class VfxDisplay {
   }
 
   constructor({entity, useContext, useProperty, provideContext}) {
-    eventize(this);
-
     this.entity = entity;
 
     // TODO use shared vfx.canvas|multiViewRenderer --------

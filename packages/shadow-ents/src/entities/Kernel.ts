@@ -4,7 +4,7 @@ import {ComponentChangeType} from '../constants.js';
 import type {IComponentChangeType, IComponentEvent, ShadowObjectConstructor, SyncEvent} from '../types.js';
 import {Entity} from './Entity.js';
 import {Registry} from './Registry.js';
-import {onCreate, onDestroy, onEntityCreate, onEntityTokenChange, type OnCreate, type OnDestroy} from './events.js';
+import {onCreate, onDestroy, onEntityTokenChange, type OnCreate, type OnDestroy} from './events.js';
 
 interface EntityEntry {
   token: string;
@@ -101,8 +101,6 @@ export class Kernel extends Eventize {
     }
 
     this.createShadowObjects(token, entityEntry);
-
-    entity.emit(onEntityCreate, entity, token);
   }
 
   destroyEntity(uuid: string) {
