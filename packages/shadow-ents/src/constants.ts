@@ -19,3 +19,9 @@ export enum ComponentChangeType {
 export const GlobalNS: NamespaceType = Symbol.for('ShadowEntsGlobalNS');
 
 export const VoidToken = '#void';
+
+/**
+ * The event is dispatched by {@link ComponentContext.resetChangesFromMemory} and forwarded to all {@link ViewComponent}.
+ * The event itself has no other data.
+ */
+export const ContextLost = 'contextLost';

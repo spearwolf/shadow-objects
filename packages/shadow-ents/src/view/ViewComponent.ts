@@ -1,3 +1,4 @@
+import {eventize, type EventizeApi} from '@spearwolf/eventize';
 import {generateUUID} from '../generateUUID.js';
 import {ComponentContext} from './ComponentContext.js';
 
@@ -7,6 +8,8 @@ class ViewComponentError extends Error {
     this.name = 'ViewComponentError';
   }
 }
+
+export interface ViewComponent extends EventizeApi {}
 
 export class ViewComponent {
   readonly #uuid: string;
@@ -74,6 +77,8 @@ export class ViewComponent {
   }
 
   constructor(token: string, options?: {parent?: ViewComponent; order?: number; context?: ComponentContext; uuid?: string}) {
+    eventize(this);
+
     if (options instanceof ViewComponent) {
       options = {parent: options};
     }
@@ -125,6 +130,13 @@ export class ViewComponent {
 
   sendEventToShadows(type: string, data: unknown, transferables?: Object[]) {
     this.#context.sendEventToShadows(this, type, data, transferables);
+  }
+
+  sendEventToView(type: string, data: unknown) {
+    this.emit(type, data);
+    for (const child of this.#context!.getChildren(this)) {
+      child.sendEventToView(type, data);
+    }
   }
 
   destroy() {

@@ -59,8 +59,6 @@ export class ShadowEnv extends ShadowEntity implements IShadowEnvElement {
 
       env.view.resetChangesFromMemory();
       this.syncShadowObjects();
-      // TODO inform the viewComponent that the env has been reset !!
-      // maybe this should be a custom event (dom)
     }
   }
 

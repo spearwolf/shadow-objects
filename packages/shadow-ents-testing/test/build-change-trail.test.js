@@ -1,6 +1,7 @@
 import {expect} from '@esm-bundle/chai';
-import {ComponentChangeType, ComponentContext} from '@spearwolf/shadow-ents';
+import {ComponentChangeType, ComponentContext, ContextLost} from '@spearwolf/shadow-ents';
 import '@spearwolf/shadow-ents/shadow-entity.js';
+import sinon from 'sinon';
 import {findElementsById} from '../src/findElementsById.js';
 import {render} from '../src/render.js';
 
@@ -110,11 +111,16 @@ describe('build-change-trail', () => {
     const [a, b, c, d, e, f, localEnv] = findElementsById('a', 'b', 'c', 'd', 'e', 'f', 'localEnv');
     const cc = localEnv.getComponentContext();
 
+    const contextLostSpy = sinon.spy();
+    f.viewComponent.on(ContextLost, contextLostSpy);
+
     let changeTrail = cc.buildChangeTrails();
 
     cc.resetChangesFromMemory();
 
     changeTrail = cc.buildChangeTrails();
+
+    expect(contextLostSpy.calledOnce, 'contextLostSpy').to.be.true;
 
     // console.log('resetChangesFromMemory', JSON.stringify(changeTrail, null, 2));
 

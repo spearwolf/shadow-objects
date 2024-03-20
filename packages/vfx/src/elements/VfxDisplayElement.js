@@ -1,4 +1,5 @@
 import {eventize} from '@spearwolf/eventize';
+import {ContextLost} from '@spearwolf/shadow-ents';
 import '@spearwolf/shadow-ents/shadow-entity.js';
 import {FrameLoop} from '../shared/FrameLoop.js';
 import {OffscreenCanvas, StartFrameLoop, StopFrameLoop} from '../shared/constants.js';
@@ -48,9 +49,23 @@ export class VfxDisplayElement extends VfxElement {
     this.shadow.innerHTML = initialHTML;
 
     this.canvas = this.shadow.getElementById(DISPLAY_ID);
-    attachShadowEntity(this, this.shadow.getElementById(ENTITY_ID));
+    attachShadowEntity(this);
 
-    this.on('viewComponent', this.transferCanvasToShadows.bind(this));
+    this.viewComponent$((vc) => {
+      if (vc) {
+        this.#transferCanvasToShadows();
+
+        return vc.on(ContextLost, () => {
+          this.#reCreateCanvas();
+          this.#transferCanvasToShadows();
+          if (this.isConnected) {
+            this.sendEventToShadows(StartFrameLoop);
+          }
+        });
+      }
+    });
+
+    this.shadowEntity = this.shadow.getElementById(ENTITY_ID);
   }
 
   connectedCallback() {
@@ -80,8 +95,15 @@ export class VfxDisplayElement extends VfxElement {
     }
   }
 
-  transferCanvasToShadows() {
+  #transferCanvasToShadows() {
     const offscreen = this.canvas.transferControlToOffscreen();
     this.sendEventToShadows(OffscreenCanvas, {canvas: offscreen}, [offscreen]);
+  }
+
+  #reCreateCanvas() {
+    const frame = this.canvas.parentElement;
+    const canvas = this.canvas.cloneNode();
+    frame.replaceChild(canvas, this.canvas);
+    this.canvas = canvas;
   }
 }

@@ -1,5 +1,5 @@
 import {removeFrom} from '../array-utils.js';
-import {ChangeTrailPhase} from '../constants.js';
+import {ChangeTrailPhase, ContextLost} from '../constants.js';
 import {toNamespace} from '../toNamespace.js';
 import type {IComponentChangeType, NamespaceType} from '../types.js';
 import {ComponentChanges} from './ComponentChanges.js';
@@ -99,6 +99,10 @@ export class ComponentContext {
     }
   }
 
+  getChildren(component: ViewComponent): ViewComponent[] {
+    return this.#components.get(component.uuid)?.children.map((uuid) => this.#components.get(uuid)!.component) ?? [];
+  }
+
   removeFromParent(childUuid: string, parent: ViewComponent) {
     if (this.hasComponent(parent)) {
       const childEntry = this.#components.get(childUuid)!;
@@ -165,7 +169,14 @@ export class ComponentContext {
     this.#components.get(component.uuid)?.changes.sendEvent(type, data, transferables);
   }
 
-  // TODO send event to view (components)
+  /**
+   * Send events to all view-components
+   */
+  sendEventToView(type: string, data: unknown = undefined) {
+    for (const uuid of this.#rootComponents) {
+      this.#components.get(uuid)?.component.sendEventToView(type, data);
+    }
+  }
 
   changeOrder(component: ViewComponent) {
     if (component.parent) {
@@ -230,12 +241,14 @@ export class ComponentContext {
 
     for (const [uuid, cMem] of this.#componentMemory) {
       const c = this.#components.get(uuid);
+      console.log('resetChangesFromMemory: uuid=', uuid, 'cMem=', cMem);
       if (c) {
         const changes = new ComponentChanges(uuid);
         changes.create(cMem.token, cMem.parentUuid, cMem.order);
 
         if (cMem.properties) {
           for (const [key, value] of cMem.properties) {
+            console.log('resetChangesFromMemory: property ', key, '=', value, c.propIsEqual?.get(key));
             changes.changeProperty(key, value, c.propIsEqual?.get(key));
           }
         }
@@ -248,6 +261,8 @@ export class ComponentContext {
     }
 
     this.#componentMemory.clear();
+
+    this.sendEventToView(ContextLost);
   }
 
   #deleteComponent(uuid: string) {
