@@ -1,12 +1,14 @@
 export class VfxCtxCanvas {
   constructor({useProperty, provideContext}) {
-    this.getBar = useProperty('bar');
+    const getBar = useProperty('bar');
 
-    this.getBar((val) => {
+    getBar((val) => {
       console.log('[VfxCtxCanvas] bar changed to', val);
     });
 
-    console.debug('[VfxCtxCanvas] bar is initially set to', this.getBar());
+    console.debug('[VfxCtxCanvas] bar is initially set to', getBar());
+
+    // ----
 
     provideContext('multiViewRenderer', this);
   }

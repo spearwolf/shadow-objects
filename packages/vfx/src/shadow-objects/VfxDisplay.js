@@ -1,5 +1,5 @@
 import {eventize} from '@spearwolf/eventize';
-import {createEffect, value} from '@spearwolf/signalize';
+import {createEffect, createSignal} from '@spearwolf/signalize';
 import {FrameLoop} from '../shared/FrameLoop.js';
 import {OffscreenCanvas, StartFrameLoop, StopFrameLoop} from '../shared/constants.js';
 
@@ -14,13 +14,11 @@ export class VfxDisplay {
     return this.entity?.uuid ?? '?';
   }
 
-  canvas = null;
-
   now = 0;
   frameNo = 0;
 
   get canRender() {
-    return this.isRunning && this.canvas != null && this.getCanvasWidth() > 0 && this.getCanvasHeight() > 0;
+    return this.isRunning && this.canvas != null && this.canvas.width > 0 && this.canvas.height > 0;
   }
 
   constructor({entity, useContext, useProperty, provideContext}) {
@@ -28,24 +26,42 @@ export class VfxDisplay {
 
     this.entity = entity;
 
-    this.getMultiViewRenderer = useContext('multiViewRenderer'); // TODO use shared vfx.canvas|multiViewRenderer
-
-    this.getMultiViewRenderer((val) => {
+    // TODO use shared vfx.canvas|multiViewRenderer --------
+    useContext('multiViewRenderer')((val) => {
       console.debug('[VfxDisplay] multiViewRenderer changed to', val);
     });
+    // -----------------------------------------------------
 
-    // TODO provideContext('canvas')
+    const [getCanvas, setCanvas] = provideContext('canvas');
 
-    const [canvasSize, setCanvasSize] = provideContext('canvasSize', [0, 0]);
+    const [getCanvasSize, setCanvasSize] = createSignal('canvasSize', [0, 0], {equals: (a, b) => a[0] === b[0] && a[1] === b[1]});
 
-    this.getCanvasWidth = () => value(canvasSize)[0];
-    this.getCanvasHeight = () => value(canvasSize)[1];
+    provideContext('canvasSize', getCanvasSize);
 
-    this.setCanvasSize = (w, h) => {
-      setCanvasSize([w, h]);
-    };
+    const getCanvasWidth = useProperty('canvasWidth');
+    const getCanvasHeight = useProperty('canvasHeight');
 
-    this.#subscribeToCanvasSize(useProperty('canvasWidth'), useProperty('canvasHeight'));
+    createEffect(() => {
+      const canvas = getCanvas();
+      if (canvas) {
+        const w = getCanvasWidth();
+        const h = getCanvasHeight();
+        if (isNaN(w) || isNaN(h)) return;
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
+        }
+        setCanvasSize([w, h]);
+      }
+    }, [getCanvas, getCanvasWidth, getCanvasHeight]);
+
+    Object.defineProperties(this, {
+      canvas: {
+        get: getCanvas,
+        set: setCanvas,
+        enumerable: true,
+      },
+    });
   }
 
   onViewEvent(type, data) {
@@ -54,7 +70,6 @@ export class VfxDisplay {
     switch (type) {
       case OffscreenCanvas:
         this.canvas = data.canvas;
-        this.onCanvasChange(this.canvas);
         break;
 
       case StartFrameLoop:
@@ -73,13 +88,6 @@ export class VfxDisplay {
     }
   }
 
-  onCanvasChange(canvas) {
-    if (canvas) {
-      canvas.width = this.getCanvasWidth();
-      canvas.height = this.getCanvasHeight();
-    }
-  }
-
   onFrame(now) {
     if (!this.canRender) return;
 
@@ -89,22 +97,5 @@ export class VfxDisplay {
     const data = {canvas: this.canvas, now: this.now, frameNo: this.frameNo};
     this.entity.traverse((entity) => entity.emit('onRenderFrame', data));
     // TODO maybe we should create a <shadow-entity traverse-events="onRenderFrame, onIdle"> attribute ?
-  }
-
-  #subscribeToCanvasSize(getCanvasWidth, getCanvasHeight) {
-    const [, unsubscribe] = createEffect(() => {
-      const w = getCanvasWidth();
-      const h = getCanvasHeight();
-      if (isNaN(w) || isNaN(h)) return;
-      if (this.canvas) {
-        this.canvas.width = w;
-        this.canvas.height = h;
-      }
-      this.setCanvasSize(w, h);
-    }, [getCanvasWidth, getCanvasHeight]);
-    this.once('onDestroy', () => {
-      console.debug(`[VfxDisplay] ${this.uuid} unsubscribe from canvas size change`);
-      unsubscribe();
-    });
   }
 }

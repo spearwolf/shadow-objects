@@ -5,10 +5,8 @@ export function TestImageOnCanvas2D({entity, useContext}) {
 
   let ctx = null;
 
-  const canvasSize = useContext('canvasSize');
-
-  canvasSize((val) => {
-    console.debug(`[TestImageOnCanvas2D] ${entity.uuid} canvas size changed to`, val);
+  useContext('canvasSize')((size) => {
+    console.debug(`[TestImageOnCanvas2D] ${entity.uuid} canvas size changed to`, size);
   });
 
   entity.on('onRenderFrame', ({canvas}) => {

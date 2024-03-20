@@ -1,8 +1,10 @@
 import {Eventize, Priority} from '@spearwolf/eventize';
 import {
   batch,
+  connect,
   createSignal,
   destroySignals,
+  isSignal,
   value,
   type SignalFuncs,
   type SignalReader,
@@ -252,10 +254,14 @@ export class Entity extends Eventize {
 
   // TODO write tests for provideContext()
 
-  provideContext<T = unknown>(name: ContextNameType, initialValue?: T): SignalFuncs<T> {
+  provideContext<T = unknown>(name: ContextNameType, initialValue?: T | SignalReader<T>): SignalFuncs<T> {
     const sig = this.#getContext(name).provide$$.slice(0) as SignalFuncs<T>;
     if (initialValue !== undefined) {
-      sig[1](initialValue);
+      if (isSignal(initialValue)) {
+        connect(initialValue as SignalReader<T>, sig[1]);
+      } else {
+        sig[1](initialValue);
+      }
     }
     return sig;
   }
