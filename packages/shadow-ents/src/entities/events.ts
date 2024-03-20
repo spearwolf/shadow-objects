@@ -37,23 +37,6 @@ export interface OnDestroy {
 
 // ----------------------------------------------------------------------------
 
-export const onAddToParent = 'onAddToParent';
-
-// TODO call OnAddToParent when an entity is added to a parent as child
-
-export interface OnAddToParent {
-  /**
-   * Is called when the entity is added to a parent entity as child.
-   *
-   * The `OnAddToParent` is triggered on the _entity_, therefore all shadow-objects within the entity receive this event.
-   *
-   * The `OnAddToParent` event comes _after_ the `OnAddChild` event.
-   */
-  [onAddToParent](child: Entity, parent: Entity): void;
-}
-
-// ----------------------------------------------------------------------------
-
 export const onRemoveFromParent = 'onRemoveFromParent';
 
 export interface OnRemoveFromParent {
