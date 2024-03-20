@@ -34,26 +34,43 @@ export class VfxDisplay {
 
     const [getCanvas, setCanvas] = provideContext('canvas');
 
-    const [getCanvasSize, setCanvasSize] = createSignal('canvasSize', [0, 0], {equals: (a, b) => a[0] === b[0] && a[1] === b[1]});
+    const [getCanvasSize, setCanvasSize] = createSignal('canvasSize', [0, 0, 0], {
+      equals: (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2],
+    });
 
     provideContext('canvasSize', getCanvasSize);
 
     const getCanvasWidth = useProperty('canvasWidth');
     const getCanvasHeight = useProperty('canvasHeight');
+    const getPixelRatio = useProperty('pixelRatio');
 
     createEffect(() => {
       const canvas = getCanvas();
       if (canvas) {
         const w = getCanvasWidth();
         const h = getCanvasHeight();
-        if (isNaN(w) || isNaN(h)) return;
-        if (canvas.width !== w || canvas.height !== h) {
-          canvas.width = w;
-          canvas.height = h;
+        const pixelRatio = getPixelRatio();
+
+        if (isNaN(w) || isNaN(h) || isNaN(pixelRatio)) return;
+
+        // if (canvas.width !== w || canvas.height !== h) {
+        //   canvas.width = w;
+        //   canvas.height = h;
+        // }
+        //
+        // setCanvasSize([w, h, pixelRatio]);
+
+        const canvasWidth = Math.round(w * pixelRatio);
+        const canvasHeight = Math.round(h * pixelRatio);
+
+        if (canvas.width !== canvasWidth || canvas.height !== canvasHeight) {
+          canvas.width = canvasWidth;
+          canvas.height = canvasHeight;
         }
-        setCanvasSize([w, h]);
+
+        setCanvasSize([canvasWidth, canvasHeight, pixelRatio]);
       }
-    }, [getCanvas, getCanvasWidth, getCanvasHeight]);
+    }, [getCanvas, getCanvasWidth, getCanvasHeight, getPixelRatio]);
 
     Object.defineProperties(this, {
       canvas: {

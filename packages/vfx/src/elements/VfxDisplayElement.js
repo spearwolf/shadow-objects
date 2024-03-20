@@ -81,15 +81,23 @@ export class VfxDisplayElement extends VfxElement {
 
   #lastCanvasWidth = 0;
   #lastCanvasHeight = 0;
+  #lastPixelRatio = 0;
 
   onFrame() {
     const clientRect = this.canvas.getBoundingClientRect();
-    if (this.#lastCanvasWidth !== clientRect.width || this.#lastCanvasHeight !== clientRect.height) {
+    const pixelRatio = window.devicePixelRatio ?? 1;
+    if (
+      this.#lastCanvasWidth !== clientRect.width ||
+      this.#lastCanvasHeight !== clientRect.height ||
+      this.#lastPixelRatio !== pixelRatio
+    ) {
       this.#lastCanvasWidth = clientRect.width;
       this.#lastCanvasHeight = clientRect.height;
+      this.#lastPixelRatio = pixelRatio;
       if (this.viewComponent) {
         this.viewComponent.setProperty('canvasWidth', clientRect.width);
         this.viewComponent.setProperty('canvasHeight', clientRect.height);
+        this.viewComponent.setProperty('pixelRatio', pixelRatio);
         this.syncShadowObjects();
       }
     }
