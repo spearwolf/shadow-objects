@@ -241,14 +241,12 @@ export class ComponentContext {
 
     for (const [uuid, cMem] of this.#componentMemory) {
       const c = this.#components.get(uuid);
-      console.log('resetChangesFromMemory: uuid=', uuid, 'cMem=', cMem);
       if (c) {
         const changes = new ComponentChanges(uuid);
         changes.create(cMem.token, cMem.parentUuid, cMem.order);
 
         if (cMem.properties) {
           for (const [key, value] of cMem.properties) {
-            console.log('resetChangesFromMemory: property ', key, '=', value, c.propIsEqual?.get(key));
             changes.changeProperty(key, value, c.propIsEqual?.get(key));
           }
         }

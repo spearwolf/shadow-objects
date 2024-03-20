@@ -190,6 +190,7 @@ describe('build-change-trail', () => {
         type: ComponentChangeType.CreateEntities,
         uuid: a.uuid,
         token: 'a',
+        properties: [['foo', 'bar']],
       },
       {
         type: ComponentChangeType.CreateEntities,

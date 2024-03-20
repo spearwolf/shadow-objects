@@ -5,6 +5,9 @@ export const filterUndefinedProps = (props: ComponentPropertiesType | undefined)
   return props.filter((entry) => (entry as Array<any>).length === 1 || entry[1] !== undefined);
 };
 
+/**
+ * Maybe `curProps` will be modified and returned. But it can also return a newly created array. `changes` will never be modified.
+ */
 export const applyPropsChanges = (
   curProps: ComponentPropertiesType | undefined,
   changes: ComponentPropertiesType | undefined,

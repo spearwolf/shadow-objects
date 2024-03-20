@@ -75,9 +75,7 @@ export class ComponentMemory {
 
   private changeProperties({uuid, properties}: IPropertiesChange) {
     const c = this.getComponentState(uuid)!;
-    // TODO is this correct?
     c.properties = applyPropsChanges(c.properties, properties);
-    console.log('changeProperties', uuid, properties, '->', c.properties);
   }
 
   private changeToken({uuid, token}: IChangeToken) {
@@ -99,12 +97,10 @@ export class ComponentMemory {
   }
 
   private createEntity({uuid, token, parentUuid, order, properties}: ICreateEntitiesChange) {
-    console.log('createEntity', uuid, properties);
     this.#components.set(uuid, {
       token: token || VoidToken,
       parentUuid,
       order: order ?? 0,
-      // TODO is this correct?
       properties: applyPropsChanges(undefined, properties),
     });
   }
