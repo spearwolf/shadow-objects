@@ -171,6 +171,7 @@ export class Kernel extends Eventize {
 
   createShadowObjects(token: string, entityEntry?: EntityEntry) {
     return this.registry.findConstructors(token)?.map((constructor) => {
+      const unsubscribe = new Set<() => any>();
       const shadowObject = eventize(
         new constructor(
           entityEntry?.entity != null
@@ -189,12 +190,20 @@ export class Kernel extends Eventize {
                   return entityEntry.entity.getPropertyReader(name);
                 },
 
-                // TODO onDestroy <- shadow-object
-                // TODO onEvent ? (auto destroy subscription)
+                onDestroy(callback: () => any) {
+                  unsubscribe.add(callback);
+                },
               }
             : undefined,
         ),
       );
+
+      shadowObject.once(onDestroy, () => {
+        console.log('destroy shadow-object', shadowObject, Array.from(unsubscribe));
+        for (const callback of unsubscribe) {
+          callback();
+        }
+      });
 
       if (entityEntry) {
         // We want to keep track which shadow-objects are created by which constructors.

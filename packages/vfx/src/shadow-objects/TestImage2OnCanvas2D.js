@@ -1,23 +1,35 @@
-export function TestImage2OnCanvas2D({entity}) {
+export function TestImage2OnCanvas2D() {
   const [r, g, b] = [Math.floor(Math.random() * 255), Math.floor(Math.random() * 255), Math.floor(Math.random() * 255)];
   const fillStyle0 = `rgb(${r} ${g} ${b})`;
   const fillStyle1 = `rgb(${255 - r} ${255 - g} ${255 - b})`;
 
-  let ctx = null;
+  let canvas;
+  let ctx;
 
-  entity.on('onRenderFrame', ({canvas}) => {
-    ctx ??= canvas.getContext('2d');
+  return {
+    onRenderFrame(params) {
+      canvas ??= params.canvas;
+      ctx ??= canvas.getContext('2d');
 
-    const [w, h] = [canvas.width, canvas.height];
-    const halfH = Math.floor(h / 2);
-    const halfW = Math.floor(w / 2);
+      const [w, h] = [canvas.width, canvas.height];
+      const halfH = Math.floor(h / 2);
+      const halfW = Math.floor(w / 2);
 
-    ctx.clearRect(0, 0, w, h);
+      ctx.clearRect(0, 0, w, h);
 
-    ctx.fillStyle = fillStyle0;
-    ctx.fillRect(0, 0, halfW, halfH);
+      ctx.fillStyle = fillStyle0;
+      ctx.fillRect(0, 0, halfW, halfH);
 
-    ctx.fillStyle = fillStyle1;
-    ctx.fillRect(0, halfH, halfW, h - halfH);
-  });
+      ctx.fillStyle = fillStyle1;
+      ctx.fillRect(0, halfH, halfW, h - halfH);
+    },
+
+    onDestroy() {
+      if (canvas && ctx) {
+        ctx.fillStyle = 'red';
+        const halfW = Math.floor(canvas.width / 2);
+        ctx.fillRect(0, 0, halfW, canvas.height);
+      }
+    },
+  };
 }

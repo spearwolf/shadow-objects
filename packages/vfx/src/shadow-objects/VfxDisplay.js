@@ -1,4 +1,4 @@
-import {createEffect, createSignal} from '@spearwolf/signalize';
+import {createEffect, createSignal, destroySignal} from '@spearwolf/signalize';
 import {FrameLoop} from '../shared/FrameLoop.js';
 import {OffscreenCanvas, StartFrameLoop, StopFrameLoop} from '../shared/constants.js';
 
@@ -20,7 +20,7 @@ export class VfxDisplay {
     return this.isRunning && this.canvas != null && this.canvas.width > 0 && this.canvas.height > 0;
   }
 
-  constructor({entity, useContext, useProperty, provideContext}) {
+  constructor({entity, useContext, useProperty, provideContext, onDestroy}) {
     this.entity = entity;
 
     // TODO use shared vfx.canvas|multiViewRenderer --------
@@ -41,7 +41,7 @@ export class VfxDisplay {
     const getCanvasHeight = useProperty('canvasHeight');
     const getPixelRatio = useProperty('pixelRatio');
 
-    createEffect(() => {
+    const [, unsubscribe] = createEffect(() => {
       const canvas = getCanvas();
       if (canvas) {
         const w = getCanvasWidth();
@@ -75,6 +75,12 @@ export class VfxDisplay {
         set: setCanvas,
         enumerable: true,
       },
+    });
+
+    onDestroy(() => {
+      console.log('[VfxDisplay] onDestroy: bye, bye!');
+      unsubscribe();
+      destroySignal(getCanvasSize);
     });
   }
 
