@@ -23,6 +23,9 @@ $ pnpm install
 $ pnpm cbt  # => clean build test
 ```
 
+> 🔎 This project does not currently use a separate issue tracking system; instead, TODO, FIXME, and XXX issues are written directly as comments in the source code, without any further indirection.
+> An overview of open issues can be found in [TODO.md](TODO.md).
+
 ## 📖 Content
 
 | package | description |
