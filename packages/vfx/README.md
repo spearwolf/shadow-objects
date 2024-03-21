@@ -1,9 +1,15 @@
 
 # @spearwolf/vfx
 
-_thinktank_
+> a multi threaded renderer 🚀 for your browser using web workers and shared offscreen canvases
+
+_Caution‼️ this is a highly experimental setup, but with a damn high awesomeness factor!_ 😉
+
+Using the [shadow-ents](../shadow-ents/) library, the vfx package provides several web components that can be used to create a shadow-objects scenario that supports general offscreen canvas rendering as well as a shared three.js offscreen renderer.
 
 ## Integrate the web components in your page
+
+_thinktank_
 
 ```html
 <html>

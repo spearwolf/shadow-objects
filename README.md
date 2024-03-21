@@ -27,11 +27,12 @@ $ pnpm cbt  # => clean build test
 
 | package | description |
 |-|-|
-| [`offscreen-display`](packages/offscreen-display/) | Helpers for creating custom offscreen canvas elements |
-| [`rainbow-line`](packages/rainbow-line/) | A custom element that displays a cut line animated with rainbow colors |
+| [`vfx`](packages/vfx/) | Web components for multi threaded offscreen rendering |
 | [`shadow-ents`](packages/shadow-ents/) | Shadow-ents moves your components into WebWorker |
 | [`shadow-ents-testing`](packages/shadow-ents-testing/) | functional tests for _shadow-ents_ |
 | [`shadow-ents-e2e`](packages/shadow-ents-e2e/) | blackbox tests for _shadow-ents_ |
+| [`offscreen-display`](packages/offscreen-display/) | Helpers for creating custom offscreen canvas elements |
+| [`rainbow-line`](packages/rainbow-line/) | A custom element that displays a cut line animated with rainbow colors |
 
 ---
 
