@@ -36,3 +36,17 @@ _thinktank_
   </body>
 </html>
 ```
+
+## Local Development Setup
+
+Run the tests with ..
+
+```sh
+➜ pnpm watch  # or just use `pnpm test`
+```
+
+Run the local test server/scenario with ..
+
+```sh
+➜ pnpm dev  # or use `pnpm nx dev vfx`
+```
