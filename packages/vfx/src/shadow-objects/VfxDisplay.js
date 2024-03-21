@@ -116,6 +116,6 @@ export class VfxDisplay {
 
     const data = {canvas: this.canvas, now: this.now, frameNo: this.frameNo};
     this.entity.traverse((entity) => entity.emit('onRenderFrame', data));
-    // TODO maybe we should create a <shadow-entity traverse-events="onRenderFrame, onIdle"> attribute ?
+    // TODO maybe we should create a `<shadow-entity traverse-events="onRenderFrame, onIdle">` attribute ?
   }
 }
