@@ -63,7 +63,7 @@ export class ShadowEnv extends ShadowEntity implements IShadowEnvElement {
   }
 
   protected createShadowEnv() {
-    // TODO waht if we change namespace ?
+    // TODO what should happen when we change the namespace ? maybe "contextLost", resetChangesFromMemory() here ?
     const env = new BaseEnv(this.ns);
     env.start();
     this.#env = env;

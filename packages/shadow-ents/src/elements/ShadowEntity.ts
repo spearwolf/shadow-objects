@@ -108,7 +108,6 @@ export class ShadowEntity extends HTMLElement {
       if (this.viewComponent?.token === token && this.viewComponent?.context === context) return;
       const vc = new ViewComponent(token, {uuid: this.uuid, context, parent: this.parentViewComponent});
       this.viewComponent = vc;
-      // TODO subscribe to env reset
       return () => {
         vc.destroy();
         this.viewComponent = undefined;
