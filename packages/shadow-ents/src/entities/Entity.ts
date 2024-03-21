@@ -16,8 +16,6 @@ import {SignalsMap} from './SignalsMap.js';
 import {SignalsPath} from './SignalsPath.js';
 import {onDestroy, onViewEvent} from './events.js';
 
-// TODO add token to Entity ?
-//
 type ContextNameType = string | symbol;
 
 interface IContext {
@@ -245,13 +243,13 @@ export class Entity extends Eventize {
     return this.#context.has(name);
   }
 
-  // TODO write tests for useContext()
+  // TODO(test) write tests for useContext()
 
   useContext<T = unknown>(name: ContextNameType): SignalReader<T> {
     return this.#getContext(name).context$$[0] as SignalReader<T>;
   }
 
-  // TODO write tests for provideContext()
+  // TODO(test) write tests for provideContext()
 
   provideContext<T = unknown>(name: ContextNameType, initialValue?: T | SignalReader<T>): SignalFuncs<T> {
     const sig = this.#getContext(name).provide$$.slice(0) as SignalFuncs<T>;

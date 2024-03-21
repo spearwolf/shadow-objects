@@ -4,7 +4,7 @@ import type {Entity} from './Entity.js';
 
 export const onCreate = 'onCreate';
 
-// TODO test if OnCreate is called when an entity token is changed
+// TODO(test) test if OnCreate is called when an entity token is changed
 
 export interface OnCreate {
   /**
@@ -22,8 +22,8 @@ export interface OnCreate {
 
 export const onDestroy = 'onDestroy';
 
-// TODO test if OnDestroy is called when an entity is destroyed
-// TODO test if OnDestroy is called when a shadow-object is removed from an entity (token-change)
+// TODO(test) test if OnDestroy is called when an entity is destroyed
+// TODO(test) test if OnDestroy is called when a shadow-object is removed from an entity (token-change)
 
 export interface OnDestroy {
   /**
