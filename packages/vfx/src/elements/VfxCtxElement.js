@@ -2,6 +2,7 @@ import {eventize} from '@spearwolf/eventize';
 import {BaseEnv} from '@spearwolf/shadow-ents';
 import '@spearwolf/shadow-ents/shadow-entity.js';
 import '@spearwolf/shadow-ents/shadow-env.js';
+import {createEffect, createSignal} from '@spearwolf/signalize';
 import {createActor} from 'xstate';
 import {FrameLoop} from '../shared/FrameLoop.js';
 import {attachSignal} from '../shared/attachSignal.js';
@@ -10,6 +11,8 @@ import {VfxElement} from './VfxElement.js';
 import {attachShadowEntity} from './attachShadowEntity.js';
 import {machine} from './vfx-ctx/state-machine.js';
 import {waitForMessageOfType} from './waitForMessageOfType.js';
+
+const DEFAULT_AUTO_SYNC = 'frame';
 
 const InitialHTML = `
   <shadow-env id="env">
@@ -39,7 +42,7 @@ const prepareChangeTrail = (data) => {
 };
 
 export class VfxCtxElement extends VfxElement {
-  static observedAttributes = ['src'];
+  static observedAttributes = ['src', 'auto-sync'];
 
   reRequestContextTypes = [1, 2]; // we use <shadow-env> and <shadow-entity> components in this element
 
@@ -76,6 +79,73 @@ export class VfxCtxElement extends VfxElement {
     this.actor.send({type: 'initialized', src: this.getAttribute('src')});
 
     this.frameLoop = new FrameLoop();
+
+    const [getAutoSync, setAutoSync] = createSignal(DEFAULT_AUTO_SYNC);
+    const [getIsConnected, setIsConnected] = createSignal(false);
+
+    this.setIsConnected = setIsConnected;
+
+    Object.defineProperties(this, {
+      autoSync: {
+        get: getAutoSync,
+        set: (val) => {
+          if (typeof val !== 'string') {
+            val = val ? DEFAULT_AUTO_SYNC : 'no';
+          }
+
+          let sVal = `${val}`.trim().toLowerCase();
+
+          if (this.getAttribute('auto-sync') !== sVal) {
+            this.setAttribute('auto-sync', sVal);
+          }
+
+          setAutoSync(sVal);
+        },
+        enumerable: true,
+      },
+    });
+
+    createEffect(() => {
+      if (getIsConnected()) {
+        const autoSync = (getAutoSync() || DEFAULT_AUTO_SYNC).trim().toLowerCase();
+        let delay = undefined;
+
+        if (['true', 'yes', 'on', 'frame', 'auto-sync'].includes(autoSync)) {
+          console.debug(`[vfx-ctx] start auto-sync on frame [${autoSync}]`);
+          this.frameLoop.start(this);
+          return () => {
+            this.frameLoop.stop(this);
+            console.debug(`[vfx-ctx] stop auto-sync on frame`);
+          };
+        } else if (autoSync.toLowerCase().endsWith('fps')) {
+          const fps = parseInt(autoSync, 10);
+          if (fps > 0) {
+            delay = Math.floor(1000 / fps);
+          } else {
+            console.warn(`[vfx-ctx] invalid auto-sync value: ${autoSync}`);
+          }
+        } else {
+          delay = parseInt(autoSync, 10);
+          if (isNaN(delay)) {
+            delay = undefined;
+            if (!['false', 'no', 'off'].includes(autoSync)) {
+              console.warn(`[vfx-ctx] invalid auto-sync value: ${autoSync}`);
+            }
+          }
+        }
+
+        if (delay !== undefined && delay > 0) {
+          console.debug(`[vfx-ctx] start auto-sync on interval: ${delay} ms (${autoSync})`);
+          const id = setInterval(() => {
+            this.syncShadowObjects();
+          }, delay);
+          return () => {
+            clearInterval(id);
+            console.debug(`[vfx-ctx] stop auto-sync on interval`);
+          };
+        }
+      }
+    }, [getAutoSync, getIsConnected]);
   }
 
   get state() {
@@ -93,24 +163,28 @@ export class VfxCtxElement extends VfxElement {
   attributeChangedCallback(name, oldValue, newValue) {
     if (name === 'src' && oldValue !== newValue && this.src !== newValue) {
       this.actor.send({type: 'srcChanged', src: newValue});
+    } else if (name === 'auto-sync') {
+      this.autoSync = newValue;
     }
   }
 
   connectedCallback() {
     super.connectedCallback();
 
-    // TODO start shadow-env sync loop (configure via attribute? "sync-on-frame", "sync-interval=")
-    this.frameLoop.start(this);
+    this.setIsConnected(true);
 
     this.actor.send({type: 'updateConnectedState', connected: true});
   }
 
   disconnectedCallback() {
-    this.frameLoop.stop(this);
+    this.setIsConnected(false);
 
     this.actor.send({type: 'updateConnectedState', connected: false});
   }
 
+  /**
+   * The frameLoop (if activated) calls this method on every frame
+   */
   onFrame() {
     this.syncShadowObjects();
   }
@@ -120,7 +194,7 @@ export class VfxCtxElement extends VfxElement {
   }
 
   /**
-   * if called, then viewComponent is set and can be used
+   * If called, then viewComponent is set and can be used
    *
    * @param {import('@spearwolf/shadow-ents').ViewComponent} vc view component
    */
