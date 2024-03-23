@@ -1,7 +1,7 @@
 
 ### VfxDisplay
 
-the vfx-display represents an offscreen canvas. however, a canvas _context_ is not created.
+the vfx-display represents an offscreen canvas. however, a canvas _drawing context_ is not created.
 
 these contexts are provided:
 
