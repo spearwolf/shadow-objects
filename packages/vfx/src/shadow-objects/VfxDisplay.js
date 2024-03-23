@@ -50,13 +50,6 @@ export class VfxDisplay {
 
         if (isNaN(w) || isNaN(h) || isNaN(pixelRatio)) return;
 
-        // if (canvas.width !== w || canvas.height !== h) {
-        //   canvas.width = w;
-        //   canvas.height = h;
-        // }
-        //
-        // setCanvasSize([w, h, pixelRatio]);
-
         const canvasWidth = Math.round(w * pixelRatio);
         const canvasHeight = Math.round(h * pixelRatio);
 
@@ -116,6 +109,5 @@ export class VfxDisplay {
 
     const data = {canvas: this.canvas, now: this.now, frameNo: this.frameNo};
     this.entity.traverse((entity) => entity.emit('onRenderFrame', data));
-    // TODO maybe we should create a `<shadow-entity traverse-events="onRenderFrame, onIdle">` attribute ?
   }
 }
