@@ -1,5 +1,13 @@
 import {Eventize, eventize} from '@spearwolf/eventize';
-import {batch} from '@spearwolf/signalize';
+import {
+  batch,
+  connect,
+  createSignal,
+  destroySignal,
+  type CompareFunc,
+  type SignalFuncs,
+  type SignalReader,
+} from '@spearwolf/signalize';
 import {ComponentChangeType} from '../constants.js';
 import type {IComponentChangeType, IComponentEvent, ShadowObjectConstructor, SyncEvent} from '../types.js';
 import {Entity} from './Entity.js';
@@ -172,22 +180,48 @@ export class Kernel extends Eventize {
   createShadowObjects(token: string, entityEntry?: EntityEntry) {
     return this.registry.findConstructors(token)?.map((constructor) => {
       const unsubscribe = new Set<() => any>();
+
+      const contextReaders = new Map<string | symbol, SignalReader<any>>();
+      const contextProviders = new Map<string | symbol, SignalFuncs<any>>();
+      const propertyReaders = new Map<string, SignalReader<any>>();
+
       const shadowObject = eventize(
         new constructor(
           entityEntry?.entity != null
             ? {
                 entity: entityEntry.entity,
 
-                provideContext<T = unknown>(name: string | symbol, initialValue?: T) {
-                  return entityEntry.entity.provideContext(name, initialValue);
+                provideContext<T = unknown>(name: string | symbol, initialValue?: T, isEqual?: CompareFunc<T>) {
+                  let ctxProvider = contextProviders.get(name);
+                  if (ctxProvider === undefined) {
+                    ctxProvider = createSignal(initialValue, isEqual ? {compareFn: isEqual} : undefined);
+                    contextProviders.set(name, ctxProvider);
+                    const con = connect(ctxProvider[0], entityEntry.entity.provideContext(name)[0]);
+                    unsubscribe.add(con.destroy.bind(con));
+                  }
+                  return ctxProvider;
                 },
 
-                useContext(name: string | symbol) {
-                  return entityEntry.entity.useContext(name);
+                useContext(name: string | symbol, isEqual?: CompareFunc<any>) {
+                  let ctxReader = contextReaders.get(name);
+                  if (ctxReader === undefined) {
+                    ctxReader = createSignal<any>(undefined, isEqual ? {compareFn: isEqual} : undefined)[0];
+                    contextReaders.set(name, ctxReader);
+                    const con = connect(entityEntry.entity.useContext(name), ctxReader);
+                    unsubscribe.add(con.destroy.bind(con));
+                  }
+                  return ctxReader;
                 },
 
-                useProperty(name: string) {
-                  return entityEntry.entity.getPropertyReader(name);
+                useProperty(name: string, isEqual?: CompareFunc<any>) {
+                  let propReader = propertyReaders.get(name);
+                  if (propReader === undefined) {
+                    propReader = createSignal<any>(undefined, isEqual ? {compareFn: isEqual} : undefined)[0];
+                    propertyReaders.set(name, propReader);
+                    const con = connect(entityEntry.entity.getPropertyReader(name), propReader);
+                    unsubscribe.add(con.destroy.bind(con));
+                  }
+                  return propReader;
                 },
 
                 onDestroy(callback: () => any) {
@@ -200,9 +234,25 @@ export class Kernel extends Eventize {
 
       shadowObject.once(onDestroy, () => {
         console.log('destroy shadow-object', shadowObject, Array.from(unsubscribe));
+
         for (const callback of unsubscribe) {
           callback();
         }
+
+        for (const sig of contextReaders.values()) {
+          destroySignal(sig);
+        }
+        contextReaders.clear();
+
+        for (const sig of propertyReaders.values()) {
+          destroySignal(sig);
+        }
+        propertyReaders.clear();
+
+        for (const [sig] of contextProviders.values()) {
+          destroySignal(sig);
+        }
+        contextProviders.clear();
       });
 
       if (entityEntry) {
