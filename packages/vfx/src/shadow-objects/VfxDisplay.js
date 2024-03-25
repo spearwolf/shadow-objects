@@ -20,14 +20,8 @@ export class VfxDisplay {
     return this.isRunning && this.canvas != null && this.canvas.width > 0 && this.canvas.height > 0;
   }
 
-  constructor({entity, useContext, useProperty, provideContext, onDestroy}) {
+  constructor({entity, useProperty, provideContext, onDestroy}) {
     this.entity = entity;
-
-    // TODO use shared vfx.canvas|multiViewRenderer --------
-    useContext('multiViewRenderer')((val) => {
-      console.debug('[VfxDisplay] multiViewRenderer changed to', val);
-    });
-    // -----------------------------------------------------
 
     const [getCanvas, setCanvas] = provideContext('canvas');
 

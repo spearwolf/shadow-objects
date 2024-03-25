@@ -289,8 +289,6 @@ export class Kernel extends Eventize {
       (shadowObject as OnDestroy)[onDestroy](entity);
     }
 
-    // TODO inform the entity that the shadow-object has been destroyed
-
     entity.off(shadowObject);
   }
 }

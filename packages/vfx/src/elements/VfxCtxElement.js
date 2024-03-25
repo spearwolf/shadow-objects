@@ -111,11 +111,9 @@ export class VfxCtxElement extends VfxElement {
         let delay = undefined;
 
         if (['true', 'yes', 'on', 'frame', 'auto-sync'].includes(autoSync)) {
-          console.debug(`[vfx-ctx] start auto-sync on frame [${autoSync}]`);
           this.frameLoop.start(this);
           return () => {
             this.frameLoop.stop(this);
-            console.debug(`[vfx-ctx] stop auto-sync on frame`);
           };
         } else if (autoSync.toLowerCase().endsWith('fps')) {
           const fps = parseInt(autoSync, 10);
@@ -135,13 +133,11 @@ export class VfxCtxElement extends VfxElement {
         }
 
         if (delay !== undefined && delay > 0) {
-          console.debug(`[vfx-ctx] start auto-sync on interval: ${delay} ms (${autoSync})`);
           const id = setInterval(() => {
             this.syncShadowObjects();
           }, delay);
           return () => {
             clearInterval(id);
-            console.debug(`[vfx-ctx] stop auto-sync on interval`);
           };
         }
       }
@@ -203,7 +199,7 @@ export class VfxCtxElement extends VfxElement {
 
     vc.setProperty('bar', 666); // TODO remove me!
 
-    // XXX do we need to set additional properties on view component ?
+    // XXX do we really need to set additional properties on view component ?
     // or can we just throw away this method?
 
     this.syncShadowObjects(); // initial sync

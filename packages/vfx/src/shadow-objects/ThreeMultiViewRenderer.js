@@ -16,7 +16,7 @@ export class ThreeMultiViewRenderer {
 
     this.canvas = new OffscreenCanvas(DEFAULT_WIDTH, DEFAULT_HEIGHT);
 
-    // XXX how we can set webgl-renderer parameters?
+    // XXX how we can configure webgl-renderer parameters?
     this.renderer = new WebGLRenderer({canvas: this.canvas});
     this.renderer.setScissorTest(true);
 
