@@ -39,7 +39,7 @@ export class MessageRouter {
   }
 
   #onChangeTrail(data) {
-    console.debug('[MessageRouter] parseChangeTrail', {data, kernel: this.kernel});
+    // console.debug('[MessageRouter] parseChangeTrail', {data, kernel: this.kernel});
     this.kernel.run(data);
   }
 

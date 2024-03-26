@@ -3,16 +3,7 @@ import {createEffect, createSignal, destroySignal} from '@spearwolf/signalize';
 import {ThreeMultiViewRenderer} from './ThreeMultiViewRenderer.js';
 
 export function ThreeRenderView({entity, useContext, provideContext}) {
-  // TODO implement ThreeRenderView
-
   const getCanvasSize = useContext('canvasSize');
-
-  // - [x] useContext('multiViewRenderer');
-  //   - [x] create render-view with multiViewRenderer.createView()
-  // - [x] onRenderFrame()
-  // - [x] call multiViewRenderer.renderView(view)
-  // - [ ] copy webgl-canvas-content to our canvas(bitmapdrawingcontext2d)
-
   const getMultiViewRenderer = useContext(ThreeMultiViewRenderer.ContextProvider);
 
   const [getRenderView, setRenderView] = createSignal();
@@ -20,6 +11,8 @@ export function ThreeRenderView({entity, useContext, provideContext}) {
   createEffect(() => {
     const canvasSize = getCanvasSize();
     if (canvasSize == null) return;
+
+    // console.log('ThreeRenderView canvasSize', ...canvasSize);
 
     let view = getRenderView();
 
@@ -43,19 +36,12 @@ export function ThreeRenderView({entity, useContext, provideContext}) {
 
   provideContext('three.renderView', getRenderView);
 
-  //
-  // maybe not here but in another shadow-object:
-  //
-  // - provideContext('three.renderView') ?
-  // - provideContext('three.scene');
-  // - provideContext('three.camera');
-  // - setCamera(...)
-
-  let bitmapRendererCtx = undefined;
+  let canvasCtx = undefined;
+  let shouldCommit = false;
 
   let logOnFrame = true; // TODO remove me
 
-  const unsubscribe = entity.on('onRenderFrame', Priority.Low, async ({canvas}) => {
+  const unsubscribeFromRenderFrame = entity.on('onRenderFrame', Priority.Low, async ({canvas}) => {
     const view = getRenderView();
 
     if (view != null) {
@@ -66,7 +52,7 @@ export function ThreeRenderView({entity, useContext, provideContext}) {
       if (logOnFrame) {
         console.log('ThreeRenderView onRenderFrame:renderView', {
           renderView: view,
-          canvasCtx: bitmapRendererCtx,
+          canvasCtx: canvasCtx,
           multiViewRenderer,
         });
         logOnFrame = false;
@@ -75,15 +61,28 @@ export function ThreeRenderView({entity, useContext, provideContext}) {
       const image = await multiViewRenderer.renderView(view);
 
       if (image) {
-        bitmapRendererCtx ??= canvas.getContext('bitmaprenderer');
-        bitmapRendererCtx.transferFromImageBitmap(image); // TODO verify this works
+        // XXX somehow the context is lost when a the canvas resizes and the context is a "bitmaprenderer"
+        //
+        // bitmapRendererCtx ??= canvas.getContext('bitmaprenderer');
+        // bitmapRendererCtx.transferFromImageBitmap(image); // TODO verify this works
+
+        if (canvasCtx == null) {
+          canvasCtx = canvas.getContext('2d');
+          shouldCommit = typeof canvasCtx.commit === 'function';
+          console.log('ThreeRenderView onRenderFrame:canvasCtx=', {shouldCommit, canvasCtx});
+        }
+
+        canvasCtx.drawImage(image, 0, 0);
+        if (shouldCommit) {
+          canvasCtx.commit();
+        }
       }
     }
   });
 
   return {
     onDestroy() {
-      unsubscribe();
+      unsubscribeFromRenderFrame();
 
       const view = getRenderView();
       if (view != null) {

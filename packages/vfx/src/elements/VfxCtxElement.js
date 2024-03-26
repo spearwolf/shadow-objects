@@ -244,7 +244,7 @@ export class VfxCtxElement extends VfxElement {
 
   #postMessageToWorker(type, data, transfer) {
     const options = Array.isArray(transfer) ? {transfer} : undefined;
-    console.debug(`[vfx-ctx] postMessage:${type}, data=`, data, 'transfer=', options);
+    // console.debug(`[vfx-ctx] postMessage:${type}, data=`, data, 'transfer=', options);
     this.worker.postMessage({type, ...data}, options);
   }
 
