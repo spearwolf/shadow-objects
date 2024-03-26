@@ -37,6 +37,7 @@ const InitialHTML = `
 
 const DISPLAY_ID = 'display';
 const ENTITY_ID = 'entity';
+const PIXEL_ZOOM_ATTR = 'pixel-zoom';
 
 export class VfxDisplayElement extends VfxElement {
   #frameLoop = new FrameLoop();
@@ -82,25 +83,57 @@ export class VfxDisplayElement extends VfxElement {
   #lastCanvasWidth = 0;
   #lastCanvasHeight = 0;
   #lastPixelRatio = 0;
+  #lastPixelZoom = 1;
 
   onFrame() {
     const clientRect = this.canvas.getBoundingClientRect();
     const pixelRatio = window.devicePixelRatio ?? 1;
+    const pixelZoom = this.#getPixelZoom();
     if (
       this.#lastCanvasWidth !== clientRect.width ||
       this.#lastCanvasHeight !== clientRect.height ||
-      this.#lastPixelRatio !== pixelRatio
+      this.#lastPixelRatio !== pixelRatio ||
+      this.#lastPixelZoom !== pixelZoom
     ) {
       this.#lastCanvasWidth = clientRect.width;
       this.#lastCanvasHeight = clientRect.height;
-      this.#lastPixelRatio = pixelRatio;
+      this.#lastPixelRatio = pixelRatio / pixelZoom;
+      if (pixelZoom !== this.#lastPixelZoom) {
+        console.log('[VfxDisplayElement] pixelZoom changed to', pixelZoom);
+
+        this.#lastPixelZoom = pixelZoom;
+
+        this.canvas.style.imageRendering = `var(--display-image-rendering, ${pixelZoom > 1 ? 'pixelated' : 'auto'})`;
+      }
       if (this.viewComponent) {
-        this.viewComponent.setProperty('canvasWidth', clientRect.width);
-        this.viewComponent.setProperty('canvasHeight', clientRect.height);
-        this.viewComponent.setProperty('pixelRatio', pixelRatio);
+        this.viewComponent.setProperty('canvasWidth', this.#lastCanvasWidth);
+        this.viewComponent.setProperty('canvasHeight', this.#lastCanvasHeight);
+        this.viewComponent.setProperty('pixelRatio', this.#lastPixelRatio);
         this.syncShadowObjects();
       }
     }
+  }
+
+  get pixelZoom() {
+    return this.#getPixelZoom();
+  }
+
+  set pixelZoom(val) {
+    if (val !== this.#getPixelZoom()) {
+      if (val > 0) {
+        this.setAttribute(PIXEL_ZOOM_ATTR, `${val}`);
+      } else {
+        this.removeAttribute(PIXEL_ZOOM_ATTR);
+      }
+    }
+  }
+
+  #getPixelZoom() {
+    let val = parseInt(this.getAttribute(PIXEL_ZOOM_ATTR), 10);
+    if (isNaN(val) || val < 1) {
+      val = 1;
+    }
+    return val;
   }
 
   #transferCanvasToShadows() {
