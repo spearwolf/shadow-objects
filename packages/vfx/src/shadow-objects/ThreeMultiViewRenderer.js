@@ -4,11 +4,13 @@ const DEFAULT_WIDTH = 320;
 const DEFAULT_HEIGHT = 240;
 
 export class ThreeMultiViewRenderer {
+  static ContextProvider = 'three.multiViewRenderer';
+
   #views = new Map();
   #lastViewId = 0;
 
   constructor({provideContext, onDestroy}) {
-    const [, setMultiViewRenderer] = provideContext('multiViewRenderer', this);
+    const [, setMultiViewRenderer] = provideContext(ThreeMultiViewRenderer.ContextProvider, this);
 
     onDestroy(() => {
       setMultiViewRenderer(null);
@@ -25,15 +27,15 @@ export class ThreeMultiViewRenderer {
 
   createView(width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT) {
     const viewId = ++this.#lastViewId;
-    const view = {viewId, width, height, viewport: [0, 0, width, height], scene: null, camera: null};
+    const view = {viewId, width, height, viewport: undefined, scene: null, camera: null};
     this.#views.set(viewId, view);
     return view;
   }
 
-  renderView(view) {
+  async renderView(view) {
     if (view?.scene == null || view?.camera == null) return;
     if (!(view.width > 0 && view.height > 0)) return;
-    if (!(view.viewport[2] > 0 && view.viewport[3] > 0)) return;
+
     if (this.#views.has(view.viewId) === false) {
       throw new Error(`not my view: ${view.viewId}`);
     }
@@ -41,8 +43,16 @@ export class ThreeMultiViewRenderer {
     this.updateSize();
 
     this.renderer.setScissor(0, 0, view.width, view.height);
-    this.renderer.setViewport(...view.viewport);
+
+    if (view.viewport == null) {
+      this.renderer.setViewport(0, 0, view.width, view.height);
+    } else {
+      this.renderer.setViewport(...view.viewport);
+    }
+
     this.renderer.render(view.scene, view.camera);
+
+    return createImageBitmap(this.canvas, 0, 0, view.width, view.height); // XXX options?
   }
 
   destroyView(view) {
@@ -58,6 +68,7 @@ export class ThreeMultiViewRenderer {
       height = Math.max(height, view.height);
     }
     if (this.canvas.width === width && this.canvas.height === height) return;
+    this.renderer.setPixelRatio(1);
     this.renderer.setSize(width, height, false);
   }
 

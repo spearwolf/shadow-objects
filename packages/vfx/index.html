@@ -29,6 +29,14 @@
       .layer {
         position: absolute;
       }
+      .minimap-layer {
+        top: 0;
+        right: 0;
+        width: 320px;
+        height: 240px;
+        max-width: 50%;
+        max-height: 75%;
+      }
     </style>
   </head>
   <body>
@@ -40,6 +48,9 @@
         </vfx-display>
         <vfx-display class="layer">
           <shadow-entity token="TestImage2OnCanvas2D"></shadow-entity>
+        </vfx-display>
+        <vfx-display class="layer minimap-layer" pixel-zoom="1">
+          <shadow-entity token="demo.renderView"></shadow-entity>
         </vfx-display>
       </vfx-ctx>
     </main>
