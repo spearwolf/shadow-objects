@@ -22,6 +22,8 @@ export function TestImage2OnCanvas2D() {
 
       ctx.fillStyle = fillStyle1;
       ctx.fillRect(0, halfH, halfW, h - halfH);
+
+      ctx.commit?.();
     },
 
     onDestroy() {
@@ -29,6 +31,7 @@ export function TestImage2OnCanvas2D() {
         ctx.fillStyle = 'red';
         const halfW = Math.floor(canvas.width / 2);
         ctx.fillRect(0, 0, halfW, canvas.height);
+        ctx.commit?.();
       }
     },
   };

@@ -98,6 +98,7 @@ export class VfxDisplayElement extends VfxElement {
       this.#lastCanvasWidth = clientRect.width;
       this.#lastCanvasHeight = clientRect.height;
       this.#lastPixelRatio = pixelRatio / pixelZoom;
+
       if (pixelZoom !== this.#lastPixelZoom) {
         console.log('[VfxDisplayElement] pixelZoom changed to', pixelZoom);
 

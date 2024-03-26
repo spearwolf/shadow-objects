@@ -56,7 +56,8 @@ export class ThreeMultiViewRenderer {
 
     this.renderer.render(view.scene, view.camera);
 
-    return createImageBitmap(this.canvas, 0, 0, view.width, view.height); // XXX options?
+    // https://developer.mozilla.org/en-US/docs/Web/API/createImageBitmap
+    return createImageBitmap(this.canvas, 0, this.canvas.height - view.height, view.width, view.height);
   }
 
   destroyView(view) {

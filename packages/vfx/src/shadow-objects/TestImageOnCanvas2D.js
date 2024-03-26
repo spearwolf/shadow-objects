@@ -23,6 +23,8 @@ export function TestImageOnCanvas2D({entity, onDestroy}) {
 
       ctx.fillStyle = fillStyle1;
       ctx.fillRect(0, halfH, w, h - halfH);
+
+      ctx.commit?.();
     },
   };
 }

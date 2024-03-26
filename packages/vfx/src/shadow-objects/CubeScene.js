@@ -1,9 +1,9 @@
-import {BoxGeometry, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene} from 'three';
+import {BoxGeometry, Mesh, MeshNormalMaterial, PerspectiveCamera, Scene} from 'three';
 
 export function CubeScene({useContext}) {
   const scene = new Scene();
 
-  const box = new Mesh(new BoxGeometry(), new MeshBasicMaterial({color: 0x00ff00}));
+  const box = new Mesh(new BoxGeometry(), new MeshNormalMaterial());
   scene.add(box);
 
   const getRenderView = useContext('three.renderView');
