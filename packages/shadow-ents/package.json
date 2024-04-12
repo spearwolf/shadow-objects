@@ -17,6 +17,10 @@
       "default": "./dist/src/index.js",
       "types": "./dist/src/index.d.ts"
     },
+    "./worker.js": {
+      "default": "./dist/src/worker.js",
+      "types": "./dist/src/worker.d.ts"
+    },
     "./bundle.js": {
       "default": "./dist/bundle.js",
       "types": "./dist/src/bundle.d.ts"

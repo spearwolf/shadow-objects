@@ -3,6 +3,7 @@
   "compileOnSave": false,
   "compilerOptions": {
     "rootDir": ".",
+    "outDir": "./build-tmp",
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,

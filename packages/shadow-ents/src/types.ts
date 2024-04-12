@@ -1,9 +1,11 @@
 import type {ComponentChangeType} from './constants.js';
 
+export type TransferablesType = object[];
+
 export interface IComponentChange {
   type: ComponentChangeType;
   uuid: string;
-  transferables?: Object[];
+  transferables?: TransferablesType;
 }
 
 export interface IComponentEvent {
