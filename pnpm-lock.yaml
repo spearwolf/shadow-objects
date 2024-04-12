@@ -148,6 +148,9 @@ importers:
       lit:
         specifier: 3.1.2
         version: 3.1.2
+      xstate:
+        specifier: ^5.9.1
+        version: 5.9.1
 
   packages/shadow-ents-e2e:
     dependencies:
