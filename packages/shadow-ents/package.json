@@ -1,6 +1,6 @@
 {
   "name": "@spearwolf/shadow-ents",
-  "description": "framework to create shadow entities with view components",
+  "description": "a worker ecs with shadow-objects",
   "version": "0.0.1-dev",
   "author": {
     "name": "Wolfger Schramm",
@@ -17,13 +17,13 @@
       "default": "./dist/src/index.js",
       "types": "./dist/src/index.d.ts"
     },
-    "./worker.js": {
-      "default": "./dist/src/worker.js",
-      "types": "./dist/src/worker.d.ts"
-    },
     "./bundle.js": {
       "default": "./dist/bundle.js",
       "types": "./dist/src/bundle.d.ts"
+    },
+    "./shadow-ents.worker.js": {
+      "default": "./dist/src/shadow-ents.worker.js",
+      "types": "./dist/src/shadow-ents.worker.d.ts"
     },
     "./shadow-objects.js": {
       "default": "./dist/src/shadow-objects.js",
@@ -40,16 +40,22 @@
     "./shadow-local-env.js": {
       "default": "./dist/src/shadow-local-env.js",
       "types": "./dist/src/shadow-local-env.d.ts"
+    },
+    "./shadow-worker.js": {
+      "default": "./dist/src/shadow-worker.js",
+      "types": "./dist/src/shadow-worker.d.ts"
     }
   },
   "sideEffects": [
     "build/src/view/ComponentContext.js",
+    "build/src/shadow-worker.js",
     "build/src/shadow-entity.js",
     "build/src/shadow-local-env.js",
     "build/src/shadow-env.js",
     "build/src/bundle.js",
     "build/src/index.js",
     "dist/src/view/ComponentContext.js",
+    "dist/src/shadow-worker.js",
     "dist/src/shadow-entity.js",
     "dist/src/shadow-local-env.js",
     "dist/src/shadow-env.js",

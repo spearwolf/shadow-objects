@@ -1,5 +1,4 @@
 export * from './constants.js';
-export type * from './elements/IShadowEnvElement.js';
 export * from './elements/ReRequestContext.js';
 export * from './elements/ShadowEntity.js';
 export * from './elements/ShadowEnv.js';
@@ -11,9 +10,13 @@ export * from './entities/Registry.js';
 export * from './entities/ShadowObject.js';
 export * from './entities/events.js';
 export * from './toNamespace.js';
-export type * from './types.js';
 export * from './view/ComponentContext.js';
 export * from './view/ComponentMemory.js';
 export * from './view/ViewComponent.js';
 export * from './view/env/BaseEnv.js';
 export * from './view/env/LocalEnv.js';
+export * from './worker/MessageRouter.js';
+export * from './worker/WorkerRuntime.js';
+
+export type * from './elements/IShadowEnvElement.js';
+export type * from './types.js';

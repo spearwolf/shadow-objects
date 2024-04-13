@@ -38,4 +38,21 @@ test.describe('bundle', () => {
       ).toBe(true);
     });
   });
+
+  test.describe('shadow-worker', () => {
+    test('has element', async ({page}) => {
+      await expect(page.getByTestId('workerCtx0')).toBeAttached();
+    });
+
+    test('custom element is defined', async ({page}) => {
+      expect(
+        await page.evaluate(() =>
+          customElements
+            .whenDefined('shadow-worker')
+            .then(() => true)
+            .catch(() => false),
+        ),
+      ).toBe(true);
+    });
+  });
 });

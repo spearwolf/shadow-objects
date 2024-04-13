@@ -4,6 +4,7 @@
     "src/bundle.js",
     "src/index.js",
     "src/view/ComponentContext.js",
+    "src/shadow-worker.js",
     "src/shadow-entity.js",
     "src/shadow-local-env.js",
     "src/shadow-env.js"

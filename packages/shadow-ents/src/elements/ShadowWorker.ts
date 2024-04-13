@@ -19,7 +19,7 @@ const WORKER = 'worker';
 
 const InitialHTML = `
   <shadow-env id="env">
-    <shadow-entity id="root" token="vfx-ctx">
+    <shadow-entity id="root" token="root">
       <slot></slot>
     </shadow-entity>
   </shadow-env>
@@ -210,9 +210,8 @@ export class ShadowWorker extends HTMLElement {
     this.syncShadowObjects();
   }
 
-  // TODO worker url
   createWorker() {
-    return new Worker(new URL('../vfx.worker.js', import.meta.url), {type: 'module'});
+    return new Worker(new URL('../shadow.worker.js', import.meta.url), {type: 'module'});
   }
 
   /**
