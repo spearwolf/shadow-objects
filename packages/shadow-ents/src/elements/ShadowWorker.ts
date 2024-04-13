@@ -60,6 +60,10 @@ export interface ShadowWorker extends EventizeApi {
 }
 
 export class ShadowWorker extends HTMLElement {
+  static createWorker() {
+    return new Worker(new URL('../shadow-ents.worker.js', import.meta.url), {type: 'module'});
+  }
+
   static observedAttributes = ['src', 'auto-sync'];
 
   #reRequestContext = new ReRequestContext();
@@ -210,10 +214,6 @@ export class ShadowWorker extends HTMLElement {
     this.syncShadowObjects();
   }
 
-  createWorker() {
-    return new Worker(new URL('../shadow.worker.js', import.meta.url), {type: 'module'});
-  }
-
   /**
    * If called, then viewComponent is set and can be used
    */
@@ -268,7 +268,7 @@ export class ShadowWorker extends HTMLElement {
   }
 
   async #loadWorker(src: string) {
-    this.preWorker = this.createWorker();
+    this.preWorker = ShadowWorker.createWorker();
 
     try {
       await waitForMessageOfType(this.preWorker, Loaded, WorkerLoadTimeout);

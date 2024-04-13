@@ -1,6 +1,6 @@
-import {ShadowRuntime} from './shadow.runtime.js';
+import {WorkerRuntime} from './worker/WorkerRuntime.js';
 
-console.log('ShadowWorker: starting');
+console.debug('@spearwolf/shadow-ents/WorkerRuntime: starting..');
 
-const shadowRuntime = new ShadowRuntime();
+const shadowRuntime = new WorkerRuntime();
 shadowRuntime.start();

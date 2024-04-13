@@ -10,3 +10,5 @@ declare global {
 }
 
 window.SHADOW_ENTS_BUNDLE_LOADED = true;
+
+export {ShadowWorker} from './elements/ShadowWorker.js';
