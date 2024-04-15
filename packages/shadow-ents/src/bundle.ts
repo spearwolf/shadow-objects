@@ -1,4 +1,5 @@
 import {ShadowWorker} from './elements/ShadowWorker.js';
+
 import './shadow-entity.js';
 import './shadow-env.js';
 import './shadow-local-env.js';
@@ -16,5 +17,3 @@ declare global {
 }
 
 window.SHADOW_ENTS_BUNDLE_LOADED = true;
-
-export {ShadowWorker};
