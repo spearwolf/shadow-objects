@@ -151,6 +151,10 @@ importers:
       xstate:
         specifier: ^5.9.1
         version: 5.9.1
+    devDependencies:
+      esbuild-plugin-inline-worker:
+        specifier: ^0.1.1
+        version: 0.1.1
 
   packages/shadow-ents-e2e:
     dependencies:

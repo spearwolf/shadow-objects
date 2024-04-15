@@ -78,6 +78,9 @@
     "clean:build": "pnpm exec rimraf build dist",
     "makePackageJson": "pnpm exec node ../../scripts/makePackageJson.mjs dist"
   },
+  "devDependencies": {
+    "esbuild-plugin-inline-worker": "^0.1.1"
+  },
   "dependencies": {
     "@lit/context": "^1.1.0",
     "@spearwolf/eventize": "^3.4.1",

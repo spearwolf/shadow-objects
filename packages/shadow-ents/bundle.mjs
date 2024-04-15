@@ -1,4 +1,5 @@
 import * as esbuild from 'esbuild';
+import inlineWorkerPlugin from 'esbuild-plugin-inline-worker';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -18,11 +19,22 @@ const makeBanner = (build) => {
 };
 
 await esbuild.build({
+  entryPoints: [path.join(buildDir, 'src/shadow-ents.worker.js')],
+  bundle: true,
+  minify: true,
+  format: 'esm',
+  target: ['es2017'],
+  banner: {js: makeBanner('bundle')},
+  outfile: `${buildDir}/src/bundle.worker.js`,
+});
+
+await esbuild.build({
   entryPoints: [path.join(buildDir, 'src/bundle.js')],
   bundle: true,
   minify: true,
   format: 'esm',
   target: ['es2017'],
+  plugins: [inlineWorkerPlugin()],
   banner: {js: makeBanner('bundle')},
   outfile: `${distDir}/bundle.js`,
 });
