@@ -18,6 +18,8 @@ A custom element that displays a cut line animated with rainbow colors ..
 
 see [example.html](example.html) for more usage examples
 
+live preview at &rarr; [jsfiddle.net/spearwolf/spjbqnxd/](https://jsfiddle.net/spearwolf/spjbqnxd/)
+
 
 ## Copyright and License
 

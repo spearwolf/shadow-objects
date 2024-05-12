@@ -1,9 +1,0 @@
----
- name: rainbow-line sample
- description: Sample page showing the rainbow-line web component in action
- authors:
-   - Wolfger Schramm <wolfger@spearwolf.de>
- resources:
-   - https://github.com/spearwolf/visual-fx-web-components/tree/main/packages/rainbow-line
- normalize_css: no
- load_type: d
