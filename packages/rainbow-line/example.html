@@ -66,8 +66,15 @@
 
       <rainbow-line class="third" slice-cycle-time="5" cycle-direction="left"></rainbow-line>
     </div>
-    <script type="module" src="rainbow-line.js"></script>
-    <!-- <script type="module" src="bundle.js"></script> -->
-    <!-- <script type="module" src="https://www.unpkg.com/rainbow-line@latest"></script> -->
+
+    <!--
+      Choose the one that suits you best.
+      The first two require the package to be built with `$ pnpm buildNpmPkg`
+
+      <script async type="module" src="rainbow-line.js"></script>
+      <script async type="module" src="bundle.js"></script>
+      <script async type="module" src="https://www.unpkg.com/rainbow-line@latest"></script>
+    -->
+    <script async type="module" src="https://esm.sh/rainbow-line@latest"></script>
   </body>
 </html>
