@@ -25,7 +25,7 @@ const outPackageJson = {
   ...inPackageJson,
 };
 
-[[outPackageJson, ['main', 'module', 'types']], [outPackageJson.exports]].forEach(remmoveDistPathPrefix);
+[[outPackageJson, ['main', 'module', 'types']], [outPackageJson.exports]].forEach(removeDistPathPrefix);
 
 resolveDependencies(outPackageJson.dependencies);
 resolveDependencies(outPackageJson.peerDependencies);
@@ -60,8 +60,9 @@ function resolveDependencies(dependenciesSection) {
 function resolvePackageVersion(pkgName) {
   const pkgNameWithoutScope = pkgName.replace(/^@[^/]+\//, '');
   const pkgJsonPath = path.resolve(workspaceRoot, `packages/${pkgNameWithoutScope}/package.json`);
+  console.log('Check workspace package', pkgName, '->', pkgJsonPath);
   if (fs.existsSync(pkgJsonPath)) {
-    const pkgJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
     const pkgVersion = `^${pkgJson.version.replace(/-dev$/, '')}`;
     console.log('Resolve package version', pkgName, '->', pkgVersion);
     return pkgVersion;
@@ -80,7 +81,7 @@ function resolvePackageVersion(pkgName) {
 
 // --------------------------------------------------------------------------------------------
 
-function remmoveDistPathPrefix([section, keys]) {
+function removeDistPathPrefix([section, keys]) {
   if (keys) {
     keys.forEach((key) => {
       removePathPrefixAt(section, key);
