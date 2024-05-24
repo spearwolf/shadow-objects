@@ -37,10 +37,8 @@ export function ThreeRenderView({entity, useContext, provideContext}) {
   provideContext('three.renderView', getRenderView);
 
   let canvasCtx = undefined;
-  // let shouldCommit = false;
 
-  let logOnFrame = true; // TODO remove me
-  let logChromeBugInfo = true; // TODO remove me
+  let logOn1stFrame = true; // TODO remove me
 
   const unsubscribeFromRenderFrame = entity.on('onRenderFrame', Priority.Low, async ({canvas}) => {
     const view = getRenderView();
@@ -50,13 +48,13 @@ export function ThreeRenderView({entity, useContext, provideContext}) {
       if (!multiViewRenderer) return;
 
       // TODO remove me:
-      if (logOnFrame) {
+      if (logOn1stFrame) {
         console.log('ThreeRenderView onRenderFrame:renderView', {
           renderView: view,
           canvasCtx: canvasCtx,
           multiViewRenderer,
         });
-        logOnFrame = false;
+        logOn1stFrame = false;
       }
 
       const image = await multiViewRenderer.renderView(view);
@@ -70,12 +68,10 @@ export function ThreeRenderView({entity, useContext, provideContext}) {
         //
         // https://html.spec.whatwg.org/multipage/canvas.html#the-imagebitmaprenderingcontext-interface
         //
+        // UPDATE(2024-05-24): the bug seems to be fixed in chrome
+        //
         if (canvasCtx == null) {
           canvasCtx = canvas.getContext('bitmaprenderer');
-          if (logChromeBugInfo) {
-            console.warn('FIXME when the chrome issue is mainlined: https://issues.chromium.org/issues/41493549');
-            logChromeBugInfo = false;
-          }
         }
         canvasCtx.transferFromImageBitmap(image);
 
