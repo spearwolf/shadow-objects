@@ -27,7 +27,7 @@ describe('chasend events', () => {
     a.viewComponent.setProperty('plah', 666);
     b.viewComponent.setProperty('xyz', [1, 2, 3]);
 
-    a.viewComponent.sendEventToShadows('event1', {foo: 'bar'});
+    a.viewComponent.dispatchShadowObjectsEvent('event1', {foo: 'bar'});
 
     let changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
 
@@ -58,9 +58,9 @@ describe('chasend events', () => {
 
     // ---
 
-    a.viewComponent.sendEventToShadows('event2', 123, ['abc']);
-    b.viewComponent.sendEventToShadows('event4', null, [1, 2, 3]);
-    a.viewComponent.sendEventToShadows('event3', {abc: 'def'}, ['xyz', 666]);
+    a.viewComponent.dispatchShadowObjectsEvent('event2', 123, ['abc']);
+    b.viewComponent.dispatchShadowObjectsEvent('event4', null, [1, 2, 3]);
+    a.viewComponent.dispatchShadowObjectsEvent('event3', {abc: 'def'}, ['xyz', 666]);
 
     changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
 

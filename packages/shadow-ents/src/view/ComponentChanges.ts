@@ -144,7 +144,7 @@ export class ComponentChanges {
   #events: IComponentEvent[] = [];
   #transferables = new Set<Object>();
 
-  sendEvent(type: string, data: unknown, transferables?: Object[]) {
+  createEvent(type: string, data: unknown, transferables?: Object[]) {
     this.#events.push({type, data});
     transferables?.forEach((transferable) => this.#transferables.add(transferable));
     this.#serial++;
@@ -187,7 +187,7 @@ export class ComponentChanges {
           trail.push(this.makeChangePropertyChange());
         }
         if (this.#events.length > 0) {
-          trail.push(this.makeSendEvents());
+          trail.push(this.makeEvents());
         }
         break;
 
@@ -199,7 +199,7 @@ export class ComponentChanges {
     }
   }
 
-  makeSendEvents(): ISendEvents {
+  makeEvents(): ISendEvents {
     const event: ISendEvents = {
       type: ComponentChangeType.SendEvents,
       uuid: this.#uuid,

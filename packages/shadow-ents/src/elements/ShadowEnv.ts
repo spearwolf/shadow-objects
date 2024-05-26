@@ -57,13 +57,13 @@ export class ShadowEnv extends ShadowEntity implements IShadowEnvElement {
     if (env) {
       console.debug('[shadow-env] resetEnv');
 
-      env.view.resetChangesFromMemory();
+      env.view.reCreateChanges();
       this.syncShadowObjects();
     }
   }
 
   protected createShadowEnv() {
-    // TODO what should happen when we change the namespace ? maybe "contextLost", resetChangesFromMemory() here ?
+    // TODO what should happen when we change the namespace ? maybe "contextLost", reCreateChanges() here ?
     const env = new BaseEnv(this.ns);
     env.start();
     this.#env = env;

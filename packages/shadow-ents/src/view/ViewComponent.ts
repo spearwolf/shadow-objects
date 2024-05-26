@@ -128,14 +128,14 @@ export class ViewComponent {
     this.#context.removeProperty(this, name);
   }
 
-  sendEventToShadows(type: string, data: unknown, transferables?: Object[]) {
-    this.#context.sendEventToShadows(this, type, data, transferables);
+  dispatchShadowObjectsEvent(type: string, data: unknown, transferables?: Object[]) {
+    this.#context.dispatchShadowObjectsEvent(this, type, data, transferables);
   }
 
-  sendEventToView(type: string, data: unknown) {
+  dispatchEvent(type: string, data: unknown) {
     this.emit(type, data);
     for (const child of this.#context!.getChildren(this)) {
-      child.sendEventToView(type, data);
+      child.dispatchEvent(type, data);
     }
   }
 

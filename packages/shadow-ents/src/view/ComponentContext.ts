@@ -162,22 +162,6 @@ export class ComponentContext {
     this.#components.get(component.uuid)?.changes.removeProperty(propKey);
   }
 
-  /**
-   * Send events to the shadow-objects in the shadow-env
-   */
-  sendEventToShadows(component: ViewComponent, type: string, data: unknown, transferables?: Object[]) {
-    this.#components.get(component.uuid)?.changes.sendEvent(type, data, transferables);
-  }
-
-  /**
-   * Send events to all view-components
-   */
-  sendEventToView(type: string, data: unknown = undefined) {
-    for (const uuid of this.#rootComponents) {
-      this.#components.get(uuid)?.component.sendEventToView(type, data);
-    }
-  }
-
   changeOrder(component: ViewComponent) {
     if (component.parent) {
       const parentEntry = this.#components.get(component.parent.uuid)!;
@@ -190,23 +174,31 @@ export class ComponentContext {
     this.#components.get(component.uuid)?.changes.changeOrder(component.order);
   }
 
-  clear() {
-    this.#componentMemory.clear();
+  /**
+   * Dispatch an event to the shadow objects linked to the view component
+   */
+  dispatchShadowObjectsEvent(component: ViewComponent, type: string, data: unknown, transferables?: Object[]) {
+    this.#components.get(component.uuid)?.changes.createEvent(type, data, transferables);
+  }
 
-    this.#rootComponents.slice(0).forEach((uuid) => this.removeSubTree(uuid));
-
-    if (this.#rootComponents.length !== 0) {
-      throw new Error('component-context panic: #rootComponents is not empty!');
-    }
-
-    if (this.#components.size !== 0) {
-      throw new Error('component-context panic: #components is not empty!');
+  /**
+   * Dispatch an event to all view component tree roots
+   */
+  dispatchViewComponentsEvent(type: string, data: unknown = undefined) {
+    for (const uuid of this.#rootComponents) {
+      this.#components.get(uuid)?.component.dispatchEvent(type, data);
     }
   }
 
+  /**
+   * Create the component change trails at this point in time.
+   * The next call will only return the differences from the previous call.
+   *
+   * @see {@link ComponentContext.reCreateChanges}
+   */
   buildChangeTrails(clearChanges = true) {
     const pathOfChanges = this.#buildPathOfChanges();
-    const trail: IComponentChangeType[] = [];
+    const trails: IComponentChangeType[] = [];
 
     // console.log(
     //   'path of changes:',
@@ -214,15 +206,15 @@ export class ComponentContext {
     // );
 
     for (const changes of pathOfChanges) {
-      changes.buildChangeTrail(trail, ChangeTrailPhase.StructuralChanges);
+      changes.buildChangeTrail(trails, ChangeTrailPhase.StructuralChanges);
     }
 
     for (const changes of pathOfChanges) {
-      changes.buildChangeTrail(trail, ChangeTrailPhase.ContentUpdates);
+      changes.buildChangeTrail(trails, ChangeTrailPhase.ContentUpdates);
     }
 
     for (const changes of pathOfChanges) {
-      changes.buildChangeTrail(trail, ChangeTrailPhase.Removal);
+      changes.buildChangeTrail(trails, ChangeTrailPhase.Removal);
 
       if (changes.isDestroyed || (changes.isNew && !changes.isCreated)) {
         this.#deleteComponent(changes.uuid);
@@ -231,12 +223,18 @@ export class ComponentContext {
       if (clearChanges) changes.clear();
     }
 
-    this.#componentMemory.write(trail);
+    this.#componentMemory.write(trails);
 
-    return trail;
+    return trails;
   }
 
-  resetChangesFromMemory() {
+  /**
+   * Resets the internal component change states so that all view components are regenerated with the next change trail.
+   * The outstanding events are taken over.
+   *
+   * @see {@link ComponentContext.buildChangeTrails}
+   */
+  reCreateChanges() {
     this.buildChangeTrails(false);
 
     for (const [uuid, cMem] of this.#componentMemory) {
@@ -260,7 +258,21 @@ export class ComponentContext {
 
     this.#componentMemory.clear();
 
-    this.sendEventToView(ContextLost);
+    this.dispatchViewComponentsEvent(ContextLost);
+  }
+
+  clear() {
+    this.#componentMemory.clear();
+
+    this.#rootComponents.slice(0).forEach((uuid) => this.removeSubTree(uuid));
+
+    if (this.#rootComponents.length !== 0) {
+      throw new Error('component-context panic: #rootComponents is not empty!');
+    }
+
+    if (this.#components.size !== 0) {
+      throw new Error('component-context panic: #components is not empty!');
+    }
   }
 
   #deleteComponent(uuid: string) {

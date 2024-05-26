@@ -107,7 +107,7 @@ describe('build-change-trail', () => {
     ]);
   });
 
-  it('resetChangesFromMemory', () => {
+  it('reCreateChanges', () => {
     const [a, b, c, d, e, f, localEnv] = findElementsById('a', 'b', 'c', 'd', 'e', 'f', 'localEnv');
     const cc = localEnv.getComponentContext();
 
@@ -116,13 +116,13 @@ describe('build-change-trail', () => {
 
     let changeTrail = cc.buildChangeTrails();
 
-    cc.resetChangesFromMemory();
+    cc.reCreateChanges();
 
     changeTrail = cc.buildChangeTrails();
 
     expect(contextLostSpy.calledOnce, 'contextLostSpy').to.be.true;
 
-    // console.log('resetChangesFromMemory', JSON.stringify(changeTrail, null, 2));
+    // console.log('reCreateChanges', JSON.stringify(changeTrail, null, 2));
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
       {
@@ -162,7 +162,7 @@ describe('build-change-trail', () => {
     ]);
   });
 
-  it('resetChangesFromMemory with change gap', () => {
+  it('reCreateChanges with change gap', () => {
     const [a, b, c, d, e, f, localEnv] = findElementsById('a', 'b', 'c', 'd', 'e', 'f', 'localEnv');
     const cc = localEnv.getComponentContext();
 
@@ -174,16 +174,16 @@ describe('build-change-trail', () => {
 
     e.append(c);
 
-    a.viewComponent.sendEventToShadows('event2', 123, ['abc']);
-    b.viewComponent.sendEventToShadows('event4', null, [1, 2, 3]);
+    a.viewComponent.dispatchShadowObjectsEvent('event2', 123, ['abc']);
+    b.viewComponent.dispatchShadowObjectsEvent('event4', null, [1, 2, 3]);
 
-    cc.resetChangesFromMemory();
+    cc.reCreateChanges();
 
-    a.viewComponent.sendEventToShadows('event3', {abc: 'def'}, ['xyz', 666]);
+    a.viewComponent.dispatchShadowObjectsEvent('event3', {abc: 'def'}, ['xyz', 666]);
 
     changeTrail = cc.buildChangeTrails();
 
-    // console.log('resetChangesFromMemory with change gap', JSON.stringify(changeTrail, null, 2));
+    // console.log('reCreateChanges with change gap', JSON.stringify(changeTrail, null, 2));
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
       {

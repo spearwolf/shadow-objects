@@ -52,7 +52,7 @@ This file contains an overview of all TODO, FIXME or XXX comments extracted from
 | [packages/shadow-ents/src/elements/ShadowEntity.ts](packages/shadow-ents/src/elements/ShadowEntity.ts#L254) | 254 | disconnect and reconnect to shadow tree |
 | [packages/shadow-ents/src/elements/ShadowEntity.ts](packages/shadow-ents/src/elements/ShadowEntity.ts#L315) | 315 | a namespace change should trigger a re-connection of all descendants |
 | [packages/shadow-ents/src/elements/ShadowEntity.ts](packages/shadow-ents/src/elements/ShadowEntity.ts#L322) | 322 | reconnect to shadow tree |
-| [packages/shadow-ents/src/elements/ShadowEnv.ts](packages/shadow-ents/src/elements/ShadowEnv.ts#L66) | 66 | what should happen when we change the namespace ? maybe "contextLost", resetChangesFromMemory() here ? |
+| [packages/shadow-ents/src/elements/ShadowEnv.ts](packages/shadow-ents/src/elements/ShadowEnv.ts#L66) | 66 | what should happen when we change the namespace ? maybe "contextLost", reCreateChanges() here ? |
 | [packages/shadow-ents/src/entities/Entity.ts](packages/shadow-ents/src/entities/Entity.ts#L244) | 244 | @test write tests for useContext() |
 | [packages/shadow-ents/src/entities/Entity.ts](packages/shadow-ents/src/entities/Entity.ts#L250) | 250 | @test write tests for provideContext() |
 | [packages/shadow-ents/src/entities/events.ts](packages/shadow-ents/src/entities/events.ts#L7) | 7 | @test test if OnCreate is called when an entity token is changed |
