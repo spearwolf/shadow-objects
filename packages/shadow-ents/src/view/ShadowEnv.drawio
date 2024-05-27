@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram name="Seite-1" id="qJ4vABtUxzLaA0-g0SjJ">
-        <mxGraphModel dx="982" dy="826" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+        <mxGraphModel dx="982" dy="827" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -25,7 +25,7 @@
                 <mxCell id="L0xOBzSdBNHgVUkidRTV-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeColor=default;endArrow=none;endFill=0;" parent="1" source="L0xOBzSdBNHgVUkidRTV-6" target="L0xOBzSdBNHgVUkidRTV-2" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="L0xOBzSdBNHgVUkidRTV-6" value="&lt;i&gt;shadow objects enviroment&lt;/i&gt;" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                <mxCell id="L0xOBzSdBNHgVUkidRTV-6" value="&lt;i&gt;shadow object&amp;nbsp;enviroment&lt;/i&gt;" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="440" y="200" width="280" height="290" as="geometry"/>
                 </mxCell>
                 <mxCell id="L0xOBzSdBNHgVUkidRTV-11" value="MessageRouter" style="rounded=0;whiteSpace=wrap;html=1;" parent="L0xOBzSdBNHgVUkidRTV-6" vertex="1">
