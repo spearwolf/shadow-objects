@@ -32,7 +32,7 @@ The [component context](./ComponentContext.md) with the [view components](./View
 
 | type | description |
 |-|-|
-| `onSync` | A _change trail_ has been transferred to the _shadow object environment_. |
+| `afterSync` | A _change trail_ has been transferred to the _shadow object environment_. |
 | `contextCreated` | A new environment has been created. |
 | `contextLost` | An existing environment has been destroyed. |
 
