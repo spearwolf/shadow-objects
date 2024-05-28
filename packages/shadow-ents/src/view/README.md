@@ -6,9 +6,9 @@ The _ShadowEnv_ class connects the _view_ with the _shadow object environment_ a
 
 The _view_ consists of the [ComponentContext](./ComponentContext.md) and the [view components](./ViewComponent.md) contained within it.
 
-The _shadow object environment_ is the runtime environment for all _shadow objects_ and consists of the _MessageRouter_, the _Kernel_, and the _Registry_.
+The [shadow object environment](#shadow-object-environment) is the runtime environment for all _shadow objects_ and consists of the _MessageRouter_, the _Kernel_, and the _Registry_.
 
-The _shadow object environment_ can be in the same browser main thread "local" or alternatively a remote environment, e.g. in a separate web worker.
+The [shadow object environment](#shadow-object-environment) can be in the same browser main thread "local" or alternatively a remote environment, e.g. in a separate web worker.
 
 ## API
 
@@ -18,43 +18,118 @@ The _ShadowEnv_ class API is simple, consisting of a few properties, methods and
 
 #### Properties
 
-**.view:** _ComponentContext_
+> **.view:** _ComponentContext_
 
-**.shadowObjectEnvironment:** _IShadowObjectEnvironment_
+The [component context](./ComponentContext.md) with the [view components](./ViewComponent.md).
+
+> **.shadowObjectEnvironment:** _IShadowObjectEnvironment_
 
 #### Methods
 
-**.sync():** _Promise&lt;void&gt;_
+> **.sync():** _Promise&lt;void&gt;_
 
 #### Events
 
-- `onSync`
-- `contextCreated`
-- `contextLost`
+| type | description |
+|-|-|
+| `onSync` | A _change trail_ has been transferred to the _shadow object environment_. |
+| `contextCreated` | A new environment has been created. |
+| `contextLost` | An existing environment has been destroyed. |
 
 
-### IShadowObjectEnvironment
+### Shadow Object Environment
 
-Whether it is local or remote, a _shadow object environment_ always provides the following API:
+Whether it is local or remote, a _shadow object environment_ always you to import user-defined scripts, configure the routing and apply the change trails.
 
-#### Methods
+<table>
+<thead>
+<tr>
+<td><em><small>Domain</small></em></td>
+<td><em><small>API</small></em></td>
+<td><em><small>Description</small></em></td>
+</tr>
+</thead>
 
-> **.importScript(url):** _Promise&lt;void&gt;_
+<tr>
+<td>
+<b>APPLY</b><br><small>change trail</small>
+</td>
+<td>
 
-Import a javascript module into the _shadow object environment_. the module can register _shadow objects_ components using the _token_ or define _routing_ rules for the _MessageRouter_.
+```ts
+.applyChangeTrail(data): Promise<void>
+```
 
-
-> **.configure(data):** _void_
-
-Configure _routing_ rules for the _MessageRouter_.
-
-
-> **.applyChangeTrail(data):** _Promise&lt;void&gt;_
+</td>
+<td>
 
 Apply the _change trail_ in the _shadow object environment_. the _change trail_ is interpreted by the _Kernel_ and as a result the _shadow objects_ are created, updated or destroyed. based on the _routing_ rules.
 
+</td>
+</tr>
 
-> **.destroy():** _void_
+<tr>
+<td rowspan=2>
+<b>CONFIGURE</b><br><small>routing and import scripts</small>
+</td>
+<td>
+
+```ts
+.importScript(url): Promise<void>
+```
+
+</td>
+<td>
+
+Import a javascript module into the _shadow object environment_. the module can register _shadow objects_ components using the _token_ or define _routing_ rules for the _MessageRouter_.
+
+</td>
+</tr>
+<tr>
+<td>
+
+```ts
+.configure(data): void
+```
+
+</td>
+<td>
+
+Configure _routing_ rules for the _MessageRouter_.
+
+</td>
+</tr>
+<tr>
+
+<tr>
+<td rowspan=2>
+<b>LIFECYCLE</b><br><small>of shadow objects</small>
+</td>
+<td>
+
+_TODO_
+
+</td>
+<td>
+
+Create a *shadow object environment* instance!
+
+</td>
+</tr>
+<tr>
+<td>
+
+```ts
+.destroy()
+```
+
+</td>
+<td>
 
 Destroy the entire environment with all instances of shadow objects.
 Reset the routing rules and forget about the modules that were imported.
+
+</td>
+</tr>
+
+</table>
