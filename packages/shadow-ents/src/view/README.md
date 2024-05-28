@@ -19,13 +19,13 @@ The _ShadowEnv_ class API is simple, consisting of a few properties, methods and
 
 #### Properties
 
-> **.view:** _ComponentContext_
+> **.view:** [ComponentContext](./ComponentContext.ts)
 
 The [component context](./ComponentContext.md) with the [view components](./ViewComponent.md).
 
-> **.shadowObjectEnvironment:** _IShadowObjectEnvironment_
+> **.envProxy:** [IShadowObjectEnvProxy](./IShadowObjectEnvProxy.ts)
 
-A proxy that acts as a gateway between the _document main thread_ and the _remote_ environment.
+A proxy that acts as a gateway between the _document main thread_ and the [shadow object environment](#shadow-object-environment).
 
 
 #### Methods

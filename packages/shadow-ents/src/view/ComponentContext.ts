@@ -1,7 +1,7 @@
 import {removeFrom} from '../array-utils.js';
 import {ChangeTrailPhase, ContextLost} from '../constants.js';
 import {toNamespace} from '../toNamespace.js';
-import type {IComponentChangeType, NamespaceType} from '../types.js';
+import type {ChangeTrailType, IComponentChangeType, NamespaceType} from '../types.js';
 import {ComponentChanges} from './ComponentChanges.js';
 import {ComponentMemory} from './ComponentMemory.js';
 import type {ViewComponent} from './ViewComponent.js';
@@ -196,7 +196,7 @@ export class ComponentContext {
    *
    * @see {@link ComponentContext.reCreateChanges}
    */
-  buildChangeTrails(clearChanges = true) {
+  buildChangeTrails(clearChanges = true): ChangeTrailType {
     const pathOfChanges = this.#buildPathOfChanges();
     const trails: IComponentChangeType[] = [];
 

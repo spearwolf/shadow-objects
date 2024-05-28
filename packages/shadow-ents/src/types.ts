@@ -1,5 +1,7 @@
 import type {ComponentChangeType} from './constants.js';
 
+export type ChangeTrailType = IComponentChangeType[];
+
 export type TransferablesType = object[];
 
 export interface IComponentChange {
