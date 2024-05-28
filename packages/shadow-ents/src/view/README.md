@@ -16,6 +16,7 @@ The [shadow object environment](#shadow-object-environment) can be in the same b
 
 The _ShadowEnv_ class API is simple, consisting of a few properties, methods and events.
 
+
 #### Properties
 
 > **.view:** _ComponentContext_
@@ -24,9 +25,13 @@ The [component context](./ComponentContext.md) with the [view components](./View
 
 > **.shadowObjectEnvironment:** _IShadowObjectEnvironment_
 
+A proxy that acts as a gateway between the _document main thread_ and the _remote_ environment.
+
+
 #### Methods
 
 > **.sync():** _Promise&lt;void&gt;_
+
 
 #### Events
 
