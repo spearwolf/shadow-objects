@@ -35,6 +35,10 @@ export class ComponentMemory {
     this.#components.clear();
   }
 
+  isEmpty() {
+    return this.#components.size === 0;
+  }
+
   hasComponentState(uuid: string) {
     return this.#components.has(uuid);
   }

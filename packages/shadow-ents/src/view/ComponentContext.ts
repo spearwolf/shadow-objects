@@ -87,6 +87,10 @@ export class ComponentContext {
     return this.#components.has(component.uuid);
   }
 
+  hasComponents() {
+    return this.#components.size > 0;
+  }
+
   isRootComponent(component: ViewComponent) {
     return this.#rootComponents.includes(component.uuid);
   }
@@ -197,8 +201,11 @@ export class ComponentContext {
    * @see {@link ComponentContext.reCreateChanges}
    */
   buildChangeTrails(clearChanges = true): ChangeTrailType {
-    const pathOfChanges = this.#buildPathOfChanges();
     const trails: IComponentChangeType[] = [];
+
+    if (!this.hasComponents()) return trails;
+
+    const pathOfChanges = this.#buildPathOfChanges();
 
     // console.log(
     //   'path of changes:',
@@ -235,6 +242,8 @@ export class ComponentContext {
    * @see {@link ComponentContext.buildChangeTrails}
    */
   reCreateChanges() {
+    if (this.#componentMemory.isEmpty()) return;
+
     this.buildChangeTrails(false);
 
     for (const [uuid, cMem] of this.#componentMemory) {
