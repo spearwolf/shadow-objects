@@ -1,8 +1,8 @@
 import {LocalEnv} from '../view/env/LocalEnv.js';
-import {ShadowEnv} from './ShadowEnv.js';
+import {ShadowEnvElement} from './ShadowEnvElement.js';
 import {ShadowElementType} from './constants.js';
 
-export class ShadowLocalEnv extends ShadowEnv {
+export class ShadowLocalEnvElement extends ShadowEnvElement {
   override readonly shadowTypes = new Set([ShadowElementType.ShadowLocalEnv, ShadowElementType.ShadowEnv]);
 
   #env?: LocalEnv;

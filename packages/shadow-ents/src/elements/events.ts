@@ -1,9 +1,9 @@
-import type {ShadowEntity} from './ShadowEntity.js';
+import type {ShadowEntityElement} from './ShadowEntityElement.js';
 import type {RequestContextEventName, ShadowElementType} from './constants.js';
 
 export interface RequestContextEvent extends CustomEvent {
   detail: {
-    requester: ShadowEntity;
+    requester: ShadowEntityElement;
     types: ShadowElementType[];
   };
 }

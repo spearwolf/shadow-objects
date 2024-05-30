@@ -1,5 +1,5 @@
 import {expect} from '@esm-bundle/chai';
-import {ComponentContext, ShadowEntity, ShadowLocalEnv} from '@spearwolf/shadow-ents';
+import {ComponentContext, ShadowEntityElement, ShadowLocalEnvElement} from '@spearwolf/shadow-ents';
 import '@spearwolf/shadow-ents/shadow-entity.js';
 import {findElementsById} from '../src/findElementsById.js';
 import {render} from '../src/render.js';
@@ -26,8 +26,8 @@ describe('local-env entities', () => {
     ComponentContext.get().clear();
   });
 
-  it('localEnv is a ShadowLocalEnv element', () => {
-    expect(document.getElementById('localEnv')).to.be.an.instanceof(ShadowLocalEnv);
+  it('localEnv is a ShadowLocalEnvElement element', () => {
+    expect(document.getElementById('localEnv')).to.be.an.instanceof(ShadowLocalEnvElement);
   });
 
   it('localEnv has a component-context', () => {
@@ -35,28 +35,28 @@ describe('local-env entities', () => {
     expect(localEnv.getComponentContext(), 'localEnv.getComponentContext()').to.exist;
   });
 
-  it('a is a ShadowEntity element', () => {
-    expect(document.getElementById('a')).to.be.an.instanceof(ShadowEntity);
+  it('a is a ShadowEntityElement element', () => {
+    expect(document.getElementById('a')).to.be.an.instanceof(ShadowEntityElement);
   });
 
-  it('b is a ShadowEntity element', () => {
-    expect(document.getElementById('b')).to.be.an.instanceof(ShadowEntity);
+  it('b is a ShadowEntityElement element', () => {
+    expect(document.getElementById('b')).to.be.an.instanceof(ShadowEntityElement);
   });
 
-  it('c is a ShadowEntity element', () => {
-    expect(document.getElementById('c')).to.be.an.instanceof(ShadowEntity);
+  it('c is a ShadowEntityElement element', () => {
+    expect(document.getElementById('c')).to.be.an.instanceof(ShadowEntityElement);
   });
 
-  it('d is a ShadowEntity element', () => {
-    expect(document.getElementById('d')).to.be.an.instanceof(ShadowEntity);
+  it('d is a ShadowEntityElement element', () => {
+    expect(document.getElementById('d')).to.be.an.instanceof(ShadowEntityElement);
   });
 
-  it('e is a ShadowEntity element', () => {
-    expect(document.getElementById('e')).to.be.an.instanceof(ShadowEntity);
+  it('e is a ShadowEntityElement element', () => {
+    expect(document.getElementById('e')).to.be.an.instanceof(ShadowEntityElement);
   });
 
-  it('f is a ShadowEntity element', () => {
-    expect(document.getElementById('f')).to.be.an.instanceof(ShadowEntity);
+  it('f is a ShadowEntityElement element', () => {
+    expect(document.getElementById('f')).to.be.an.instanceof(ShadowEntityElement);
   });
 
   it('a is parent of b', () => {

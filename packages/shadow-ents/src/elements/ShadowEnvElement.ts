@@ -2,10 +2,10 @@ import {GlobalNS} from '../constants.js';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {BaseEnv} from '../view/env/BaseEnv.js';
 import type {IShadowEnvElement} from './IShadowEnvElement.js';
-import {ShadowEntity} from './ShadowEntity.js';
+import {ShadowEntityElement} from './ShadowEntityElement.js';
 import {ShadowElementType} from './constants.js';
 
-export class ShadowEnv extends ShadowEntity implements IShadowEnvElement {
+export class ShadowEnvElement extends ShadowEntityElement implements IShadowEnvElement {
   override readonly contextTypes: ShadowElementType[] = [];
 
   override readonly shadowTypes = new Set([ShadowElementType.ShadowEnv]);

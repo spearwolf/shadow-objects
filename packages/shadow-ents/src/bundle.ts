@@ -1,4 +1,4 @@
-import {ShadowWorker} from './elements/ShadowWorker.js';
+import {ShadowWorkerElement} from './elements/ShadowWorkerElement.js';
 
 import './shadow-entity.js';
 import './shadow-env.js';
@@ -8,7 +8,7 @@ import './shadow-worker.js';
 // @ts-ignore
 import Worker from './bundle.worker.js';
 
-ShadowWorker.createWorker = () => new Worker();
+ShadowWorkerElement.createWorker = () => new Worker();
 
 declare global {
   interface Window {

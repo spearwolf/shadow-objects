@@ -7,8 +7,8 @@ import type {ViewComponent} from '../view/ViewComponent.js';
 import {BaseEnv} from '../view/env/BaseEnv.js';
 import {FrameLoop} from './FrameLoop.js';
 import {ReRequestContext} from './ReRequestContext.js';
-import type {ShadowEntity} from './ShadowEntity.js';
-import type {ShadowEnv} from './ShadowEnv.js';
+import type {ShadowEntityElement} from './ShadowEntityElement.js';
+import type {ShadowEnvElement} from './ShadowEnvElement.js';
 import {attachShadowEntity} from './attachShadowEntity.js';
 import {attachSignal} from './attachSignal.js';
 import {machine} from './shadow-worker/state-machine.js';
@@ -44,12 +44,12 @@ const prepareChangeTrail = (data: SyncEvent): [SyncEvent, TransferablesType | un
   return [data, transferables];
 };
 
-export interface ShadowWorker extends EventizeApi {
+export interface ShadowWorkerElement extends EventizeApi {
   viewComponent?: ViewComponent;
   viewComponent$: SignalReader<ViewComponent | undefined>;
 
-  shadowEntity?: ShadowEntity;
-  shadowEntity$: SignalReader<ShadowEntity | undefined>;
+  shadowEntity?: ShadowEntityElement;
+  shadowEntity$: SignalReader<ShadowEntityElement | undefined>;
 
   syncShadowObjects(): void;
 
@@ -59,7 +59,7 @@ export interface ShadowWorker extends EventizeApi {
   autoSync: string;
 }
 
-export class ShadowWorker extends HTMLElement {
+export class ShadowWorkerElement extends HTMLElement {
   static createWorker() {
     return new Worker(new URL('../shadow-ents.worker.js', import.meta.url), {type: 'module'});
   }
@@ -74,7 +74,7 @@ export class ShadowWorker extends HTMLElement {
   reRequestContextTypes = [1, 2]; // we use <shadow-env> and <shadow-entity> components in this element
 
   readonly shadow: ShadowRoot;
-  readonly shadowEnvElement: ShadowEnv;
+  readonly shadowEnvElement: ShadowEnvElement;
 
   worker?: Worker;
 
@@ -93,7 +93,7 @@ export class ShadowWorker extends HTMLElement {
     this.shadow = this.attachShadow({mode: 'open'});
     this.shadow.innerHTML = initialHTML;
 
-    this.shadowEnvElement = this.shadow.getElementById('env') as ShadowEnv;
+    this.shadowEnvElement = this.shadow.getElementById('env') as ShadowEnvElement;
     attachShadowEntity(this, this.shadow.getElementById('root'));
 
     this.on('viewComponent', this.#onViewComponent.bind(this));
@@ -268,7 +268,7 @@ export class ShadowWorker extends HTMLElement {
   }
 
   async #loadWorker(src: string) {
-    this.preWorker = ShadowWorker.createWorker();
+    this.preWorker = ShadowWorkerElement.createWorker();
 
     try {
       await waitForMessageOfType(this.preWorker, Loaded, WorkerLoadTimeout);

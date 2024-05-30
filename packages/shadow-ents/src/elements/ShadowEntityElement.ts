@@ -12,7 +12,7 @@ import {RequestContextEventName, ShadowElementType} from './constants.js';
 import type {RequestContextEvent} from './events.js';
 import {isShadowElement} from './isShadowElement.js';
 
-export class ShadowEntity extends HTMLElement {
+export class ShadowEntityElement extends HTMLElement {
   static observedAttributes = ['ns', 'token'];
 
   readonly isShadowElement = true;
@@ -37,8 +37,8 @@ export class ShadowEntity extends HTMLElement {
 
   readonly #ns: SignalFuncs<NamespaceType> = createSignal(GlobalNS);
 
-  #contextElements = new Map<ShadowElementType, SignalFuncs<ShadowEntity | undefined>>();
-  #contextChildren = new Map<ShadowElementType, ShadowEntity[]>();
+  #contextElements = new Map<ShadowElementType, SignalFuncs<ShadowEntityElement | undefined>>();
+  #contextChildren = new Map<ShadowElementType, ShadowEntityElement[]>();
 
   #reRequestContext = new ReRequestContext();
   #unsubscribeReRequestContext?: () => void;
@@ -90,7 +90,7 @@ export class ShadowEntity extends HTMLElement {
     }
   }
 
-  #onParentEntityChanged(parent: ShadowEntity | undefined) {
+  #onParentEntityChanged(parent: ShadowEntityElement | undefined) {
     if (parent) {
       const con = connect(parent.viewComponent$, this.parentViewComponent$);
       return () => {
@@ -149,11 +149,11 @@ export class ShadowEntity extends HTMLElement {
     this.#ns[1](toNamespace(value));
   }
 
-  get parentEntity(): ShadowEntity | undefined {
+  get parentEntity(): ShadowEntityElement | undefined {
     return this.parentEntity$();
   }
 
-  get parentEntity$(): SignalReader<ShadowEntity | undefined> {
+  get parentEntity$(): SignalReader<ShadowEntityElement | undefined> {
     return this.getContextByType$$(ShadowElementType.ShadowEntity)?.[0];
   }
 
@@ -162,20 +162,20 @@ export class ShadowEntity extends HTMLElement {
    *
    * This is the _shadow-context_ element.
    *
-   * Only the types defined in {@link ShadowEntity.contextTypes} can have context elements.
+   * Only the types defined in {@link ShadowEntityElement.contextTypes} can have context elements.
    */
-  getContextByType(shadowType: ShadowElementType): ShadowEntity | undefined {
+  getContextByType(shadowType: ShadowElementType): ShadowEntityElement | undefined {
     const getParent = this.getContextByType$$(shadowType)?.[0];
     return getParent ? value(getParent) : undefined;
   }
 
-  setContextByType(element: ShadowEntity, type: ShadowElementType) {
+  setContextByType(element: ShadowEntityElement, type: ShadowElementType) {
     this.getContextByType$$(type)?.[1](element ?? undefined);
   }
 
-  getContextByType$$(shadowType: ShadowElementType): SignalFuncs<ShadowEntity | undefined> {
+  getContextByType$$(shadowType: ShadowElementType): SignalFuncs<ShadowEntityElement | undefined> {
     if (!this.#contextElements.has(shadowType) && this.contextTypes.includes(shadowType)) {
-      const context$$ = createSignal<ShadowEntity | undefined>();
+      const context$$ = createSignal<ShadowEntityElement | undefined>();
       this.#contextElements.set(shadowType, context$$);
 
       const [runContextCallbacks] = createEffect(
@@ -256,15 +256,15 @@ export class ShadowEntity extends HTMLElement {
     console.warn('TODO adoptedCallback', {shadowEntity: this});
   }
 
-  onChildRemovedFromContext(child: ShadowEntity, type: ShadowElementType) {
+  onChildRemovedFromContext(child: ShadowEntityElement, type: ShadowElementType) {
     this.#removeContextChild(child, type);
   }
 
-  onAttachedToContext(parent: ShadowEntity, type: ShadowElementType) {
+  onAttachedToContext(parent: ShadowEntityElement, type: ShadowElementType) {
     parent.#addContextChild(this, type);
   }
 
-  #addContextChild(child: ShadowEntity, type: ShadowElementType) {
+  #addContextChild(child: ShadowEntityElement, type: ShadowElementType) {
     if (!this.#contextChildren.has(type)) {
       this.#contextChildren.set(type, []);
     }
@@ -276,7 +276,7 @@ export class ShadowEntity extends HTMLElement {
     }
   }
 
-  #removeContextChild(child: ShadowEntity, type: ShadowElementType) {
+  #removeContextChild(child: ShadowEntityElement, type: ShadowElementType) {
     if (this.#contextChildren.has(type)) {
       const children = this.#contextChildren.get(type)!;
       const idx = children.indexOf(child);
@@ -292,7 +292,7 @@ export class ShadowEntity extends HTMLElement {
    * The element must be of the type defined in {@link shadowTypes}.
    * If it is not, then the result will be `undefined`.
    */
-  getChildrenOfContext(type: ShadowElementType): ShadowEntity[] | undefined {
+  getChildrenOfContext(type: ShadowElementType): ShadowEntityElement[] | undefined {
     const children = this.#contextChildren.get(type);
     if (children != null) {
       return children;
