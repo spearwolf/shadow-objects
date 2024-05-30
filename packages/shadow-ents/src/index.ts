@@ -12,6 +12,7 @@ export * from './entities/events.js';
 export * from './toNamespace.js';
 export * from './view/ComponentContext.js';
 export * from './view/ComponentMemory.js';
+export * from './view/LocalShadowObjectEnv.js';
 export * from './view/ShadowEnv.js';
 export * from './view/ViewComponent.js';
 export * from './view/env/BaseEnv.js';
