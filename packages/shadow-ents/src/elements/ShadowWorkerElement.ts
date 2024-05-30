@@ -66,7 +66,6 @@ export class ShadowWorkerElement extends HTMLElement {
 
   static observedAttributes = ['src', 'auto-sync'];
 
-  #reRequestContext = new ReRequestContext();
   #changeTrailQueue: SyncEvent[] = [];
   #resetEnvNext = false;
   #waitingForNextWorker = false;
@@ -197,7 +196,7 @@ export class ShadowWorkerElement extends HTMLElement {
   }
 
   connectedCallback() {
-    this.#reRequestContext.callToRequestContext(this.reRequestContextTypes);
+    ReRequestContext.get().callToRequestContext(this.reRequestContextTypes);
     this.setIsConnected(true);
     this.actor.send({type: 'updateConnectedState', connected: true});
   }

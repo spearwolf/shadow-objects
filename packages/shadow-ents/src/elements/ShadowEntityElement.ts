@@ -40,7 +40,6 @@ export class ShadowEntityElement extends HTMLElement {
   #contextElements = new Map<ShadowElementType, SignalFuncs<ShadowEntityElement | undefined>>();
   #contextChildren = new Map<ShadowElementType, ShadowEntityElement[]>();
 
-  #reRequestContext = new ReRequestContext();
   #unsubscribeReRequestContext?: () => void;
 
   constructor() {
@@ -373,7 +372,7 @@ export class ShadowEntityElement extends HTMLElement {
 
   #subscribeToReRequestContext() {
     this.#unsubscribeReRequestContext?.();
-    this.#unsubscribeReRequestContext = this.#reRequestContext.onReRequestContext(this.contextTypes, () => {
+    this.#unsubscribeReRequestContext = ReRequestContext.get().onReRequestContext(this.contextTypes, () => {
       if (this.connected) {
         this.#dispatchRequestContextEvent();
       }

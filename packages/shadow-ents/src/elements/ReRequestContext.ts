@@ -8,6 +8,10 @@ const OnReRequestContext = 'onReRequestContext';
 export interface ReRequestContext extends EventizeApi {}
 
 export class ReRequestContext {
+  static get(): ReRequestContext {
+    return gSingelton ?? new ReRequestContext();
+  }
+
   constructor() {
     if (gSingelton) {
       return gSingelton;
