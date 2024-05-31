@@ -37,6 +37,7 @@ export class Kernel extends Eventize {
   registry: Registry;
 
   #entities: Map<string, EntityEntry> = new Map();
+  #rootEntities: Set<string> = new Set();
 
   constructor(registry?: Registry) {
     super();
@@ -53,6 +54,44 @@ export class Kernel extends Eventize {
 
   hasEntity(uuid: string): boolean {
     return this.#entities.has(uuid);
+  }
+
+  traverseLevelOrder(): Entity[] {
+    const lvl = new Map<number, Entity[]>();
+
+    const traverse = (uuid: string, depth: number) => {
+      const e = this.getEntity(uuid);
+
+      if (lvl.has(depth)) {
+        lvl.get(depth).push(e);
+      } else {
+        lvl.set(depth, [e]);
+      }
+
+      for (const child of e.children) {
+        traverse(child.uuid, depth + 1);
+      }
+    };
+
+    this.#rootEntities.forEach((uuid) => traverse(uuid, 0));
+
+    return Array.from(lvl.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([, entities]) => entities)
+      .flat();
+  }
+
+  upgradeEntities(): void {
+    const entities = this.traverseLevelOrder();
+    const reversedEntities = entities.slice().reverse();
+
+    for (const entity of reversedEntities) {
+      this.updateShadowObjects(entity.uuid, {create: false});
+    }
+
+    for (const entity of entities) {
+      this.updateShadowObjects(entity.uuid, {destroy: false});
+    }
   }
 
   run(event: SyncEvent): void {
@@ -96,20 +135,24 @@ export class Kernel extends Eventize {
   }
 
   createEntity(uuid: string, token: string, parentUuid?: string, order = 0, properties?: [string, unknown][]): void {
-    const entity = new Entity(this, uuid);
+    const e = new Entity(this, uuid);
 
-    entity.order = order;
+    e.order = order;
 
-    const entityEntry: EntityEntry = {token, entity, usedConstructors: new Map()};
+    const entry: EntityEntry = {token, entity: e, usedConstructors: new Map()};
 
-    this.#entities.set(uuid, entityEntry);
+    this.#entities.set(uuid, entry);
 
     if (parentUuid) {
-      entity.parentUuid = parentUuid;
+      e.parentUuid = parentUuid;
+    }
+
+    if (!e.hasParent) {
+      this.#rootEntities.add(uuid);
     }
 
     if (properties) {
-      entity.setProperties(properties);
+      e.setProperties(properties);
     }
 
     this.createShadowObjects(uuid);
@@ -117,16 +160,28 @@ export class Kernel extends Eventize {
 
   destroyEntity(uuid: string): void {
     const e = this.getEntity(uuid);
+
     e.emit(onDestroy, this);
+
     this.#entities.delete(uuid);
+    this.#rootEntities.delete(uuid);
   }
 
   setParent(uuid: string, parentUuid?: string, order = 0): void {
     const e = this.getEntity(uuid);
+
     if (e.parentUuid === parentUuid && e.order === order) return;
+
     e.removeFromParent();
+
     e.order = order;
     e.parentUuid = parentUuid;
+
+    if (e.hasParent) {
+      this.#rootEntities.delete(uuid);
+    } else {
+      this.#rootEntities.add(uuid);
+    }
   }
 
   updateOrder(uuid: string, order: number): void {
@@ -157,33 +212,38 @@ export class Kernel extends Eventize {
    * Create or destroy the shadow-objects of an entity using the registered constructors.
    * After a token change or registry changes, an entity may be given different shadow-objects.
    */
-  updateShadowObjects(uuid: string): void {
+  private updateShadowObjects(uuid: string, options?: {destroy?: boolean; create?: boolean}): void {
     if (!this.#entities.has(uuid)) return;
 
     const entity = this.#entities.get(uuid);
+
     const nextConstructors = new Set(this.registry.findConstructors(entity.token));
 
-    // destroy all shadow-objects created by constructors no longer in the list
-    //
-    for (const [constructor, shadowObjects] of entity.usedConstructors) {
-      if (!nextConstructors.has(constructor)) {
-        entity.usedConstructors.delete(constructor);
-        for (const obj of shadowObjects) {
-          this.destroyShadowObject(obj, entity.entity);
+    if (options?.destroy ?? true) {
+      // destroy all shadow-objects created by constructors no longer in the list
+      //
+      for (const [constructor, shadowObjects] of entity.usedConstructors) {
+        if (!nextConstructors.has(constructor)) {
+          entity.usedConstructors.delete(constructor);
+          for (const obj of shadowObjects) {
+            this.destroyShadowObject(obj, entity.entity);
+          }
         }
       }
     }
 
-    // shadow-objects for new constructors are now created using the updated constructor list
-    //
-    for (const constructor of nextConstructors) {
-      if (!entity.usedConstructors.has(constructor)) {
-        this.constructShadowObject(constructor, entity);
+    if (options?.create ?? true) {
+      // shadow-objects for new constructors are now created using the updated constructor list
+      //
+      for (const constructor of nextConstructors) {
+        if (!entity.usedConstructors.has(constructor)) {
+          this.constructShadowObject(constructor, entity);
+        }
       }
     }
   }
 
-  constructShadowObject(constructor: ShadowObjectConstructor, entry: EntityEntry): ShadowObjectType {
+  private constructShadowObject(constructor: ShadowObjectConstructor, entry: EntityEntry): ShadowObjectType {
     const unsubscribe = new Set<() => any>();
 
     const contextReaders = new Map<string | symbol, SignalReader<any>>();
@@ -270,10 +330,11 @@ export class Kernel extends Eventize {
     return shadowObject;
   }
 
-  createShadowObjects(uuid: string): ShadowObjectType[] {
+  private createShadowObjects(uuid: string): void {
     const entry = this.#entities.get(uuid);
-    return this.registry.findConstructors(entry.token)?.map((constructor) => {
-      return this.constructShadowObject(constructor, entry);
+
+    this.registry.findConstructors(entry.token)?.forEach((constructor) => {
+      this.constructShadowObject(constructor, entry);
     });
   }
 
@@ -291,7 +352,7 @@ export class Kernel extends Eventize {
     );
   }
 
-  attachShadowObject(shadowObject: object, entity: Entity): void {
+  private attachShadowObject(shadowObject: object, entity: Entity): void {
     // Like all other objects, the new shadow-object should be able to respond to the events that the entity receives.
     //
     entity.on(shadowObject);
@@ -303,7 +364,7 @@ export class Kernel extends Eventize {
     }
   }
 
-  destroyShadowObject(shadowObject: object, entity: Entity): void {
+  private destroyShadowObject(shadowObject: object, entity: Entity): void {
     if (typeof (shadowObject as OnDestroy)[onDestroy] === 'function') {
       (shadowObject as OnDestroy)[onDestroy](entity);
     }

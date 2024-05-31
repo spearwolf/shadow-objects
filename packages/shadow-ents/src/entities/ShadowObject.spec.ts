@@ -36,7 +36,7 @@ describe('@ShadowObject decorator', () => {
     const uuid = generateUUID();
     kernel.createEntity(uuid, 'test');
 
-    const so = kernel.createShadowObjects(uuid)?.at(-1) as unknown as Foo;
+    const so = kernel.findShadowObjects(uuid)?.at(-1) as unknown as Foo;
 
     expect(so).toBeDefined();
     expect(so).toBeInstanceOf(Foo);
@@ -80,7 +80,7 @@ describe('shadowObject.define API', () => {
     const uuid = generateUUID();
     kernel.createEntity(uuid, 'test2');
 
-    const so = kernel.createShadowObjects(uuid)?.at(-1) as unknown as Foo;
+    const so = kernel.findShadowObjects(uuid)?.at(-1) as unknown as Foo;
 
     expect(so).toBeDefined();
     expect(so).toBeInstanceOf(Foo);

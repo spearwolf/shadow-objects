@@ -9,6 +9,35 @@ describe('Kernel', () => {
     Registry.get().clear();
   });
 
+  it('upgrade entities', () => {
+    @ShadowObject({token: 'foo'})
+    class Foo {}
+
+    @ShadowObject({token: 'bar'})
+    class Bar {}
+
+    expect(Foo).toBeDefined();
+    expect(Bar).toBeDefined();
+
+    const kernel = new Kernel();
+    const [parentUuid, uuid] = [generateUUID(), generateUUID()];
+
+    kernel.createEntity(parentUuid, 'testA');
+    kernel.createEntity(uuid, 'testB', parentUuid);
+
+    expect(kernel.findShadowObjects(parentUuid)).toHaveLength(0);
+    expect(kernel.findShadowObjects(uuid)).toHaveLength(0);
+
+    kernel.registry.appendRoute('testA', ['foo']);
+    kernel.registry.appendRoute('testB', ['bar']);
+    kernel.upgradeEntities();
+
+    expect(kernel.findShadowObjects(parentUuid)).toHaveLength(1);
+    expect(kernel.findShadowObjects(parentUuid)[0]).toBeInstanceOf(Foo);
+    expect(kernel.findShadowObjects(uuid)).toHaveLength(1);
+    expect(kernel.findShadowObjects(uuid)[0]).toBeInstanceOf(Bar);
+  });
+
   it('create shadow-objects by same token', () => {
     @ShadowObject({token: 'test'})
     class Foo {}
@@ -72,7 +101,7 @@ describe('Kernel', () => {
 
     kernel.createEntity(uuid, 'testA');
 
-    let shadowObjects = kernel.findShadowObjects(uuid) as unknown as {name: string}[];
+    let shadowObjects = kernel.findShadowObjects(uuid); // as unknown as {name: string}[];
 
     // console.log(
     //   'shadowObjects before changeToken',
@@ -90,7 +119,7 @@ describe('Kernel', () => {
 
     kernel.changeToken(uuid, 'testB');
 
-    shadowObjects = kernel.findShadowObjects(uuid) as unknown as {name: string}[];
+    shadowObjects = kernel.findShadowObjects(uuid); // as unknown as {name: string}[];
 
     expect(shadowObjects).toHaveLength(2);
 
