@@ -1,3 +1,4 @@
+import type {EventizeApi} from '@spearwolf/eventize';
 import type {ComponentChangeType} from './constants.js';
 
 export type ChangeTrailType = IComponentChangeType[];
@@ -71,5 +72,7 @@ export interface SyncEvent {
 export interface ShadowObjectConstructor {
   new (...args: any[]): {};
 }
+
+export type ShadowObjectType = EventizeApi;
 
 export type NamespaceType = string | symbol;

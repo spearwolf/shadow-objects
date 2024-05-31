@@ -9,7 +9,7 @@ import {
   type SignalReader,
 } from '@spearwolf/signalize';
 import {ComponentChangeType} from '../constants.js';
-import type {IComponentChangeType, IComponentEvent, ShadowObjectConstructor, SyncEvent} from '../types.js';
+import type {IComponentChangeType, IComponentEvent, ShadowObjectConstructor, ShadowObjectType, SyncEvent} from '../types.js';
 import {Entity} from './Entity.js';
 import {Registry} from './Registry.js';
 import {onCreate, onDestroy, type OnCreate, type OnDestroy} from './events.js';
@@ -17,7 +17,7 @@ import {onCreate, onDestroy, type OnCreate, type OnDestroy} from './events.js';
 interface EntityEntry {
   token: string;
   entity: Entity;
-  usedConstructors: Map<ShadowObjectConstructor, Set<object>>;
+  usedConstructors: Map<ShadowObjectConstructor, Set<ShadowObjectType>>;
 }
 
 /**
@@ -51,7 +51,11 @@ export class Kernel extends Eventize {
     return entity;
   }
 
-  run(event: SyncEvent) {
+  hasEntity(uuid: string): boolean {
+    return this.#entities.has(uuid);
+  }
+
+  run(event: SyncEvent): void {
     batch(() => {
       for (const entry of event.changeTrail) {
         this.parse(entry);
@@ -59,7 +63,7 @@ export class Kernel extends Eventize {
     });
   }
 
-  parse(entry: IComponentChangeType) {
+  private parse(entry: IComponentChangeType): void {
     switch (entry.type) {
       case ComponentChangeType.CreateEntities:
         this.createEntity(entry.uuid, entry.token, entry.parentUuid, entry.order, entry.properties);
@@ -91,7 +95,7 @@ export class Kernel extends Eventize {
     }
   }
 
-  createEntity(uuid: string, token: string, parentUuid?: string, order = 0, properties?: [string, unknown][]) {
+  createEntity(uuid: string, token: string, parentUuid?: string, order = 0, properties?: [string, unknown][]): void {
     const entity = new Entity(this, uuid);
 
     entity.order = order;
@@ -108,16 +112,16 @@ export class Kernel extends Eventize {
       entity.setProperties(properties);
     }
 
-    this.createShadowObjects(token, entityEntry);
+    this.createShadowObjects(uuid);
   }
 
-  destroyEntity(uuid: string) {
+  destroyEntity(uuid: string): void {
     const e = this.getEntity(uuid);
     e.emit(onDestroy, this);
     this.#entities.delete(uuid);
   }
 
-  setParent(uuid: string, parentUuid?: string, order = 0) {
+  setParent(uuid: string, parentUuid?: string, order = 0): void {
     const e = this.getEntity(uuid);
     if (e.parentUuid === parentUuid && e.order === order) return;
     e.removeFromParent();
@@ -125,154 +129,169 @@ export class Kernel extends Eventize {
     e.parentUuid = parentUuid;
   }
 
-  updateOrder(uuid: string, order: number) {
+  updateOrder(uuid: string, order: number): void {
     this.getEntity(uuid).order = order;
   }
 
-  emitEventsToEntity(uuid: string, events: IComponentEvent[]) {
+  emitEventsToEntity(uuid: string, events: IComponentEvent[]): void {
     this.getEntity(uuid)?.emitViewEvents(events);
   }
 
-  changeProperties(uuid: string, properties: [string, unknown][]) {
+  changeProperties(uuid: string, properties: [string, unknown][]): void {
     this.getEntity(uuid).setProperties(properties);
   }
 
-  /**
-   * If the entity already exists, but the token is changed, then ..
-   * - all shadow-objects created with the previous token are destroyed
-   * - new shadow-objects are created based on the new token
-   * - of course, shadow-objects associated with both the previous and the new token remain in place
-   */
-  changeToken(uuid: string, token: string) {
+  changeToken(uuid: string, token: string): void {
     if (!this.#entities.has(uuid)) return;
 
-    const {token: previousToken, entity, usedConstructors} = this.#entities.get(uuid);
+    const entry = this.#entities.get(uuid);
 
-    if (previousToken === token) return;
+    if (entry.token === token) return;
 
-    const nextConstructors = new Set(this.registry.findConstructors(token));
+    entry.token = token;
 
-    // Destroy all shadow-objects that are no longer a match for the new token
+    this.updateShadowObjects(uuid);
+  }
+
+  /**
+   * Create or destroy the shadow-objects of an entity using the registered constructors.
+   * After a token change or registry changes, an entity may be given different shadow-objects.
+   */
+  updateShadowObjects(uuid: string): void {
+    if (!this.#entities.has(uuid)) return;
+
+    const entity = this.#entities.get(uuid);
+    const nextConstructors = new Set(this.registry.findConstructors(entity.token));
+
+    // destroy all shadow-objects created by constructors no longer in the list
     //
-    for (const [shadowObjectConstructor, shadowObjects] of usedConstructors) {
-      if (!nextConstructors.has(shadowObjectConstructor)) {
-        usedConstructors.delete(shadowObjectConstructor);
-        for (const shadowObject of shadowObjects) {
-          this.destroyShadowObject(shadowObject, entity);
+    for (const [constructor, shadowObjects] of entity.usedConstructors) {
+      if (!nextConstructors.has(constructor)) {
+        entity.usedConstructors.delete(constructor);
+        for (const obj of shadowObjects) {
+          this.destroyShadowObject(obj, entity.entity);
         }
       }
     }
 
-    // Based on the new token, create the new shadow objects
+    // shadow-objects for new constructors are now created using the updated constructor list
     //
-    for (const shadowObjectConstructor of nextConstructors) {
-      if (!usedConstructors.has(shadowObjectConstructor)) {
-        const constructedShadowObjects = new Set<object>();
-        usedConstructors.set(shadowObjectConstructor, constructedShadowObjects);
-        for (const shadowObject of constructedShadowObjects) {
-          constructedShadowObjects.add(shadowObject);
-          this.attachShadowObject(shadowObject, entity);
-        }
+    for (const constructor of nextConstructors) {
+      if (!entity.usedConstructors.has(constructor)) {
+        this.constructShadowObject(constructor, entity);
       }
     }
   }
 
-  createShadowObjects(token: string, entityEntry?: EntityEntry) {
-    return this.registry.findConstructors(token)?.map((constructor) => {
-      const unsubscribe = new Set<() => any>();
+  constructShadowObject(constructor: ShadowObjectConstructor, entry: EntityEntry): ShadowObjectType {
+    const unsubscribe = new Set<() => any>();
 
-      const contextReaders = new Map<string | symbol, SignalReader<any>>();
-      const contextProviders = new Map<string | symbol, SignalFuncs<any>>();
-      const propertyReaders = new Map<string, SignalReader<any>>();
+    const contextReaders = new Map<string | symbol, SignalReader<any>>();
+    const contextProviders = new Map<string | symbol, SignalFuncs<any>>();
+    const propertyReaders = new Map<string, SignalReader<any>>();
 
-      const shadowObject = eventize(
-        new constructor(
-          entityEntry?.entity != null
-            ? {
-                entity: entityEntry.entity,
+    const shadowObject = eventize(
+      new constructor({
+        entity: entry.entity,
 
-                provideContext<T = unknown>(name: string | symbol, initialValue?: T, isEqual?: CompareFunc<T>) {
-                  let ctxProvider = contextProviders.get(name);
-                  if (ctxProvider === undefined) {
-                    ctxProvider = createSignal(initialValue, isEqual ? {compareFn: isEqual} : undefined);
-                    contextProviders.set(name, ctxProvider);
-                    const con = connect(ctxProvider[0], entityEntry.entity.provideContext(name)[0]);
-                    unsubscribe.add(con.destroy.bind(con));
-                  }
-                  return ctxProvider;
-                },
+        provideContext<T = unknown>(name: string | symbol, initialValue?: T, isEqual?: CompareFunc<T>) {
+          let ctxProvider = contextProviders.get(name);
+          if (ctxProvider === undefined) {
+            ctxProvider = createSignal(initialValue, isEqual ? {compareFn: isEqual} : undefined);
+            contextProviders.set(name, ctxProvider);
+            const con = connect(ctxProvider[0], entry.entity.provideContext(name)[0]);
+            unsubscribe.add(con.destroy.bind(con));
+          }
+          return ctxProvider;
+        },
 
-                useContext(name: string | symbol, isEqual?: CompareFunc<any>) {
-                  let ctxReader = contextReaders.get(name);
-                  if (ctxReader === undefined) {
-                    ctxReader = createSignal<any>(undefined, isEqual ? {compareFn: isEqual} : undefined)[0];
-                    contextReaders.set(name, ctxReader);
-                    const con = connect(entityEntry.entity.useContext(name), ctxReader);
-                    unsubscribe.add(con.destroy.bind(con));
-                  }
-                  return ctxReader;
-                },
+        useContext(name: string | symbol, isEqual?: CompareFunc<any>) {
+          let ctxReader = contextReaders.get(name);
+          if (ctxReader === undefined) {
+            ctxReader = createSignal<any>(undefined, isEqual ? {compareFn: isEqual} : undefined)[0];
+            contextReaders.set(name, ctxReader);
+            const con = connect(entry.entity.useContext(name), ctxReader);
+            unsubscribe.add(con.destroy.bind(con));
+          }
+          return ctxReader;
+        },
 
-                useProperty(name: string, isEqual?: CompareFunc<any>) {
-                  let propReader = propertyReaders.get(name);
-                  if (propReader === undefined) {
-                    propReader = createSignal<any>(undefined, isEqual ? {compareFn: isEqual} : undefined)[0];
-                    propertyReaders.set(name, propReader);
-                    const con = connect(entityEntry.entity.getPropertyReader(name), propReader);
-                    unsubscribe.add(con.destroy.bind(con));
-                  }
-                  return propReader;
-                },
+        useProperty(name: string, isEqual?: CompareFunc<any>) {
+          let propReader = propertyReaders.get(name);
+          if (propReader === undefined) {
+            propReader = createSignal<any>(undefined, isEqual ? {compareFn: isEqual} : undefined)[0];
+            propertyReaders.set(name, propReader);
+            const con = connect(entry.entity.getPropertyReader(name), propReader);
+            unsubscribe.add(con.destroy.bind(con));
+          }
+          return propReader;
+        },
 
-                onDestroy(callback: () => any) {
-                  unsubscribe.add(callback);
-                },
-              }
-            : undefined,
-        ),
-      );
+        onDestroy(callback: () => any) {
+          unsubscribe.add(callback);
+        },
+      }),
+    );
 
-      shadowObject.once(onDestroy, () => {
-        console.log('destroy shadow-object', shadowObject, Array.from(unsubscribe));
+    shadowObject.once(onDestroy, () => {
+      console.log('destroy shadow-object', shadowObject, Array.from(unsubscribe));
 
-        for (const callback of unsubscribe) {
-          callback();
-        }
-
-        for (const sig of contextReaders.values()) {
-          destroySignal(sig);
-        }
-        contextReaders.clear();
-
-        for (const sig of propertyReaders.values()) {
-          destroySignal(sig);
-        }
-        propertyReaders.clear();
-
-        for (const [sig] of contextProviders.values()) {
-          destroySignal(sig);
-        }
-        contextProviders.clear();
-      });
-
-      if (entityEntry) {
-        // We want to keep track which shadow-objects are created by which constructors.
-        // This will allow us to destroy the shadow-objects at a later time when we change the token.
-        //
-        if (entityEntry.usedConstructors.has(constructor)) {
-          entityEntry.usedConstructors.get(constructor).add(shadowObject);
-        } else {
-          entityEntry.usedConstructors.set(constructor, new Set([shadowObject]));
-        }
-
-        this.attachShadowObject(shadowObject, entityEntry.entity);
+      for (const callback of unsubscribe) {
+        callback();
       }
 
-      return shadowObject;
+      for (const sig of contextReaders.values()) {
+        destroySignal(sig);
+      }
+      contextReaders.clear();
+
+      for (const sig of propertyReaders.values()) {
+        destroySignal(sig);
+      }
+      propertyReaders.clear();
+
+      for (const [sig] of contextProviders.values()) {
+        destroySignal(sig);
+      }
+      contextProviders.clear();
+    });
+
+    // We want to keep track which shadow-objects are created by which constructors.
+    // This will all
+    //
+    if (entry.usedConstructors.has(constructor)) {
+      entry.usedConstructors.get(constructor).add(shadowObject);
+    } else {
+      entry.usedConstructors.set(constructor, new Set([shadowObject]));
+    }
+
+    this.attachShadowObject(shadowObject, entry.entity);
+
+    return shadowObject;
+  }
+
+  createShadowObjects(uuid: string): ShadowObjectType[] {
+    const entry = this.#entities.get(uuid);
+    return this.registry.findConstructors(entry.token)?.map((constructor) => {
+      return this.constructShadowObject(constructor, entry);
     });
   }
 
-  attachShadowObject(shadowObject: Object, entity: Entity) {
+  findShadowObjects(uuid: string): ShadowObjectType[] {
+    if (!this.#entities.has(uuid)) return [];
+
+    const {usedConstructors} = this.#entities.get(uuid);
+
+    return Array.from(
+      new Set(
+        Array.from(usedConstructors.values())
+          .map((objs) => Array.from(objs))
+          .flat(),
+      ),
+    );
+  }
+
+  attachShadowObject(shadowObject: object, entity: Entity): void {
     // Like all other objects, the new shadow-object should be able to respond to the events that the entity receives.
     //
     entity.on(shadowObject);
@@ -284,11 +303,13 @@ export class Kernel extends Eventize {
     }
   }
 
-  destroyShadowObject(shadowObject: Object, entity: Entity) {
+  destroyShadowObject(shadowObject: object, entity: Entity): void {
     if (typeof (shadowObject as OnDestroy)[onDestroy] === 'function') {
       (shadowObject as OnDestroy)[onDestroy](entity);
     }
 
     entity.off(shadowObject);
   }
+
+  // TODO destroy all entities
 }

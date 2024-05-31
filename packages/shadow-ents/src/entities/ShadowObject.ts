@@ -10,16 +10,16 @@ export interface ShadowObjectDecoratorOptions {
 /** The `@ShadowObject` decorator */
 export function ShadowObject(options: ShadowObjectDecoratorOptions) {
   return function <C extends ShadowObjectConstructor>(target: C, _context?: any) {
-    const SO = class extends target {
+    const __ShadowObject = class extends target {
       constructor(...args: any[]) {
         super(...args);
         eventize(this);
       }
     };
 
-    Registry.get(options.registry).define(options.token, SO);
+    Registry.get(options.registry).define(options.token, __ShadowObject);
 
-    return SO;
+    return __ShadowObject;
   };
 }
 

@@ -1,5 +1,6 @@
 import {isEventized} from '@spearwolf/eventize';
 import {afterEach, describe, expect, it} from 'vitest';
+import {generateUUID} from '../generateUUID.js';
 import {Kernel} from './Kernel.js';
 import {Registry} from './Registry.js';
 import {ShadowObject, shadowObjects} from './ShadowObject.js';
@@ -32,7 +33,10 @@ describe('@ShadowObject decorator', () => {
       }
     }
 
-    const so = kernel.createShadowObjects('test')?.at(-1) as unknown as Foo;
+    const uuid = generateUUID();
+    kernel.createEntity(uuid, 'test');
+
+    const so = kernel.createShadowObjects(uuid)?.at(-1) as unknown as Foo;
 
     expect(so).toBeDefined();
     expect(so).toBeInstanceOf(Foo);
@@ -73,7 +77,10 @@ describe('shadowObject.define API', () => {
 
     shadowObjects.define('test2', Foo, registry);
 
-    const so = kernel.createShadowObjects('test2')?.at(-1) as unknown as Foo;
+    const uuid = generateUUID();
+    kernel.createEntity(uuid, 'test2');
+
+    const so = kernel.createShadowObjects(uuid)?.at(-1) as unknown as Foo;
 
     expect(so).toBeDefined();
     expect(so).toBeInstanceOf(Foo);
