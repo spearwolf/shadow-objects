@@ -56,9 +56,8 @@ export class ShadowEnv {
     return Boolean(this.#comCtx && this.#shaObjEnvProxy);
   }
 
-  sync(): Promise<void> {
-    // TODO return Promise<void> vs Promise<ShadowEnv> ?
-    const onSync = this.onceAsync(ShadowEnv.AfterSync);
+  sync(): Promise<ShadowEnv> {
+    const onSync = this.onceAsync(ShadowEnv.AfterSync) as unknown as Promise<ShadowEnv>;
     if (this.#syncScheduled) return onSync;
     this.#syncScheduled = true;
     queueMicrotask(async () => {
