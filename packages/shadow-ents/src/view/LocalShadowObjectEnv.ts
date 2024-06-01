@@ -30,7 +30,6 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
   }
 
   destroy(): void {
-    // TODO this.kernel.destroy();
-    this.registry.clear();
+    this.kernel.destroy();
   }
 }

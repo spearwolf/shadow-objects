@@ -56,7 +56,10 @@ export class Kernel extends Eventize {
     return this.#entities.has(uuid);
   }
 
-  traverseLevelOrder(): Entity[] {
+  /**
+   * @returns all entities in breadth-first order
+   */
+  traverseLevelOrderBFS(): Entity[] {
     const lvl = new Map<number, Entity[]>();
 
     const traverse = (uuid: string, depth: number) => {
@@ -82,7 +85,7 @@ export class Kernel extends Eventize {
   }
 
   upgradeEntities(): void {
-    const entities = this.traverseLevelOrder();
+    const entities = this.traverseLevelOrderBFS();
     const reversedEntities = entities.slice().reverse();
 
     for (const entity of reversedEntities) {
@@ -159,12 +162,16 @@ export class Kernel extends Eventize {
   }
 
   destroyEntity(uuid: string): void {
-    const e = this.getEntity(uuid);
+    if (!this.#entities.has(uuid)) return;
 
-    e.emit(onDestroy, this);
+    const entry = this.#entities.get(uuid);
 
-    this.#entities.delete(uuid);
-    this.#rootEntities.delete(uuid);
+    entry.entity.emit(onDestroy, this);
+
+    entry.usedConstructors.clear();
+
+    this.#entities.delete(entry.entity.uuid);
+    this.#rootEntities.delete(entry.entity.uuid);
   }
 
   setParent(uuid: string, parentUuid?: string, order = 0): void {
@@ -303,17 +310,26 @@ export class Kernel extends Eventize {
       for (const sig of contextReaders.values()) {
         destroySignal(sig);
       }
-      contextReaders.clear();
 
       for (const sig of propertyReaders.values()) {
         destroySignal(sig);
       }
-      propertyReaders.clear();
 
       for (const [sig] of contextProviders.values()) {
         destroySignal(sig);
       }
+
+      contextReaders.clear();
+      propertyReaders.clear();
       contextProviders.clear();
+
+      const shaObjs = entry.usedConstructors.get(constructor);
+      if (shaObjs) {
+        shaObjs.delete(shadowObject);
+        if (shaObjs.size === 0) {
+          entry.usedConstructors.delete(constructor);
+        }
+      }
     });
 
     // We want to keep track which shadow-objects are created by which constructors.
@@ -372,5 +388,9 @@ export class Kernel extends Eventize {
     entity.off(shadowObject);
   }
 
-  // TODO destroy all entities
+  destroy(): void {
+    for (const entity of this.traverseLevelOrderBFS().reverse()) {
+      this.destroyEntity(entity.uuid);
+    }
+  }
 }
