@@ -20,6 +20,12 @@ interface EntityEntry {
   usedConstructors: Map<ShadowObjectConstructor, Set<ShadowObjectType>>;
 }
 
+enum ShadowObjectAction {
+  CreateAndDestroy = 0,
+  JustCreate,
+  DestroyOnly,
+}
+
 /**
  * The entity kernel manages the lifecycle of all entities and shadow-objects.
  *
@@ -89,11 +95,11 @@ export class Kernel extends Eventize {
     const reversedEntities = entities.slice().reverse();
 
     for (const entity of reversedEntities) {
-      this.updateShadowObjects(entity.uuid, {create: false});
+      this.updateShadowObjects(entity.uuid, ShadowObjectAction.DestroyOnly);
     }
 
     for (const entity of entities) {
-      this.updateShadowObjects(entity.uuid, {destroy: false});
+      this.updateShadowObjects(entity.uuid, ShadowObjectAction.JustCreate);
     }
   }
 
@@ -219,32 +225,32 @@ export class Kernel extends Eventize {
    * Create or destroy the shadow-objects of an entity using the registered constructors.
    * After a token change or registry changes, an entity may be given different shadow-objects.
    */
-  private updateShadowObjects(uuid: string, options?: {destroy?: boolean; create?: boolean}): void {
-    if (!this.#entities.has(uuid)) return;
+  private updateShadowObjects(uuid: string, action = ShadowObjectAction.CreateAndDestroy): void {
+    const entry = this.#entities.get(uuid);
+    const nextConstructors = new Set(this.registry.findConstructors(entry.token));
 
-    const entity = this.#entities.get(uuid);
+    const shouldDestroy = action === ShadowObjectAction.CreateAndDestroy || action === ShadowObjectAction.DestroyOnly;
+    const shouldCreate = action === ShadowObjectAction.CreateAndDestroy || action === ShadowObjectAction.JustCreate;
 
-    const nextConstructors = new Set(this.registry.findConstructors(entity.token));
-
-    if (options?.destroy ?? true) {
-      // destroy all shadow-objects created by constructors no longer in the list
-      //
-      for (const [constructor, shadowObjects] of entity.usedConstructors) {
+    // destroy all shadow-objects created by constructors no longer in the list
+    //
+    if (shouldDestroy) {
+      for (const [constructor, shadowObjects] of entry.usedConstructors) {
         if (!nextConstructors.has(constructor)) {
-          entity.usedConstructors.delete(constructor);
+          entry.usedConstructors.delete(constructor);
           for (const obj of shadowObjects) {
-            this.destroyShadowObject(obj, entity.entity);
+            this.destroyShadowObject(obj, entry.entity);
           }
         }
       }
     }
 
-    if (options?.create ?? true) {
-      // shadow-objects for new constructors are now created using the updated constructor list
-      //
+    // shadow-objects for new constructors are now created using the updated constructor list
+    //
+    if (shouldCreate) {
       for (const constructor of nextConstructors) {
-        if (!entity.usedConstructors.has(constructor)) {
-          this.constructShadowObject(constructor, entity);
+        if (!entry.usedConstructors.has(constructor)) {
+          this.constructShadowObject(constructor, entry);
         }
       }
     }
@@ -323,10 +329,10 @@ export class Kernel extends Eventize {
       propertyReaders.clear();
       contextProviders.clear();
 
-      const shaObjs = entry.usedConstructors.get(constructor);
-      if (shaObjs) {
-        shaObjs.delete(shadowObject);
-        if (shaObjs.size === 0) {
+      const otherShadowObjects = entry.usedConstructors.get(constructor);
+      if (otherShadowObjects) {
+        otherShadowObjects.delete(shadowObject);
+        if (otherShadowObjects.size === 0) {
           entry.usedConstructors.delete(constructor);
         }
       }
