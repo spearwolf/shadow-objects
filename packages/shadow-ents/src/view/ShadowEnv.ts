@@ -57,7 +57,7 @@ export class ShadowEnv {
   }
 
   sync(): Promise<ShadowEnv> {
-    const onSync = this.onceAsync(ShadowEnv.AfterSync) as unknown as Promise<ShadowEnv>;
+    const onSync = this.onceAsync<ShadowEnv>(ShadowEnv.AfterSync);
     if (this.#syncScheduled) return onSync;
     this.#syncScheduled = true;
     queueMicrotask(async () => {
