@@ -1,5 +1,7 @@
 import type {EventizeApi} from '@spearwolf/eventize';
 import type {ComponentChangeType} from './constants.js';
+import type {Kernel} from './entities/Kernel.js';
+import type {Registry} from './entities/Registry.js';
 
 export type ChangeTrailType = IComponentChangeType[];
 
@@ -76,3 +78,15 @@ export interface ShadowObjectConstructor {
 export type ShadowObjectType = EventizeApi;
 
 export type NamespaceType = string | symbol;
+
+export type ShadowObjectsModuleInitializer = (shadowObjects: {
+  define: (token: string, constructor: ShadowObjectConstructor) => void;
+  kernel: Kernel;
+  registry: Registry;
+}) => Promise<void>;
+
+export interface ShadowObjectsModule {
+  define?: Record<string, ShadowObjectConstructor>;
+  routes?: Record<string, string[]>;
+  initialize?: ShadowObjectsModuleInitializer;
+}

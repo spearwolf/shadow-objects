@@ -74,7 +74,7 @@ Apply the _change trail_ in the _shadow object environment_. the _change trail_ 
 </tr>
 
 <tr>
-<td rowspan=2>
+<td>
 <b>CONFIGURE</b><br><small>routing and import scripts</small>
 </td>
 <td>
@@ -90,38 +90,11 @@ Import a javascript module into the _shadow object environment_. the module can 
 
 </td>
 </tr>
+
 <tr>
 <td>
-
-```ts
-.configure(data): void
-```
-
-</td>
-<td>
-
-Configure _routing_ rules for the _MessageRouter_.
-
-</td>
-</tr>
-<tr>
-
-<tr>
-<td rowspan=2>
 <b>LIFECYCLE</b><br><small>of shadow objects</small>
 </td>
-<td>
-
-_TODO_
-
-</td>
-<td>
-
-Create a *shadow object environment* instance!
-
-</td>
-</tr>
-<tr>
 <td>
 
 ```ts

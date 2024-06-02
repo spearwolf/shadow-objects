@@ -37,3 +37,5 @@ export const Closed = 'closed';
 export const WorkerLoadTimeout = 20000;
 export const WorkerReadyTimeout = 20000;
 export const WorkerDestroyTimeout = 1000;
+
+export const ShadowObjectsExport = 'shadowObjects';
