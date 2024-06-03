@@ -7,8 +7,10 @@ import './shadow-worker.js';
 
 // @ts-ignore
 import Worker from './bundle.worker.js';
+import {RemoteWorkerEnv} from './view/RemoteWorkerEnv.js';
 
 ShadowWorkerElement.createWorker = () => new Worker();
+RemoteWorkerEnv.createWorker = () => new Worker();
 
 declare global {
   interface Window {

@@ -13,13 +13,16 @@ describe('LocalShadowObjectEnv', () => {
     expect(LocalShadowObjectEnv).toBeDefined();
   });
 
-  it('should create', () => {
+  it('should create', async () => {
     const env = new ShadowEnv();
     env.view = ComponentContext.get();
     env.envProxy = new LocalShadowObjectEnv();
 
     expect(env.view).toBeDefined();
     expect(env.envProxy).toBeDefined();
+
+    await env.ready();
+
     expect(env.isReady).toBeTruthy();
   });
 

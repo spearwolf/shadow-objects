@@ -1,6 +1,7 @@
 import {ShadowObjectsExport} from '../constants.js';
 import {Kernel} from '../entities/Kernel.js';
 import type {Registry} from '../entities/Registry.js';
+import {importModule} from '../entities/importModule.js';
 import type {ChangeTrailType, ShadowObjectsModule, SyncEvent} from '../types.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 import {cloneChangeTrail} from './cloneChangeTrail.js';
@@ -18,6 +19,10 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
     this.kernel = new Kernel(registry);
   }
 
+  start(): Promise<void> {
+    return Promise.resolve();
+  }
+
   applyChangeTrail(data: ChangeTrailType): Promise<void> {
     const syncData: SyncEvent = {changeTrail: cloneChangeTrail(data)};
     this.kernel.run(syncData);
@@ -32,32 +37,7 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
   }
 
   async importModule(module: ShadowObjectsModule): Promise<void> {
-    if (this.#importedModules.has(module)) {
-      console.warn('LocalShadowObjectEnv: skipping already imported module', module);
-      return;
-    } else {
-      this.#importedModules.add(module);
-    }
-
-    if (module.define) {
-      for (const [token, constructor] of Object.entries(module.define)) {
-        this.registry.define(token, constructor);
-      }
-    }
-
-    if (module.routes) {
-      for (const [token, routes] of Object.entries(module.routes)) {
-        this.registry.appendRoute(token, routes);
-      }
-    }
-
-    await (module.initialize?.({
-      define: (token, constructor) => this.registry.define(token, constructor),
-      kernel: this.kernel,
-      registry: this.registry,
-    }) ?? Promise.resolve());
-
-    this.kernel.upgradeEntities();
+    return importModule(this.kernel, module, this.#importedModules);
   }
 
   destroy(): void {

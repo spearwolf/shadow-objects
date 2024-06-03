@@ -1,4 +1,6 @@
 import {eventize, type EventizeApi} from '@spearwolf/eventize';
+import {createEffect, type SignalReader} from '@spearwolf/signalize';
+import {signal, signalReader} from '@spearwolf/signalize/decorators';
 import type {ComponentContext} from './ComponentContext.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
@@ -12,9 +14,39 @@ export class ShadowEnv {
   #comCtx?: ComponentContext;
   #shaObjEnvProxy?: IShadowObjectEnvProxy;
   #syncScheduled = false;
+  #syncAfterContextCreated = false;
+  #whenReady!: Promise<ShadowEnv>;
+
+  @signal() accessor viewReady = false;
+  @signalReader() accessor viewReady$: SignalReader<boolean>;
+
+  @signal() accessor proxyReady = false;
+  @signalReader() accessor proxyReady$: SignalReader<boolean>;
 
   constructor() {
     eventize(this);
+
+    createEffect(() => {
+      if (this.proxyReady) {
+        this.#whenReady = Promise.resolve(this);
+      } else {
+        this.#whenReady = this.onceAsync<ShadowEnv>(ShadowEnv.ContextCreated);
+      }
+    }, [this.proxyReady$]);
+
+    createEffect(() => {
+      if (this.viewReady && this.proxyReady) {
+        this.view!.reCreateChanges();
+        this.emit(ShadowEnv.ContextCreated, this);
+        if (this.#syncAfterContextCreated) {
+          this.#syncAfterContextCreated = false;
+          this.#syncNow();
+        }
+        return () => {
+          this.emit(ShadowEnv.ContextLost, this);
+        };
+      }
+    }, [this.viewReady$, this.proxyReady$]);
   }
 
   get view(): ComponentContext | undefined {
@@ -24,9 +56,7 @@ export class ShadowEnv {
   set view(ctx: ComponentContext | null | undefined) {
     if (ctx !== this.#comCtx) {
       this.#comCtx = ctx ?? undefined;
-      if (ctx) {
-        ctx.reCreateChanges();
-      }
+      this.viewReady = Boolean(ctx);
     }
   }
 
@@ -41,35 +71,52 @@ export class ShadowEnv {
 
       if (prevProxy) {
         prevProxy.destroy();
-        this.emit(ShadowEnv.ContextLost, this, prevProxy);
       }
 
-      if (proxy) {
-        // we don't need to explicitly call create() on the proxy - this is done by the proxy constructor
-        this.view?.reCreateChanges();
-        this.emit(ShadowEnv.ContextCreated, this);
-      }
+      this.proxyReady = false;
+
+      proxy
+        ?.start()
+        .then(() => {
+          this.proxyReady = true;
+        })
+        .catch((error) => {
+          console.error('ShadowEnv: failed to start envProxy', error);
+          this.proxyReady = false;
+        });
     }
   }
 
   get isReady(): boolean {
-    return Boolean(this.#comCtx && this.#shaObjEnvProxy);
+    return Boolean(this.#comCtx && this.#shaObjEnvProxy && this.proxyReady);
+  }
+
+  async ready(): Promise<ShadowEnv> {
+    return this.#whenReady;
   }
 
   sync(): Promise<ShadowEnv> {
+    if (!this.isReady) {
+      this.#syncAfterContextCreated = true;
+      return this.#whenReady;
+    }
     const onSync = this.onceAsync<ShadowEnv>(ShadowEnv.AfterSync);
     if (this.#syncScheduled) return onSync;
     this.#syncScheduled = true;
-    queueMicrotask(async () => {
-      this.#syncScheduled = false;
-      if (this.isReady) {
-        const data = this.view!.buildChangeTrails();
-        if (data.length > 0) {
-          await this.envProxy!.applyChangeTrail(data);
-          this.emit(ShadowEnv.AfterSync, this);
-        }
-      }
+    queueMicrotask(() => {
+      this.#syncNow();
     });
     return onSync;
+  }
+
+  async #syncNow() {
+    this.#syncScheduled = false;
+    if (this.isReady) {
+      const data = this.view!.buildChangeTrails();
+      if (data.length > 0) {
+        await this.envProxy!.applyChangeTrail(data);
+        this.emit(ShadowEnv.AfterSync, this);
+      }
+    }
   }
 }

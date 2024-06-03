@@ -1,9 +1,11 @@
 import type {ChangeTrailType} from '../types.js';
 
 export interface IShadowObjectEnvProxy {
-  applyChangeTrail(data: ChangeTrailType): Promise<void>;
+  start(): Promise<void>;
 
   importScript(url: string): Promise<void>;
+
+  applyChangeTrail(data: ChangeTrailType): Promise<void>;
 
   destroy(): void;
 }
