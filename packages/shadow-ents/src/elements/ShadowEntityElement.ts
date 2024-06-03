@@ -67,6 +67,7 @@ export class ShadowEntityElement extends HTMLElement {
     this.shadowEnvElement?.syncShadowObjects();
   }
 
+  // TODO merge with sendEventsToShadows
   sendEventToShadows(type: string, data: unknown, transferables?: Object[]) {
     if (this.viewComponent) {
       this.viewComponent.dispatchShadowObjectsEvent(type, data, transferables);
@@ -76,6 +77,7 @@ export class ShadowEntityElement extends HTMLElement {
     }
   }
 
+  // TODO merge with sendEventToShadows
   sendEventsToShadows(events: {type: string; data: unknown; transferables?: Object[]}[]) {
     if (this.viewComponent) {
       if (events.length > 0) {
@@ -105,6 +107,7 @@ export class ShadowEntityElement extends HTMLElement {
     if (this.connected && context) {
       const token = this.token ?? VoidToken;
       if (this.viewComponent?.token === token && this.viewComponent?.context === context) return;
+      // TODO allow token change - do not create a new view component if token has been changed
       const vc = new ViewComponent(token, {uuid: this.uuid, context, parent: this.parentViewComponent});
       this.viewComponent = vc;
       return () => {

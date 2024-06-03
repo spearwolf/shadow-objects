@@ -44,6 +44,7 @@ const prepareChangeTrail = (data: SyncEvent): [SyncEvent, TransferablesType | un
   return [data, transferables];
 };
 
+// TODO rewrite this - use the new ShadowEnv class
 export interface ShadowWorkerElement extends EventizeApi {
   viewComponent?: ViewComponent;
   viewComponent$: SignalReader<ViewComponent | undefined>;

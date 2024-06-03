@@ -5,11 +5,13 @@ import type {IShadowEnvElement} from './IShadowEnvElement.js';
 import {ShadowEntityElement} from './ShadowEntityElement.js';
 import {ShadowElementType} from './constants.js';
 
+// TODO rename class / element to <shadow-worker>
 export class ShadowEnvElement extends ShadowEntityElement implements IShadowEnvElement {
   override readonly contextTypes: ShadowElementType[] = [];
 
   override readonly shadowTypes = new Set([ShadowElementType.ShadowEnv]);
 
+  // TODO use new ShadowEnv class
   #env?: BaseEnv;
   #needsUpdate = false;
 
@@ -52,6 +54,7 @@ export class ShadowEnvElement extends ShadowEntityElement implements IShadowEnvE
     super.connectedCallback();
   }
 
+  // TODO remove method - who needs this?
   resetEnv() {
     const env = this.getShadowEnv();
     if (env) {
