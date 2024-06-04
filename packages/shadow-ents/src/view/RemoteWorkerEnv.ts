@@ -1,10 +1,16 @@
-import {eventize, type EventizeApi} from '@spearwolf/eventize';
-import {Loaded, MessageFromWorker, WorkerLoadTimeout} from '../constants.js';
+import {
+  Configure,
+  Destroy,
+  Destroyed,
+  ImportedModule,
+  Loaded,
+  WorkerConfigureTimeout,
+  WorkerDestroyTimeout,
+  WorkerLoadTimeout,
+} from '../constants.js';
 import {waitForMessageOfType} from '../elements/waitForMessageOfType.js';
 import type {ChangeTrailType} from '../types.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
-
-export interface RemoteWorkerEnv extends EventizeApi {}
 
 export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   static createWorker() {
@@ -12,10 +18,6 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   }
 
   #worker?: Worker;
-
-  constructor() {
-    eventize(this);
-  }
 
   async start() {
     if (this.#worker) {
@@ -27,10 +29,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
 
     try {
       await waitForMessageOfType(worker, Loaded, WorkerLoadTimeout);
-
-      worker.addEventListener('message', (event) => {
-        this.emit(MessageFromWorker, event);
-      });
+      worker.addEventListener('message', this.onMessageFromWorker.bind(this));
     } catch (error) {
       console.error('RemoteWorkerEnv: failed to start', error);
       this.#worker = undefined;
@@ -38,8 +37,8 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     }
   }
 
-  [MessageFromWorker](event: MessageEvent) {
-    // TODO implement messageFromWorker
+  onMessageFromWorker(event: MessageEvent) {
+    // TODO implement onMessageFromWorker
     console.log('RemoteWorkerEnv: message from worker', event);
   }
 
@@ -48,15 +47,21 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     return Promise.resolve();
   }
 
-  async importScript(_url: string): Promise<void> {
-    // TODO implement importScript
-    return Promise.resolve();
+  importScript(url: string): Promise<void> {
+    this.#worker.postMessage({type: Configure, importModule: url});
+    return waitForMessageOfType(this.#worker, ImportedModule, WorkerConfigureTimeout, (data: {url?: string}) => data.url === url);
   }
 
   destroy(): void {
-    // TODO implement destroy
-    //
-    this.#worker?.terminate();
+    if (!this.#worker) return;
+
+    const worker = this.#worker;
     this.#worker = undefined;
+
+    worker.postMessage({type: Destroy});
+
+    waitForMessageOfType(worker, Destroyed, WorkerDestroyTimeout).finally(() => {
+      worker.terminate();
+    });
   }
 }

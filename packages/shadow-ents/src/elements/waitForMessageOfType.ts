@@ -1,7 +1,7 @@
 /**
  * Wait for a message of a specific type or reject after a timeout.
  */
-export const waitForMessageOfType = (worker: Worker, type: string, timeout = 1000) =>
+export const waitForMessageOfType = (worker: Worker, type: string, timeout = 1000, guard?: (data: any) => boolean) =>
   new Promise<void>((resolve, reject) => {
     let timeoutId: number;
     // eslint-disable-next-line prefer-const
@@ -21,8 +21,10 @@ export const waitForMessageOfType = (worker: Worker, type: string, timeout = 100
 
     listener = (event) => {
       if (event.data.type === type) {
-        cleanup();
-        resolve();
+        if (!guard || guard(event.data)) {
+          cleanup();
+          resolve();
+        }
       }
     };
 
