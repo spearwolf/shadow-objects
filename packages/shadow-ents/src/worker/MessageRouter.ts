@@ -1,4 +1,4 @@
-import {ChangeTrail, Destroyed, Configure, Destroy, ImportedModule, Init, Ready, ShadowObjectsExport} from '../constants.js';
+import {ChangeTrail, Configure, Destroy, Destroyed, ImportedModule, Init, Ready, ShadowObjectsExport} from '../constants.js';
 import {Kernel} from '../entities/Kernel.js';
 import {shadowObjects} from '../entities/ShadowObject.js';
 import {importModule} from '../entities/importModule.js';
@@ -64,8 +64,7 @@ export class MessageRouter {
         await importModule(this.kernel, module[ShadowObjectsExport], this.#importedModules);
         this.postMessage({type: ImportedModule, url: data.importModule});
       } else {
-        console.error('[MessageRouter] imported module has no "shadowObjects" export', {module});
-        this.postMessage({type: ImportedModule, url: data.importModule, error: `module has no "shadowObjects" export`});
+        this.postMessage({type: ImportedModule, url: data.importModule, error: `module has no "${ShadowObjectsExport}" export`});
       }
     } catch (error) {
       console.error('[MessageRouter] failed to import module', error);
