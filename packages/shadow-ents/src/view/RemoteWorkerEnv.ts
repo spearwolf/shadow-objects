@@ -10,27 +10,27 @@ import {
   WorkerLoadTimeout,
 } from '../constants.js';
 import {waitForMessageOfType} from '../elements/waitForMessageOfType.js';
-import type {ChangeTrailType, SyncEvent, TransferablesType} from '../types.js';
+import type {ChangeTrailType} from '../types.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
-const prepareChangeTrail = (data: SyncEvent): [SyncEvent, TransferablesType | undefined] => {
-  let transferables: TransferablesType | undefined;
+// const prepareChangeTrail = (data: SyncEvent): [SyncEvent, TransferablesType | undefined] => {
+//   let transferables: TransferablesType | undefined;
 
-  if (Array.isArray(data.changeTrail)) {
-    for (const changeItem of data.changeTrail) {
-      if (changeItem.transferables) {
-        if (!transferables) {
-          transferables = changeItem.transferables;
-        } else {
-          transferables = [...transferables, ...changeItem.transferables];
-        }
-        delete changeItem.transferables;
-      }
-    }
-  }
+//   if (Array.isArray(data.changeTrail)) {
+//     for (const changeItem of data.changeTrail) {
+//       if (changeItem.transferables) {
+//         if (!transferables) {
+//           transferables = changeItem.transferables;
+//         } else {
+//           transferables = [...transferables, ...changeItem.transferables];
+//         }
+//         delete changeItem.transferables;
+//       }
+//     }
+//   }
 
-  return [data, transferables];
-};
+//   return [data, transferables];
+// };
 
 export interface RemoteWorkerEnv extends EventizeApi {}
 
@@ -94,7 +94,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     console.log('RemoteWorkerEnv: message from worker', event);
   }
 
-  applyChangeTrail(data: ChangeTrailType): Promise<void> {
+  applyChangeTrail(_data: ChangeTrailType): Promise<void> {
     // const [changeTrailData, transfer] = prepareChangeTrail(data);
     return Promise.resolve();
   }
