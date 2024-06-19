@@ -142,9 +142,9 @@ export class ComponentChanges {
   }
 
   #events: IComponentEvent[] = [];
-  #transferables = new Set<Object>();
+  #transferables = new Set<Transferable>();
 
-  createEvent(type: string, data: unknown, transferables?: Object[]) {
+  createEvent(type: string, data: unknown, transferables?: Transferable[]) {
     this.#events.push({type, data});
     transferables?.forEach((transferable) => this.#transferables.add(transferable));
     this.#serial++;

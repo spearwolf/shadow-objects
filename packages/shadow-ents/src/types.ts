@@ -5,7 +5,7 @@ import type {Registry} from './entities/Registry.js';
 
 export type ChangeTrailType = IComponentChangeType[];
 
-export type TransferablesType = object[];
+export type TransferablesType = Transferable[];
 
 export interface IComponentChange {
   type: ComponentChangeType;

@@ -68,7 +68,7 @@ export class ShadowEntityElement extends HTMLElement {
   }
 
   // TODO merge with sendEventsToShadows
-  sendEventToShadows(type: string, data: unknown, transferables?: Object[]) {
+  sendEventToShadows(type: string, data: unknown, transferables?: Transferable[]) {
     if (this.viewComponent) {
       this.viewComponent.dispatchShadowObjectsEvent(type, data, transferables);
       this.syncShadowObjects();
@@ -78,7 +78,7 @@ export class ShadowEntityElement extends HTMLElement {
   }
 
   // TODO merge with sendEventToShadows
-  sendEventsToShadows(events: {type: string; data: unknown; transferables?: Object[]}[]) {
+  sendEventsToShadows(events: {type: string; data: unknown; transferables?: Transferable[]}[]) {
     if (this.viewComponent) {
       if (events.length > 0) {
         for (const {type, data, transferables} of events) {

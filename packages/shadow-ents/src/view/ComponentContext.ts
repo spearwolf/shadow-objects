@@ -181,7 +181,7 @@ export class ComponentContext {
   /**
    * Dispatch an event to the shadow objects linked to the view component
    */
-  dispatchShadowObjectsEvent(component: ViewComponent, type: string, data: unknown, transferables?: Object[]) {
+  dispatchShadowObjectsEvent(component: ViewComponent, type: string, data: unknown, transferables?: Transferable[]) {
     this.#components.get(component.uuid)?.changes.createEvent(type, data, transferables);
   }
 

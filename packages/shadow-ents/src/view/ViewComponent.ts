@@ -128,7 +128,7 @@ export class ViewComponent {
     this.#context.removeProperty(this, name);
   }
 
-  dispatchShadowObjectsEvent(type: string, data: unknown, transferables?: Object[]) {
+  dispatchShadowObjectsEvent(type: string, data: unknown, transferables?: Transferable[]) {
     this.#context.dispatchShadowObjectsEvent(this, type, data, transferables);
   }
 
