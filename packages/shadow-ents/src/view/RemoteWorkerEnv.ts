@@ -1,17 +1,19 @@
 import {eventize, type EventizeApi} from '@spearwolf/eventize';
 import {
+  AppliedChangeTrail,
   ChangeTrail,
   Configure,
   Destroy,
   Destroyed,
   ImportedModule,
   Loaded,
+  WorkerChangeTrailTimeout,
   WorkerConfigureTimeout,
   WorkerDestroyTimeout,
   WorkerLoadTimeout,
 } from '../constants.js';
 import {waitForMessageOfType} from '../elements/waitForMessageOfType.js';
-import type {ChangeTrailType, TransferablesType} from '../types.js';
+import type {AppliedChangeTrailEvent, ChangeTrailType, TransferablesType} from '../types.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
 const removeTransferables = (changeTrail: ChangeTrailType): TransferablesType | undefined => {
@@ -44,6 +46,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
 
   #worker?: Worker;
   #isDestroyed = false;
+  #changeTrailSerial = 0;
 
   get isDestroyed(): boolean {
     return this.#isDestroyed;
@@ -98,9 +101,13 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
 
   applyChangeTrail(changeTrail: ChangeTrailType): Promise<void> {
     const transferables = removeTransferables(changeTrail);
-    const message = {type: ChangeTrail, changeTrail};
+    const serial = ++this.#changeTrailSerial;
+    const message = {type: ChangeTrail, changeTrail, serial};
     this.#worker.postMessage(message, transferables);
-    return Promise.resolve();
+    return waitForMessageOfType(this.#worker, AppliedChangeTrail, WorkerChangeTrailTimeout, (data: AppliedChangeTrailEvent) => {
+      if (data.error) throw new Error(data.error);
+      return data.serial === serial;
+    });
   }
 
   importScript(url: string): Promise<void> {

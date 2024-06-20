@@ -1,4 +1,5 @@
 import {ShadowWorkerElement} from './elements/ShadowWorkerElement.js';
+import {RemoteWorkerEnv} from './view/RemoteWorkerEnv.js';
 
 import './shadow-entity.js';
 import './shadow-env.js';
@@ -7,15 +8,13 @@ import './shadow-worker.js';
 
 // @ts-ignore
 import Worker from './bundle.worker.js';
-import {RemoteWorkerEnv} from './view/RemoteWorkerEnv.js';
 
 ShadowWorkerElement.createWorker = () => new Worker();
 RemoteWorkerEnv.createWorker = () => new Worker();
 
 declare global {
-  interface Window {
-    SHADOW_ENTS_BUNDLE_LOADED: boolean;
-  }
+  // eslint-disable-next-line no-var
+  var SHADOW_ENTS_BUNDLE_LOADED: boolean;
 }
 
-window.SHADOW_ENTS_BUNDLE_LOADED = true;
+globalThis.SHADOW_ENTS_BUNDLE_LOADED = true;

@@ -25,8 +25,14 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
 
   applyChangeTrail(data: ChangeTrailType): Promise<void> {
     const syncData: SyncEvent = {changeTrail: cloneChangeTrail(data)};
-    this.kernel.run(syncData);
-    return Promise.resolve();
+    let result: Promise<void>;
+    try {
+      this.kernel.run(syncData);
+      result = Promise.resolve();
+    } catch (error) {
+      result = Promise.reject(error);
+    }
+    return result;
   }
 
   async importScript(url: string): Promise<void> {

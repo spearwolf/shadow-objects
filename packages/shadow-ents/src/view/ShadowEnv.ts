@@ -114,8 +114,13 @@ export class ShadowEnv {
     if (this.isReady) {
       const data = this.view!.buildChangeTrails();
       if (data.length > 0) {
-        await this.envProxy!.applyChangeTrail(data);
-        this.emit(ShadowEnv.AfterSync, this);
+        try {
+          await this.envProxy!.applyChangeTrail(data);
+        } catch (error) {
+          console.error('ShadowEnv: failed to apply change trail', error);
+        } finally {
+          this.emit(ShadowEnv.AfterSync, this);
+        }
       }
     }
   }

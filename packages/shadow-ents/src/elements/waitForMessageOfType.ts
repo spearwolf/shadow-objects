@@ -21,9 +21,14 @@ export const waitForMessageOfType = (worker: Worker, type: string, timeout = 100
 
     listener = (event) => {
       if (event.data.type === type) {
-        if (!guard || guard(event.data)) {
+        try {
+          if (!guard || guard(event.data)) {
+            cleanup();
+            resolve();
+          }
+        } catch (error) {
           cleanup();
-          resolve();
+          reject(error.toString());
         }
       }
     };

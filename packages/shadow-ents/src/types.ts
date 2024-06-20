@@ -1,5 +1,5 @@
 import type {EventizeApi} from '@spearwolf/eventize';
-import type {ComponentChangeType} from './constants.js';
+import {AppliedChangeTrail, ImportedModule, type ComponentChangeType} from './constants.js';
 import type {Kernel} from './entities/Kernel.js';
 import type {Registry} from './entities/Registry.js';
 
@@ -69,6 +69,19 @@ export type IComponentChangeType =
 
 export interface SyncEvent {
   changeTrail: IComponentChangeType[];
+  serial?: number;
+}
+
+export interface ImportedModuleEvent {
+  type: typeof ImportedModule;
+  url?: string;
+  error?: string;
+}
+
+export interface AppliedChangeTrailEvent {
+  type: typeof AppliedChangeTrail;
+  serial?: number;
+  error?: string;
 }
 
 export interface ShadowObjectConstructor {

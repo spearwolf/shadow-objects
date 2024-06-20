@@ -1,8 +1,24 @@
-import {ChangeTrail, Configure, Destroy, Destroyed, ImportedModule, Init, Ready, ShadowObjectsExport} from '../constants.js';
+import {
+  AppliedChangeTrail,
+  ChangeTrail,
+  Configure,
+  Destroy,
+  Destroyed,
+  ImportedModule,
+  Init,
+  Ready,
+  ShadowObjectsExport,
+} from '../constants.js';
 import {Kernel} from '../entities/Kernel.js';
 import {shadowObjects} from '../entities/ShadowObject.js';
 import {importModule} from '../entities/importModule.js';
-import type {ShadowObjectConstructor, ShadowObjectsModule, SyncEvent} from '../types.js';
+import type {
+  AppliedChangeTrailEvent,
+  ImportedModuleEvent,
+  ShadowObjectConstructor,
+  ShadowObjectsModule,
+  SyncEvent,
+} from '../types.js';
 
 // TODO remove InitPayloadData
 interface InitPayloadData {
@@ -64,17 +80,31 @@ export class MessageRouter {
         await importModule(this.kernel, module[ShadowObjectsExport], this.#importedModules);
         this.postMessage({type: ImportedModule, url: data.importModule});
       } else {
-        this.postMessage({type: ImportedModule, url: data.importModule, error: `module has no "${ShadowObjectsExport}" export`});
+        this.postMessage({
+          type: ImportedModule,
+          url: data.importModule,
+          error: `module has no "${ShadowObjectsExport}" export`,
+        } as ImportedModuleEvent);
       }
     } catch (error) {
       console.error('[MessageRouter] failed to import module', error);
-      this.postMessage({type: ImportedModule, url: data.importModule, error: `${error}`});
+      this.postMessage({type: ImportedModule, url: data.importModule, error: `${error}`} as ImportedModuleEvent);
     }
   }
 
   #onChangeTrail(data: SyncEvent) {
     // console.debug('[MessageRouter] parseChangeTrail', {data, kernel: this.kernel});
-    this.kernel.run(data);
+
+    try {
+      this.kernel.run(data);
+    } catch (error) {
+      console.error('[MessageRouter] failed to apply change trail', error);
+      this.postMessage({type: AppliedChangeTrail, serial: data.serial, error: error.toString()} as AppliedChangeTrailEvent);
+    }
+
+    if (data.serial) {
+      this.postMessage({type: AppliedChangeTrail, serial: data.serial} as AppliedChangeTrailEvent);
+    }
   }
 
   // TODO remove onInit

@@ -33,12 +33,14 @@ export const Destroy = 'destroy';
 
 export const Loaded = 'loaded';
 export const Ready = 'ready'; // TODO remove 'ready' event
+export const AppliedChangeTrail = 'appliedChangeTrail';
 export const ImportedModule = 'importedModule';
 export const Destroyed = 'destroyed';
 
-export const WorkerLoadTimeout = 20000;
-export const WorkerReadyTimeout = 20000; // TODO remove WorkerReadyTimeout
-export const WorkerConfigureTimeout = 20000;
+export const WorkerLoadTimeout = 16000;
+export const WorkerReadyTimeout = 16000; // TODO remove WorkerReadyTimeout
+export const WorkerConfigureTimeout = 16000;
+export const WorkerChangeTrailTimeout = 4000;
 export const WorkerDestroyTimeout = 1000;
 
 export const ShadowObjectsExport = 'shadowObjects';
