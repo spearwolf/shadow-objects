@@ -13,7 +13,7 @@ import {
   WorkerLoadTimeout,
 } from '../constants.js';
 import {waitForMessageOfType} from '../elements/waitForMessageOfType.js';
-import type {AppliedChangeTrailEvent, ChangeTrailType, TransferablesType} from '../types.js';
+import type {AppliedChangeTrailEvent, ChangeTrailType, ImportedModuleEvent, TransferablesType} from '../types.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
 const removeTransferables = (changeTrail: ChangeTrailType): TransferablesType | undefined => {
@@ -112,7 +112,12 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
 
   importScript(url: string): Promise<void> {
     this.#worker.postMessage({type: Configure, importModule: url});
-    return waitForMessageOfType(this.#worker, ImportedModule, WorkerConfigureTimeout, (data: {url?: string}) => data.url === url);
+    return waitForMessageOfType(
+      this.#worker,
+      ImportedModule,
+      WorkerConfigureTimeout,
+      (data: ImportedModuleEvent) => data.url === url,
+    );
   }
 
   destroy(): void {
