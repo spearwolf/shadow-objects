@@ -1,15 +1,17 @@
 import {expect, test} from '@playwright/test';
 
+const lookupTestResult = (testId: string) => {
+  test(testId, async ({page}) => {
+    await expect(page.getByTestId(testId)).toHaveAttribute('data-testresult', 'ok');
+  });
+};
+
+const lookupTests = (testIds: string[]) => testIds.forEach(lookupTestResult);
+
 test.describe('remote-worker-env', () => {
   test.beforeEach('goto page', async ({page}) => {
     await page.goto('/pages/remote-worker-env.html');
   });
 
-  test('shadow-env-ready', async ({page}) => {
-    await expect(page.getByTestId('shadow-env-ready')).toHaveAttribute('data-testresult', 'ok');
-  });
-
-  test('shadow-env-import-script', async ({page}) => {
-    await expect(page.getByTestId('shadow-env-import-script')).toHaveAttribute('data-testresult', 'ok');
-  });
+  lookupTests(['shadow-env-ready', 'shadow-env-import-script', 'shadow-env-isReady']);
 });

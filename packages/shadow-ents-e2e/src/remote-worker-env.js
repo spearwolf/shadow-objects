@@ -1,6 +1,7 @@
 import {ComponentContext, RemoteWorkerEnv, ShadowEnv} from '@spearwolf/shadow-ents';
 import './style.css';
 import {testAsyncAction} from './testAsyncAction.js';
+import {testBooleanAction} from './testBooleanAction.js';
 
 main();
 
@@ -13,11 +14,13 @@ async function main() {
   window.shadowEnv = shadowEnv;
   console.log('shadowEnv', shadowEnv);
 
-  testAsyncAction('shadow-env-ready', async () => {
+  await testAsyncAction('shadow-env-ready', async () => {
     await shadowEnv.ready();
   });
 
-  testAsyncAction('shadow-env-import-script', async () => {
+  await testAsyncAction('shadow-env-import-script', async () => {
     await shadowEnv.envProxy.importScript('/mod-hello.js');
   });
+
+  testBooleanAction('shadow-env-isReady', shadowEnv.isReady);
 }
