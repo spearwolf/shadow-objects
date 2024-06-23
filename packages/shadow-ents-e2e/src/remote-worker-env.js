@@ -1,4 +1,4 @@
-import {ComponentContext, RemoteWorkerEnv, ShadowEnv} from '@spearwolf/shadow-ents/core.js';
+import {ComponentContext, RemoteWorkerEnv, ShadowEnv} from '@spearwolf/shadow-ents';
 import './style.css';
 import {testAsyncAction} from './testAsyncAction.js';
 

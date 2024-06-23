@@ -37,7 +37,7 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
   }
 
   async importScript(url: URL | string): Promise<void> {
-    const module = await import(toUrlString(url));
+    const module = await import(/* @vite-ignore */ toUrlString(url));
     if (module[ShadowObjectsExport]) {
       await this.importModule(module[ShadowObjectsExport]);
     }
