@@ -21,6 +21,10 @@
       "default": "./dist/bundle.js",
       "types": "./dist/src/bundle.d.ts"
     },
+    "./core.js": {
+      "default": "./dist/core.js",
+      "types": "./dist/src/core.d.ts"
+    },
     "./shadow-ents.worker.js": {
       "default": "./dist/src/shadow-ents.worker.js",
       "types": "./dist/src/shadow-ents.worker.d.ts"
@@ -53,6 +57,7 @@
     "build/src/shadow-local-env.js",
     "build/src/shadow-env.js",
     "build/src/bundle.js",
+    "build/src/core.js",
     "build/src/index.js",
     "dist/src/view/ComponentContext.js",
     "dist/src/shadow-worker.js",
@@ -60,8 +65,10 @@
     "dist/src/shadow-local-env.js",
     "dist/src/shadow-env.js",
     "dist/src/bundle.js",
+    "dist/src/core.js",
     "dist/src/index.js",
-    "dist/bundle.js"
+    "dist/bundle.js",
+    "dist/core.js"
   ],
   "scripts": {
     "tsc": "pnpm exec tsc",

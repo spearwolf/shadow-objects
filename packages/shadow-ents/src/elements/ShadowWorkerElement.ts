@@ -2,6 +2,7 @@ import {eventize, type EventizeApi} from '@spearwolf/eventize';
 import {createEffect, createSignal, type SignalReader} from '@spearwolf/signalize';
 import {createActor} from 'xstate';
 import {ChangeTrail, Init, Loaded, Ready, WorkerLoadTimeout, WorkerReadyTimeout} from '../constants.js';
+import createWorker from '../create-worker.js';
 import type {SyncEvent, TransferablesType} from '../types.js';
 import type {ViewComponent} from '../view/ViewComponent.js';
 import {BaseEnv} from '../view/env/BaseEnv.js';
@@ -61,10 +62,6 @@ export interface ShadowWorkerElement extends EventizeApi {
 }
 
 export class ShadowWorkerElement extends HTMLElement {
-  static createWorker() {
-    return new Worker(new URL('../shadow-ents.worker.js', import.meta.url), {type: 'module'});
-  }
-
   static observedAttributes = ['src', 'auto-sync'];
 
   #changeTrailQueue: SyncEvent[] = [];
@@ -268,7 +265,7 @@ export class ShadowWorkerElement extends HTMLElement {
   }
 
   async #loadWorker(src: string) {
-    this.preWorker = ShadowWorkerElement.createWorker();
+    this.preWorker = createWorker();
 
     try {
       await waitForMessageOfType(this.preWorker, Loaded, WorkerLoadTimeout);

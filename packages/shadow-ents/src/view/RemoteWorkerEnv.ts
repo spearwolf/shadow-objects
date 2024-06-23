@@ -12,7 +12,9 @@ import {
   WorkerDestroyTimeout,
   WorkerLoadTimeout,
 } from '../constants.js';
+import createWorker from '../create-worker.js';
 import {waitForMessageOfType} from '../elements/waitForMessageOfType.js';
+import {toUrlString} from '../toUrlString.js';
 import type {AppliedChangeTrailEvent, ChangeTrailType, ImportedModuleEvent, TransferablesType} from '../types.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
@@ -39,10 +41,6 @@ export interface RemoteWorkerEnv extends EventizeApi {}
 
 export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   static WorkerLoaded = 'workerLoaded';
-
-  static createWorker() {
-    return new Worker(new URL('../shadow-ents.worker.js', import.meta.url), {type: 'module'});
-  }
 
   #worker?: Worker;
   #isDestroyed = false;
@@ -73,7 +71,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
       });
     }
 
-    const worker = (this.#worker = RemoteWorkerEnv.createWorker());
+    const worker = (this.#worker = createWorker());
 
     try {
       await waitForMessageOfType(worker, Loaded, WorkerLoadTimeout);
@@ -96,7 +94,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
 
   onMessageFromWorker(event: MessageEvent) {
     // TODO implement onMessageFromWorker
-    console.log('RemoteWorkerEnv: message from worker', event);
+    console.debug('RemoteWorkerEnv: message from worker', event);
   }
 
   applyChangeTrail(changeTrail: ChangeTrailType): Promise<void> {
@@ -105,19 +103,18 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     const message = {type: ChangeTrail, changeTrail, serial};
     this.#worker.postMessage(message, transferables);
     return waitForMessageOfType(this.#worker, AppliedChangeTrail, WorkerChangeTrailTimeout, (data: AppliedChangeTrailEvent) => {
-      if (data.error) throw new Error(data.error);
+      if (data.error) throw data.error;
       return data.serial === serial;
     });
   }
 
-  importScript(url: string): Promise<void> {
+  importScript(url: URL | string): Promise<void> {
+    url = toUrlString(url);
     this.#worker.postMessage({type: Configure, importModule: url});
-    return waitForMessageOfType(
-      this.#worker,
-      ImportedModule,
-      WorkerConfigureTimeout,
-      (data: ImportedModuleEvent) => data.url === url,
-    );
+    return waitForMessageOfType(this.#worker, ImportedModule, WorkerConfigureTimeout, (data: ImportedModuleEvent) => {
+      if (data.error) throw data.error;
+      return data.url === url;
+    });
   }
 
   destroy(): void {

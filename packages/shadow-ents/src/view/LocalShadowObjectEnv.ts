@@ -2,6 +2,7 @@ import {ShadowObjectsExport} from '../constants.js';
 import {Kernel} from '../entities/Kernel.js';
 import type {Registry} from '../entities/Registry.js';
 import {importModule} from '../entities/importModule.js';
+import {toUrlString} from '../toUrlString.js';
 import type {ChangeTrailType, ShadowObjectsModule, SyncEvent} from '../types.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 import {cloneChangeTrail} from './cloneChangeTrail.js';
@@ -35,8 +36,8 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
     return result;
   }
 
-  async importScript(url: string): Promise<void> {
-    const module = await import(/* @vite-ignore */ url);
+  async importScript(url: URL | string): Promise<void> {
+    const module = await import(toUrlString(url));
     if (module[ShadowObjectsExport]) {
       await this.importModule(module[ShadowObjectsExport]);
     }

@@ -1,9 +1,9 @@
 import * as esbuild from 'esbuild';
-import inlineWorkerPlugin from 'esbuild-plugin-inline-worker';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
+import inlineWorkerPlugin from 'esbuild-plugin-inline-worker';
 import {banner} from '../../scripts/makeBanner/banner.mjs';
 import {makeVersionWithBuild} from '../../scripts/makeBanner/makeVersionWithBuild.mjs';
 
@@ -15,26 +15,45 @@ const distDir = path.join(projectDir, 'dist');
 
 const makeBanner = (build) => {
   const version = makeVersionWithBuild(build)(packageJson.version);
-  return banner({...packageJson, version});
+  return {js: banner({...packageJson, version})};
 };
 
-await esbuild.build({
-  entryPoints: [path.join(buildDir, 'src/shadow-ents.worker.js')],
-  bundle: true,
-  minify: true,
-  format: 'esm',
-  target: ['es2017'],
-  banner: {js: makeBanner('bundle')},
-  outfile: `${buildDir}/src/bundle.worker.js`,
-});
+const build = async (emoji, entry, outfile, moreBuildOptions = {}) => {
+  console.log(emoji, 'Building', outfile);
 
-await esbuild.build({
-  entryPoints: [path.join(buildDir, 'src/bundle.js')],
-  bundle: true,
-  minify: true,
-  format: 'esm',
-  target: ['es2017'],
-  plugins: [inlineWorkerPlugin()],
-  banner: {js: makeBanner('bundle')},
-  outfile: `${distDir}/bundle.js`,
-});
+  return esbuild.build({
+    bundle: true,
+    minify: true,
+    format: 'esm',
+    target: 'esnext',
+    ...moreBuildOptions,
+    entryPoints: [entry],
+    outfile,
+  });
+};
+
+const copyFiles = (files) => {
+  for (const [from, to] of files) {
+    fs.copyFileSync(from, to);
+  }
+};
+
+// --- worker ---------------------------------------------------------------------------
+
+await build('🛠️', `${buildDir}/src/shadow-ents.worker.js`, `${buildDir}/src/bundle.worker.js`);
+
+copyFiles([
+  [`${buildDir}/src/create-worker.bundle.js`, `${buildDir}/src/create-worker.js`],
+  [`${buildDir}/src/create-worker.bundle.js.map`, `${buildDir}/src/create-worker.js.map`],
+  [`${buildDir}/src/create-worker.bundle.d.ts`, `${buildDir}/src/create-worker.d.ts`],
+  [`${buildDir}/src/create-worker.bundle.d.ts.map`, `${buildDir}/src/create-worker.d.ts.map`],
+]);
+
+// --- bundles --------------------------------------------------------------------------
+
+const plugins = [inlineWorkerPlugin()];
+
+await build('📦', `${buildDir}/src/bundle.js`, `${distDir}/bundle.js`, {plugins, banner: makeBanner('bundle')});
+await build('📦', `${buildDir}/src/core.js`, `${distDir}/core.js`, {plugins, banner: makeBanner('core')});
+
+console.log('✅ Bundle', packageJson.name, 'is ready!\n');

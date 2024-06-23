@@ -12,6 +12,7 @@ import {
 import {Kernel} from '../entities/Kernel.js';
 import {shadowObjects} from '../entities/ShadowObject.js';
 import {importModule} from '../entities/importModule.js';
+import {toUrlString} from '../toUrlString.js';
 import type {
   AppliedChangeTrailEvent,
   ImportedModuleEvent,
@@ -75,7 +76,7 @@ export class MessageRouter {
 
   async #configure(data: ConfigurePayloadData) {
     try {
-      const module = await import(/* @vite-ignore */ data.importModule);
+      const module = await import(toUrlString(data.importModule));
       if (module[ShadowObjectsExport]) {
         await importModule(this.kernel, module[ShadowObjectsExport], this.#importedModules);
         this.postMessage({type: ImportedModule, url: data.importModule});
