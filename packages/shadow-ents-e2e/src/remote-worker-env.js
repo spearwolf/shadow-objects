@@ -1,4 +1,4 @@
-import {ComponentContext, RemoteWorkerEnv, ShadowEnv} from '@spearwolf/shadow-ents';
+import {ComponentContext, RemoteWorkerEnv, ShadowEnv, ViewComponent} from '@spearwolf/shadow-ents';
 import './style.css';
 import {testAsyncAction} from './testAsyncAction.js';
 import {testBooleanAction} from './testBooleanAction.js';
@@ -23,4 +23,14 @@ async function main() {
   });
 
   testBooleanAction('shadow-env-isReady', shadowEnv.isReady);
+
+  const foo = new ViewComponent('foo');
+  foo.setProperty('xyz', 123);
+
+  const bar = new ViewComponent('bar', {parent: foo});
+  bar.setProperty('plah', 666);
+
+  await testAsyncAction('shadow-env-1st-sync', async () => {
+    await shadowEnv.sync();
+  });
 }
