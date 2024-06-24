@@ -18,7 +18,7 @@ async function main() {
     await shadowEnv.ready();
   });
 
-  await testAsyncAction('shadow-env-import-script', async () => {
+  await testAsyncAction('shadow-env-importScript', async () => {
     await shadowEnv.envProxy.importScript('/mod-hello.js');
   });
 

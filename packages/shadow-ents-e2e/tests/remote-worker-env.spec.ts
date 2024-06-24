@@ -13,5 +13,5 @@ test.describe('remote-worker-env', () => {
     await page.goto('/pages/remote-worker-env.html');
   });
 
-  lookupTests(['shadow-env-ready', 'shadow-env-import-script', 'shadow-env-isReady', 'shadow-env-1st-sync']);
+  lookupTests(['shadow-env-ready', 'shadow-env-importScript', 'shadow-env-isReady', 'shadow-env-1st-sync']);
 });
