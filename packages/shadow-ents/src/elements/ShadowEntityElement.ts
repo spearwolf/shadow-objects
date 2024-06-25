@@ -1,4 +1,4 @@
-import {connect, createEffect, createSignal, value, type SignalFuncs, type SignalReader} from '@spearwolf/signalize';
+import {SignalObject, connect, createEffect, createSignal, value, type SignalReader} from '@spearwolf/signalize';
 import {effect, signal, signalReader} from '@spearwolf/signalize/decorators';
 import {GlobalNS, VoidToken} from '../constants.js';
 import {generateUUID} from '../generateUUID.js';
@@ -35,9 +35,9 @@ export class ShadowEntityElement extends HTMLElement {
   @signal() accessor parentViewComponent: ViewComponent | undefined;
   @signalReader() accessor parentViewComponent$: SignalReader<ViewComponent | undefined>;
 
-  readonly #ns: SignalFuncs<NamespaceType> = createSignal(GlobalNS);
+  readonly #ns: SignalObject<NamespaceType> = createSignal(GlobalNS);
 
-  #contextElements = new Map<ShadowElementType, SignalFuncs<ShadowEntityElement | undefined>>();
+  #contextElements = new Map<ShadowElementType, SignalObject<ShadowEntityElement | undefined>>();
   #contextChildren = new Map<ShadowElementType, ShadowEntityElement[]>();
 
   #unsubscribeReRequestContext?: () => void;
@@ -49,7 +49,7 @@ export class ShadowEntityElement extends HTMLElement {
 
     this.#syncTokenAttribute();
 
-    this.getContextByType$$(ShadowElementType.ShadowEnv)![0]((env) => {
+    this.getContextByType$$(ShadowElementType.ShadowEnv)!.get((env) => {
       this.shadowEnvElement = env as unknown as IShadowEnvElement;
       this.componentContext = (env && (env as unknown as IShadowEnvElement).getComponentContext()) || undefined;
     });
@@ -140,15 +140,15 @@ export class ShadowEntityElement extends HTMLElement {
    * the shadow namespace
    */
   get ns(): NamespaceType {
-    return value(this.#ns[0]);
+    return this.#ns.value;
   }
 
   get ns$(): SignalReader<NamespaceType> {
-    return this.#ns[0];
+    return this.#ns.get;
   }
 
   set ns(value: NamespaceType | null | undefined) {
-    this.#ns[1](toNamespace(value));
+    this.#ns.set(toNamespace(value));
   }
 
   get parentEntity(): ShadowEntityElement | undefined {
@@ -156,7 +156,7 @@ export class ShadowEntityElement extends HTMLElement {
   }
 
   get parentEntity$(): SignalReader<ShadowEntityElement | undefined> {
-    return this.getContextByType$$(ShadowElementType.ShadowEntity)?.[0];
+    return this.getContextByType$$(ShadowElementType.ShadowEntity)?.get;
   }
 
   /**
@@ -167,22 +167,21 @@ export class ShadowEntityElement extends HTMLElement {
    * Only the types defined in {@link ShadowEntityElement.contextTypes} can have context elements.
    */
   getContextByType(shadowType: ShadowElementType): ShadowEntityElement | undefined {
-    const getParent = this.getContextByType$$(shadowType)?.[0];
-    return getParent ? value(getParent) : undefined;
+    return this.getContextByType$$(shadowType)?.value;
   }
 
   setContextByType(element: ShadowEntityElement, type: ShadowElementType) {
-    this.getContextByType$$(type)?.[1](element ?? undefined);
+    this.getContextByType$$(type)?.set(element ?? undefined);
   }
 
-  getContextByType$$(shadowType: ShadowElementType): SignalFuncs<ShadowEntityElement | undefined> {
+  getContextByType$$(shadowType: ShadowElementType): SignalObject<ShadowEntityElement | undefined> {
     if (!this.#contextElements.has(shadowType) && this.contextTypes.includes(shadowType)) {
       const context$$ = createSignal<ShadowEntityElement | undefined>();
       this.#contextElements.set(shadowType, context$$);
 
       const [runContextCallbacks] = createEffect(
         () => {
-          const ctx = value(context$$[0]);
+          const ctx = context$$.value;
           if (ctx != null) {
             this.onAttachedToContext(ctx, shadowType);
             return () => {
@@ -190,7 +189,7 @@ export class ShadowEntityElement extends HTMLElement {
             };
           }
         },
-        {dependencies: [context$$[0]]},
+        {dependencies: [context$$]},
       );
 
       // TODO destroy the effect?
@@ -223,7 +222,7 @@ export class ShadowEntityElement extends HTMLElement {
         {
           const nextNs = toNamespace(newValue);
           if (toNamespace(oldValue) !== nextNs) {
-            this.#ns[1](nextNs);
+            this.#ns.set(nextNs);
           }
         }
         break;

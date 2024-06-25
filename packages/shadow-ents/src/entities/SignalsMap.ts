@@ -1,19 +1,19 @@
-import {createSignal, destroySignal, type SignalFuncs, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
+import {SignalObject, createSignal, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
 
 export class SignalsMap {
-  #signals = new Map<string, SignalFuncs<any>>();
+  #signals = new Map<string, SignalObject<any>>();
 
   keys(): IterableIterator<string> {
     return this.#signals.keys();
   }
 
-  entries(): IterableIterator<[string, SignalFuncs<any>]> {
+  entries(): IterableIterator<[string, SignalObject<any>]> {
     return this.#signals.entries();
   }
 
   clear() {
-    for (const [sig] of this.#signals.values()) {
-      destroySignal(sig);
+    for (const sig of this.#signals.values()) {
+      sig.destroy();
     }
     this.#signals.clear();
   }
@@ -22,7 +22,7 @@ export class SignalsMap {
     return this.#signals.has(key);
   }
 
-  getSignal<T = unknown>(key: string): SignalFuncs<T> {
+  getSignal<T = unknown>(key: string): SignalObject<T> {
     if (!this.#signals.has(key)) {
       const signal = createSignal<T>();
       this.#signals.set(key, signal);
@@ -32,10 +32,10 @@ export class SignalsMap {
   }
 
   getSignalReader<T = unknown>(key: string): SignalReader<T> {
-    return this.getSignal<T>(key)[0];
+    return this.getSignal<T>(key).get;
   }
 
   getSignalWriter<T = unknown>(key: string): SignalWriter<T> {
-    return this.getSignal<T>(key)[1];
+    return this.getSignal<T>(key).set;
   }
 }

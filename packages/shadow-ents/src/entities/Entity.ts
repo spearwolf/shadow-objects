@@ -1,10 +1,10 @@
 import {Eventize, Priority} from '@spearwolf/eventize';
 import {
+  SignalObject,
   batch,
   createSignal,
   destroySignals,
   value,
-  type SignalFuncs,
   type SignalReader,
   type SignalWriter,
 } from '@spearwolf/signalize';
@@ -18,9 +18,9 @@ type ContextNameType = string | symbol;
 
 interface IContext {
   name: ContextNameType;
-  inherited$$: SignalFuncs<unknown>;
-  provide$$: SignalFuncs<unknown>;
-  context$$: SignalFuncs<unknown>;
+  inherited: SignalObject<unknown>;
+  provide: SignalObject<unknown>;
+  context: SignalObject<unknown>;
   ctxPath: SignalsPath;
   unsubscribeFromPath: () => void;
   unsubscribeFromParent?: () => void;
@@ -127,7 +127,7 @@ export class Entity extends Eventize {
       ctx.unsubscribeFromPath();
       ctx.unsubscribeFromParent?.();
       ctx.ctxPath.dispose();
-      destroySignals(ctx.inherited$$, ctx.provide$$, ctx.context$$);
+      destroySignals(ctx.inherited, ctx.provide, ctx.context);
     }
 
     this.#parentUuid = undefined;
@@ -201,16 +201,16 @@ export class Entity extends Eventize {
     }
   }
 
-  #getPropSignal<T = unknown>(key: string): SignalFuncs<T> {
+  #getPropSignal<T = unknown>(key: string): SignalObject<T> {
     return this.#props.getSignal<T>(key);
   }
 
   getPropertyReader<T = unknown>(key: string): SignalReader<T> {
-    return this.#getPropSignal<T>(key)[0];
+    return this.#getPropSignal<T>(key).get;
   }
 
   getPropertyWriter<T = unknown>(key: string): SignalWriter<T> {
-    return this.#getPropSignal<T>(key)[1];
+    return this.#getPropSignal<T>(key).set;
   }
 
   setProperties(properties: [string, unknown][]) {
@@ -234,7 +234,7 @@ export class Entity extends Eventize {
   }
 
   propEntries(): [string, unknown][] {
-    return Array.from(this.#props.entries()).map(([key, [get]]) => [key, value(get)]);
+    return Array.from(this.#props.entries()).map(([key, sig]) => [key, sig.value]);
   }
 
   hasContext(name: ContextNameType): boolean {
@@ -244,32 +244,32 @@ export class Entity extends Eventize {
   // TODO(test) write tests for useContext()
 
   useContext<T = unknown>(name: ContextNameType): SignalReader<T> {
-    return this.#getContext(name).context$$[0] as SignalReader<T>;
+    return this.#getContext(name).context.get as SignalReader<T>;
   }
 
   // TODO(test) write tests for provideContext()
 
-  provideContext<T = unknown>(name: ContextNameType): SignalFuncs<T> {
-    return this.#getContext(name).provide$$.slice(0) as SignalFuncs<T>;
+  provideContext<T = unknown>(name: ContextNameType): SignalObject<T> {
+    return this.#getContext(name).provide as SignalObject<T>;
   }
 
   #getContext(name: ContextNameType): IContext {
     let ctx = this.#context.get(name);
     if (ctx == null) {
-      const inherited$$ = createSignal();
-      const provide$$ = createSignal();
-      const context$$ = createSignal();
+      const inherited = createSignal();
+      const provide = createSignal();
+      const context = createSignal();
 
       const ctxPath = new SignalsPath();
-      ctxPath.add(provide$$[0], inherited$$[0]);
+      ctxPath.add(provide.get, inherited.get);
 
       const unsubscribeFromPath = ctxPath.on(SignalsPath.Value, (val) => {
         queueMicrotask(() => {
-          context$$[1](val);
+          context.set(val);
         });
       });
 
-      ctx = {name, inherited$$, provide$$, context$$, ctxPath, unsubscribeFromPath};
+      ctx = {name, inherited, provide, context, ctxPath, unsubscribeFromPath};
       this.#context.set(name, ctx);
 
       this.#subscribeToParentContext(ctx);
@@ -281,7 +281,7 @@ export class Entity extends Eventize {
     if (this.parent) {
       ctx.unsubscribeFromParent?.();
       ctx.unsubscribeFromParent = this.parent.#getContext(ctx.name).ctxPath.on(SignalsPath.Value, (val) => {
-        ctx.inherited$$[1](val);
+        ctx.inherited.set(val);
       });
     }
   }

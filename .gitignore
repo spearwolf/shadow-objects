@@ -46,3 +46,4 @@ tsconfig.*.tsbuildinfo
 /playwright/.cache/
 
 .nx/cache
+.nx/workspace-data

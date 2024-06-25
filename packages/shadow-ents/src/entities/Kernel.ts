@@ -1,11 +1,11 @@
 import {Eventize, eventize} from '@spearwolf/eventize';
 import {
+  SignalObject,
   batch,
   connect,
   createSignal,
   destroySignal,
   type CompareFunc,
-  type SignalFuncs,
   type SignalReader,
 } from '@spearwolf/signalize';
 import {ComponentChangeType} from '../constants.js';
@@ -260,7 +260,7 @@ export class Kernel extends Eventize {
     const unsubscribe = new Set<() => any>();
 
     const contextReaders = new Map<string | symbol, SignalReader<any>>();
-    const contextProviders = new Map<string | symbol, SignalFuncs<any>>();
+    const contextProviders = new Map<string | symbol, SignalObject<any>>();
     const propertyReaders = new Map<string, SignalReader<any>>();
 
     const shadowObject = eventize(
@@ -272,7 +272,7 @@ export class Kernel extends Eventize {
           if (ctxProvider === undefined) {
             ctxProvider = createSignal(initialValue, isEqual ? {compareFn: isEqual} : undefined);
             contextProviders.set(name, ctxProvider);
-            const con = connect(ctxProvider[0], entry.entity.provideContext(name)[0]);
+            const con = connect(ctxProvider, entry.entity.provideContext(name));
             unsubscribe.add(con.destroy.bind(con));
           }
           return ctxProvider;
@@ -281,7 +281,7 @@ export class Kernel extends Eventize {
         useContext(name: string | symbol, isEqual?: CompareFunc<any>) {
           let ctxReader = contextReaders.get(name);
           if (ctxReader === undefined) {
-            ctxReader = createSignal<any>(undefined, isEqual ? {compareFn: isEqual} : undefined)[0];
+            [ctxReader] = createSignal<any>(undefined, isEqual ? {compareFn: isEqual} : undefined);
             contextReaders.set(name, ctxReader);
             const con = connect(entry.entity.useContext(name), ctxReader);
             unsubscribe.add(con.destroy.bind(con));
@@ -292,7 +292,7 @@ export class Kernel extends Eventize {
         useProperty(name: string, isEqual?: CompareFunc<any>) {
           let propReader = propertyReaders.get(name);
           if (propReader === undefined) {
-            propReader = createSignal<any>(undefined, isEqual ? {compareFn: isEqual} : undefined)[0];
+            [propReader] = createSignal<any>(undefined, isEqual ? {compareFn: isEqual} : undefined);
             propertyReaders.set(name, propReader);
             const con = connect(entry.entity.getPropertyReader(name), propReader);
             unsubscribe.add(con.destroy.bind(con));
