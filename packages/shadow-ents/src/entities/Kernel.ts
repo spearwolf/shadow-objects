@@ -14,6 +14,13 @@ import {Entity} from './Entity.js';
 import {Registry} from './Registry.js';
 import {onCreate, onDestroy, type OnCreate, type OnDestroy} from './events.js';
 
+export interface MessageToViewEvent {
+  uuid: string;
+  type: string;
+  data?: unknown;
+  transferables?: Transferable[];
+}
+
 interface EntityEntry {
   token: string;
   entity: Entity;
@@ -35,10 +42,10 @@ enum ShadowObjectAction {
  */
 export class Kernel extends Eventize {
   /**
-   * The `message` event is triggered when the kernel receives a message from the entities
+   * The `messageToView` event is fired when the kernel receives a message from an entity (to its view component counterpart)
    * XXX kernel message event is not used yet
    */
-  static Message = 'message';
+  static MessageToView = 'messageToView';
 
   registry: Registry;
 
@@ -219,6 +226,10 @@ export class Kernel extends Eventize {
     entry.token = token;
 
     this.updateShadowObjects(uuid);
+  }
+
+  dispatchMessageToView(message: MessageToViewEvent): void {
+    this.emit(Kernel.MessageToView, message);
   }
 
   /**

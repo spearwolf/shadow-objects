@@ -47,7 +47,11 @@ export class MessageRouter {
 
     this.postMessage = options?.postMessage ?? self.postMessage.bind(self);
 
-    // TODO subscribe to kernel "message" events
+    this.kernel.on(Kernel.MessageToView, (event) => {
+      console.log('[MessageRouter] TODO messageToView', event);
+      // TODO postMessage to view-component
+    });
+    // TODO unsubscribe
   }
 
   route(event: MessageEvent) {

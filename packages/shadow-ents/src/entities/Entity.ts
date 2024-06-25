@@ -195,6 +195,10 @@ export class Entity extends Eventize {
     }
   }
 
+  dispatchEventToView(type: string, data?: unknown, transferables?: Transferable[]) {
+    this.#kernel.dispatchMessageToView({uuid: this.#uuid, type, data, transferables});
+  }
+
   dispatchLocalEvents(events: IComponentEvent[]) {
     for (const {type, data} of events) {
       this.emit(onViewEvent, type, data);
