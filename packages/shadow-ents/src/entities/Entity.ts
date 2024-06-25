@@ -195,10 +195,14 @@ export class Entity extends Eventize {
     }
   }
 
-  emitViewEvents(events: IComponentEvent[]) {
+  dispatchLocalEvents(events: IComponentEvent[]) {
     for (const {type, data} of events) {
       this.emit(onViewEvent, type, data);
     }
+  }
+
+  dispatchLocalEvent(type: string, data: unknown) {
+    this.dispatchLocalEvents([{type, data}]);
   }
 
   #getPropSignal<T = unknown>(key: string): SignalObject<T> {

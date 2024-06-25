@@ -7,7 +7,7 @@ function foo({entity, useProperty}) {
     console.log('foo.xyz changed to', val);
   });
 
-  entity.emitViewEvents([{type: 'helloFromFoo', data: {xyz: xyz()}}]);
+  entity.dispatchLocalEvent('helloFromFoo', {xyz: xyz()});
 }
 
 export const shadowObjects = {

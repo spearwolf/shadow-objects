@@ -138,7 +138,7 @@ export class Kernel extends Eventize {
         break;
 
       case ComponentChangeType.SendEvents:
-        this.emitEventsToEntity(entry.uuid, entry.events);
+        this.dispatchEventsToEntity(entry.uuid, entry.events);
         break;
     }
   }
@@ -201,8 +201,8 @@ export class Kernel extends Eventize {
     this.getEntity(uuid).order = order;
   }
 
-  emitEventsToEntity(uuid: string, events: IComponentEvent[]): void {
-    this.getEntity(uuid)?.emitViewEvents(events);
+  dispatchEventsToEntity(uuid: string, events: IComponentEvent[]): void {
+    this.getEntity(uuid)?.dispatchLocalEvents(events);
   }
 
   changeProperties(uuid: string, properties: [string, unknown][]): void {
