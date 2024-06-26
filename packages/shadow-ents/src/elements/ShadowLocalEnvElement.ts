@@ -1,9 +1,9 @@
 import {LocalEnv} from '../view/env/LocalEnv.js';
-import {ShadowEnvElement} from './ShadowEnvElement.js';
+import {ShadowEnvElementLegacy} from './ShadowEnvElementLegacy.js';
 import {ShadowElementType} from './constants.js';
 
 // TODO remove class - add :local attribute to <shadow-env>
-export class ShadowLocalEnvElement extends ShadowEnvElement {
+export class ShadowLocalEnvElement extends ShadowEnvElementLegacy {
   override readonly shadowTypes = new Set([ShadowElementType.ShadowLocalEnv, ShadowElementType.ShadowEnv]);
 
   #env?: LocalEnv;

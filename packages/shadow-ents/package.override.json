@@ -9,7 +9,7 @@
     "src/shadow-worker.js",
     "src/shadow-entity.js",
     "src/shadow-local-env.js",
-    "src/shadow-env.js"
+    "src/shadow-env-legacy.js"
   ],
   "scripts": null,
   "devDependencies": null,

@@ -1,7 +1,7 @@
 import {eventize} from '@spearwolf/eventize';
 import {BaseEnv} from '@spearwolf/shadow-ents';
 import '@spearwolf/shadow-ents/shadow-entity.js';
-import '@spearwolf/shadow-ents/shadow-env.js';
+import '@spearwolf/shadow-ents/shadow-env-legacy.js';
 import {createEffect, createSignal} from '@spearwolf/signalize';
 import {createActor} from 'xstate';
 import {FrameLoop} from '../shared/FrameLoop.js';
@@ -15,11 +15,11 @@ import {waitForMessageOfType} from './waitForMessageOfType.js';
 const DEFAULT_AUTO_SYNC = 'frame';
 
 const InitialHTML = `
-  <shadow-env id="env">
+  <shadow-env-legacy id="env">
     <shadow-entity id="root" token="vfx-ctx">
       <slot></slot>
     </shadow-entity>
-  </shadow-env>
+  </shadow-env-legacy>
 `;
 
 const isANoneEmptyArray = (value) => Array.isArray(value) && value.length > 0;

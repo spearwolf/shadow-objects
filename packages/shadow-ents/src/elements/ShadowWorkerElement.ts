@@ -9,7 +9,7 @@ import {BaseEnv} from '../view/env/BaseEnv.js';
 import {FrameLoop} from './FrameLoop.js';
 import {ReRequestContext} from './ReRequestContext.js';
 import type {ShadowEntityElement} from './ShadowEntityElement.js';
-import type {ShadowEnvElement} from './ShadowEnvElement.js';
+import type {ShadowEnvElementLegacy} from './ShadowEnvElementLegacy.js';
 import {attachShadowEntity} from './attachShadowEntity.js';
 import {attachSignal} from './attachSignal.js';
 import {machine} from './shadow-worker/state-machine.js';
@@ -19,11 +19,11 @@ const AUTO_SYNC_DEFAULT = 'frame';
 const WORKER = 'worker';
 
 const InitialHTML = `
-  <shadow-env id="env">
+  <shadow-env-legacy id="env">
     <shadow-entity id="root" token="root">
       <slot></slot>
     </shadow-entity>
-  </shadow-env>
+  </shadow-env-legacy>
 `;
 
 const isANoneEmptyArray = (value: any) => Array.isArray(value) && value.length > 0;
@@ -71,7 +71,7 @@ export class ShadowWorkerElement extends HTMLElement {
   reRequestContextTypes = [1, 2]; // we use <shadow-env> and <shadow-entity> components in this element
 
   readonly shadow: ShadowRoot;
-  readonly shadowEnvElement: ShadowEnvElement;
+  readonly shadowEnvElement: ShadowEnvElementLegacy;
 
   worker?: Worker;
 
@@ -90,7 +90,7 @@ export class ShadowWorkerElement extends HTMLElement {
     this.shadow = this.attachShadow({mode: 'open'});
     this.shadow.innerHTML = initialHTML;
 
-    this.shadowEnvElement = this.shadow.getElementById('env') as ShadowEnvElement;
+    this.shadowEnvElement = this.shadow.getElementById('env') as ShadowEnvElementLegacy;
     attachShadowEntity(this, this.shadow.getElementById('root'));
 
     this.on('viewComponent', this.#onViewComponent.bind(this));

@@ -37,9 +37,9 @@
       "default": "./dist/src/shadow-entity.js",
       "types": "./dist/src/shadow-entity.d.ts"
     },
-    "./shadow-env.js": {
-      "default": "./dist/src/shadow-env.js",
-      "types": "./dist/src/shadow-env.d.ts"
+    "./shadow-env-legacy.js": {
+      "default": "./dist/src/shadow-env-legacy.js",
+      "types": "./dist/src/shadow-env-legacy.d.ts"
     },
     "./shadow-local-env.js": {
       "default": "./dist/src/shadow-local-env.js",
@@ -55,7 +55,7 @@
     "build/src/shadow-worker.js",
     "build/src/shadow-entity.js",
     "build/src/shadow-local-env.js",
-    "build/src/shadow-env.js",
+    "build/src/shadow-env-legacy.js",
     "build/src/bundle.js",
     "build/src/core.js",
     "build/src/index.js",
@@ -63,7 +63,7 @@
     "dist/src/shadow-worker.js",
     "dist/src/shadow-entity.js",
     "dist/src/shadow-local-env.js",
-    "dist/src/shadow-env.js",
+    "dist/src/shadow-env-legacy.js",
     "dist/src/bundle.js",
     "dist/src/core.js",
     "dist/src/index.js",

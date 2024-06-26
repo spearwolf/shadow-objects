@@ -5,8 +5,7 @@ import type {IShadowEnvElement} from './IShadowEnvElement.js';
 import {ShadowEntityElement} from './ShadowEntityElement.js';
 import {ShadowElementType} from './constants.js';
 
-// TODO rename class / element to <shadow-worker>
-export class ShadowEnvElement extends ShadowEntityElement implements IShadowEnvElement {
+export class ShadowEnvElementLegacy extends ShadowEntityElement implements IShadowEnvElement {
   override readonly contextTypes: ShadowElementType[] = [];
 
   override readonly shadowTypes = new Set([ShadowElementType.ShadowEnv]);
