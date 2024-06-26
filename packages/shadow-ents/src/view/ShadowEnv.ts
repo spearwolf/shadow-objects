@@ -132,5 +132,6 @@ export class ShadowEnv {
 
   #onMessageToView(event: Omit<MessageToViewEvent, 'transferables'>) {
     console.log('ShadowEnv: onMessageToView', event.type, event.data);
+    this.view?.dispatchMessage(event.uuid, event.type, event.data);
   }
 }

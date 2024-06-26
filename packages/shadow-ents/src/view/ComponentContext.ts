@@ -195,6 +195,13 @@ export class ComponentContext {
   }
 
   /**
+   * Dispatch an event (usually from the shadow-objects from the worker env) to a specific view component
+   */
+  dispatchMessage(uuid: string, type: string, data: unknown = undefined, traverseChildren = false) {
+    this.#components.get(uuid)?.component.dispatchEvent(type, data, traverseChildren);
+  }
+
+  /**
    * Create the component change trails at this point in time.
    * The next call will only return the differences from the previous call.
    *

@@ -132,10 +132,12 @@ export class ViewComponent {
     this.#context.dispatchShadowObjectsEvent(this, type, data, transferables);
   }
 
-  dispatchEvent(type: string, data: unknown) {
+  dispatchEvent(type: string, data: unknown, traverseChildren = true) {
     this.emit(type, data);
-    for (const child of this.#context!.getChildren(this)) {
-      child.dispatchEvent(type, data);
+    if (traverseChildren) {
+      for (const child of this.#context!.getChildren(this)) {
+        child.dispatchEvent(type, data);
+      }
     }
   }
 

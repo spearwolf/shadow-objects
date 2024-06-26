@@ -27,10 +27,18 @@ async function main() {
   const foo = new ViewComponent('foo');
   foo.setProperty('xyz', 123);
 
+  foo.on('helloFromFoo', (...args) => {
+    console.log('HELLO', ...args);
+  });
+
   const bar = new ViewComponent('bar', {parent: foo});
   bar.setProperty('plah', 666);
 
   await testAsyncAction('shadow-env-1st-sync', async () => {
     await shadowEnv.sync();
+  });
+
+  await testAsyncAction('shadow-env-hello', async () => {
+    await foo.onceAsync('helloFromFoo');
   });
 }
