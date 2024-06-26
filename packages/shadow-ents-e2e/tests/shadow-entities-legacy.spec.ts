@@ -1,9 +1,8 @@
 import {expect, test} from '@playwright/test';
-import {lookupTests} from './lookupTests.js';
 
-test.describe('shadow-entity', () => {
+test.describe('shadow-entity-legacy', () => {
   test.beforeEach('goto page', async ({page}) => {
-    await page.goto('/pages/shadow-entities.html');
+    await page.goto('/pages/shadow-entities-legacy.html');
     await page.evaluate(() => customElements.whenDefined('shadow-entity'));
   });
 
@@ -21,6 +20,4 @@ test.describe('shadow-entity', () => {
       ),
     ).toBe(true);
   });
-
-  lookupTests(['custom-element-shadow-env-exists', 'custom-element-shadow-entity-exists', 'shadow-env-ready']);
 });

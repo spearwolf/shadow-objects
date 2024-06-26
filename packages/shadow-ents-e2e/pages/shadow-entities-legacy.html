@@ -4,11 +4,12 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>shadow-entities</title>
+    <title>shadow-entities-legacy</title>
   </head>
   <body>
+    <script type="module" src="/src/shadow-entities-legacy.ts"></script>
     <main>
-      <shadow-env local data-testid="localEnv0">
+      <shadow-local-env data-testid="localEnv0">
         <shadow-entity data-testid="seBase0">
           seBase0
           <shadow-entity data-testid="seBase1">
@@ -17,11 +18,7 @@
           </shadow-entity>
           <shadow-entity data-testid="seBase2">seBase2</shadow-entity>
         </shadow-entity>
-      </shadow-env>
+      </shadow-local-env>
     </main>
-
-    <section id="tests"></section>
-
-    <script type="module" src="/src/shadow-entities.ts"></script>
   </body>
 </html>
