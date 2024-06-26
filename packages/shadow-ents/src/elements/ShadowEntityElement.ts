@@ -6,7 +6,7 @@ import {toNamespace} from '../toNamespace.js';
 import type {NamespaceType} from '../types.js';
 import type {ComponentContext} from '../view/ComponentContext.js';
 import {ViewComponent} from '../view/ViewComponent.js';
-import type {IShadowEnvElement} from './IShadowEnvElement.js';
+import type {IShadowEnvElementLegacy} from './IShadowEnvElementLegacy.js';
 import {ReRequestContext} from './ReRequestContext.js';
 import {RequestContextEventName, ShadowElementType} from './constants.js';
 import type {RequestContextEvent} from './events.js';
@@ -23,7 +23,7 @@ export class ShadowEntityElement extends HTMLElement {
 
   stopContextRequestPropagation = false;
 
-  shadowEnvElement?: IShadowEnvElement;
+  shadowEnvElement?: IShadowEnvElementLegacy;
 
   @signal() accessor connected: boolean = false;
   @signal() accessor token: string | undefined;
@@ -50,8 +50,8 @@ export class ShadowEntityElement extends HTMLElement {
     this.#syncTokenAttribute();
 
     this.getContextByType$$(ShadowElementType.ShadowEnv)!.get((env) => {
-      this.shadowEnvElement = env as unknown as IShadowEnvElement;
-      this.componentContext = (env && (env as unknown as IShadowEnvElement).getComponentContext()) || undefined;
+      this.shadowEnvElement = env as unknown as IShadowEnvElementLegacy;
+      this.componentContext = (env && (env as unknown as IShadowEnvElementLegacy).getComponentContext()) || undefined;
     });
 
     this.parentEntity$((parent) => this.#onParentEntityChanged(parent));
@@ -64,7 +64,7 @@ export class ShadowEntityElement extends HTMLElement {
   }
 
   syncShadowObjects() {
-    this.shadowEnvElement?.syncShadowObjects();
+    this.shadowEnvElement?.syncShadowObjects?.();
   }
 
   // TODO merge with sendEventsToShadows
@@ -238,6 +238,7 @@ export class ShadowEntityElement extends HTMLElement {
 
     this.#registerRequestContextListener();
     this.#dispatchRequestContextEvent();
+
     this.#subscribeToReRequestContext();
   }
 
@@ -245,6 +246,7 @@ export class ShadowEntityElement extends HTMLElement {
     this.connected = false;
 
     this.#disconnectFromShadowTree();
+
     this.#unregisterRequestContextListener();
 
     this.#unsubscribeReRequestContext?.();

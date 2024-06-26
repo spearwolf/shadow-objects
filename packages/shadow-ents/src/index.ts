@@ -1,6 +1,7 @@
 export * from './constants.js';
 export * from './elements/ReRequestContext.js';
 export * from './elements/ShadowEntityElement.js';
+export * from './elements/ShadowEnvElement.js';
 export * from './elements/ShadowEnvElementLegacy.js';
 export * from './elements/ShadowLocalEnvElement.js';
 export * from './elements/constants.js';
@@ -21,6 +22,6 @@ export * from './view/env/LocalEnv.js';
 export * from './worker/MessageRouter.js';
 export * from './worker/WorkerRuntime.js';
 
-export type * from './elements/IShadowEnvElement.js';
+export type * from './elements/IShadowEnvElementLegacy.js';
 export type * from './types.js';
 export type * from './view/IShadowObjectEnvProxy.js';
