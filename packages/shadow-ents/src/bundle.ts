@@ -9,5 +9,3 @@ declare global {
 }
 
 globalThis.SHADOW_ENTS_BUNDLE_LOADED = true;
-
-// TODO rename to @spearwolf/shadow-ents/element.js

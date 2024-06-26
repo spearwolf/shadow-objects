@@ -22,7 +22,7 @@ import type {
   SyncEvent,
 } from '../types.js';
 
-// TODO remove InitPayloadData
+// TODO(cleanup) remove InitPayloadData
 interface InitPayloadData {
   importSrc?: string;
 }
@@ -54,7 +54,7 @@ export class MessageRouter {
   route(event: MessageEvent) {
     switch (event.data.type) {
       case Init:
-        // TODO remove Init event
+        // TODO(cleanup) remove Init event
         this.#onInit(event.data);
         break;
 
@@ -114,7 +114,7 @@ export class MessageRouter {
     }
   }
 
-  // TODO remove onInit
+  // TODO(cleanup) remove onInit
   #onInit(data: InitPayloadData) {
     // console.debug('[MessageRouter] on init', data);
 
@@ -132,7 +132,7 @@ export class MessageRouter {
     this.postMessage({type: Destroyed});
   }
 
-  // TODO remove loadScript
+  // TODO(cleanup) remove loadScript
   async #loadScript(src: string) {
     const mod = await import(/* @vite-ignore */ src);
 
@@ -147,7 +147,6 @@ export class MessageRouter {
         kernel: this.kernel,
         registry: this.kernel.registry,
       });
-      // TODO remember constructors from define() for later cleanup (src changed, maybe we should support hotswap here?)
     }
 
     this.postMessage({type: Ready});
