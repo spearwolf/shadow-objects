@@ -61,6 +61,10 @@ The entity reference. The entity is the logical container for the shadow objects
 
 _TODO:_ describe entity events
 
+> **entity.uuid:** _string_
+
+The uuid of the entity. which is also the uuid of the [view component](../view/ViewComponent.md).
+
 > **onDestroy:** `(callback: () => any)`
 
 _TODO:_ add description

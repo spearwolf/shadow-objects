@@ -1,3 +1,4 @@
+import type {MessageToViewEvent} from '../core.js';
 import type {ChangeTrailType} from '../types.js';
 
 export interface IShadowObjectEnvProxy {
@@ -8,4 +9,6 @@ export interface IShadowObjectEnvProxy {
   applyChangeTrail(data: ChangeTrailType): Promise<void>;
 
   destroy(): void;
+
+  onMessageToView?: (event: Omit<MessageToViewEvent, 'transferables'>) => any;
 }

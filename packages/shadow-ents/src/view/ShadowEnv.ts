@@ -1,6 +1,7 @@
 import {eventize, type EventizeApi} from '@spearwolf/eventize';
 import {createEffect, type SignalReader} from '@spearwolf/signalize';
 import {signal, signalReader} from '@spearwolf/signalize/decorators';
+import type {MessageToViewEvent} from '../core.js';
 import type {ComponentContext} from './ComponentContext.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
@@ -69,6 +70,10 @@ export class ShadowEnv {
       const prevProxy = this.#shaObjEnvProxy;
       this.#shaObjEnvProxy = proxy ?? undefined;
 
+      if (this.#shaObjEnvProxy) {
+        this.#shaObjEnvProxy.onMessageToView = this.#onMessageToView.bind(this);
+      }
+
       if (prevProxy) {
         prevProxy.destroy();
       }
@@ -123,5 +128,9 @@ export class ShadowEnv {
         }
       }
     }
+  }
+
+  #onMessageToView(event: Omit<MessageToViewEvent, 'transferables'>) {
+    console.log('ShadowEnv: onMessageToView', event.type, event.data);
   }
 }

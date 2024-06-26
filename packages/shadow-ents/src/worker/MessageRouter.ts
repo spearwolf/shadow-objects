@@ -6,10 +6,11 @@ import {
   Destroyed,
   ImportedModule,
   Init,
+  MessageToView,
   Ready,
   ShadowObjectsExport,
 } from '../constants.js';
-import {Kernel} from '../entities/Kernel.js';
+import {Kernel, type MessageToViewEvent} from '../entities/Kernel.js';
 import {shadowObjects} from '../entities/ShadowObject.js';
 import {importModule} from '../entities/importModule.js';
 import {toUrlString} from '../toUrlString.js';
@@ -47,11 +48,7 @@ export class MessageRouter {
 
     this.postMessage = options?.postMessage ?? self.postMessage.bind(self);
 
-    this.kernel.on(Kernel.MessageToView, (event) => {
-      console.log('[MessageRouter] TODO messageToView', event);
-      // TODO postMessage to view-component
-    });
-    // TODO unsubscribe
+    this.kernel.on(MessageToView, 'onMessageToView', this);
   }
 
   route(event: MessageEvent) {
@@ -76,6 +73,11 @@ export class MessageRouter {
       default:
         console.warn('[MessageRouter] unknown message', event.data.type ?? event.data);
     }
+  }
+
+  onMessageToView(event: MessageToViewEvent) {
+    const {transferables: transfer, ...data} = event;
+    this.postMessage({type: MessageToView, data}, {transfer});
   }
 
   async #configure(data: ConfigurePayloadData) {
@@ -125,6 +127,7 @@ export class MessageRouter {
 
   #onDestroy(data: any) {
     console.debug('[MessageRouter] on destroy', data);
+    this.kernel.off(this);
     this.#importedModules.clear();
     this.postMessage({type: Destroyed});
   }

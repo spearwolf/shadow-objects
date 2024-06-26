@@ -8,7 +8,7 @@ import {
   type CompareFunc,
   type SignalReader,
 } from '@spearwolf/signalize';
-import {ComponentChangeType} from '../constants.js';
+import {ComponentChangeType, MessageToView} from '../constants.js';
 import type {IComponentChangeType, IComponentEvent, ShadowObjectConstructor, ShadowObjectType, SyncEvent} from '../types.js';
 import {Entity} from './Entity.js';
 import {Registry} from './Registry.js';
@@ -41,12 +41,6 @@ enum ShadowObjectAction {
  * Which shadow-objects are created is determined by the token.
  */
 export class Kernel extends Eventize {
-  /**
-   * The `messageToView` event is fired when the kernel receives a message from an entity (to its view component counterpart)
-   * XXX kernel message event is not used yet
-   */
-  static MessageToView = 'messageToView';
-
   registry: Registry;
 
   #entities: Map<string, EntityEntry> = new Map();
@@ -209,7 +203,7 @@ export class Kernel extends Eventize {
   }
 
   dispatchEventsToEntity(uuid: string, events: IComponentEvent[]): void {
-    this.getEntity(uuid)?.dispatchLocalEvents(events);
+    this.getEntity(uuid)?.dispatchViewEvents(events);
   }
 
   changeProperties(uuid: string, properties: [string, unknown][]): void {
@@ -229,7 +223,9 @@ export class Kernel extends Eventize {
   }
 
   dispatchMessageToView(message: MessageToViewEvent): void {
-    this.emit(Kernel.MessageToView, message);
+    queueMicrotask(() => {
+      this.emit(MessageToView, message);
+    });
   }
 
   /**

@@ -37,6 +37,11 @@ export const AppliedChangeTrail = 'appliedChangeTrail';
 export const ImportedModule = 'importedModule';
 export const Destroyed = 'destroyed';
 
+/**
+ * The `messageToView` event is fired when the kernel receives a message from an entity (to its view component counterpart)
+ */
+export const MessageToView = 'messageToView';
+
 export const WorkerLoadTimeout = 16000;
 export const WorkerReadyTimeout = 16000; // TODO remove WorkerReadyTimeout
 export const WorkerConfigureTimeout = 16000;

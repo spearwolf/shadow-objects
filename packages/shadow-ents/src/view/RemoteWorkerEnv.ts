@@ -7,6 +7,7 @@ import {
   Destroyed,
   ImportedModule,
   Loaded,
+  MessageToView,
   WorkerChangeTrailTimeout,
   WorkerConfigureTimeout,
   WorkerDestroyTimeout,
@@ -65,7 +66,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
 
       return this.workerLoaded.then(() => {
         if (this.isDestroyed) {
-          throw 'RemoteWorkerEnv: worker was destoyed';
+          throw 'RemoteWorkerEnv: worker was destroyed';
         }
         return undefined;
       });
@@ -77,7 +78,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
       await waitForMessageOfType(worker, Loaded, WorkerLoadTimeout);
 
       if (this.isDestroyed) {
-        throw 'RemoteWorkerEnv: worker was destoyed';
+        throw 'RemoteWorkerEnv: worker was destroyed';
       }
 
       worker.addEventListener('message', this.onMessageFromWorker.bind(this));
@@ -93,8 +94,11 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   }
 
   onMessageFromWorker(event: MessageEvent) {
-    // TODO implement onMessageFromWorker
-    console.debug('RemoteWorkerEnv: message from worker', event);
+    if (event.data?.type === MessageToView) {
+      (this as IShadowObjectEnvProxy).onMessageToView?.(event.data.data);
+    } else {
+      console.debug('RemoteWorkerEnv: message from worker', event);
+    }
   }
 
   applyChangeTrail(changeTrail: ChangeTrailType): Promise<void> {

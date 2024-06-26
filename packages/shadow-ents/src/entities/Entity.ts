@@ -195,18 +195,18 @@ export class Entity extends Eventize {
     }
   }
 
-  dispatchEventToView(type: string, data?: unknown, transferables?: Transferable[]) {
+  dispatchMessageToView(type: string, data?: unknown, transferables?: Transferable[]) {
     this.#kernel.dispatchMessageToView({uuid: this.#uuid, type, data, transferables});
   }
 
-  dispatchLocalEvents(events: IComponentEvent[]) {
+  dispatchViewEvents(events: IComponentEvent[]) {
     for (const {type, data} of events) {
       this.emit(onViewEvent, type, data);
     }
   }
 
-  dispatchLocalEvent(type: string, data: unknown) {
-    this.dispatchLocalEvents([{type, data}]);
+  dispatchViewEvent(type: string, data: unknown) {
+    this.dispatchViewEvents([{type, data}]);
   }
 
   #getPropSignal<T = unknown>(key: string): SignalObject<T> {

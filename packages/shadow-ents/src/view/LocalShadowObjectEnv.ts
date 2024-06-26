@@ -1,5 +1,5 @@
-import {ShadowObjectsExport} from '../constants.js';
-import {Kernel} from '../entities/Kernel.js';
+import {MessageToView, ShadowObjectsExport} from '../constants.js';
+import {Kernel, type MessageToViewEvent} from '../entities/Kernel.js';
 import type {Registry} from '../entities/Registry.js';
 import {importModule} from '../entities/importModule.js';
 import {toUrlString} from '../toUrlString.js';
@@ -18,6 +18,14 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
 
   constructor(registry?: Registry) {
     this.kernel = new Kernel(registry);
+
+    this.kernel.on(MessageToView, (message: MessageToViewEvent) => {
+      if ((this as IShadowObjectEnvProxy).onMessageToView != null) {
+        const {type, uuid} = message;
+        const data = structuredClone(message.data, {transfer: message.transferables});
+        (this as IShadowObjectEnvProxy).onMessageToView({type, uuid, data});
+      }
+    });
   }
 
   start(): Promise<void> {
