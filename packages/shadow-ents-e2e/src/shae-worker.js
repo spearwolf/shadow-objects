@@ -25,6 +25,9 @@ async function main() {
   });
 
   const worker1 = document.getElementById('worker1');
+  window.worker1 = worker1;
+  console.log('shae-worker #worker1', worker1);
+
   const shadowEnv1 = worker1.shadowEnv;
   window.shadowEnv1 = shadowEnv1;
   console.log('shadowEnv1', shadowEnv1);
