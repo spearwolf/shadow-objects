@@ -7,20 +7,32 @@ import {testBooleanAction} from './testBooleanAction.js';
 main();
 
 async function main() {
-  const worker = document.getElementById('worker');
-
-  window.worker = worker;
-  console.log('shae-worker element', worker);
+  const worker0 = document.getElementById('worker0');
+  window.worker0 = worker0;
+  console.log('shae-worker #worker0', worker0);
 
   await testAsyncAction('shae-worker-whenDefined', () => customElements.whenDefined('shae-worker'));
 
-  const shadowEnv = worker.shadowEnv;
-  window.shadowEnv = shadowEnv;
-  console.log('shadowEnv', shadowEnv);
+  const shadowEnv0 = worker0.shadowEnv;
+  window.shadowEnv0 = shadowEnv0;
+  console.log('shadowEnv0', shadowEnv0);
 
-  testBooleanAction('shae-worker-ns', () => worker.ns === GlobalNS);
+  testBooleanAction('worker0-ns', () => worker0.ns === GlobalNS);
+  testAsyncAction('worker0-is-remote-env', () => shadowEnv0.envProxy.workerLoaded);
 
-  await testAsyncAction('shadow-env-ready', async () => {
-    await shadowEnv.ready();
+  await testAsyncAction('worker0-env-ready', async () => {
+    await shadowEnv0.ready();
+  });
+
+  const worker1 = document.getElementById('worker1');
+  const shadowEnv1 = worker1.shadowEnv;
+  window.shadowEnv1 = shadowEnv1;
+  console.log('shadowEnv1', shadowEnv1);
+
+  testBooleanAction('worker1-ns', () => worker1.ns === 'local');
+  testBooleanAction('worker1-is-local-env', () => shadowEnv1.envProxy.kernel != null);
+
+  await testAsyncAction('worker1-env-ready', async () => {
+    await shadowEnv1.ready();
   });
 }
