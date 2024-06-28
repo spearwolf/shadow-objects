@@ -6,6 +6,7 @@
     "src/core.js",
     "src/index.js",
     "src/view/ComponentContext.js",
+    "src/shae-worker.js",
     "src/shadow-worker.js",
     "src/shadow-entity.js",
     "src/shadow-local-env.js",

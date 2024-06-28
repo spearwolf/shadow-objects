@@ -1,8 +1,8 @@
 import {eventize, type EventizeApi} from '@spearwolf/eventize';
 import {createEffect, type SignalReader} from '@spearwolf/signalize';
 import {signal, signalReader} from '@spearwolf/signalize/decorators';
-import type {MessageToViewEvent} from '../core.js';
-import type {ComponentContext} from './ComponentContext.js';
+import {type MessageToViewEvent} from '../core.js';
+import {ComponentContext} from './ComponentContext.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
 export interface ShadowEnv extends EventizeApi {}
@@ -134,4 +134,6 @@ export class ShadowEnv {
     console.log('ShadowEnv: onMessageToView', event.type, event.data);
     this.view?.dispatchMessage(event.uuid, event.type, event.data);
   }
+
+  // TODO ShadowEnv#destroy()
 }

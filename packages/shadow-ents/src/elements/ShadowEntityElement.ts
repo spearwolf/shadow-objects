@@ -51,7 +51,7 @@ export class ShadowEntityElement extends HTMLElement {
 
     this.getContextByType$$(ShadowElementType.ShadowEnv)!.get((env) => {
       this.shadowEnvElement = env as unknown as IShadowEnvElementLegacy;
-      // this.componentContext = (env && (env as unknown as IShadowEnvElementLegacy).getComponentContext()) || undefined;
+      this.componentContext = (env && (env as unknown as IShadowEnvElementLegacy).getComponentContext()) || undefined;
     });
 
     this.parentEntity$((parent) => this.#onParentEntityChanged(parent));
@@ -315,7 +315,6 @@ export class ShadowEntityElement extends HTMLElement {
   }
 
   #changeNamespace = () => {
-    this.componentContext = ComponentContext.get(this.ns || GlobalNS);
     // TODO a namespace change should trigger a re-connection of all descendants
     if (this.isConnected) {
       this.#reconnectToShadowTree();
