@@ -158,6 +158,9 @@ importers:
 
   packages/shadow-ents-e2e:
     dependencies:
+      '@spearwolf/eventize':
+        specifier: ^3.4.2
+        version: 3.4.2
       '@spearwolf/shadow-ents':
         specifier: workspace:*
         version: link:../shadow-ents

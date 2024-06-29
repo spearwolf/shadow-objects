@@ -2,7 +2,7 @@ import type {LocalShadowObjectEnv, ShadowEntityElement, ShadowEnvElement} from '
 import '@spearwolf/shadow-ents/shadow-entity.js';
 import '@spearwolf/shadow-ents/shadow-env.js';
 import './style.css';
-import {testAsyncAction} from './testAsyncAction.js';
+import {testAsyncAction} from './test-helpers/testAsyncAction.js';
 
 console.log('hello, hello');
 

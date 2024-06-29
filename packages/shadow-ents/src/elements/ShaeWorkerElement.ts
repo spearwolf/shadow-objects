@@ -11,25 +11,29 @@ const readNamespaceAttribute = (el: HTMLElement) => toNamespace(el.getAttribute(
 const readBooleanAttribute = (el: HTMLElement, name: string) => {
   if (el.hasAttribute(name)) {
     const val = el.getAttribute(name)?.trim()?.toLowerCase() || 'on';
-    return ['true', 'on', 'yes', 'local'].includes(val);
+    return ['', 'true', 'on', 'yes', 'local'].includes(val);
   }
   return false;
 };
 
-const AttrNamespace = 'ns';
+const AttrNS = 'ns';
 const AttrLocal = 'local';
+const AttrNoAutostart = 'no-autostart';
 
 export class ShaeWorkerElement extends HTMLElement {
-  static observedAttributes = [AttrNamespace];
+  static observedAttributes = [AttrNS];
 
   readonly isShaeElement = true;
   readonly isShaeWorkerElement = true;
 
   readonly shadowEnv = new ShadowEnv();
 
+  autostart = true;
+
   readonly #ns = createSignal<string | symbol>(GlobalNS);
 
   #shouldDestroy = false;
+  #started = false;
 
   constructor() {
     super();
@@ -56,14 +60,7 @@ export class ShaeWorkerElement extends HTMLElement {
       );
     });
 
-    this.shadowEnv.on(ShadowEnv.AfterSync, () => {
-      this.dispatchEvent(
-        new CustomEvent(ShadowEnv.AfterSync.toLowerCase(), {
-          bubbles: false,
-          detail: {shadowEnv: this.shadowEnv},
-        }),
-      );
-    });
+    // XXX we don't expose ShadowEnv.AfterSync here, because the frequency of this event is too high
   }
 
   get ns(): string | symbol {
@@ -78,8 +75,14 @@ export class ShaeWorkerElement extends HTMLElement {
     }
   }
 
+  get shouldAutostart(): boolean {
+    return this.autostart && !readBooleanAttribute(this, AttrNoAutostart);
+  }
+
   connectedCallback() {
-    this.start();
+    if (this.shouldAutostart) {
+      this.start();
+    }
   }
 
   disconnectedCallback() {
@@ -87,7 +90,7 @@ export class ShaeWorkerElement extends HTMLElement {
   }
 
   attributeChangedCallback(name: string) {
-    if (name === AttrNamespace) {
+    if (name === AttrNS) {
       this.#ns.set(readNamespaceAttribute(this));
     }
     if (name === AttrLocal) {
@@ -100,13 +103,18 @@ export class ShaeWorkerElement extends HTMLElement {
   }
 
   start(): Promise<ShadowEnv> {
-    this.#shouldDestroy = false;
-    if (this.shadowEnv.view == null) {
-      this.shadowEnv.view = ComponentContext.get(this.#ns.value);
-    }
-    if (this.shadowEnv.envProxy == null) {
-      const envProxy = readBooleanAttribute(this, AttrLocal) ? new LocalShadowObjectEnv() : new RemoteWorkerEnv();
-      this.shadowEnv.envProxy = envProxy;
+    if (!this.#started) {
+      this.#shouldDestroy = false;
+
+      if (this.shadowEnv.view == null) {
+        this.shadowEnv.view = ComponentContext.get(this.#ns.value);
+      }
+      if (this.shadowEnv.envProxy == null) {
+        const envProxy = readBooleanAttribute(this, AttrLocal) ? new LocalShadowObjectEnv() : new RemoteWorkerEnv();
+        this.shadowEnv.envProxy = envProxy;
+      }
+
+      this.#started = true;
     }
     return this.shadowEnv.ready();
   }

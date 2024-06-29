@@ -1,4 +1,4 @@
-import {eventize, type EventizeApi} from '@spearwolf/eventize';
+import {Priority, eventize, type EventizeApi} from '@spearwolf/eventize';
 import {createEffect, type SignalReader} from '@spearwolf/signalize';
 import {signal, signalReader} from '@spearwolf/signalize/decorators';
 import {type MessageToViewEvent} from '../core.js';
@@ -26,6 +26,11 @@ export class ShadowEnv {
 
   constructor() {
     eventize(this);
+
+    this.retain(ShadowEnv.ContextCreated);
+    this.on(ShadowEnv.ContextLost, Priority.AAA, () => {
+      this.retainClear(ShadowEnv.ContextCreated);
+    });
 
     createEffect(() => {
       if (this.proxyReady) {
@@ -96,9 +101,9 @@ export class ShadowEnv {
     return Boolean(this.#comCtx && this.#shaObjEnvProxy && this.proxyReady);
   }
 
-  async ready(): Promise<ShadowEnv> {
+  readonly ready = async (): Promise<ShadowEnv> => {
     return this.#whenReady;
-  }
+  };
 
   sync(): Promise<ShadowEnv> {
     if (!this.isReady) {
