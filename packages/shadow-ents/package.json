@@ -49,6 +49,10 @@
       "default": "./dist/src/shadow-local-env.js",
       "types": "./dist/src/shadow-local-env.d.ts"
     },
+    "./shae-ent.js": {
+      "default": "./dist/src/shae-ent.js",
+      "types": "./dist/src/shae-ent.d.ts"
+    },
     "./shae-worker.js": {
       "default": "./dist/src/shae-worker.js",
       "types": "./dist/src/shae-worker.d.ts"
@@ -60,6 +64,7 @@
   },
   "sideEffects": [
     "build/src/view/ComponentContext.js",
+    "build/src/shae-ent.js",
     "build/src/shae-worker.js",
     "build/src/shadow-worker.js",
     "build/src/shadow-entity.js",
@@ -70,6 +75,7 @@
     "build/src/core.js",
     "build/src/index.js",
     "dist/src/view/ComponentContext.js",
+    "dist/src/shae-ent.js",
     "dist/src/shae-worker.js",
     "dist/src/shadow-worker.js",
     "dist/src/shadow-entity.js",

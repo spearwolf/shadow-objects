@@ -23,9 +23,31 @@ export class ShaeElement extends HTMLElement {
     }
   }
 
+  constructor() {
+    super();
+
+    this.ns$.onChange((ns) => {
+      if (typeof ns === 'string' && ns.length > 0) {
+        if (this.getAttribute(ATTR_NS) !== ns) {
+          this.setAttribute(ATTR_NS, ns);
+        }
+      } else {
+        this.removeAttribute(ATTR_NS);
+      }
+    });
+  }
+
+  connectedCallback() {
+    this.#updateNs();
+  }
+
   attributeChangedCallback(name: string) {
     if (name === ATTR_NS) {
-      this.ns$.set(readNamespaceAttribute(this));
+      this.#updateNs();
     }
+  }
+
+  #updateNs() {
+    this.ns$.set(readNamespaceAttribute(this));
   }
 }

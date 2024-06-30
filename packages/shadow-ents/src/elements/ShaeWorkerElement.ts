@@ -50,7 +50,9 @@ export class ShaeWorkerElement extends ShaeElement {
     return this.autostart && !readBooleanAttribute(this, ATTR_NO_AUTOSTART);
   }
 
-  connectedCallback() {
+  override connectedCallback() {
+    super.connectedCallback();
+
     if (this.shouldAutostart) {
       this.start();
     }
@@ -77,7 +79,7 @@ export class ShaeWorkerElement extends ShaeElement {
       this.#shouldDestroy = false;
 
       if (this.shadowEnv.view == null) {
-        this.shadowEnv.view = ComponentContext.get(this.ns$.value);
+        this.shadowEnv.view = ComponentContext.get(this.ns);
       }
 
       if (this.shadowEnv.envProxy == null) {

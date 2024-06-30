@@ -1,64 +1,66 @@
 import {createSignal} from '@spearwolf/signalize';
-import {GlobalNS} from '../constants.js';
 import {ComponentContext, ViewComponent} from '../core.js';
 import {generateUUID} from '../generateUUID.js';
-import {toNamespace} from '../toNamespace.js';
+import {ShaeElement} from './ShaeElement.js';
 
-export class ShaeEntElement extends HTMLElement {
-  static observedAttributes = ['ns', 'token'];
+export class ShaeEntElement extends ShaeElement {
+  static override observedAttributes = [...ShaeElement.observedAttributes, 'token'];
 
-  readonly isShaeElement = true;
   readonly isShaeEntElement = true;
 
   readonly uuid = generateUUID();
 
-  readonly #namespace = createSignal<string | symbol | undefined>();
   readonly #componentContext = createSignal<ComponentContext | undefined>();
   readonly #viewComponent = createSignal<ViewComponent | undefined>();
 
-  get ns() {
-    return this.#namespace.value;
+  get componentContext(): ComponentContext | undefined {
+    return this.#componentContext.value;
   }
 
-  set ns(ns: string | symbol) {
-    this.#namespace.set(toNamespace(ns));
+  get viewComponent(): ViewComponent | undefined {
+    return this.#viewComponent.value;
   }
 
   constructor() {
     super();
 
-    this.#namespace.onChange((ns) => {
+    this.ns$.onChange((ns) => {
       this.#componentContext.set(ComponentContext.get(ns));
+    });
 
-      if (typeof ns === 'symbol') {
-        if (this.hasAttribute('ns')) {
-          this.removeAttribute('ns');
+    this.#componentContext.onChange((compCtx) => {
+      const curViewComp = this.viewComponent;
+      if (compCtx == null) {
+        if (curViewComp != null) {
+          curViewComp.context = undefined;
         }
       } else {
-        this.setAttribute('ns', ns);
+        if (curViewComp == null) {
+          this.#viewComponent.set(new ViewComponent(this.uuid, {context: compCtx}));
+        } else {
+          curViewComp.context = compCtx;
+        }
       }
     });
 
-    this.#componentContext.onChange((context) => {
-      const vc = this.#viewComponent.value;
-
-      if (context == null) {
-        if (vc != null) {
-          vc.destroy();
-        }
-        this.#viewComponent.set(undefined);
-        return;
-      }
-
-      if (vc == null) {
-        this.#viewComponent.set(new ViewComponent(this.uuid, {context}));
-      } else {
-        vc.context = context;
+    this.#viewComponent.onChange((viewComp) => {
+      if (viewComp != null) {
+        return () => {
+          viewComp.destroy();
+        };
       }
     });
-
-    this.#namespace.set(GlobalNS);
   }
 
-  connectedCallback() {}
+  override connectedCallback() {
+    super.connectedCallback();
+
+    if (this.componentContext == null) {
+      this.#componentContext.set(ComponentContext.get(this.ns));
+    }
+  }
+
+  disconnectedCallback() {
+    this.#componentContext.set(undefined);
+  }
 }
