@@ -1,36 +1,19 @@
-import {createSignal} from '@spearwolf/signalize';
-import {GlobalNS} from '../constants.js';
-import {toNamespace} from '../toNamespace.js';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {LocalShadowObjectEnv} from '../view/LocalShadowObjectEnv.js';
 import {RemoteWorkerEnv} from '../view/RemoteWorkerEnv.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
+import {ShaeElement} from './ShaeElement.js';
+import {readBooleanAttribute} from './attr-utils.js';
+import {ATTR_LOCAL, ATTR_NO_AUTOSTART} from './constants.js';
 
-const readNamespaceAttribute = (el: HTMLElement) => toNamespace(el.getAttribute('ns'));
+export class ShaeWorkerElement extends ShaeElement {
+  static override observedAttributes = [...ShaeElement.observedAttributes, ATTR_LOCAL];
 
-const readBooleanAttribute = (el: HTMLElement, name: string) => {
-  if (el.hasAttribute(name)) {
-    const val = el.getAttribute(name)?.trim()?.toLowerCase() || 'on';
-    return ['', 'true', 'on', 'yes', 'local'].includes(val);
-  }
-  return false;
-};
-
-const AttrNS = 'ns';
-const AttrLocal = 'local';
-const AttrNoAutostart = 'no-autostart';
-
-export class ShaeWorkerElement extends HTMLElement {
-  static observedAttributes = [AttrNS];
-
-  readonly isShaeElement = true;
   readonly isShaeWorkerElement = true;
 
   readonly shadowEnv = new ShadowEnv();
 
   autostart = true;
-
-  readonly #ns = createSignal<string | symbol>(GlobalNS);
 
   #shouldDestroy = false;
   #started = false;
@@ -38,7 +21,7 @@ export class ShaeWorkerElement extends HTMLElement {
   constructor() {
     super();
 
-    this.#ns.onChange((ns) => {
+    this.ns$.onChange((ns) => {
       this.shadowEnv.view = ComponentContext.get(ns);
     });
 
@@ -63,20 +46,8 @@ export class ShaeWorkerElement extends HTMLElement {
     // XXX we don't expose ShadowEnv.AfterSync here, because the frequency of this event is too high
   }
 
-  get ns(): string | symbol {
-    return this.#ns.value;
-  }
-
-  set ns(ns: string | symbol) {
-    if (typeof ns === 'symbol') {
-      this.#ns.set(ns);
-    } else {
-      this.#ns.set(toNamespace(ns));
-    }
-  }
-
   get shouldAutostart(): boolean {
-    return this.autostart && !readBooleanAttribute(this, AttrNoAutostart);
+    return this.autostart && !readBooleanAttribute(this, ATTR_NO_AUTOSTART);
   }
 
   connectedCallback() {
@@ -89,11 +60,10 @@ export class ShaeWorkerElement extends HTMLElement {
     this.#deferDestroy();
   }
 
-  attributeChangedCallback(name: string) {
-    if (name === AttrNS) {
-      this.#ns.set(readNamespaceAttribute(this));
-    }
-    if (name === AttrLocal) {
+  override attributeChangedCallback(name: string) {
+    super.attributeChangedCallback(name);
+
+    if (name === ATTR_LOCAL) {
       if (this.shadowEnv.envProxy != null) {
         throw new Error(
           '[ShaeWorkerElement] Changing the "local" attribute after the shadowEnv has been created is not supported.',
@@ -107,10 +77,11 @@ export class ShaeWorkerElement extends HTMLElement {
       this.#shouldDestroy = false;
 
       if (this.shadowEnv.view == null) {
-        this.shadowEnv.view = ComponentContext.get(this.#ns.value);
+        this.shadowEnv.view = ComponentContext.get(this.ns$.value);
       }
+
       if (this.shadowEnv.envProxy == null) {
-        const envProxy = readBooleanAttribute(this, AttrLocal) ? new LocalShadowObjectEnv() : new RemoteWorkerEnv();
+        const envProxy = readBooleanAttribute(this, ATTR_LOCAL) ? new LocalShadowObjectEnv() : new RemoteWorkerEnv();
         this.shadowEnv.envProxy = envProxy;
       }
 
