@@ -20,6 +20,14 @@ export class ShaeEntElement extends ShaeElement {
     return this.viewComponent$.value;
   }
 
+  get token(): string | undefined {
+    return this.token$.value;
+  }
+
+  set token(token: string | undefined) {
+    this.token$.set(token);
+  }
+
   entParentNode?: ShaeEntElement;
 
   constructor() {
