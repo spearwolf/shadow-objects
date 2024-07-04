@@ -5,6 +5,7 @@ export enum ShadowElementType {
 }
 
 export const RequestContextEventName = 'seRequestContext';
+export const RequestEntParentEventName = 'shaeRequestEntParent';
 
 export const SHADOW_ELEMENT_ENTITY = 'shadow-entity';
 export const SHADOW_ELEMENT_ENV = 'shadow-env';

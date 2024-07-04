@@ -1,4 +1,4 @@
-import {eventize, type EventizeApi} from '@spearwolf/eventize';
+import {Eventize} from '@spearwolf/eventize';
 import {generateUUID} from '../generateUUID.js';
 import {ComponentContext} from './ComponentContext.js';
 
@@ -9,9 +9,7 @@ class ViewComponentError extends Error {
   }
 }
 
-export interface ViewComponent extends EventizeApi {}
-
-export class ViewComponent {
+export class ViewComponent extends Eventize {
   readonly #uuid: string;
   readonly #token: string;
 
@@ -77,7 +75,7 @@ export class ViewComponent {
   }
 
   constructor(token: string, options?: {parent?: ViewComponent; order?: number; context?: ComponentContext; uuid?: string}) {
-    eventize(this);
+    super();
 
     if (options instanceof ViewComponent) {
       options = {parent: options};

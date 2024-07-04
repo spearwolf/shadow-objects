@@ -1,4 +1,5 @@
 import {GlobalNS, ShadowEnv} from '@spearwolf/shadow-ents';
+import '@spearwolf/shadow-ents/shae-ent.js';
 import '@spearwolf/shadow-ents/shae-worker.js';
 import './style.css';
 import {testAsyncAction} from './test-helpers/testAsyncAction.js';
