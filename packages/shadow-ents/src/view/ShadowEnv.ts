@@ -1,9 +1,14 @@
 import {Priority, eventize, type EventizeApi} from '@spearwolf/eventize';
-import {createEffect, type SignalReader} from '@spearwolf/signalize';
+import {createEffect, createSignal, type SignalReader} from '@spearwolf/signalize';
 import {signal, signalReader} from '@spearwolf/signalize/decorators';
-import {type MessageToViewEvent} from '../core.js';
+import {type MessageToViewEvent, type NamespaceType} from '../core.js';
 import {ComponentContext} from './ComponentContext.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __shadowEnvs: Map<NamespaceType, ShadowEnv> | undefined;
+}
 
 export interface ShadowEnv extends EventizeApi {}
 
@@ -12,11 +17,18 @@ export class ShadowEnv {
   static ContextLost = 'contextLost';
   static ContextCreated = 'contextCreated';
 
+  static get(ns: NamespaceType): ShadowEnv | undefined {
+    if (ns == null) return undefined;
+    return globalThis.__shadowEnvs?.get(ns);
+  }
+
   #comCtx?: ComponentContext;
   #shaObjEnvProxy?: IShadowObjectEnvProxy;
   #syncScheduled = false;
   #syncAfterContextCreated = false;
   #whenReady!: Promise<ShadowEnv>;
+
+  readonly ns$ = createSignal<NamespaceType | undefined>();
 
   @signal() accessor viewReady = false;
   @signalReader() accessor viewReady$: SignalReader<boolean>;
@@ -61,7 +73,24 @@ export class ShadowEnv {
 
   set view(ctx: ComponentContext | null | undefined) {
     if (ctx !== this.#comCtx) {
+      if (this.#comCtx && this.#comCtx.ns && globalThis.__shadowEnvs) {
+        globalThis.__shadowEnvs.delete(this.#comCtx.ns);
+      }
+
       this.#comCtx = ctx ?? undefined;
+
+      if (this.#comCtx && this.#comCtx.ns) {
+        globalThis.__shadowEnvs ??= new Map();
+        if (globalThis.__shadowEnvs.has(this.#comCtx.ns) && globalThis.__shadowEnvs.get(this.#comCtx.ns) !== this) {
+          console.warn(
+            'ShadowEnv: overwrite a namespace already in use',
+            this.#comCtx.ns,
+            globalThis.__shadowEnvs.get(this.#comCtx.ns),
+          );
+        }
+        globalThis.__shadowEnvs.set(this.#comCtx.ns, this);
+      }
+
       this.viewReady = Boolean(ctx);
     }
   }
@@ -119,6 +148,12 @@ export class ShadowEnv {
     return onSync;
   }
 
+  destroy() {
+    this.envProxy?.destroy();
+    this.envProxy = undefined;
+    this.view = undefined;
+  }
+
   async #syncNow() {
     this.#syncScheduled = false;
     if (this.isReady) {
@@ -139,6 +174,4 @@ export class ShadowEnv {
     console.log('ShadowEnv: onMessageToView', event.type, event.data);
     this.view?.dispatchMessage(event.uuid, event.type, event.data);
   }
-
-  // TODO ShadowEnv#destroy()
 }

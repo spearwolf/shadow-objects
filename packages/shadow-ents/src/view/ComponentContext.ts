@@ -46,10 +46,13 @@ export class ComponentContext {
       return globalThis.__shadowEntsContexts.get(ns)!;
     } else {
       const ctx = new ComponentContext();
+      ctx.ns = ns;
       globalThis.__shadowEntsContexts.set(ns, ctx);
       return ctx;
     }
   }
+
+  ns?: NamespaceType;
 
   #components: Map<string, ViewInstance> = new Map();
   #rootComponents: string[] = []; // we use an Array here and not a Set, because we want to keep the insertion order

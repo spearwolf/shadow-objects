@@ -1,6 +1,7 @@
 import {createSignal} from '@spearwolf/signalize';
 import {GlobalNS} from '../constants.js';
 import {toNamespace} from '../toNamespace.js';
+import {ShadowEnv} from '../view/ShadowEnv.js';
 import {readNamespaceAttribute} from './attr-utils.js';
 import {ATTR_NS} from './constants.js';
 
@@ -45,6 +46,17 @@ export class ShaeElement extends HTMLElement {
     if (name === ATTR_NS) {
       this.#updateNs();
     }
+  }
+
+  #needsSyncShadowObjects = false;
+
+  syncShadowObjects() {
+    if (this.#needsSyncShadowObjects) return;
+    this.#needsSyncShadowObjects = true;
+    queueMicrotask(() => {
+      this.#needsSyncShadowObjects = false;
+      ShadowEnv.get(this.ns)?.sync();
+    });
   }
 
   #updateNs() {
