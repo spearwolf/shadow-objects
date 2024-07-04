@@ -81,7 +81,7 @@ export class ShaeEntElement extends ShaeElement {
     }
 
     // --- viewComponent.parent ---
-    this.requestEntParent();
+    this.#requestEntParent();
     this.#registerEntParentListener();
 
     // --- sync! ---
@@ -99,14 +99,14 @@ export class ShaeEntElement extends ShaeElement {
   disconnectedCallback() {
     this.#unregisterEntParentListener();
 
-    this.setEntParent(undefined);
+    this.#setEntParent(undefined);
 
     this.componentContext$.set(undefined);
 
     this.syncShadowObjects();
   }
 
-  requestEntParent() {
+  #requestEntParent() {
     // https://pm.dartus.fr/blog/a-complete-guide-on-shadow-dom-and-event-propagation/
     this.dispatchEvent(
       new CustomEvent(RequestEntParentEventName, {
@@ -120,7 +120,7 @@ export class ShaeEntElement extends ShaeElement {
   #unsubscribeFromEntParent?: () => void;
   #nonShaeParents?: WeakSet<HTMLElement>;
 
-  setEntParent(parent?: ShaeEntElement) {
+  #setEntParent(parent?: ShaeEntElement) {
     if (this.entParentNode === parent) return;
 
     this.entParentNode = parent;
@@ -159,22 +159,22 @@ export class ShaeEntElement extends ShaeElement {
     }
   }
 
-  onRequestEntParent = (event: CustomEvent) => {
-    const requester = event.detail?.requester;
+  #onRequestEntParent = (event: CustomEvent) => {
+    const requester = event.detail?.requester as ShaeEntElement | undefined;
 
     if (requester === this) return;
     if (!requester?.isShaeEntElement) return;
     if (requester.ns !== this.ns) return;
 
-    requester.setEntParent(this);
+    requester.#setEntParent(this);
   };
 
   #registerEntParentListener() {
-    this.addEventListener(RequestEntParentEventName, this.onRequestEntParent, {capture: false, passive: false});
+    this.addEventListener(RequestEntParentEventName, this.#onRequestEntParent, {capture: false, passive: false});
   }
 
   #unregisterEntParentListener() {
-    this.removeEventListener(RequestEntParentEventName, this.onRequestEntParent, {capture: false});
+    this.removeEventListener(RequestEntParentEventName, this.#onRequestEntParent, {capture: false});
   }
 
   #updateTokenValue() {
