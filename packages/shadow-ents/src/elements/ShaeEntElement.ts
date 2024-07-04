@@ -35,6 +35,14 @@ export class ShaeEntElement extends ShaeElement {
 
     this.#updateTokenValue();
 
+    this.token$.onChange((token) => {
+      if (token == null) {
+        this.removeAttribute(ATTR_TOKEN);
+      } else if (this.getAttribute(ATTR_TOKEN) !== token) {
+        this.setAttribute(ATTR_TOKEN, token);
+      }
+    });
+
     this.ns$.onChange((ns) => {
       this.componentContext$.set(ComponentContext.get(ns));
     });
@@ -49,6 +57,7 @@ export class ShaeEntElement extends ShaeElement {
         if (context == null) {
           this.viewComponent$.set(undefined);
         } else if (token !== vc.token) {
+          // TODO make token changeable (ViewComponent)
           this.viewComponent$.set(new ViewComponent(token, {context}));
         }
       } else if (context) {
@@ -74,6 +83,9 @@ export class ShaeEntElement extends ShaeElement {
     // --- viewComponent.parent ---
     this.requestEntParent();
     this.#registerEntParentListener();
+
+    // --- sync! ---
+    this.syncShadowObjects();
   }
 
   override attributeChangedCallback(name: string) {
@@ -89,9 +101,9 @@ export class ShaeEntElement extends ShaeElement {
 
     this.setEntParent(undefined);
 
-    // TODO inform children so that they can update their parent (request it again)
-
     this.componentContext$.set(undefined);
+
+    this.syncShadowObjects();
   }
 
   requestEntParent() {
@@ -106,13 +118,31 @@ export class ShaeEntElement extends ShaeElement {
   }
 
   #unsubscribeFromEntParent?: () => void;
+  #nonShaeParents?: WeakSet<HTMLElement>;
 
   setEntParent(parent?: ShaeEntElement) {
     if (this.entParentNode === parent) return;
 
     this.entParentNode = parent;
 
-    console.log('setEntParent', {self: this, parent});
+    this.#nonShaeParents = undefined;
+
+    // we memorize all elements on the way to the <shae-ent> parent so that we can
+    // request a new parent in case of a custom element upgrade with shae elements in the shadow dom
+    if (parent) {
+      const elements: HTMLElement[] = [];
+      let current = this.parentElement;
+      while (current && current !== parent) {
+        elements.push(current);
+        current = current.parentElement;
+      }
+      if (elements.length > 0) {
+        this.#nonShaeParents = new WeakSet(elements);
+        console.log('nonShaeParents', {shaeEnt: this, parentsOnTheWayToShae: elements, weakSet: this.#nonShaeParents});
+      }
+    }
+
+    // TODO dispatch ReRequestEntParent if we are inside a shadowDom!
 
     this.#unsubscribeFromEntParent?.();
 
@@ -139,11 +169,11 @@ export class ShaeEntElement extends ShaeElement {
     requester.setEntParent(this);
   };
 
-  #registerEntParentListener(): void {
+  #registerEntParentListener() {
     this.addEventListener(RequestEntParentEventName, this.onRequestEntParent, {capture: false, passive: false});
   }
 
-  #unregisterEntParentListener(): void {
+  #unregisterEntParentListener() {
     this.removeEventListener(RequestEntParentEventName, this.onRequestEntParent, {capture: false});
   }
 
