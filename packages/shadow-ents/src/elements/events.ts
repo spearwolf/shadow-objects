@@ -1,10 +1,22 @@
 import type {ShadowEntityElement} from './ShadowEntityElement.js';
 import type {ShaeEntElement} from './ShaeEntElement.js';
-import type {RequestContextEventName, RequestEntParentEventName, ShadowElementType} from './constants.js';
+import type {
+  RequestContextEventName,
+  RequestEntParentEventName,
+  ReRequestEntParentEventName,
+  ShadowElementType,
+} from './constants.js';
 
 export interface RequestEntParentEvent extends CustomEvent {
   detail: {
     requester: ShaeEntElement;
+  };
+}
+
+export interface ReRequestEntParentEvent extends CustomEvent {
+  detail: {
+    requester: ShaeEntElement;
+    shadowRootHost: HTMLElement;
   };
 }
 
@@ -18,6 +30,7 @@ export interface RequestContextEvent extends CustomEvent {
 
 export interface ShadowEntsEventMap {
   [RequestEntParentEventName]: RequestEntParentEvent;
+  [ReRequestEntParentEventName]: ReRequestEntParentEvent;
   [RequestContextEventName]: RequestContextEvent;
 }
 

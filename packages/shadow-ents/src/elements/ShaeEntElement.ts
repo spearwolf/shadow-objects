@@ -1,7 +1,7 @@
 import {beQuiet, createEffect, createSignal} from '@spearwolf/signalize';
 import {ComponentContext, ViewComponent} from '../core.js';
 import {ShaeElement} from './ShaeElement.js';
-import {ATTR_TOKEN, RequestEntParentEventName} from './constants.js';
+import {ATTR_TOKEN, RequestEntParentEventName, ReRequestEntParentEventName} from './constants.js';
 
 export class ShaeEntElement extends ShaeElement {
   static override observedAttributes = [...ShaeElement.observedAttributes, ATTR_TOKEN];
@@ -45,6 +45,10 @@ export class ShaeEntElement extends ShaeElement {
 
     this.ns$.onChange((ns) => {
       this.componentContext$.set(ComponentContext.get(ns));
+      if (this.isConnected) {
+        console.log('ns changed', {ns, shaeEnt: this});
+        this.#dispatchRequestEntParent();
+      }
     });
 
     this.viewComponent$.onChange((vc) => vc?.destroy.bind(vc));
@@ -56,7 +60,7 @@ export class ShaeEntElement extends ShaeElement {
       if (vc) {
         if (context == null) {
           this.viewComponent$.set(undefined);
-        } else if (token !== vc.token) {
+        } else if (token !== vc.token || context !== vc.context) {
           // TODO make token changeable (ViewComponent)
           this.viewComponent$.set(new ViewComponent(token, {context}));
         }
@@ -66,9 +70,43 @@ export class ShaeEntElement extends ShaeElement {
         this.viewComponent$.set(undefined);
       }
     }, [this.componentContext$, this.token$]);
+
+    this.addEventListener('slotchange', (event) => {
+      const shadowRootHost = this.findShadowRootHost();
+
+      console.debug('<shae-ent> slotchange', {event, shaeEnt: this, shadowRootHost});
+      // TODO inform all shae-ents which have the shadowRootHost in their parentsOnTheWayToShae to request a new parent
+
+      this.#dispatchReRequestEntParent(shadowRootHost);
+    });
+    // TODO unsubscribe from slotchange / move to connectedCallback
+  }
+
+  #shadowRootHost?: HTMLElement;
+  #shadowRootHostNeedsUpdate = true;
+
+  findShadowRootHost(): HTMLElement | undefined {
+    if (this.#shadowRootHostNeedsUpdate) {
+      this.#shadowRootHostNeedsUpdate = false;
+
+      let current: HTMLElement = this;
+      while (current) {
+        if (current.parentElement == null) {
+          const root = current.parentNode as ShadowRoot;
+          if (root) {
+            this.#shadowRootHost = root.host as HTMLElement;
+          }
+          break;
+        }
+        current = current.parentElement;
+      }
+    }
+    return this.#shadowRootHost;
   }
 
   override connectedCallback() {
+    this.#shadowRootHostNeedsUpdate = true;
+
     // --- token ---
     beQuiet(() => this.#updateTokenValue());
 
@@ -81,7 +119,7 @@ export class ShaeEntElement extends ShaeElement {
     }
 
     // --- viewComponent.parent ---
-    this.#requestEntParent();
+    this.#dispatchRequestEntParent();
     this.#registerEntParentListener();
 
     // --- sync! ---
@@ -97,6 +135,8 @@ export class ShaeEntElement extends ShaeElement {
   }
 
   disconnectedCallback() {
+    this.#shadowRootHostNeedsUpdate = true;
+
     this.#unregisterEntParentListener();
 
     this.#setEntParent(undefined);
@@ -106,8 +146,18 @@ export class ShaeEntElement extends ShaeElement {
     this.syncShadowObjects();
   }
 
-  #requestEntParent() {
+  #dispatchReRequestEntParent(shadowRootHost: HTMLElement) {
     // https://pm.dartus.fr/blog/a-complete-guide-on-shadow-dom-and-event-propagation/
+    this.dispatchEvent(
+      new CustomEvent(ReRequestEntParentEventName, {
+        bubbles: true,
+        composed: true,
+        detail: {requester: this, shadowRootHost},
+      }),
+    );
+  }
+
+  #dispatchRequestEntParent() {
     this.dispatchEvent(
       new CustomEvent(RequestEntParentEventName, {
         bubbles: true,
@@ -118,14 +168,25 @@ export class ShaeEntElement extends ShaeElement {
   }
 
   #unsubscribeFromEntParent?: () => void;
-  #nonShaeParents?: WeakSet<HTMLElement>;
+  #parentsOnTheWayToShae?: WeakSet<HTMLElement>;
 
   #setEntParent(parent?: ShaeEntElement) {
     if (this.entParentNode === parent) return;
 
+    if (this.entParentNode) {
+      this.entParentNode.removeEventListener(ReRequestEntParentEventName, this.#onReRequestEntParent, {capture: false});
+    }
+
     this.entParentNode = parent;
 
-    this.#nonShaeParents = undefined;
+    if (this.entParentNode) {
+      this.entParentNode.addEventListener(ReRequestEntParentEventName, this.#onReRequestEntParent, {
+        capture: false,
+        passive: false,
+      });
+    }
+
+    this.#parentsOnTheWayToShae = undefined;
 
     // we memorize all elements on the way to the <shae-ent> parent so that we can
     // request a new parent in case of a custom element upgrade with shae elements in the shadow dom
@@ -134,15 +195,21 @@ export class ShaeEntElement extends ShaeElement {
       let current = this.parentElement;
       while (current && current !== parent) {
         elements.push(current);
-        current = current.parentElement;
+        if (current.parentElement == null && current.parentNode) {
+          current = (current.parentNode as ShadowRoot).host as HTMLElement;
+        } else {
+          current = current.parentElement;
+        }
       }
       if (elements.length > 0) {
-        this.#nonShaeParents = new WeakSet(elements);
-        console.log('nonShaeParents', {shaeEnt: this, parentsOnTheWayToShae: elements, weakSet: this.#nonShaeParents});
+        this.#parentsOnTheWayToShae = new WeakSet(elements);
+        // console.log('parentsOnTheWayToShae', {
+        //   shaeEnt: this,
+        //   parentsOnTheWayToShae: elements,
+        //   weakSet: this.#parentsOnTheWayToShae,
+        // });
       }
     }
-
-    // TODO dispatch ReRequestEntParent if we are inside a shadowDom!
 
     this.#unsubscribeFromEntParent?.();
 
@@ -159,12 +226,31 @@ export class ShaeEntElement extends ShaeElement {
     }
   }
 
+  #onReRequestEntParent = (event: CustomEvent) => {
+    const requester = event.detail?.requester as ShaeEntElement | undefined;
+
+    if (requester === this) return;
+    if (!requester?.isShaeEntElement) return;
+    if (requester.ns !== this.ns) return;
+
+    const shadowRootHost = event.detail?.shadowRootHost as HTMLElement | undefined;
+
+    if (shadowRootHost) {
+      // console.log('onRequestEntParent', {shaeEnt: this, requester, shadowRootHost});
+      if (this.#parentsOnTheWayToShae?.has(shadowRootHost)) {
+        this.#dispatchRequestEntParent();
+      }
+    }
+  };
+
   #onRequestEntParent = (event: CustomEvent) => {
     const requester = event.detail?.requester as ShaeEntElement | undefined;
 
     if (requester === this) return;
     if (!requester?.isShaeEntElement) return;
     if (requester.ns !== this.ns) return;
+
+    event.stopImmediatePropagation();
 
     requester.#setEntParent(this);
   };

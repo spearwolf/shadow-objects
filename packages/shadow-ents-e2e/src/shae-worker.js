@@ -8,6 +8,42 @@ import {testCustomEvent} from './test-helpers/testCustomEvent.js';
 
 const ContextCreated = ShadowEnv.ContextCreated.toLowerCase();
 
+class ElementWithShadowDom extends HTMLElement {
+  constructor() {
+    super();
+
+    const shadowRoot = this.attachShadow({mode: this.getAttribute('mode') || 'open'});
+
+    const insideId = this.getAttribute('ent-inside');
+    const slotContainId = this.getAttribute('ent-slot-container');
+    const ns = this.getAttribute('ns');
+
+    shadowRoot.innerHTML = `
+      <style>
+        :host {
+          display: block;
+          padding: 1rem;
+          border: 1px solid #c41;
+        }
+      </style>
+      <shae-ent id="${insideId}" ns="${ns}" token="${insideId}">${insideId}</shae-ent>
+      <shae-ent id="${slotContainId}" ns="${ns}" token="${slotContainId}">${slotContainId}
+        <slot></slot>
+      </shae-ent>
+    `;
+
+    this.addEventListener('slotchange', (event) => {
+      console.log('<element-with-shadow-dom> slotchange', event);
+    });
+
+    shadowRoot.addEventListener('slotchange', (event) => {
+      console.log('[ShadowRoot] slotchange', event);
+    });
+  }
+}
+
+customElements.define('element-with-shadow-dom', ElementWithShadowDom);
+
 main();
 
 async function main() {

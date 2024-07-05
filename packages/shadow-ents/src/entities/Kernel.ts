@@ -27,6 +27,12 @@ interface EntityEntry {
   usedConstructors: Map<ShadowObjectConstructor, Set<ShadowObjectType>>;
 }
 
+interface EntityGraphNode {
+  token: string;
+  entity: Entity;
+  children: EntityGraphNode[];
+}
+
 enum ShadowObjectAction {
   CreateAndDestroy = 0,
   JustCreate,
@@ -89,6 +95,21 @@ export class Kernel extends Eventize {
       .sort((a, b) => a[0] - b[0])
       .map(([, entities]) => entities)
       .flat();
+  }
+
+  getEntityGraph(): EntityGraphNode[] {
+    return Array.from(this.#rootEntities).map((uuid) => this.getEntityGraphNode(uuid)!);
+  }
+
+  private getEntityGraphNode(uuid: string): EntityGraphNode | undefined {
+    if (!this.#entities.has(uuid)) return undefined;
+
+    const {token, entity} = this.#entities.get(uuid);
+    return {
+      token,
+      entity,
+      children: entity.children.map((child) => this.getEntityGraphNode(child.uuid)),
+    };
   }
 
   upgradeEntities(): void {

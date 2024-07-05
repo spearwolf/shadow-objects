@@ -24,6 +24,13 @@
       },
       "outputs": ["{projectRoot}/playwright-report", "{projectRoot}/test-results"],
       "dependsOn": ["^build", "build"]
+    },
+    "dev": {
+      "executor": "nx:run-script",
+      "options": {
+        "script": "dev"
+      },
+      "dependsOn": ["^build"]
     }
   },
   "tags": []
