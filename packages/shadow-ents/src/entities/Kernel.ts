@@ -192,14 +192,15 @@ export class Kernel extends Eventize {
   destroyEntity(uuid: string): void {
     if (!this.#entities.has(uuid)) return;
 
-    const entry = this.#entities.get(uuid);
+    const {entity, usedConstructors} = this.#entities.get(uuid);
 
-    entry.entity.emit(onDestroy, this);
+    entity.removeFromParent();
+    entity.emit(onDestroy, this);
 
-    entry.usedConstructors.clear();
+    usedConstructors.clear();
 
-    this.#entities.delete(entry.entity.uuid);
-    this.#rootEntities.delete(entry.entity.uuid);
+    this.#entities.delete(entity.uuid);
+    this.#rootEntities.delete(entity.uuid);
   }
 
   setParent(uuid: string, parentUuid?: string, order = 0): void {

@@ -31,14 +31,6 @@ class ElementWithShadowDom extends HTMLElement {
         <slot></slot>
       </shae-ent>
     `;
-
-    this.addEventListener('slotchange', (event) => {
-      console.log('<element-with-shadow-dom> slotchange', event);
-    });
-
-    shadowRoot.addEventListener('slotchange', (event) => {
-      console.log('[ShadowRoot] slotchange', event);
-    });
   }
 }
 

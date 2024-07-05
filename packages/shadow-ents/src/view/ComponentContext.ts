@@ -1,5 +1,5 @@
 import {removeFrom} from '../array-utils.js';
-import {ChangeTrailPhase, ContextLost} from '../constants.js';
+import {ChangeTrailPhase, ContextLost, GlobalNS} from '../constants.js';
 import {toNamespace} from '../toNamespace.js';
 import type {ChangeTrailType, IComponentChangeType, NamespaceType} from '../types.js';
 import {ComponentChanges} from './ComponentChanges.js';
@@ -37,19 +37,20 @@ declare global {
  * There is only one {@link ComponentContext} (a singleton) for each namespace.
  */
 export class ComponentContext {
-  static get(namespace?: NamespaceType): ComponentContext {
-    if (globalThis.__shadowEntsContexts === undefined) {
+  static getContextsMap(): Map<NamespaceType, ComponentContext> {
+    if (globalThis.__shadowEntsContexts == null) {
       globalThis.__shadowEntsContexts = new Map<NamespaceType, ComponentContext>();
     }
+    return globalThis.__shadowEntsContexts;
+  }
+
+  static get(namespace?: NamespaceType): ComponentContext {
     const ns = toNamespace(namespace);
-    if (globalThis.__shadowEntsContexts.has(ns)) {
-      return globalThis.__shadowEntsContexts.get(ns)!;
-    } else {
-      const ctx = new ComponentContext();
-      ctx.ns = ns;
-      globalThis.__shadowEntsContexts.set(ns, ctx);
-      return ctx;
+    const ctxMap = ComponentContext.getContextsMap();
+    if (ctxMap.has(ns)) {
+      return ctxMap.get(ns)!;
     }
+    return new ComponentContext(ns);
   }
 
   ns?: NamespaceType;
@@ -58,6 +59,16 @@ export class ComponentContext {
   #rootComponents: string[] = []; // we use an Array here and not a Set, because we want to keep the insertion order
 
   readonly #componentMemory = new ComponentMemory();
+
+  constructor(namespace: NamespaceType = GlobalNS) {
+    const ns = toNamespace(namespace);
+    const ctxMap = ComponentContext.getContextsMap();
+    if (ctxMap.has(ns)) {
+      return ctxMap.get(ns)!;
+    }
+    this.ns = ns;
+    ctxMap.set(ns, this);
+  }
 
   addComponent(component: ViewComponent) {
     let viewInstance: ViewInstance | undefined;

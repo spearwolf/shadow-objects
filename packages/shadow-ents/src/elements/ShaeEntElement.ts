@@ -1,5 +1,7 @@
 import {beQuiet, createEffect, createSignal} from '@spearwolf/signalize';
-import {ComponentContext, ViewComponent} from '../core.js';
+import {ComponentContext} from '../view/ComponentContext.js';
+import {ShadowEnv} from '../view/ShadowEnv.js';
+import {ViewComponent} from '../view/ViewComponent.js';
 import {ShaeElement} from './ShaeElement.js';
 import {ATTR_TOKEN, RequestEntParentEventName, ReRequestEntParentEventName} from './constants.js';
 
@@ -45,27 +47,55 @@ export class ShaeEntElement extends ShaeElement {
 
     this.ns$.onChange((ns) => {
       this.componentContext$.set(ComponentContext.get(ns));
+      if (this.isConnected) {
+        this.#dispatchRequestParent();
+      }
     });
 
-    this.viewComponent$.onChange((vc) => vc?.destroy.bind(vc));
+    createEffect(() => {
+      const vc = this.viewComponent$.get();
+      if (vc) {
+        const oldNs = vc.context?.ns;
+        return () => {
+          vc.destroy();
+          if (oldNs && oldNs !== this.ns) {
+            ShadowEnv.get(oldNs)?.sync();
+          } else {
+            this.syncShadowObjects();
+          }
+        };
+      }
+    });
+  }
 
-    /* TODO unsubscribe */ createEffect(() => {
+  #unsubscribeViewComponentEffect?: () => void;
+
+  #setupViewComponentEffect() {
+    this.#unsubscribeViewComponentEffect?.();
+
+    const [, unsubscribe] = createEffect(() => {
       const context = this.componentContext$.get();
       const token = this.token$.get();
-      const vc = this.viewComponent$.get();
+      const vc = this.viewComponent$.value;
       if (vc) {
         if (context == null) {
           this.viewComponent$.set(undefined);
-        } else if (token !== vc.token || context !== vc.context) {
-          // TODO make token changeable (ViewComponent)
+        } else {
+          // TODO make token changeable (ViewComponent)? copy properties to new instance..
           this.viewComponent$.set(new ViewComponent(token, {context}));
         }
       } else if (context) {
         this.viewComponent$.set(new ViewComponent(token, {context}));
-      } else {
-        this.viewComponent$.set(undefined);
       }
-    }, [this.componentContext$, this.token$]);
+      this.syncShadowObjects();
+    });
+
+    this.#unsubscribeViewComponentEffect = unsubscribe;
+  }
+
+  #destroyViewComponentEffect() {
+    this.#unsubscribeViewComponentEffect?.();
+    this.#unsubscribeViewComponentEffect = undefined;
   }
 
   #shadowRootHost?: HTMLElement;
@@ -94,7 +124,9 @@ export class ShaeEntElement extends ShaeElement {
     this.#shadowRootHostNeedsUpdate = true;
 
     this.addEventListener('slotchange', this.#onSlotChange, {capture: false, passive: false});
-    this.addEventListener(RequestEntParentEventName, this.#onRequestEntParent, {capture: false, passive: false});
+    this.addEventListener(RequestEntParentEventName, this.#onRequestParent, {capture: false, passive: false});
+
+    this.#setupViewComponentEffect();
 
     // --- token ---
     beQuiet(() => this.#updateTokenValue());
@@ -108,7 +140,7 @@ export class ShaeEntElement extends ShaeElement {
     }
 
     // --- viewComponent.parent ---
-    this.#dispatchRequestEntParent();
+    this.#dispatchRequestParent();
 
     // --- sync! ---
     this.syncShadowObjects();
@@ -126,16 +158,18 @@ export class ShaeEntElement extends ShaeElement {
     this.#shadowRootHostNeedsUpdate = true;
 
     this.removeEventListener('slotchange', this.#onSlotChange, {capture: false});
-    this.removeEventListener(RequestEntParentEventName, this.#onRequestEntParent, {capture: false});
+    this.removeEventListener(RequestEntParentEventName, this.#onRequestParent, {capture: false});
 
-    this.#setEntParent(undefined);
+    this.#setParent(undefined);
 
     this.componentContext$.set(undefined);
 
     this.syncShadowObjects();
+
+    this.#destroyViewComponentEffect();
   }
 
-  #dispatchRequestEntParent() {
+  #dispatchRequestParent() {
     // https://pm.dartus.fr/blog/a-complete-guide-on-shadow-dom-and-event-propagation/
     this.dispatchEvent(
       new CustomEvent(RequestEntParentEventName, {
@@ -146,20 +180,20 @@ export class ShaeEntElement extends ShaeElement {
     );
   }
 
-  #unsubscribeFromEntParent?: () => void;
+  #unsubscribeFromParent?: () => void;
   #parentsOnTheWayToShae?: WeakSet<HTMLElement>;
 
-  #setEntParent(parent?: ShaeEntElement) {
+  #setParent(parent?: ShaeEntElement) {
     if (this.entParentNode === parent) return;
 
     if (this.entParentNode) {
-      this.entParentNode.removeEventListener(ReRequestEntParentEventName, this.#onReRequestEntParent, {capture: false});
+      this.entParentNode.removeEventListener(ReRequestEntParentEventName, this.#onReRequestParent, {capture: false});
     }
 
     this.entParentNode = parent;
 
     if (this.entParentNode) {
-      this.entParentNode.addEventListener(ReRequestEntParentEventName, this.#onReRequestEntParent, {
+      this.entParentNode.addEventListener(ReRequestEntParentEventName, this.#onReRequestParent, {
         capture: false,
         passive: false,
       });
@@ -185,17 +219,29 @@ export class ShaeEntElement extends ShaeElement {
       }
     }
 
-    this.#unsubscribeFromEntParent?.();
-    this.#unsubscribeFromEntParent = undefined;
+    this.#unsubscribeFromParent?.();
+    this.#unsubscribeFromParent = undefined;
     if (parent) {
       const [, unsubscribe] = createEffect(() => {
         const vc = this.viewComponent$.get();
         if (vc) {
-          // XXX fix me (componentContext can be different | request new parent)
-          vc.parent = parent.viewComponent$.get();
+          const parentVC = parent.viewComponent$.get();
+          vc.parent = parentVC.context === vc.context ? parentVC : undefined;
+          if (vc.parent == null) {
+            queueMicrotask(() => {
+              this.#dispatchRequestParent();
+            });
+          }
+          this.syncShadowObjects();
         }
       });
-      this.#unsubscribeFromEntParent = unsubscribe;
+      this.#unsubscribeFromParent = unsubscribe;
+    } else {
+      const vc = this.viewComponent;
+      if (vc.parent) {
+        vc.parent = undefined;
+        this.syncShadowObjects();
+      }
     }
   }
 
@@ -212,7 +258,7 @@ export class ShaeEntElement extends ShaeElement {
     );
   };
 
-  #onReRequestEntParent = (event: CustomEvent) => {
+  #onReRequestParent = (event: CustomEvent) => {
     const requester = event.detail?.requester as ShaeEntElement | undefined;
 
     if (requester === this) return;
@@ -223,12 +269,12 @@ export class ShaeEntElement extends ShaeElement {
 
     if (shadowRootHost) {
       if (this.#parentsOnTheWayToShae?.has(shadowRootHost)) {
-        this.#dispatchRequestEntParent();
+        this.#dispatchRequestParent();
       }
     }
   };
 
-  #onRequestEntParent = (event: CustomEvent) => {
+  #onRequestParent = (event: CustomEvent) => {
     const requester = event.detail?.requester as ShaeEntElement | undefined;
 
     if (requester === this) return;
@@ -237,7 +283,7 @@ export class ShaeEntElement extends ShaeElement {
 
     event.stopPropagation();
 
-    requester.#setEntParent(this);
+    requester.#setParent(this);
   };
 
   #updateTokenValue() {
