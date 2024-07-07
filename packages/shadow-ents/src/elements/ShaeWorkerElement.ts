@@ -96,6 +96,7 @@ export class ShaeWorkerElement extends ShaeElement {
     this.shadowEnv.envProxy = undefined;
   }
 
+  // TODO(test) add tests for defer destroy
   #deferDestroy() {
     if (!this.#shouldDestroy) {
       this.#shouldDestroy = true;
