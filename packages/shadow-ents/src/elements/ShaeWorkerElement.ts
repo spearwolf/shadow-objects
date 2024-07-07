@@ -1,13 +1,17 @@
+import {createEffect, createSignal} from '@spearwolf/signalize';
+import {FrameLoop} from '../utils/FrameLoop.js';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {LocalShadowObjectEnv} from '../view/LocalShadowObjectEnv.js';
 import {RemoteWorkerEnv} from '../view/RemoteWorkerEnv.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
 import {ShaeElement} from './ShaeElement.js';
 import {readBooleanAttribute} from './attr-utils.js';
-import {ATTR_LOCAL, ATTR_NO_AUTOSTART} from './constants.js';
+import {ATTR_AUTO_SYNC, ATTR_LOCAL, ATTR_NO_AUTOSTART} from './constants.js';
 
 export class ShaeWorkerElement extends ShaeElement {
   static override observedAttributes = [...ShaeElement.observedAttributes, ATTR_LOCAL];
+
+  static DefaultAutoSync = 'frame';
 
   readonly isShaeWorkerElement = true;
 
@@ -15,8 +19,13 @@ export class ShaeWorkerElement extends ShaeElement {
 
   autostart = true;
 
+  isConnected$ = createSignal(false);
+  autoSync$ = createSignal(ShaeWorkerElement.DefaultAutoSync);
+
   #shouldDestroy = false;
   #started = false;
+  #frameLoop?: FrameLoop;
+  #unsubscribeAutoSync?: () => void;
 
   constructor() {
     super();
@@ -43,15 +52,57 @@ export class ShaeWorkerElement extends ShaeElement {
       );
     });
 
+    this.autoSync$.onChange((sVal) => {
+      const hasAttr = this.hasAttribute(ATTR_AUTO_SYNC);
+      const attrVal = hasAttr ? this.getAttribute(ATTR_AUTO_SYNC) : undefined;
+
+      if (sVal === ShaeWorkerElement.DefaultAutoSync) {
+        if (hasAttr && attrVal !== sVal) {
+          this.setAttribute(ATTR_AUTO_SYNC, sVal);
+        }
+      } else if (attrVal !== sVal) {
+        this.setAttribute(ATTR_AUTO_SYNC, sVal);
+      }
+    });
+
     // XXX we don't expose ShadowEnv.AfterSync here, because the frequency of this event is too high
+
+    this.#createAutoSyncEffect();
   }
 
   get shouldAutostart(): boolean {
     return this.autostart && !readBooleanAttribute(this, ATTR_NO_AUTOSTART);
   }
 
+  get autoSync() {
+    return this.autoSync$.value;
+  }
+
+  set autoSync(val: any) {
+    if (typeof val !== 'string') {
+      val = val ? ShaeWorkerElement.DefaultAutoSync : 'no';
+    }
+    this.autoSync$.set(`${val}`.trim().toLowerCase());
+  }
+
+  get frameLoop(): FrameLoop {
+    if (this.#frameLoop == null) {
+      this.#frameLoop = new FrameLoop();
+    }
+    return this.#frameLoop;
+  }
+
+  /**
+   * The frameLoop (if activated) calls this method on every frame
+   */
+  [FrameLoop.OnFrame]() {
+    this.syncShadowObjects();
+  }
+
   override connectedCallback() {
     super.connectedCallback();
+
+    this.isConnected$.set(true);
 
     if (this.shouldAutostart) {
       this.start();
@@ -59,6 +110,8 @@ export class ShaeWorkerElement extends ShaeElement {
   }
 
   disconnectedCallback() {
+    this.isConnected$.set(false);
+
     this.#deferDestroy();
   }
 
@@ -71,6 +124,9 @@ export class ShaeWorkerElement extends ShaeElement {
           '[ShaeWorkerElement] Changing the "local" attribute after the shadowEnv has been created is not supported.',
         );
       }
+    }
+    if (name === ATTR_AUTO_SYNC) {
+      this.autoSync = this.hasAttribute(ATTR_AUTO_SYNC) ? this.getAttribute(ATTR_AUTO_SYNC) : true;
     }
   }
 
@@ -94,6 +150,8 @@ export class ShaeWorkerElement extends ShaeElement {
 
   destroy() {
     this.shadowEnv.envProxy = undefined;
+    this.#unsubscribeAutoSync?.();
+    this.#unsubscribeAutoSync = undefined;
   }
 
   // TODO(test) add tests for defer destroy
@@ -106,5 +164,50 @@ export class ShaeWorkerElement extends ShaeElement {
         }
       });
     }
+  }
+
+  #createAutoSyncEffect() {
+    const [, unsubscribe] = createEffect(() => {
+      if (this.isConnected$.get()) {
+        const autoSync = (this.autoSync$.get() || ShaeWorkerElement.DefaultAutoSync).trim().toLowerCase();
+        let delay = undefined;
+
+        if (['true', 'yes', 'on', 'frame', 'auto-sync'].includes(autoSync)) {
+          console.log('auto-sync', autoSync, this);
+          this.frameLoop.start(this);
+          return () => {
+            this.frameLoop.stop(this);
+          };
+        } else if (autoSync.toLowerCase().endsWith('fps')) {
+          const fps = parseInt(autoSync, 10);
+          if (fps > 0) {
+            delay = Math.floor(1000 / fps);
+          } else {
+            console.warn(`[ShaeWorkerElement] invalid auto-sync value: ${autoSync}`);
+          }
+        } else {
+          delay = parseInt(autoSync, 10);
+          if (isNaN(delay)) {
+            delay = undefined;
+            if (!['false', 'no', 'off'].includes(autoSync)) {
+              console.warn(`[ShaeWorkerElement] invalid auto-sync value: ${autoSync}`);
+            }
+          }
+        }
+
+        if (delay !== undefined && delay > 0) {
+          console.log('auto-sync interval', delay, this);
+          const id = setInterval(() => {
+            this.syncShadowObjects();
+          }, delay);
+          return () => {
+            clearInterval(id);
+          };
+        } else {
+          console.log('auto-sync off', this);
+        }
+      }
+    }, [this.autoSync$, this.isConnected$]);
+    this.#unsubscribeAutoSync = unsubscribe;
   }
 }
