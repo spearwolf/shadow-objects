@@ -173,7 +173,7 @@ export class ShaeWorkerElement extends ShaeElement {
         let delay = undefined;
 
         if (['true', 'yes', 'on', 'frame', 'auto-sync'].includes(autoSync)) {
-          console.log('auto-sync', autoSync, this);
+          console.debug('[ShaeWorkerElement] auto-sync', autoSync, this);
           this.frameLoop.start(this);
           return () => {
             this.frameLoop.stop(this);
@@ -196,7 +196,7 @@ export class ShaeWorkerElement extends ShaeElement {
         }
 
         if (delay !== undefined && delay > 0) {
-          console.log('auto-sync interval', delay, this);
+          console.debug('[ShaeWorkerElement] auto-sync interval (ms)', delay, this);
           const id = setInterval(() => {
             this.syncShadowObjects();
           }, delay);
@@ -204,7 +204,7 @@ export class ShaeWorkerElement extends ShaeElement {
             clearInterval(id);
           };
         } else {
-          console.log('auto-sync off', this);
+          console.debug('[ShaeWorkerElement] auto-sync off', this);
         }
       }
     }, [this.autoSync$, this.isConnected$]);

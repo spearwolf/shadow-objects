@@ -30,6 +30,7 @@ interface EntityEntry {
 interface EntityGraphNode {
   token: string;
   entity: Entity;
+  props: Record<string, unknown>;
   children: EntityGraphNode[];
 }
 
@@ -108,6 +109,7 @@ export class Kernel extends Eventize {
     return {
       token,
       entity,
+      props: Object.fromEntries(entity.propEntries()),
       children: entity.children.map((child) => this.getEntityGraphNode(child.uuid)),
     };
   }
