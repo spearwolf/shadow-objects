@@ -5,9 +5,9 @@ function foo({entity, useProperty}) {
 
   xyz((val) => {
     console.log('foo.xyz changed to', val);
+    entity.dispatchMessageToView('fooEcho', xyz());
   });
 
-  // entity.dispatchViewEvent('helloFromFoo', {xyz: xyz()});
   entity.dispatchMessageToView('helloFromFoo', {xyz: xyz()});
 }
 

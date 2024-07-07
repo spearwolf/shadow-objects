@@ -6,10 +6,10 @@ import {RemoteWorkerEnv} from '../view/RemoteWorkerEnv.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
 import {ShaeElement} from './ShaeElement.js';
 import {readBooleanAttribute} from './attr-utils.js';
-import {ATTR_AUTO_SYNC, ATTR_LOCAL, ATTR_NO_AUTOSTART} from './constants.js';
+import {ATTR_AUTO_SYNC, ATTR_LOCAL, ATTR_NO_AUTOSTART, ATTR_SRC} from './constants.js';
 
 export class ShaeWorkerElement extends ShaeElement {
-  static override observedAttributes = [...ShaeElement.observedAttributes, ATTR_LOCAL];
+  static override observedAttributes = [...ShaeElement.observedAttributes, ATTR_LOCAL, ATTR_SRC];
 
   static DefaultAutoSync = 'frame';
 
@@ -99,6 +99,16 @@ export class ShaeWorkerElement extends ShaeElement {
     this.syncShadowObjects();
   }
 
+  async importScript(src: URL | string): Promise<ShaeWorkerElement> {
+    if (!src) {
+      throw new Error('src is blank');
+    }
+    const shadowEnv = await this.shadowEnv.ready();
+    console.log('shadowEnv', shadowEnv);
+    await shadowEnv.envProxy.importScript(src);
+    return this;
+  }
+
   override connectedCallback() {
     super.connectedCallback();
 
@@ -127,6 +137,9 @@ export class ShaeWorkerElement extends ShaeElement {
     }
     if (name === ATTR_AUTO_SYNC) {
       this.autoSync = this.hasAttribute(ATTR_AUTO_SYNC) ? this.getAttribute(ATTR_AUTO_SYNC) : true;
+    }
+    if (name === ATTR_SRC) {
+      this.importScript(this.getAttribute(ATTR_SRC));
     }
   }
 

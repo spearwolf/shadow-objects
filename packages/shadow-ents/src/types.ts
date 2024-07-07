@@ -84,8 +84,11 @@ export interface AppliedChangeTrailEvent {
   error?: string;
 }
 
+// TODO interface ShadowsObjectsApi (params for constructor|function)
+
 export interface ShadowObjectConstructor {
   new (...args: any[]): {};
+  displayName?: string;
 }
 
 export type ShadowObjectType = EventizeApi;

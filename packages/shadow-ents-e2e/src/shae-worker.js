@@ -54,8 +54,8 @@ async function main() {
   testBooleanAction('worker0-ns', worker0.ns === GlobalNS);
   testAsyncAction('worker0-is-remote-env', shadowEnv0.envProxy.workerLoaded);
 
-  await testAsyncAction('worker0-env-ready', shadowEnv0.ready);
   await testCustomEvent('worker0-env-contextCreated', worker0, ContextCreated);
+  await testAsyncAction('worker0-env-ready', shadowEnv0.ready);
 
   // --- worker1 | local | no-autostart ----------------------------------------------
 

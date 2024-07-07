@@ -26,7 +26,6 @@ export class ShadowEnv {
   #shaObjEnvProxy?: IShadowObjectEnvProxy;
   #syncScheduled = false;
   #syncAfterContextCreated = false;
-  #whenReady!: Promise<ShadowEnv>;
 
   readonly ns$ = createSignal<NamespaceType | undefined>();
 
@@ -43,14 +42,6 @@ export class ShadowEnv {
     this.on(ShadowEnv.ContextLost, Priority.AAA, () => {
       this.retainClear(ShadowEnv.ContextCreated);
     });
-
-    createEffect(() => {
-      if (this.proxyReady) {
-        this.#whenReady = Promise.resolve(this);
-      } else {
-        this.#whenReady = this.onceAsync<ShadowEnv>(ShadowEnv.ContextCreated);
-      }
-    }, [this.proxyReady$]);
 
     createEffect(() => {
       if (this.viewReady && this.proxyReady) {
@@ -130,14 +121,14 @@ export class ShadowEnv {
     return Boolean(this.#comCtx && this.#shaObjEnvProxy && this.proxyReady);
   }
 
-  readonly ready = async (): Promise<ShadowEnv> => {
-    return this.#whenReady;
+  readonly ready = (): Promise<ShadowEnv> => {
+    return this.isReady ? Promise.resolve(this) : this.onceAsync(ShadowEnv.ContextCreated);
   };
 
   sync(): Promise<ShadowEnv> {
     if (!this.isReady) {
       this.#syncAfterContextCreated = true;
-      return this.#whenReady;
+      return this.ready();
     }
     const onSync = this.onceAsync<ShadowEnv>(ShadowEnv.AfterSync);
     if (this.#syncScheduled) return onSync;
