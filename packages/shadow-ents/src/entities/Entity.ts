@@ -195,8 +195,8 @@ export class Entity extends Eventize {
     }
   }
 
-  dispatchMessageToView(type: string, data?: unknown, transferables?: Transferable[]) {
-    this.#kernel.dispatchMessageToView({uuid: this.#uuid, type, data, transferables});
+  dispatchMessageToView(type: string, data?: unknown, transferables?: Transferable[], traverseChildren = false) {
+    this.#kernel.dispatchMessageToView({uuid: this.#uuid, type, data, transferables, traverseChildren});
   }
 
   dispatchViewEvents(events: IComponentEvent[]) {

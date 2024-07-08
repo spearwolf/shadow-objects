@@ -1,6 +1,6 @@
 import {createEffect, createSignal, destroySignal} from '@spearwolf/signalize';
 import {FrameLoop} from '../shared/FrameLoop.js';
-import {OffscreenCanvas, StartFrameLoop, StopFrameLoop} from '../shared/constants.js';
+import {OffscreenCanvas, RequestOffscreenCanvas} from '../shared/constants.js';
 
 export class VfxDisplay {
   #frameLoop = new FrameLoop();
@@ -69,28 +69,32 @@ export class VfxDisplay {
       unsubscribe();
       destroySignal(getCanvasSize);
     });
+
+    const getRunFrameLoop = useProperty('runFrameLoop');
+
+    onDestroy(
+      createEffect(() => {
+        if (getRunFrameLoop()) {
+          if (!this.isRunning) {
+            this.isRunning = true;
+            this.#frameLoop.start(this);
+          }
+        } else if (this.isRunning) {
+          this.isRunning = false;
+          this.#frameLoop.stop(this);
+        }
+      })[1],
+    );
+
+    entity.dispatchMessageToView(RequestOffscreenCanvas);
   }
 
   onViewEvent(type, data) {
-    console.debug(`[VfxCtxDisplay] ${this.uuid} onViewEvent, type=`, type, 'data=', data);
+    console.debug(`[VfxDisplay] ${this.uuid} onViewEvent, type=`, type, 'data=', data);
 
     switch (type) {
       case OffscreenCanvas:
         this.canvas = data.canvas;
-        break;
-
-      case StartFrameLoop:
-        if (!this.isRunning) {
-          this.isRunning = true;
-          this.#frameLoop.start(this);
-        }
-        break;
-
-      case StopFrameLoop:
-        if (this.isRunning) {
-          this.isRunning = false;
-          this.#frameLoop.stop(this);
-        }
         break;
     }
   }

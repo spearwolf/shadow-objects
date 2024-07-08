@@ -6,18 +6,23 @@ import {ThreeRenderView} from './shadow-objects/ThreeRenderView.js';
 import {VfxCtxCanvas} from './shadow-objects/VfxCtxCanvas.js';
 import {VfxDisplay} from './shadow-objects/VfxDisplay.js';
 
-console.log('moin moin @spearwolf/vfx/worker-sample.js');
+export const shadowObjects = {
+  define: {
+    VfxCtxCanvas,
+    ThreeMultiViewRenderer,
+    'vfx-display': VfxDisplay,
+    TestImageOnCanvas2D,
+    TestImage2OnCanvas2D,
+    ThreeRenderView,
+    CubeScene,
+  },
 
-// TODO create and export types for onload function
+  routes: {
+    'vfx-ctx': ['VfxCtxCanvas', 'ThreeMultiViewRenderer'],
+    'demo.renderView': ['ThreeRenderView', 'CubeScene'],
+  },
 
-export const onload = ({shadowObjects, kernel, registry}) => {
-  console.debug('worker.onload', {shadowObjects, kernel, registry});
-
-  shadowObjects.define('vfx-ctx', VfxCtxCanvas);
-  shadowObjects.define('vfx-ctx', ThreeMultiViewRenderer);
-  shadowObjects.define('vfx-display', VfxDisplay);
-  shadowObjects.define('TestImageOnCanvas2D', TestImageOnCanvas2D);
-  shadowObjects.define('TestImage2OnCanvas2D', TestImage2OnCanvas2D);
-  shadowObjects.define('demo.renderView', ThreeRenderView);
-  shadowObjects.define('demo.renderView', CubeScene);
+  initialize(...args) {
+    console.log('moin moin @spearwolf/vfx/worker-sample.js', import.meta.url, {args});
+  },
 };
