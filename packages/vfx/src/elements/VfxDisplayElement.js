@@ -4,6 +4,9 @@ import {createEffect} from '@spearwolf/signalize';
 import {FrameLoop} from '../shared/FrameLoop.js';
 import {OffscreenCanvas, RequestOffscreenCanvas, RunFrameLoop} from '../shared/constants.js';
 
+const DISPLAY_ID = 'display';
+const ENTITY_ID = 'entity';
+
 const InitialHTML = `
   <style>
     :host {
@@ -24,17 +27,14 @@ const InitialHTML = `
     }
   </style>
   <div class="frame">
-    <canvas id="display" class="content"></canvas>
+    <canvas id="${DISPLAY_ID}" class="content"></canvas>
     <div class="content">
-      <shae-ent id="entity" token="vfx-display">
+      <shae-ent id="${ENTITY_ID}" token="vfx-display">
         <slot></slot>
       </shae-ent>
     </div>
   </div>
 `;
-
-const ID_DISPLAY = 'display';
-const ID_ENTITY = 'entity';
 
 const ATTR_PIXEL_ZOOM = 'pixel-zoom';
 
@@ -48,8 +48,12 @@ export class VfxDisplayElement extends HTMLElement {
     this.shadow = this.attachShadow({mode: 'open'});
     this.shadow.innerHTML = initialHTML;
 
-    this.canvas = this.shadow.getElementById(ID_DISPLAY);
-    this.shadowEntity = this.shadow.getElementById(ID_ENTITY);
+    this.canvas = this.shadow.getElementById(DISPLAY_ID);
+    this.shadowEntity = this.shadow.getElementById(ENTITY_ID);
+
+    this.viewComponent.on(RequestOffscreenCanvas, () => {
+      this.#transferCanvasToShadows();
+    });
 
     createEffect(() => {
       // TODO refactor and verify VfxDisplayElement -> ContextLost effect
@@ -61,10 +65,6 @@ export class VfxDisplayElement extends HTMLElement {
           this.#transferCanvasToShadows();
         });
       }
-    });
-
-    this.viewComponent.on(RequestOffscreenCanvas, () => {
-      this.#transferCanvasToShadows();
     });
   }
 
@@ -87,6 +87,7 @@ export class VfxDisplayElement extends HTMLElement {
   #lastPixelRatio = 0;
   #lastPixelZoom = 1;
 
+  /** called by FrameLoop */
   onFrame() {
     const clientRect = this.canvas.getBoundingClientRect();
     const pixelRatio = window.devicePixelRatio ?? 1;
