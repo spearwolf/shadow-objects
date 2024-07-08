@@ -21,9 +21,9 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
 
     this.kernel.on(MessageToView, (message: MessageToViewEvent) => {
       if ((this as IShadowObjectEnvProxy).onMessageToView != null) {
-        const {type, uuid} = message;
+        const {type, uuid, traverseChildren} = message;
         const data = structuredClone(message.data, {transfer: message.transferables});
-        (this as IShadowObjectEnvProxy).onMessageToView({type, uuid, data});
+        (this as IShadowObjectEnvProxy).onMessageToView({type, uuid, data, traverseChildren});
       }
     });
   }
