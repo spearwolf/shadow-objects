@@ -38,7 +38,7 @@ describe('LocalShadowObjectEnv', () => {
 
     expect(env.view.hasComponent(vc)).toBeTruthy();
 
-    await env.sync();
+    await env.syncWait();
 
     const entity = localEnv.kernel.getEntity(vc.uuid);
 

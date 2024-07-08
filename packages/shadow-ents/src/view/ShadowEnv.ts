@@ -125,7 +125,20 @@ export class ShadowEnv {
     return this.isReady ? Promise.resolve(this) : this.onceAsync(ShadowEnv.ContextCreated);
   };
 
-  sync(): Promise<ShadowEnv> {
+  sync(): void {
+    if (!this.isReady) {
+      this.#syncAfterContextCreated = true;
+      return;
+    }
+    if (this.#syncScheduled) return;
+    this.#syncScheduled = true;
+    queueMicrotask(() => {
+      this.#syncNow();
+    });
+  }
+
+  // FIXME ShadowEnv#syncWait promise panic
+  syncWait(): Promise<ShadowEnv> {
     if (!this.isReady) {
       this.#syncAfterContextCreated = true;
       return this.ready();

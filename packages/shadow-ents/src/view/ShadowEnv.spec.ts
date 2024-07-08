@@ -60,7 +60,7 @@ describe('ShadowEnv', () => {
 
     const vc = new ViewComponent('test', {context: env.view});
 
-    await env.sync();
+    await env.syncWait();
 
     expect(onCreateSpy).toHaveBeenCalledTimes(1);
     expect(onDestroySpy).not.toHaveBeenCalled();
