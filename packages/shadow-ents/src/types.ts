@@ -1,5 +1,7 @@
 import type {EventizeApi} from '@spearwolf/eventize';
+import type {CompareFunc, SignalObject, SignalReader} from '@spearwolf/signalize';
 import {AppliedChangeTrail, ImportedModule, type ComponentChangeType} from './constants.js';
+import type {Entity} from './entities/Entity.js';
 import type {Kernel} from './entities/Kernel.js';
 import type {Registry} from './entities/Registry.js';
 
@@ -84,7 +86,15 @@ export interface AppliedChangeTrailEvent {
   error?: string;
 }
 
-// TODO interface ShadowsObjectsApi (params for constructor|function)
+export interface ShadowObjectParams {
+  entity: Entity;
+
+  provideContext<T = unknown>(name: string | symbol, initialValue?: T, isEqual?: CompareFunc<T>): SignalObject<T>;
+  useContext<T = any>(name: string | symbol, isEqual?: CompareFunc<T>): SignalReader<T>;
+  useProperty<T = any>(name: string, isEqual?: CompareFunc<T>): SignalReader<T>;
+
+  onDestroy(callback: () => any): void;
+}
 
 export interface ShadowObjectConstructor {
   new (...args: any[]): {};

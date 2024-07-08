@@ -1,15 +1,22 @@
 import {Eventize, eventize} from '@spearwolf/eventize';
 import {
-  SignalObject,
   batch,
   connect,
   createSignal,
   destroySignal,
+  SignalObject,
   type CompareFunc,
   type SignalReader,
 } from '@spearwolf/signalize';
 import {ComponentChangeType, MessageToView} from '../constants.js';
-import type {IComponentChangeType, IComponentEvent, ShadowObjectConstructor, ShadowObjectType, SyncEvent} from '../types.js';
+import type {
+  IComponentChangeType,
+  IComponentEvent,
+  ShadowObjectConstructor,
+  ShadowObjectParams,
+  ShadowObjectType,
+  SyncEvent,
+} from '../types.js';
 import {Entity} from './Entity.js';
 import {Registry} from './Registry.js';
 import {onCreate, onDestroy, type OnCreate, type OnDestroy} from './events.js';
@@ -334,11 +341,11 @@ export class Kernel extends Eventize {
         onDestroy(callback: () => any) {
           unsubscribe.add(callback);
         },
-      }),
+      } as ShadowObjectParams),
     );
 
     shadowObject.once(onDestroy, () => {
-      console.log('destroy shadow-object', shadowObject, Array.from(unsubscribe));
+      console.debug('destroy shadow-object', shadowObject, Array.from(unsubscribe));
 
       for (const callback of unsubscribe) {
         callback();
