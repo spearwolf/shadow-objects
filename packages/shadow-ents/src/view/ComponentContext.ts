@@ -79,7 +79,7 @@ export class ComponentContext {
       viewInstance.children = [];
     } else {
       viewInstance = {
-        component: component,
+        component,
         children: [],
         changes: new ComponentChanges(component.uuid),
         propIsEqual: undefined,
@@ -202,9 +202,7 @@ export class ComponentContext {
    * @returns all view-components in breadth-first order
    */
   traverseLevelOrderBFS(): ViewComponent[] {
-    return this.#traverseLevelOrderBFS()
-      .map((vi) => vi.component)
-      .filter(Boolean);
+    return this.#traverseLevelOrderBFS().map((vi) => vi.component);
   }
 
   /**
@@ -332,12 +330,8 @@ export class ComponentContext {
 
   #buildPathOfChanges(): ComponentChanges[] {
     return this.#traverseLevelOrderBFS()
-      .map((vi) => {
-        if (vi.changes.hasChanges()) {
-          return vi.changes;
-        }
-      })
-      .filter(Boolean);
+      .filter((vi) => vi.changes.hasChanges())
+      .map((vi) => vi.changes);
   }
 
   #appendToOrdered(component: ViewComponent, childUuids: string[]) {
