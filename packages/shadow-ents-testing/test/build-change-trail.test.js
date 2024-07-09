@@ -132,9 +132,20 @@ describe('build-change-trail', () => {
       },
       {
         type: ComponentChangeType.CreateEntities,
+        uuid: e.uuid,
+        token: 'e',
+      },
+      {
+        type: ComponentChangeType.CreateEntities,
         uuid: b.uuid,
         token: 'b',
         parentUuid: a.uuid,
+      },
+      {
+        type: ComponentChangeType.CreateEntities,
+        uuid: f.uuid,
+        token: 'f',
+        parentUuid: e.uuid,
       },
       {
         type: ComponentChangeType.CreateEntities,
@@ -147,17 +158,6 @@ describe('build-change-trail', () => {
         uuid: d.uuid,
         token: '#void',
         parentUuid: b.uuid,
-      },
-      {
-        type: ComponentChangeType.CreateEntities,
-        uuid: e.uuid,
-        token: 'e',
-      },
-      {
-        type: ComponentChangeType.CreateEntities,
-        uuid: f.uuid,
-        token: 'f',
-        parentUuid: e.uuid,
       },
     ]);
   });
@@ -194,20 +194,14 @@ describe('build-change-trail', () => {
       },
       {
         type: ComponentChangeType.CreateEntities,
+        uuid: e.uuid,
+        token: 'e',
+      },
+      {
+        type: ComponentChangeType.CreateEntities,
         uuid: b.uuid,
         token: 'b',
         parentUuid: a.uuid,
-      },
-      {
-        type: ComponentChangeType.CreateEntities,
-        uuid: d.uuid,
-        token: 'd',
-        parentUuid: b.uuid,
-      },
-      {
-        type: ComponentChangeType.CreateEntities,
-        uuid: e.uuid,
-        token: 'e',
       },
       {
         type: ComponentChangeType.CreateEntities,
@@ -220,6 +214,12 @@ describe('build-change-trail', () => {
         uuid: c.uuid,
         token: 'c',
         parentUuid: e.uuid,
+      },
+      {
+        type: ComponentChangeType.CreateEntities,
+        uuid: d.uuid,
+        token: 'd',
+        parentUuid: b.uuid,
       },
       {
         type: ComponentChangeType.SendEvents,

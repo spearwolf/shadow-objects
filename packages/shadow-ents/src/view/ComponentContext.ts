@@ -196,29 +196,9 @@ export class ComponentContext {
    * @returns all view-components in breadth-first order
    */
   traverseLevelOrderBFS(): ViewComponent[] {
-    const lvl = new Map<number, ViewComponent[]>();
-
-    const traverse = (uuid: string, depth: number) => {
-      const c = this.#components.get(uuid);
-      if (c == null) return;
-
-      if (lvl.has(depth)) {
-        lvl.get(depth).push(c.component);
-      } else {
-        lvl.set(depth, [c.component]);
-      }
-
-      for (const childUuid of c.children) {
-        traverse(childUuid, depth + 1);
-      }
-    };
-
-    this.#rootComponents.forEach((uuid) => traverse(uuid, 0));
-
-    return Array.from(lvl.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map(([, components]) => components)
-      .flat();
+    return this.#traverseLevelOrderBFS()
+      .map((vi) => vi.component)
+      .filter(Boolean);
   }
 
   /**
@@ -343,23 +323,13 @@ export class ComponentContext {
   }
 
   #buildPathOfChanges(): ComponentChanges[] {
-    const path: ComponentChanges[] = [];
-
-    const buildPath = (uuid: string) => {
-      const component = this.#components.get(uuid);
-      if (component) {
-        if (component.changes.hasChanges()) {
-          path.push(component.changes);
+    return this.#traverseLevelOrderBFS()
+      .map((vi) => {
+        if (vi.changes.hasChanges()) {
+          return vi.changes;
         }
-        component.children.forEach((childUuid) => buildPath(childUuid));
-      }
-    };
-
-    for (const uuid of this.#rootComponents) {
-      buildPath(uuid);
-    }
-
-    return path;
+      })
+      .filter(Boolean);
   }
 
   #appendToOrdered(component: ViewComponent, childUuids: string[]) {
@@ -407,5 +377,31 @@ export class ComponentContext {
         return;
       }
     }
+  }
+
+  #traverseLevelOrderBFS(): ViewInstance[] {
+    const lvl = new Map<number, ViewInstance[]>();
+
+    const traverse = (uuid: string, depth: number) => {
+      const viewInstance = this.#components.get(uuid);
+      if (viewInstance == null) return;
+
+      if (lvl.has(depth)) {
+        lvl.get(depth).push(viewInstance);
+      } else {
+        lvl.set(depth, [viewInstance]);
+      }
+
+      for (const childUuid of viewInstance.children) {
+        traverse(childUuid, depth + 1);
+      }
+    };
+
+    this.#rootComponents.forEach((uuid) => traverse(uuid, 0));
+
+    return Array.from(lvl.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([, vi]) => vi)
+      .flat();
   }
 }
