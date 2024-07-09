@@ -130,11 +130,12 @@ export class ViewComponent extends Eventize {
     this.#context.dispatchShadowObjectsEvent(this, type, data, transferables);
   }
 
-  dispatchEvent(type: string, data: unknown, traverseChildren = true) {
+  dispatchEvent(type: string, data: unknown, traverseChildren: boolean) {
     this.emit(type, data);
+
     if (traverseChildren) {
       for (const child of this.#context!.getChildren(this)) {
-        child.dispatchEvent(type, data);
+        child.dispatchEvent(type, data, traverseChildren);
       }
     }
   }

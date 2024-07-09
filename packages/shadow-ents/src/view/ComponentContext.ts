@@ -193,6 +193,35 @@ export class ComponentContext {
   }
 
   /**
+   * @returns all view-components in breadth-first order
+   */
+  traverseLevelOrderBFS(): ViewComponent[] {
+    const lvl = new Map<number, ViewComponent[]>();
+
+    const traverse = (uuid: string, depth: number) => {
+      const c = this.#components.get(uuid);
+      if (c == null) return;
+
+      if (lvl.has(depth)) {
+        lvl.get(depth).push(c.component);
+      } else {
+        lvl.set(depth, [c.component]);
+      }
+
+      for (const childUuid of c.children) {
+        traverse(childUuid, depth + 1);
+      }
+    };
+
+    this.#rootComponents.forEach((uuid) => traverse(uuid, 0));
+
+    return Array.from(lvl.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([, components]) => components)
+      .flat();
+  }
+
+  /**
    * Dispatch an event to the shadow objects linked to the view component
    */
   dispatchShadowObjectsEvent(component: ViewComponent, type: string, data: unknown, transferables?: Transferable[]) {
@@ -200,11 +229,11 @@ export class ComponentContext {
   }
 
   /**
-   * Dispatch an event to all view component tree roots
+   * Dispatch an event to all view components
    */
-  dispatchViewComponentsEvent(type: string, data: unknown = undefined) {
-    for (const uuid of this.#rootComponents) {
-      this.#components.get(uuid)?.component.dispatchEvent(type, data);
+  broadcastEvent(type: string, data: unknown = undefined) {
+    for (const c of this.traverseLevelOrderBFS()) {
+      c.dispatchEvent(type, data, false);
     }
   }
 
@@ -288,7 +317,7 @@ export class ComponentContext {
 
     this.#componentMemory.clear();
 
-    this.dispatchViewComponentsEvent(ContextLost);
+    this.broadcastEvent(ContextLost);
   }
 
   clear() {
