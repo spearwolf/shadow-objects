@@ -95,6 +95,8 @@ export class ComponentContext {
     } else {
       this.#appendToOrdered(component, this.#rootComponents);
     }
+
+    this.#viewInstances = undefined;
   }
 
   hasComponent(component: ViewComponent) {
@@ -114,6 +116,7 @@ export class ComponentContext {
       const entry = this.#components.get(component.uuid)!;
       entry.children.slice(0).forEach((childUuid) => this.#components.get(childUuid)?.component.removeFromParent());
       entry.changes.destroy();
+      this.#viewInstances = undefined;
     }
   }
 
@@ -131,6 +134,7 @@ export class ComponentContext {
         childEntry.changes.setParent(undefined);
       }
       this.#appendToOrdered(childEntry.component, this.#rootComponents);
+      this.#viewInstances = undefined;
     }
   }
 
@@ -148,6 +152,7 @@ export class ComponentContext {
       this.#appendToOrdered(child, entry.children);
       this.#components.get(child.uuid)?.changes.setParent(parent.uuid);
       removeFrom(this.#rootComponents, child.uuid);
+      this.#viewInstances = undefined;
     } else {
       throw new Error(`the view component ${parent.uuid} cannot have a child added to it because the component do not exist!`);
     }
@@ -190,6 +195,7 @@ export class ComponentContext {
       this.#appendToOrdered(component, this.#rootComponents);
     }
     this.#components.get(component.uuid)?.changes.changeOrder(component.order);
+    this.#viewInstances = undefined;
   }
 
   /**
@@ -301,6 +307,7 @@ export class ComponentContext {
   }
 
   clear() {
+    this.#viewInstances = undefined;
     this.#componentMemory.clear();
 
     this.#rootComponents.slice(0).forEach((uuid) => this.removeSubTree(uuid));
@@ -319,6 +326,7 @@ export class ComponentContext {
     if (this.#components.has(uuid)) {
       this.#components.delete(uuid);
       removeFrom(this.#rootComponents, uuid);
+      this.#viewInstances = undefined;
     }
   }
 
@@ -379,7 +387,11 @@ export class ComponentContext {
     }
   }
 
+  #viewInstances?: ViewInstance[];
+
   #traverseLevelOrderBFS(): ViewInstance[] {
+    if (this.#viewInstances) return this.#viewInstances;
+
     const lvl = new Map<number, ViewInstance[]>();
 
     const traverse = (uuid: string, depth: number) => {
@@ -399,9 +411,11 @@ export class ComponentContext {
 
     this.#rootComponents.forEach((uuid) => traverse(uuid, 0));
 
-    return Array.from(lvl.entries())
+    this.#viewInstances = Array.from(lvl.entries())
       .sort((a, b) => a[0] - b[0])
       .map(([, vi]) => vi)
       .flat();
+
+    return this.#viewInstances;
   }
 }
