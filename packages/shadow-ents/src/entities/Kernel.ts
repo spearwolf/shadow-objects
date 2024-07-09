@@ -62,6 +62,10 @@ export class Kernel extends Eventize {
   #entities: Map<string, EntityEntry> = new Map();
   #rootEntities: Set<string> = new Set();
 
+  #allEntities?: Entity[];
+  #allEntitiesReversed?: Entity[];
+  #allEntitiesNeedUpdate = true;
+
   constructor(registry?: Registry) {
     super();
     this.registry = Registry.get(registry);
@@ -82,29 +86,36 @@ export class Kernel extends Eventize {
   /**
    * @returns all entities in breadth-first order
    */
-  traverseLevelOrderBFS(): Entity[] {
-    const lvl = new Map<number, Entity[]>();
+  traverseLevelOrderBFS(reverse = false): Entity[] {
+    if (this.#allEntitiesNeedUpdate) {
+      const lvl = new Map<number, Entity[]>();
 
-    const traverse = (uuid: string, depth: number) => {
-      const e = this.getEntity(uuid);
+      const traverse = (uuid: string, depth: number) => {
+        const e = this.getEntity(uuid);
 
-      if (lvl.has(depth)) {
-        lvl.get(depth).push(e);
-      } else {
-        lvl.set(depth, [e]);
-      }
+        if (lvl.has(depth)) {
+          lvl.get(depth).push(e);
+        } else {
+          lvl.set(depth, [e]);
+        }
 
-      for (const child of e.children) {
-        traverse(child.uuid, depth + 1);
-      }
-    };
+        for (const child of e.children) {
+          traverse(child.uuid, depth + 1);
+        }
+      };
 
-    this.#rootEntities.forEach((uuid) => traverse(uuid, 0));
+      this.#rootEntities.forEach((uuid) => traverse(uuid, 0));
 
-    return Array.from(lvl.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map(([, entities]) => entities)
-      .flat();
+      this.#allEntities = Array.from(lvl.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([, entities]) => entities)
+        .flat();
+
+      this.#allEntitiesReversed = this.#allEntities.slice().reverse();
+      this.#allEntitiesNeedUpdate = false;
+    }
+
+    return reverse ? this.#allEntitiesReversed : this.#allEntities;
   }
 
   getEntityGraph(): EntityGraphNode[] {
@@ -124,14 +135,11 @@ export class Kernel extends Eventize {
   }
 
   upgradeEntities(): void {
-    const entities = this.traverseLevelOrderBFS();
-    const reversedEntities = entities.slice().reverse();
-
-    for (const entity of reversedEntities) {
+    for (const entity of this.traverseLevelOrderBFS(true)) {
       this.updateShadowObjects(entity.uuid, ShadowObjectAction.DestroyOnly);
     }
 
-    for (const entity of entities) {
+    for (const entity of this.traverseLevelOrderBFS(false)) {
       this.updateShadowObjects(entity.uuid, ShadowObjectAction.JustCreate);
     }
   }
@@ -148,18 +156,22 @@ export class Kernel extends Eventize {
     switch (entry.type) {
       case ComponentChangeType.CreateEntities:
         this.createEntity(entry.uuid, entry.token, entry.parentUuid, entry.order, entry.properties);
+        this.#allEntitiesNeedUpdate = true;
         break;
 
       case ComponentChangeType.DestroyEntities:
         this.destroyEntity(entry.uuid);
+        this.#allEntitiesNeedUpdate = true;
         break;
 
       case ComponentChangeType.SetParent:
         this.setParent(entry.uuid, entry.parentUuid, entry.order);
+        this.#allEntitiesNeedUpdate = true;
         break;
 
       case ComponentChangeType.UpdateOrder:
         this.updateOrder(entry.uuid, entry.order);
+        this.#allEntitiesNeedUpdate = true;
         break;
 
       case ComponentChangeType.ChangeProperties:
