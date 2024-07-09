@@ -26,6 +26,7 @@ export class ShadowEnv {
   #shaObjEnvProxy?: IShadowObjectEnvProxy;
   #syncScheduled = false;
   #syncAfterContextCreated = false;
+  #afterNextSync?: Promise<ShadowEnv>;
 
   readonly ns$ = createSignal<NamespaceType | undefined>();
 
@@ -132,24 +133,17 @@ export class ShadowEnv {
     }
     if (this.#syncScheduled) return;
     this.#syncScheduled = true;
-    queueMicrotask(() => {
-      this.#syncNow();
-    });
+    queueMicrotask(this.#syncIfScheduled);
   }
 
-  // FIXME ShadowEnv#syncWait promise panic
   syncWait(): Promise<ShadowEnv> {
-    if (!this.isReady) {
-      this.#syncAfterContextCreated = true;
-      return this.ready();
-    }
-    const onSync = this.onceAsync<ShadowEnv>(ShadowEnv.AfterSync);
-    if (this.#syncScheduled) return onSync;
-    this.#syncScheduled = true;
-    queueMicrotask(() => {
-      this.#syncNow();
+    this.sync();
+    if (this.#afterNextSync) return this.#afterNextSync;
+    this.#afterNextSync = this.onceAsync(ShadowEnv.AfterSync).then(() => {
+      this.#afterNextSync = undefined;
+      return this;
     });
-    return onSync;
+    return this.#afterNextSync;
   }
 
   destroy() {
@@ -157,6 +151,12 @@ export class ShadowEnv {
     this.envProxy = undefined;
     this.view = undefined;
   }
+
+  #syncIfScheduled = () => {
+    if (this.#syncScheduled) {
+      this.#syncNow();
+    }
+  };
 
   async #syncNow() {
     this.#syncScheduled = false;
