@@ -5,12 +5,14 @@
       "runner": "nx/tasks-runners/default",
       "options": {
         "cacheableOperations": ["build", "lint", "test", "e2e"],
-        "parallel": 5
+        "parallel": 8
       }
     }
   },
-  "affected": {
-    "defaultBase": "main"
+  "defaultBase": "main",
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*"],
+    "sources": ["{projectRoot}/src/**/*"]
   },
   "targetDefaults": {
     "build": {
@@ -31,7 +33,7 @@
     },
     "buildNpmPkg": {
       "executor": "nx:run-script",
-      "dependsOn": ["^build", "build"],
+      "dependsOn": ["^build", "build", "default"],
       "options": {
         "script": "buildNpmPkg"
       }

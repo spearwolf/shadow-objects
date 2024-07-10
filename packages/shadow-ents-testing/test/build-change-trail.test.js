@@ -1,49 +1,55 @@
 import {expect} from '@esm-bundle/chai';
 import {ComponentChangeType, ComponentContext, ContextLost} from '@spearwolf/shadow-ents';
-import '@spearwolf/shadow-ents/shadow-entity.js';
+import '@spearwolf/shadow-ents/shae-ent.js';
 import sinon from 'sinon';
 import {findElementsById} from '../src/findElementsById.js';
 import {render} from '../src/render.js';
 
 describe('build-change-trail', () => {
+  const cc = ComponentContext.get();
+
   beforeEach(async () => {
     render(`
-      <shadow-local-env id="localEnv">
-        <shadow-entity id="a" token="a">
-          <shadow-entity id="b" token="b">
-            <shadow-entity id="c" token="c"></shadow-entity>
-            <shadow-entity id="d"></shadow-entity>
-          </shadow-entity>
-        </shadow-entity>
-        <shadow-entity id="e" token="e">
-          <shadow-entity id="f" token="f"></shadow-entity>
-        </shadow-entity>
-      </shadow-local-env>`);
+      <shae-ent id="a" token="a">
+        <shae-ent id="b" token="b">
+          <shae-ent id="c" token="c"></shae-ent>
+          <shae-ent id="d"></shae-ent>
+        </shae-ent>
+      </shae-ent>
+      <shae-ent id="e" token="e">
+        <shae-ent id="f" token="f"></shae-ent>
+      </shae-ent>`);
 
-    await Promise.all([customElements.whenDefined('shadow-local-env'), customElements.whenDefined('shadow-entity')]);
+    await customElements.whenDefined('shae-ent');
   });
 
   afterEach(() => {
-    ComponentContext.get().clear();
+    cc.clear();
   });
 
   it('append e to b', () => {
-    const [b, e, localEnv] = findElementsById('b', 'e', 'localEnv');
+    const [b, e] = findElementsById('b', 'e');
 
-    let changeTrail = localEnv.getComponentContext().buildChangeTrails();
+    let changeTrail = cc.buildChangeTrails();
+
+    // console.log('append e to b (1st)', JSON.stringify(changeTrail, null, 2));
 
     e.token = 'bee';
 
     b.append(e);
 
-    changeTrail = localEnv.getComponentContext().buildChangeTrails();
+    changeTrail = cc.buildChangeTrails();
+
+    // console.log('append e to b (2nd)', JSON.stringify(changeTrail, null, 2));
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
+      // --- I) structural changes ---
       {
         type: ComponentChangeType.SetParent,
         uuid: e.uuid,
         parentUuid: b.uuid,
       },
+      // --- II) content changes ---
       {
         type: ComponentChangeType.ChangeToken,
         uuid: e.uuid,
@@ -53,14 +59,14 @@ describe('build-change-trail', () => {
   });
 
   it('a: set properties', () => {
-    const [a, localEnv] = findElementsById('a', 'localEnv');
+    const [a] = findElementsById('a');
 
-    localEnv.getComponentContext().buildChangeTrails();
+    cc.buildChangeTrails();
 
     a.viewComponent.setProperty('foo', 'bar');
     a.viewComponent.setProperty('plah', [1, 2, 3]);
 
-    const changeTrail = localEnv.getComponentContext().buildChangeTrails();
+    const changeTrail = cc.buildChangeTrails();
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
       {
@@ -75,17 +81,17 @@ describe('build-change-trail', () => {
   });
 
   it('destroy a', () => {
-    const [a, b, c, d, localEnv] = findElementsById('a', 'b', 'c', 'd', 'localEnv');
+    const [a, b, c, d] = findElementsById('a', 'b', 'c', 'd');
 
-    localEnv.getComponentContext().buildChangeTrails();
+    cc.buildChangeTrails();
 
-    expect(b.parentEntity).to.equal(a);
+    expect(b.entParentNode).to.equal(a);
 
     a.viewComponent.setProperty('foo', 'bar');
     d.viewComponent.setProperty('plah', 'plah!');
     a.remove();
 
-    const changeTrail = localEnv.getComponentContext().buildChangeTrails();
+    const changeTrail = cc.buildChangeTrails();
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
       {
@@ -108,8 +114,7 @@ describe('build-change-trail', () => {
   });
 
   it('reCreateChanges', () => {
-    const [a, b, c, d, e, f, localEnv] = findElementsById('a', 'b', 'c', 'd', 'e', 'f', 'localEnv');
-    const cc = localEnv.getComponentContext();
+    const [a, b, c, d, e, f] = findElementsById('a', 'b', 'c', 'd', 'e', 'f');
 
     const contextLostSpy = sinon.spy();
     f.viewComponent.on(ContextLost, contextLostSpy);
@@ -163,8 +168,7 @@ describe('build-change-trail', () => {
   });
 
   it('reCreateChanges with change gap', () => {
-    const [a, b, c, d, e, f, localEnv] = findElementsById('a', 'b', 'c', 'd', 'e', 'f', 'localEnv');
-    const cc = localEnv.getComponentContext();
+    const [a, b, c, d, e, f] = findElementsById('a', 'b', 'c', 'd', 'e', 'f');
 
     let changeTrail = cc.buildChangeTrails();
 

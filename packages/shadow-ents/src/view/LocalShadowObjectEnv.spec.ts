@@ -24,6 +24,8 @@ describe('LocalShadowObjectEnv', () => {
     await env.ready();
 
     expect(env.isReady).toBeTruthy();
+
+    env.destroy();
   });
 
   it('should sync', async () => {
@@ -44,5 +46,7 @@ describe('LocalShadowObjectEnv', () => {
 
     expect(entity).toBeDefined();
     expect(entity.getProperty('bar')).toBe(42);
+
+    env.destroy();
   });
 });

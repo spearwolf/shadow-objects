@@ -22,6 +22,8 @@ describe('ShadowEnv', () => {
 
     expect(env.view).toBeDefined();
     expect(env.isReady).toBeFalsy();
+
+    env.destroy();
   });
 
   it('should be ready', async () => {
@@ -35,6 +37,8 @@ describe('ShadowEnv', () => {
     await env.ready();
 
     expect(env.isReady).toBeTruthy();
+
+    env.destroy();
   });
 
   it('should create and destroy shadow-objects', async () => {
@@ -79,5 +83,7 @@ describe('ShadowEnv', () => {
 
     expect(localObjEnv.kernel.hasEntity(vc.uuid)).toBeFalsy();
     expect(localObjEnv.kernel.findShadowObjects(vc.uuid)).toHaveLength(0);
+
+    env.destroy();
   });
 });

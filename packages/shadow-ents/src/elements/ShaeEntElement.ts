@@ -22,6 +22,10 @@ export class ShaeEntElement extends ShaeElement {
     return this.viewComponent$.value;
   }
 
+  get uuid(): string | undefined {
+    return this.viewComponent?.uuid;
+  }
+
   get token(): string | undefined {
     return this.token$.value;
   }
@@ -73,24 +77,35 @@ export class ShaeEntElement extends ShaeElement {
   #setupViewComponentEffect() {
     this.#unsubscribeViewComponentEffect?.();
 
-    const [, unsubscribe] = createEffect(() => {
-      const context = this.componentContext$.get();
-      const token = this.token$.get();
-      const vc = this.viewComponent$.value;
+    const unsubscribeComponentContext = this.componentContext$.onChange((context) => {
+      const token = this.token$.value;
+
+      let vc = this.viewComponent$.value;
+
       if (vc) {
-        if (context == null) {
-          this.viewComponent$.set(undefined);
-        } else {
-          // TODO make token changeable (ViewComponent)? copy properties to new instance..
-          this.viewComponent$.set(new ViewComponent(token, {context}));
-        }
+        vc.context = context;
       } else if (context) {
-        this.viewComponent$.set(new ViewComponent(token, {context}));
+        vc = new ViewComponent(token, {context});
+        this.viewComponent$.set(vc);
       }
+
       this.syncShadowObjects();
     });
 
-    this.#unsubscribeViewComponentEffect = unsubscribe;
+    const unsubscribeTokenChange = this.token$.onChange((token) => {
+      const vc = this.viewComponent$.value;
+
+      if (vc) {
+        vc.token = token;
+      }
+
+      this.syncShadowObjects();
+    });
+
+    this.#unsubscribeViewComponentEffect = () => {
+      unsubscribeComponentContext();
+      unsubscribeTokenChange();
+    };
   }
 
   #destroyViewComponentEffect() {
@@ -221,12 +236,13 @@ export class ShaeEntElement extends ShaeElement {
 
     this.#unsubscribeFromParent?.();
     this.#unsubscribeFromParent = undefined;
+
     if (parent) {
       const [, unsubscribe] = createEffect(() => {
         const vc = this.viewComponent$.get();
         if (vc) {
           const parentVC = parent.viewComponent$.get();
-          vc.parent = parentVC.context === vc.context ? parentVC : undefined;
+          vc.parent = parentVC && parentVC.context === vc.context ? parentVC : undefined;
           if (vc.parent == null) {
             queueMicrotask(() => {
               this.#dispatchRequestParent();

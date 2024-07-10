@@ -138,6 +138,10 @@ export class ComponentContext {
     }
   }
 
+  changeToken(component: ViewComponent, token?: string) {
+    this.#components.get(component.uuid)?.changes.changeToken(token);
+  }
+
   isChildOf(child: ViewComponent, parent: ViewComponent) {
     if (this.hasComponent(parent)) {
       const entry = this.#components.get(parent.uuid)!;

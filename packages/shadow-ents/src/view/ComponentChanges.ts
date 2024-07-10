@@ -83,7 +83,7 @@ export class ComponentChanges {
     this.#transferables.clear();
   }
 
-  changeToken(token: string) {
+  changeToken(token: string | undefined) {
     if (token === this.#token) {
       this.#nextToken = undefined;
     } else {

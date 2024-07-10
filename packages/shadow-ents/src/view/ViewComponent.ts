@@ -11,7 +11,8 @@ class ViewComponentError extends Error {
 
 export class ViewComponent extends Eventize {
   readonly #uuid: string;
-  readonly #token: string;
+
+  #token?: string;
 
   #context?: ComponentContext;
 
@@ -24,6 +25,12 @@ export class ViewComponent extends Eventize {
 
   get token() {
     return this.#token;
+  }
+
+  set token(token: string | undefined) {
+    if (token === this.#token) return;
+    this.#token = token;
+    this.#context?.changeToken(this, token);
   }
 
   get parent(): ViewComponent | undefined {

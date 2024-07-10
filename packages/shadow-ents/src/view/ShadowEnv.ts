@@ -147,9 +147,19 @@ export class ShadowEnv {
   }
 
   destroy() {
+    const ns = this.#comCtx?.ns;
+
     this.envProxy?.destroy();
     this.envProxy = undefined;
     this.view = undefined;
+
+    if (ns) {
+      if (globalThis.__shadowEnvs.has(ns)) {
+        if (globalThis.__shadowEnvs.get(ns) === this) {
+          globalThis.__shadowEnvs.delete(ns);
+        }
+      }
+    }
   }
 
   #syncIfScheduled = () => {
