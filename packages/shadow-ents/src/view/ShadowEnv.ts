@@ -1,7 +1,7 @@
 import {Priority, eventize, type EventizeApi} from '@spearwolf/eventize';
 import {createEffect, createSignal, type SignalReader} from '@spearwolf/signalize';
 import {signal, signalReader} from '@spearwolf/signalize/decorators';
-import {type MessageToViewEvent, type NamespaceType} from '../core.js';
+import {type ChangeTrailType, type MessageToViewEvent, type NamespaceType} from '../core.js';
 import {ComponentContext} from './ComponentContext.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
@@ -27,7 +27,7 @@ export class ShadowEnv {
   #syncScheduled = false;
   #syncAfterContextCreated = false;
   #syncWaitForConfirmation = false;
-  #afterNextSync?: Promise<ShadowEnv>;
+  #afterNextSync?: Promise<ChangeTrailType>;
 
   readonly ns$ = createSignal<NamespaceType | undefined>();
 
@@ -137,13 +137,13 @@ export class ShadowEnv {
     queueMicrotask(this.#syncIfScheduled);
   }
 
-  syncWait(): Promise<ShadowEnv> {
+  syncWait(): Promise<ChangeTrailType> {
     this.#syncWaitForConfirmation = true;
     this.sync();
     if (this.#afterNextSync) return this.#afterNextSync;
-    this.#afterNextSync = this.onceAsync(ShadowEnv.AfterSync).then(() => {
+    this.#afterNextSync = this.onceAsync<ChangeTrailType>(ShadowEnv.AfterSync).then((changeTrail) => {
       this.#afterNextSync = undefined;
-      return this;
+      return changeTrail;
     });
     return this.#afterNextSync;
   }
@@ -182,7 +182,7 @@ export class ShadowEnv {
         } catch (error) {
           console.error('ShadowEnv: failed to apply change trail', error);
         } finally {
-          this.emit(ShadowEnv.AfterSync, this);
+          this.emit(ShadowEnv.AfterSync, data);
         }
       }
     }

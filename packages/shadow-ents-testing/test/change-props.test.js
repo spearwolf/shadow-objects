@@ -1,19 +1,20 @@
 import {expect} from '@esm-bundle/chai';
 import {ComponentChangeType, ComponentContext, VoidToken} from '@spearwolf/shadow-ents';
-import '@spearwolf/shadow-ents/shadow-entity.js';
+import '@spearwolf/shadow-ents/shae-ent.js';
+import '@spearwolf/shadow-ents/shae-worker.js';
 import {findElementsById} from '../src/findElementsById.js';
-import {nextChangeTrail} from '../src/nextSyncEvent.js';
 import {render} from '../src/render.js';
 
 describe('change props', () => {
   beforeEach(async () => {
     render(`
-      <shadow-local-env id="localEnv">
-        <shadow-entity id="a" token="a"></shadow-entity>
-        <shadow-entity id="b"></shadow-entity>
-      </shadow-local-env>`);
+      <shae-worker local no-autostart auto-sync="no" id="localEnv"></shae-worker>
 
-    await Promise.all([customElements.whenDefined('shadow-local-env'), customElements.whenDefined('shadow-entity')]);
+      <shae-ent id="a" token="a"></shae-ent>
+      <shae-ent id="b"></shae-ent>
+    `);
+
+    await Promise.all([customElements.whenDefined('shae-ent'), customElements.whenDefined('shae-worker')]);
   });
 
   afterEach(() => {
@@ -23,11 +24,13 @@ describe('change props', () => {
   it('works as expected', async () => {
     const [a, b, localEnv] = findElementsById('a', 'b', 'localEnv');
 
+    await localEnv.start();
+
     a.viewComponent.setProperty('foo', 'bar');
     a.viewComponent.setProperty('plah', 666);
     b.viewComponent.setProperty('xyz', [1, 2, 3]);
 
-    let changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
+    let changeTrail = await localEnv.shadowEnv.syncWait();
 
     // console.log('changeTrail:before', JSON.stringify(changeTrail, null, 2));
 
@@ -56,7 +59,7 @@ describe('change props', () => {
     b.viewComponent.removeProperty('xyz');
     b.viewComponent.removeProperty('gibsnich');
 
-    changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
+    changeTrail = await localEnv.shadowEnv.syncWait();
 
     // console.log('changeTrail:after', JSON.stringify(changeTrail, null, 2));
 
@@ -83,7 +86,7 @@ describe('change props', () => {
     a.viewComponent.setProperty('neu', 'new');
     a.viewComponent.removeProperty('null');
 
-    changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
+    changeTrail = await localEnv.shadowEnv.syncWait();
 
     // console.log('changeTrail:after:2', JSON.stringify(changeTrail, null, 2));
 

@@ -17,7 +17,8 @@
       "options": {
         "script": "test"
       },
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "inputs": ["{projectRoot}/**/*.js"]
     }
   },
   "tags": []

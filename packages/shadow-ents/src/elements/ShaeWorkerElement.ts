@@ -1,4 +1,4 @@
-import {createEffect, createSignal} from '@spearwolf/signalize';
+import {batch, createEffect, createSignal} from '@spearwolf/signalize';
 import {FrameLoop} from '../utils/FrameLoop.js';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {LocalShadowObjectEnv} from '../view/LocalShadowObjectEnv.js';
@@ -112,7 +112,12 @@ export class ShaeWorkerElement extends ShaeElement {
   override connectedCallback() {
     super.connectedCallback();
 
-    this.isConnected$.set(true);
+    batch(() => {
+      if (this.hasAttribute(ATTR_AUTO_SYNC)) {
+        this.autoSync$.set(this.getAttribute(ATTR_AUTO_SYNC));
+      }
+      this.isConnected$.set(true);
+    });
 
     if (this.shouldAutostart) {
       this.start();
@@ -135,9 +140,11 @@ export class ShaeWorkerElement extends ShaeElement {
         );
       }
     }
+
     if (name === ATTR_AUTO_SYNC) {
       this.autoSync = this.hasAttribute(ATTR_AUTO_SYNC) ? this.getAttribute(ATTR_AUTO_SYNC) : true;
     }
+
     if (name === ATTR_SRC) {
       this.importScript(this.getAttribute(ATTR_SRC));
     }
@@ -221,6 +228,7 @@ export class ShaeWorkerElement extends ShaeElement {
         }
       }
     }, [this.autoSync$, this.isConnected$]);
+
     this.#unsubscribeAutoSync = unsubscribe;
   }
 }
