@@ -26,6 +26,7 @@ export class ShadowEnv {
   #shaObjEnvProxy?: IShadowObjectEnvProxy;
   #syncScheduled = false;
   #syncAfterContextCreated = false;
+  #syncWaitForConfirmation = false;
   #afterNextSync?: Promise<ShadowEnv>;
 
   readonly ns$ = createSignal<NamespaceType | undefined>();
@@ -137,6 +138,7 @@ export class ShadowEnv {
   }
 
   syncWait(): Promise<ShadowEnv> {
+    this.#syncWaitForConfirmation = true;
     this.sync();
     if (this.#afterNextSync) return this.#afterNextSync;
     this.#afterNextSync = this.onceAsync(ShadowEnv.AfterSync).then(() => {
@@ -174,7 +176,9 @@ export class ShadowEnv {
       const data = this.view!.buildChangeTrails();
       if (data.length > 0) {
         try {
-          await this.envProxy!.applyChangeTrail(data);
+          const waitForConfirmation = this.#syncWaitForConfirmation;
+          this.#syncWaitForConfirmation = false;
+          await this.envProxy!.applyChangeTrail(data, waitForConfirmation);
         } catch (error) {
           console.error('ShadowEnv: failed to apply change trail', error);
         } finally {

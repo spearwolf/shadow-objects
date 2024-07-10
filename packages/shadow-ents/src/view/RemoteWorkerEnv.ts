@@ -101,15 +101,25 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     }
   }
 
-  applyChangeTrail(changeTrail: ChangeTrailType): Promise<void> {
+  applyChangeTrail(changeTrail: ChangeTrailType, waitForConfirmation: boolean): Promise<void> {
     const transferables = removeTransferables(changeTrail);
+    const message = {type: ChangeTrail, changeTrail} as any;
+
     const serial = ++this.#changeTrailSerial;
-    const message = {type: ChangeTrail, changeTrail, serial};
+    if (waitForConfirmation) {
+      message.serial = serial;
+    }
+
     this.#worker.postMessage(message, transferables);
-    return waitForMessageOfType(this.#worker, AppliedChangeTrail, WorkerChangeTrailTimeout, (data: AppliedChangeTrailEvent) => {
-      if (data.error) throw data.error;
-      return data.serial === serial;
-    });
+
+    if (waitForConfirmation) {
+      return waitForMessageOfType(this.#worker, AppliedChangeTrail, WorkerChangeTrailTimeout, (data: AppliedChangeTrailEvent) => {
+        if (data.error) throw data.error;
+        return data.serial === serial;
+      });
+    } else {
+      return Promise.resolve();
+    }
   }
 
   importScript(url: URL | string): Promise<void> {

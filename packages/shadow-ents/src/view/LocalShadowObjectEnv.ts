@@ -32,7 +32,7 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
     return Promise.resolve();
   }
 
-  applyChangeTrail(data: ChangeTrailType): Promise<void> {
+  applyChangeTrail(data: ChangeTrailType, _waitForConfirmation: boolean): Promise<void> {
     const syncData: SyncEvent = {changeTrail: cloneChangeTrail(data)};
     let result: Promise<void>;
     try {

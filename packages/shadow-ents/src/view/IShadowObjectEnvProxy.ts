@@ -6,7 +6,7 @@ export interface IShadowObjectEnvProxy {
 
   importScript(url: URL | string): Promise<void>;
 
-  applyChangeTrail(data: ChangeTrailType): Promise<void>;
+  applyChangeTrail(data: ChangeTrailType, waitForConfirmation: boolean): Promise<void>;
 
   destroy(): void;
 
