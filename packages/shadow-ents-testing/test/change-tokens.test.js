@@ -1,19 +1,20 @@
 import {expect} from '@esm-bundle/chai';
 import {ComponentChangeType, ComponentContext, VoidToken} from '@spearwolf/shadow-ents';
-import '@spearwolf/shadow-ents/shadow-entity.js';
+import '@spearwolf/shadow-ents/shae-ent.js';
+import '@spearwolf/shadow-ents/shae-worker.js';
 import {findElementsById} from '../src/findElementsById.js';
-import {nextChangeTrail} from '../src/nextSyncEvent.js';
 import {render} from '../src/render.js';
 
 describe('change tokens', () => {
   beforeEach(async () => {
     render(`
-      <shadow-local-env id="localEnv">
-        <shadow-entity id="a" token="a"></shadow-entity>
-        <shadow-entity id="b"></shadow-entity>
-      </shadow-local-env>`);
+      <shae-worker local no-autostart auto-sync="no" id="localEnv"></shae-worker>
 
-    await Promise.all([customElements.whenDefined('shadow-local-env'), customElements.whenDefined('shadow-entity')]);
+      <shae-ent id="a" token="a"></shae-ent>
+      <shae-ent id="b"></shae-ent>
+    `);
+
+    await Promise.all([customElements.whenDefined('shae-worker'), customElements.whenDefined('shae-ent')]);
   });
 
   afterEach(() => {
@@ -23,7 +24,9 @@ describe('change tokens', () => {
   it('void-token works as expected', async () => {
     const [a, b, localEnv] = findElementsById('a', 'b', 'localEnv');
 
-    let changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
+    await localEnv.start();
+
+    let changeTrail = await localEnv.shadowEnv.syncWait();
 
     expect(changeTrail, 'changeTrail:before').to.deep.equal([
       {
@@ -41,7 +44,7 @@ describe('change tokens', () => {
     a.token = undefined;
     b.token = 'B';
 
-    changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
+    changeTrail = await localEnv.shadowEnv.syncWait();
 
     expect(changeTrail, 'changeTrail:after').to.deep.equal([
       {

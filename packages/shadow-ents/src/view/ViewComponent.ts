@@ -1,4 +1,5 @@
 import {Eventize} from '@spearwolf/eventize';
+import {VoidToken} from '../constants.js';
 import {generateUUID} from '../generateUUID.js';
 import {ComponentContext} from './ComponentContext.js';
 
@@ -12,7 +13,7 @@ class ViewComponentError extends Error {
 export class ViewComponent extends Eventize {
   readonly #uuid: string;
 
-  #token?: string;
+  #token: string;
 
   #context?: ComponentContext;
 
@@ -28,6 +29,7 @@ export class ViewComponent extends Eventize {
   }
 
   set token(token: string | undefined) {
+    token ??= VoidToken;
     if (token === this.#token) return;
     this.#token = token;
     this.#context?.changeToken(this, token);
