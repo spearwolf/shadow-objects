@@ -16,6 +16,10 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
     return this.kernel.registry;
   }
 
+  readonly isLocalEnv = true;
+
+  disableStructuredClone = false;
+
   constructor(registry?: Registry) {
     this.kernel = new Kernel(registry);
 
@@ -33,7 +37,7 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
   }
 
   applyChangeTrail(data: ChangeTrailType, _waitForConfirmation: boolean): Promise<void> {
-    const syncData: SyncEvent = {changeTrail: cloneChangeTrail(data)};
+    const syncData: SyncEvent = {changeTrail: this.disableStructuredClone ? data : cloneChangeTrail(data)};
     let result: Promise<void>;
     try {
       this.kernel.run(syncData);

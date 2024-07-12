@@ -21,7 +21,7 @@ describe('remove and append e', () => {
       </shae-ent>
     `);
 
-    await Promise.all([customElements.whenDefined('shae-worker'), customElements.whenDefined('shae-ent')]);
+    await Promise.all(['shae-worker', 'shae-ent'].map((name) => customElements.whenDefined(name)));
   });
 
   afterEach(() => {

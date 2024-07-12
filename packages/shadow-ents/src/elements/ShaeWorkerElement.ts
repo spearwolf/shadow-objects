@@ -6,10 +6,10 @@ import {RemoteWorkerEnv} from '../view/RemoteWorkerEnv.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
 import {ShaeElement} from './ShaeElement.js';
 import {readBooleanAttribute} from './attr-utils.js';
-import {ATTR_AUTO_SYNC, ATTR_LOCAL, ATTR_NO_AUTOSTART, ATTR_SRC} from './constants.js';
+import {ATTR_AUTO_SYNC, ATTR_LOCAL, ATTR_NO_AUTOSTART, ATTR_NO_STRUCTURED_CLONE, ATTR_SRC} from './constants.js';
 
 export class ShaeWorkerElement extends ShaeElement {
-  static override observedAttributes = [...ShaeElement.observedAttributes, ATTR_LOCAL, ATTR_SRC];
+  static override observedAttributes = [...ShaeElement.observedAttributes, ATTR_LOCAL, ATTR_SRC, ATTR_NO_STRUCTURED_CLONE];
 
   static DefaultAutoSync = 'frame';
 
@@ -141,6 +141,10 @@ export class ShaeWorkerElement extends ShaeElement {
       }
     }
 
+    if (name === ATTR_NO_STRUCTURED_CLONE) {
+      this.#updateNoStructuredClone();
+    }
+
     if (name === ATTR_AUTO_SYNC) {
       this.autoSync = this.hasAttribute(ATTR_AUTO_SYNC) ? this.getAttribute(ATTR_AUTO_SYNC) : true;
     }
@@ -161,6 +165,7 @@ export class ShaeWorkerElement extends ShaeElement {
       if (this.shadowEnv.envProxy == null) {
         const envProxy = readBooleanAttribute(this, ATTR_LOCAL) ? new LocalShadowObjectEnv() : new RemoteWorkerEnv();
         this.shadowEnv.envProxy = envProxy;
+        this.#updateNoStructuredClone();
       }
 
       this.#started = true;
@@ -193,7 +198,7 @@ export class ShaeWorkerElement extends ShaeElement {
         let delay = undefined;
 
         if (['true', 'yes', 'on', 'frame', 'auto-sync'].includes(autoSync)) {
-          console.debug('[ShaeWorkerElement] auto-sync', autoSync, this);
+          // console.debug('[ShaeWorkerElement] auto-sync', autoSync, this);
           this.frameLoop.start(this);
           return () => {
             this.frameLoop.stop(this);
@@ -216,19 +221,26 @@ export class ShaeWorkerElement extends ShaeElement {
         }
 
         if (delay !== undefined && delay > 0) {
-          console.debug('[ShaeWorkerElement] auto-sync interval (ms)', delay, this);
+          // console.debug('[ShaeWorkerElement] auto-sync interval (ms)', delay, this);
           const id = setInterval(() => {
             this.syncShadowObjects();
           }, delay);
           return () => {
             clearInterval(id);
           };
-        } else {
-          console.debug('[ShaeWorkerElement] auto-sync off', this);
+          // } else {
+          //   console.debug('[ShaeWorkerElement] auto-sync off', this);
         }
       }
     }, [this.autoSync$, this.isConnected$]);
 
     this.#unsubscribeAutoSync = unsubscribe;
+  }
+
+  #updateNoStructuredClone() {
+    const env = this.shadowEnv.envProxy;
+    if (env && (env as LocalShadowObjectEnv).isLocalEnv) {
+      (env as LocalShadowObjectEnv).disableStructuredClone = this.hasAttribute(ATTR_NO_STRUCTURED_CLONE);
+    }
   }
 }

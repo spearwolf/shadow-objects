@@ -1,27 +1,31 @@
 import {expect} from '@esm-bundle/chai';
 import {ComponentChangeType, ComponentContext, VoidToken} from '@spearwolf/shadow-ents';
-import '@spearwolf/shadow-ents/shadow-entity.js';
+import '@spearwolf/shadow-ents/shae-ent.js';
+import '@spearwolf/shadow-ents/shae-worker.js';
 import {findElementsById} from '../src/findElementsById.js';
-import {nextChangeTrail} from '../src/nextSyncEvent.js';
 import {render} from '../src/render.js';
 
-describe('chasend events', () => {
+describe('send events', () => {
   beforeEach(async () => {
     render(`
-      <shadow-local-env id="localEnv" no-structured-clone>
-        <shadow-entity id="a" token="a"></shadow-entity>
-        <shadow-entity id="b"></shadow-entity>
-      </shadow-local-env>`);
+      <shae-worker local no-autostart auto-sync="no" id="localEnv" no-structured-clone></shae-worker>
 
-    await Promise.all([customElements.whenDefined('shadow-local-env'), customElements.whenDefined('shadow-entity')]);
+      <shae-ent id="a" token="a"></shae-ent>
+      <shae-ent id="b"></shae-ent>
+    `);
+
+    await Promise.all(['shae-worker', 'shae-ent'].map((name) => customElements.whenDefined(name)));
   });
 
   afterEach(() => {
     ComponentContext.get().clear();
+    document.getElementById('localEnv').shadowEnv.destroy();
   });
 
   it('works as expected', async () => {
     const [a, b, localEnv] = findElementsById('a', 'b', 'localEnv');
+
+    await localEnv.start();
 
     a.viewComponent.setProperty('foo', 'bar');
     a.viewComponent.setProperty('plah', 666);
@@ -29,7 +33,7 @@ describe('chasend events', () => {
 
     a.viewComponent.dispatchShadowObjectsEvent('event1', {foo: 'bar'});
 
-    let changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
+    let changeTrail = await localEnv.shadowEnv.syncWait();
 
     // console.log('changeTrail:before', JSON.stringify(changeTrail, null, 2));
 
@@ -62,7 +66,7 @@ describe('chasend events', () => {
     b.viewComponent.dispatchShadowObjectsEvent('event4', null, [1, 2, 3]);
     a.viewComponent.dispatchShadowObjectsEvent('event3', {abc: 'def'}, ['xyz', 666]);
 
-    changeTrail = await nextChangeTrail(localEnv.getShadowEnv());
+    changeTrail = await localEnv.shadowEnv.syncWait();
 
     // console.log('changeTrail:after', JSON.stringify(changeTrail, null, 2));
 
