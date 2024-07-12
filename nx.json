@@ -21,7 +21,8 @@
   },
   "targetDefaults": {
     "build": {
-      "dependsOn": ["^build", "^default", "default"]
+      "dependsOn": ["^build", "^default", "default"],
+      "inputs": ["^default", "default"]
     },
     "lint": {
       "inputs": [
@@ -33,11 +34,12 @@
       ]
     },
     "test": {
-      "dependsOn": ["^build", "^default", "default"]
+      "dependsOn": ["^build"],
+      "inputs": ["default"]
     },
     "buildNpmPkg": {
       "executor": "nx:run-script",
-      "dependsOn": ["^build", "build", "default"],
+      "dependsOn": ["buildNpmPkg", "^build", "build", "default"],
       "options": {
         "script": "buildNpmPkg"
       }
