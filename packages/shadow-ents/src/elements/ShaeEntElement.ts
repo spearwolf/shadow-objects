@@ -70,6 +70,15 @@ export class ShaeEntElement extends ShaeElement {
         };
       }
     });
+
+    this.token$.onChange((token) => {
+      const vc = this.viewComponent$.value;
+
+      if (vc) {
+        vc.token = token;
+        this.syncShadowObjects();
+      }
+    });
   }
 
   #unsubscribeViewComponentEffect?: () => void;
@@ -92,19 +101,8 @@ export class ShaeEntElement extends ShaeElement {
       this.syncShadowObjects();
     });
 
-    const unsubscribeTokenChange = this.token$.onChange((token) => {
-      const vc = this.viewComponent$.value;
-
-      if (vc) {
-        vc.token = token;
-      }
-
-      this.syncShadowObjects();
-    });
-
     this.#unsubscribeViewComponentEffect = () => {
       unsubscribeComponentContext();
-      unsubscribeTokenChange();
     };
   }
 

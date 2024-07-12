@@ -1,35 +1,39 @@
 import {expect} from '@esm-bundle/chai';
 import {ComponentChangeType, ComponentContext} from '@spearwolf/shadow-ents';
-import '@spearwolf/shadow-ents/shadow-entity.js';
+import '@spearwolf/shadow-ents/shae-ent.js';
+import '@spearwolf/shadow-ents/shae-worker.js';
 import {findElementsById} from '../src/findElementsById.js';
 import {render} from '../src/render.js';
 
 describe('remove and append e', () => {
   beforeEach(async () => {
     render(`
-      <shadow-local-env id="localEnv">
-        <shadow-entity id="a" token="a">
-          <shadow-entity id="b" token="b">
-            <shadow-entity id="c" token="c"></shadow-entity>
-            <shadow-entity id="d"></shadow-entity>
-          </shadow-entity>
-        </shadow-entity>
-        <shadow-entity id="e" token="e">
-          <shadow-entity id="f" token="f"></shadow-entity>
-        </shadow-entity>
-      </shadow-local-env>`);
+      <shae-worker local no-autostart auto-sync="off" id="localEnv"></shae-worker>
 
-    await Promise.all([customElements.whenDefined('shadow-local-env'), customElements.whenDefined('shadow-entity')]);
+      <shae-ent id="a" token="a">
+        <shae-ent id="b" token="b">
+          <shae-ent id="c" token="c"></shae-ent>
+          <shae-ent id="d"></shae-ent>
+        </shae-ent>
+      </shae-ent>
+      <shae-ent id="e" token="e">
+        <shae-ent id="f" token="f"></shae-ent>
+      </shae-ent>
+    `);
+
+    await Promise.all([customElements.whenDefined('shae-worker'), customElements.whenDefined('shae-ent')]);
   });
 
   afterEach(() => {
     ComponentContext.get().clear();
+    document.getElementById('localEnv').shadowEnv.destroy();
   });
 
-  it('remove and append e', () => {
+  it('remove and append e', async () => {
     const [b, e, localEnv] = findElementsById('b', 'e', 'localEnv');
 
-    let changeTrail = localEnv.getComponentContext().buildChangeTrails();
+    await localEnv.start();
+    await localEnv.shadowEnv.syncWait();
 
     e.remove();
 
@@ -37,7 +41,7 @@ describe('remove and append e', () => {
 
     b.append(e);
 
-    changeTrail = localEnv.getComponentContext().buildChangeTrails();
+    const changeTrail = await localEnv.shadowEnv.syncWait();
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
       {
