@@ -22,8 +22,7 @@
       "options": {
         "script": "test"
       },
-      "outputs": ["{projectRoot}/playwright-report", "{projectRoot}/test-results"],
-      "dependsOn": ["^build", "build"]
+      "outputs": ["{projectRoot}/playwright-report", "{projectRoot}/test-results"]
     },
     "dev": {
       "executor": "nx:run-script",

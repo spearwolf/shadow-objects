@@ -11,12 +11,17 @@
   },
   "defaultBase": "main",
   "namedInputs": {
-    "default": ["{projectRoot}/**/*"],
-    "sources": ["{projectRoot}/src/**/*"]
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "sharedGlobals": [
+      "{workspaceRoot}/scripts/**/*",
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/pnpm-lock.yaml",
+      "{workspaceRoot}/tsconfig.json"
+    ]
   },
   "targetDefaults": {
     "build": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build", "^default", "default"]
     },
     "lint": {
       "inputs": [
@@ -28,8 +33,7 @@
       ]
     },
     "test": {
-      "dependsOn": ["^build"],
-      "inputs": ["default", "^default", "{workspaceRoot}/package.json", "{workspaceRoot}/tsconfig.json"]
+      "dependsOn": ["^build", "^default", "default"]
     },
     "buildNpmPkg": {
       "executor": "nx:run-script",
@@ -40,7 +44,7 @@
     },
     "publishNpmPkg": {
       "executor": "nx:run-script",
-      "dependsOn": ["buildNpmPkg"],
+      "dependsOn": ["build"],
       "options": {
         "script": "publishNpmPkg"
       }

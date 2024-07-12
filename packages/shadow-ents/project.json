@@ -16,30 +16,12 @@
       "executor": "nx:run-script",
       "options": {
         "script": "test"
-      },
-      "dependsOn": ["^build"],
-      "inputs": ["sources"]
+      }
     },
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["{projectRoot}/dist"],
-      "inputs": ["sources"]
+      "outputs": ["{projectRoot}/dist/**/*"],
+      "inputs": ["default"]
     }
   },
-  "tags": [],
-  "namedInputs": {
-    "sources": [
-      "{workspaceRoot}/package.json",
-      "{workspaceRoot}/tsconfig.json",
-      "{projectRoot}/src/**/*.ts",
-      "!{projectRoot}/docs",
-      "{projectRoot}/bundle.mjs",
-      "{projectRoot}/package.json",
-      "{projectRoot}/package.override.json",
-      "{projectRoot}/tsconfig.bundle.json",
-      "{projectRoot}/tsconfig.json",
-      "{projectRoot}/tsconfig.lib.json",
-      "{projectRoot}/tsconfig.tests.json"
-    ]
-  }
+  "tags": []
 }

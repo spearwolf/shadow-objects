@@ -16,9 +16,7 @@
       "executor": "nx:run-script",
       "options": {
         "script": "test"
-      },
-      "dependsOn": ["^build"],
-      "inputs": ["{projectRoot}/**/*.js"]
+      }
     }
   },
   "tags": []
