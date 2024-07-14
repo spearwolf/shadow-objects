@@ -9,22 +9,20 @@
   <body>
     <script type="module" src="/src/bundle.ts"></script>
     <main>
-      <shadow-local-env data-testid="localEnv0">
-        <shadow-entity data-testid="seBase0">
-          seBase0
-          <shadow-entity data-testid="seBase1">
-            seBase1
-            <shadow-entity data-testid="seBase3">seBase3</shadow-entity>
-          </shadow-entity>
-          <shadow-entity data-testid="seBase2">seBase2</shadow-entity>
-        </shadow-entity>
-      </shadow-local-env>
-      <shadow-worker data-testid="workerCtx0">
-        <shadow-entity data-testid="seBase4">seBase2</shadow-entity>
-      </shadow-worker>
+      <shae-worker local data-testid="localEnv0"></shae-worker>
+      <shae-worker ns="worker0" data-testid="workerCtx0"></shae-worker>
+      <shae-ent data-testid="seBase0">
+        seBase0
+        <shae-ent data-testid="seBase1">
+          seBase1
+          <shae-ent ns="worker0" data-testid="seBase4">seBase4</shae-ent>
+          <shae-ent data-testid="seBase3">seBase3</shae-ent>
+        </shae-ent>
+        <shae-ent data-testid="seBase2">seBase2</shae-ent>
+      </shae-ent>
     </main>
     <script>
-      customElements.whenDefined('shadow-entity').then(() => {
+      customElements.whenDefined('shae-ent').then(() => {
         window.localEnv0 = document.querySelector('[data-testid="localEnv0"]');
         window.seBase0 = document.querySelector('[data-testid="seBase0"]');
         window.seBase1 = document.querySelector('[data-testid="seBase1"]');

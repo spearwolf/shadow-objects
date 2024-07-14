@@ -5,7 +5,7 @@ test.describe('bundle', () => {
     await page.goto('/pages/bundle.html');
   });
 
-  test.describe('shadow-entity', () => {
+  test.describe('shae-ent', () => {
     test('has element', async ({page}) => {
       await expect(page.getByTestId('seBase0')).toBeAttached();
     });
@@ -14,7 +14,7 @@ test.describe('bundle', () => {
       expect(
         await page.evaluate(() =>
           customElements
-            .whenDefined('shadow-entity')
+            .whenDefined('shae-ent')
             .then(() => true)
             .catch(() => false),
         ),
@@ -22,24 +22,7 @@ test.describe('bundle', () => {
     });
   });
 
-  test.describe('shadow-local-env', () => {
-    test('has element', async ({page}) => {
-      await expect(page.getByTestId('localEnv0')).toBeAttached();
-    });
-
-    test('custom element is defined', async ({page}) => {
-      expect(
-        await page.evaluate(() =>
-          customElements
-            .whenDefined('shadow-local-env')
-            .then(() => true)
-            .catch(() => false),
-        ),
-      ).toBe(true);
-    });
-  });
-
-  test.describe('shadow-worker', () => {
+  test.describe('shae-worker', () => {
     test('has element', async ({page}) => {
       await expect(page.getByTestId('workerCtx0')).toBeAttached();
     });
@@ -48,7 +31,7 @@ test.describe('bundle', () => {
       expect(
         await page.evaluate(() =>
           customElements
-            .whenDefined('shadow-worker')
+            .whenDefined('shae-worker')
             .then(() => true)
             .catch(() => false),
         ),
