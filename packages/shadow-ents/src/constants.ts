@@ -43,7 +43,6 @@ export const Destroyed = 'destroyed';
 export const MessageToView = 'messageToView';
 
 export const WorkerLoadTimeout = 16000;
-export const WorkerReadyTimeout = 16000; // TODO remove WorkerReadyTimeout
 export const WorkerConfigureTimeout = 16000;
 export const WorkerChangeTrailTimeout = 4000;
 export const WorkerDestroyTimeout = 1000;

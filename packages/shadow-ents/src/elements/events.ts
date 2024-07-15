@@ -1,11 +1,5 @@
-import type {ShadowEntityElement} from './ShadowEntityElement.js';
 import type {ShaeEntElement} from './ShaeEntElement.js';
-import type {
-  RequestContextEventName,
-  RequestEntParentEventName,
-  ReRequestEntParentEventName,
-  ShadowElementType,
-} from './constants.js';
+import type {RequestEntParentEventName, ReRequestEntParentEventName} from './constants.js';
 
 export interface RequestEntParentEvent extends CustomEvent {
   detail: {
@@ -20,18 +14,9 @@ export interface ReRequestEntParentEvent extends CustomEvent {
   };
 }
 
-// TODO remove RequestContextEvent
-export interface RequestContextEvent extends CustomEvent {
-  detail: {
-    requester: ShadowEntityElement;
-    types: ShadowElementType[];
-  };
-}
-
 export interface ShadowEntsEventMap {
   [RequestEntParentEventName]: RequestEntParentEvent;
   [ReRequestEntParentEventName]: ReRequestEntParentEvent;
-  [RequestContextEventName]: RequestContextEvent;
 }
 
 declare global {

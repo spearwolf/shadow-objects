@@ -1,4 +1,3 @@
-import {appendToEnd, removeFrom} from '../array-utils.js';
 import {ChangeTrailPhase, ComponentChangeType, VoidToken} from '../constants.js';
 import type {
   IChangeToken,
@@ -11,6 +10,7 @@ import type {
   ISetParentChange,
   IUpdateOrderChange,
 } from '../types.js';
+import {appendToEnd, removeFrom} from '../utils/array-utils.js';
 
 export class ComponentChanges {
   readonly #uuid: string;

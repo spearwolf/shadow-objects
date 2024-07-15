@@ -1,6 +1,6 @@
 import {isEventized} from '@spearwolf/eventize';
 import {afterEach, describe, expect, it} from 'vitest';
-import {generateUUID} from '../generateUUID.js';
+import {generateUUID} from '../utils/generateUUID.js';
 import {Kernel} from './Kernel.js';
 import {Registry} from './Registry.js';
 import {ShadowObject, shadowObjects} from './ShadowObject.js';

@@ -14,9 +14,9 @@ import {
   WorkerLoadTimeout,
 } from '../constants.js';
 import createWorker from '../create-worker.js';
-import {waitForMessageOfType} from '../elements/waitForMessageOfType.js';
-import {toUrlString} from '../toUrlString.js';
 import type {AppliedChangeTrailEvent, ChangeTrailType, ImportedModuleEvent, TransferablesType} from '../types.js';
+import {toUrlString} from '../utils/toUrlString.js';
+import {waitForMessageOfType} from '../utils/waitForMessageOfType.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
 const removeTransferables = (changeTrail: ChangeTrailType): TransferablesType | undefined => {

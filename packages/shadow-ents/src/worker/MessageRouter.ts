@@ -13,7 +13,6 @@ import {
 import {Kernel, type MessageToViewEvent} from '../entities/Kernel.js';
 import {shadowObjects} from '../entities/ShadowObject.js';
 import {importModule} from '../entities/importModule.js';
-import {toUrlString} from '../toUrlString.js';
 import type {
   AppliedChangeTrailEvent,
   ImportedModuleEvent,
@@ -21,6 +20,7 @@ import type {
   ShadowObjectsModule,
   SyncEvent,
 } from '../types.js';
+import {toUrlString} from '../utils/toUrlString.js';
 
 // TODO(cleanup) remove InitPayloadData
 interface InitPayloadData {

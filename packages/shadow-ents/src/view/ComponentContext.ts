@@ -1,7 +1,7 @@
-import {removeFrom} from '../array-utils.js';
 import {ChangeTrailPhase, ContextLost, GlobalNS} from '../constants.js';
-import {toNamespace} from '../toNamespace.js';
 import type {ChangeTrailType, IComponentChangeType, NamespaceType} from '../types.js';
+import {removeFrom} from '../utils/array-utils.js';
+import {toNamespace} from '../utils/toNamespace.js';
 import {ComponentChanges} from './ComponentChanges.js';
 import {ComponentMemory} from './ComponentMemory.js';
 import type {ViewComponent} from './ViewComponent.js';

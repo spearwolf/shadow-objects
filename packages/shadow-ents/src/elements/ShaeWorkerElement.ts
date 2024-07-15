@@ -1,12 +1,12 @@
 import {batch, createEffect, createSignal} from '@spearwolf/signalize';
+import {readBooleanAttribute} from '../utils/attr-utils.js';
 import {FrameLoop} from '../utils/FrameLoop.js';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {LocalShadowObjectEnv} from '../view/LocalShadowObjectEnv.js';
 import {RemoteWorkerEnv} from '../view/RemoteWorkerEnv.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
-import {ShaeElement} from './ShaeElement.js';
-import {readBooleanAttribute} from './attr-utils.js';
 import {ATTR_AUTO_SYNC, ATTR_LOCAL, ATTR_NO_AUTOSTART, ATTR_NO_STRUCTURED_CLONE, ATTR_SRC} from './constants.js';
+import {ShaeElement} from './ShaeElement.js';
 
 export class ShaeWorkerElement extends ShaeElement {
   static override observedAttributes = [...ShaeElement.observedAttributes, ATTR_LOCAL, ATTR_SRC, ATTR_NO_STRUCTURED_CLONE];

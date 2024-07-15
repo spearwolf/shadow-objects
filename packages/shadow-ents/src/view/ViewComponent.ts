@@ -1,6 +1,6 @@
 import {Eventize} from '@spearwolf/eventize';
 import {VoidToken} from '../constants.js';
-import {generateUUID} from '../generateUUID.js';
+import {generateUUID} from '../utils/generateUUID.js';
 import {ComponentContext} from './ComponentContext.js';
 
 class ViewComponentError extends Error {

@@ -1,5 +1,5 @@
-import {appendTo} from '../array-utils.js';
 import type {ShadowObjectConstructor} from '../types.js';
+import {appendTo} from '../utils/array-utils.js';
 
 interface RegistryEntry {
   token: string;

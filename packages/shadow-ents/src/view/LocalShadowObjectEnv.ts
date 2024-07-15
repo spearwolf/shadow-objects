@@ -2,8 +2,8 @@ import {MessageToView, ShadowObjectsExport} from '../constants.js';
 import {Kernel, type MessageToViewEvent} from '../entities/Kernel.js';
 import type {Registry} from '../entities/Registry.js';
 import {importModule} from '../entities/importModule.js';
-import {toUrlString} from '../toUrlString.js';
 import type {ChangeTrailType, ShadowObjectsModule, SyncEvent} from '../types.js';
+import {toUrlString} from '../utils/toUrlString.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 import {cloneChangeTrail} from './cloneChangeTrail.js';
 

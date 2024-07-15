@@ -9,7 +9,7 @@ import type {
   ISetParentChange,
   IUpdateOrderChange,
 } from '../types.js';
-import {applyPropsChanges} from './props-utils.js';
+import {applyPropsChanges} from '../utils/props-utils.js';
 
 export interface ComponentState {
   token: string;

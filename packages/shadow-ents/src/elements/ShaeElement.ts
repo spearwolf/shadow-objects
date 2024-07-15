@@ -1,8 +1,8 @@
 import {createSignal} from '@spearwolf/signalize';
 import {GlobalNS} from '../constants.js';
-import {toNamespace} from '../toNamespace.js';
+import {readNamespaceAttribute} from '../utils/attr-utils.js';
+import {toNamespace} from '../utils/toNamespace.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
-import {readNamespaceAttribute} from './attr-utils.js';
 import {ATTR_NS} from './constants.js';
 
 export class ShaeElement extends HTMLElement {

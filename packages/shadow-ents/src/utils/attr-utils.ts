@@ -1,5 +1,5 @@
-import {toNamespace} from '../toNamespace.js';
-import {ATTR_NS} from './constants.js';
+import {ATTR_NS} from '../elements/constants.js';
+import {toNamespace} from './toNamespace.js';
 
 export const readNamespaceAttribute = (el: HTMLElement) => toNamespace(el.getAttribute(ATTR_NS));
 
