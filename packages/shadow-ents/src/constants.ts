@@ -26,13 +26,11 @@ export const VoidToken = '#void';
  */
 export const ContextLost = 'contextLost';
 
-export const Init = 'init'; // TODO remove 'init' event
 export const Configure = 'configure';
 export const ChangeTrail = 'changeTrail';
 export const Destroy = 'destroy';
 
 export const Loaded = 'loaded';
-export const Ready = 'ready'; // TODO remove 'ready' event
 export const AppliedChangeTrail = 'appliedChangeTrail';
 export const ImportedModule = 'importedModule';
 export const Destroyed = 'destroyed';

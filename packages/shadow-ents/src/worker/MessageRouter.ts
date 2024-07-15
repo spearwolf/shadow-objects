@@ -5,27 +5,13 @@ import {
   Destroy,
   Destroyed,
   ImportedModule,
-  Init,
   MessageToView,
-  Ready,
   ShadowObjectsExport,
 } from '../constants.js';
 import {Kernel, type MessageToViewEvent} from '../entities/Kernel.js';
-import {shadowObjects} from '../entities/ShadowObject.js';
 import {importModule} from '../entities/importModule.js';
-import type {
-  AppliedChangeTrailEvent,
-  ImportedModuleEvent,
-  ShadowObjectConstructor,
-  ShadowObjectsModule,
-  SyncEvent,
-} from '../types.js';
+import type {AppliedChangeTrailEvent, ImportedModuleEvent, ShadowObjectsModule, SyncEvent} from '../types.js';
 import {toUrlString} from '../utils/toUrlString.js';
-
-// TODO(cleanup) remove InitPayloadData
-interface InitPayloadData {
-  importSrc?: string;
-}
 
 interface ConfigurePayloadData {
   importModule?: string;
@@ -53,11 +39,6 @@ export class MessageRouter {
 
   route(event: MessageEvent) {
     switch (event.data.type) {
-      case Init:
-        // TODO(cleanup) remove Init event
-        this.#onInit(event.data);
-        break;
-
       case Configure:
         this.#configure(event.data);
         break;
@@ -114,41 +95,10 @@ export class MessageRouter {
     }
   }
 
-  // TODO(cleanup) remove onInit
-  #onInit(data: InitPayloadData) {
-    // console.debug('[MessageRouter] on init', data);
-
-    if ('importSrc' in data) {
-      this.#loadScript(data.importSrc);
-    } else {
-      console.error('[MessageRouter] missing importSrc property!');
-    }
-  }
-
   #onDestroy(data: any) {
     console.debug('[MessageRouter] on destroy', data);
     this.kernel.off(this);
     this.#importedModules.clear();
     this.postMessage({type: Destroyed});
-  }
-
-  // TODO(cleanup) remove loadScript
-  async #loadScript(src: string) {
-    const mod = await import(/* @vite-ignore */ src);
-
-    // console.debug('[MessageRouter] imported', vfxMod);
-
-    if (typeof mod.onload === 'function') {
-      mod.onload({
-        shadowObjects: {
-          define: (token: string, constructor: ShadowObjectConstructor) =>
-            shadowObjects.define(token, constructor, this.kernel.registry),
-        },
-        kernel: this.kernel,
-        registry: this.kernel.registry,
-      });
-    }
-
-    this.postMessage({type: Ready});
   }
 }
