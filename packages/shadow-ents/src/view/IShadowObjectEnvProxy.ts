@@ -1,4 +1,4 @@
-import type {MessageToViewEvent} from '../core.js';
+import type {MessageToViewEvent} from '../shadow-objects.js';
 import type {ChangeTrailType} from '../types.js';
 
 export interface IShadowObjectEnvProxy {

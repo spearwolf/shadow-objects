@@ -1,7 +1,8 @@
 import {Priority, eventize, type EventizeApi} from '@spearwolf/eventize';
 import {createEffect, createSignal, type SignalReader} from '@spearwolf/signalize';
 import {signal, signalReader} from '@spearwolf/signalize/decorators';
-import {type ChangeTrailType, type MessageToViewEvent, type NamespaceType} from '../core.js';
+import type {MessageToViewEvent} from '../shadow-objects.js';
+import type {ChangeTrailType, NamespaceType} from '../types.js';
 import {ComponentContext} from './ComponentContext.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 

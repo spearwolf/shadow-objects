@@ -1,9 +1,7 @@
 {
   "sideEffects": [
     "bundle.js",
-    "core.js",
     "src/bundle.js",
-    "src/core.js",
     "src/index.js",
     "src/view/ComponentContext.js",
     "src/shae-ent.js",

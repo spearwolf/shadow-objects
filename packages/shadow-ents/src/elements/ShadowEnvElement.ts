@@ -1,5 +1,8 @@
 import {GlobalNS} from '../constants.js';
-import {ComponentContext, LocalShadowObjectEnv, RemoteWorkerEnv, ShadowEnv} from '../core.js';
+import {ComponentContext} from '../view/ComponentContext.js';
+import {LocalShadowObjectEnv} from '../view/LocalShadowObjectEnv.js';
+import {RemoteWorkerEnv} from '../view/RemoteWorkerEnv.js';
+import {ShadowEnv} from '../view/ShadowEnv.js';
 import {ShadowEntityElement} from './ShadowEntityElement.js';
 import {ShadowElementType} from './constants.js';
 

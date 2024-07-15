@@ -54,6 +54,5 @@ copyFiles([
 const plugins = [inlineWorkerPlugin()];
 
 await build('📦', `${buildDir}/src/bundle.js`, `${distDir}/bundle.js`, {plugins, banner: makeBanner('bundle')});
-await build('📦', `${buildDir}/src/core.js`, `${distDir}/core.js`, {plugins, banner: makeBanner('core')});
 
 console.log('✅ Bundle', packageJson.name, 'is ready!\n');
