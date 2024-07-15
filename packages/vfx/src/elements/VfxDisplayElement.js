@@ -1,8 +1,8 @@
 import {eventize} from '@spearwolf/eventize';
 import {ContextLost} from '@spearwolf/shadow-ents';
 import {createEffect} from '@spearwolf/signalize';
-import {FrameLoop} from '../shared/FrameLoop.js';
 import {OffscreenCanvas, RequestOffscreenCanvas, RunFrameLoop} from '../shared/constants.js';
+import {FrameLoop} from '../shared/FrameLoop.js';
 
 const DISPLAY_ID = 'display';
 const ENTITY_ID = 'entity';

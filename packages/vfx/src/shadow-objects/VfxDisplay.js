@@ -1,6 +1,6 @@
 import {createEffect, createSignal, destroySignal} from '@spearwolf/signalize';
+import {OffscreenCanvas, RequestOffscreenCanvas, RunFrameLoop} from '../shared/constants.js';
 import {FrameLoop} from '../shared/FrameLoop.js';
-import {OffscreenCanvas, RequestOffscreenCanvas} from '../shared/constants.js';
 
 export class VfxDisplay {
   #frameLoop = new FrameLoop();
@@ -70,7 +70,7 @@ export class VfxDisplay {
       destroySignal(getCanvasSize);
     });
 
-    const getRunFrameLoop = useProperty('runFrameLoop');
+    const getRunFrameLoop = useProperty(RunFrameLoop);
 
     onDestroy(
       createEffect(() => {
