@@ -4,13 +4,9 @@
     "src/bundle.js",
     "src/index.js",
     "src/view/ComponentContext.js",
+    "src/view/ShadowEnv.js",
     "src/shae-ent.js",
-    "src/shae-worker.js",
-    "src/shadow-worker.js",
-    "src/shadow-entity.js",
-    "src/shadow-local-env.js",
-    "src/shadow-env-legacy.js",
-    "src/shadow-env.js"
+    "src/shae-worker.js"
   ],
   "scripts": null,
   "devDependencies": null,

@@ -29,22 +29,6 @@
       "default": "./dist/src/shadow-objects.js",
       "types": "./dist/src/shadow-objects.d.ts"
     },
-    "./shadow-entity.js": {
-      "default": "./dist/src/shadow-entity.js",
-      "types": "./dist/src/shadow-entity.d.ts"
-    },
-    "./shadow-env.js": {
-      "default": "./dist/src/shadow-env.js",
-      "types": "./dist/src/shadow-env.d.ts"
-    },
-    "./shadow-env-legacy.js": {
-      "default": "./dist/src/shadow-env-legacy.js",
-      "types": "./dist/src/shadow-env-legacy.d.ts"
-    },
-    "./shadow-local-env.js": {
-      "default": "./dist/src/shadow-local-env.js",
-      "types": "./dist/src/shadow-local-env.d.ts"
-    },
     "./shae-ent.js": {
       "default": "./dist/src/shae-ent.js",
       "types": "./dist/src/shae-ent.d.ts"
@@ -52,31 +36,19 @@
     "./shae-worker.js": {
       "default": "./dist/src/shae-worker.js",
       "types": "./dist/src/shae-worker.d.ts"
-    },
-    "./shadow-worker.js": {
-      "default": "./dist/src/shadow-worker.js",
-      "types": "./dist/src/shadow-worker.d.ts"
     }
   },
   "sideEffects": [
     "build/src/view/ComponentContext.js",
+    "build/src/view/ShadowEnv.js",
     "build/src/shae-ent.js",
     "build/src/shae-worker.js",
-    "build/src/shadow-worker.js",
-    "build/src/shadow-entity.js",
-    "build/src/shadow-local-env.js",
-    "build/src/shadow-env-legacy.js",
-    "build/src/shadow-env.js",
     "build/src/bundle.js",
     "build/src/index.js",
     "dist/src/view/ComponentContext.js",
+    "dist/src/view/ShadowEnv.js",
     "dist/src/shae-ent.js",
     "dist/src/shae-worker.js",
-    "dist/src/shadow-worker.js",
-    "dist/src/shadow-entity.js",
-    "dist/src/shadow-local-env.js",
-    "dist/src/shadow-env-legacy.js",
-    "dist/src/shadow-env.js",
     "dist/src/bundle.js",
     "dist/src/index.js",
     "dist/bundle.js"
