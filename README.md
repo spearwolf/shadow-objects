@@ -1,10 +1,28 @@
-# visual-fx-web-components 👀
+# shadow-objects
 
-![spearwolf](spearwolf.svg)
+*the slightly different component framework*
 
-> Home of a variety of _custom elements_ and _npm packages_ to create visually spectacular websites :boom:
-> 
-> ‼️ But dear user, be warned: while some packages are stable and usable, other things here are highly experimental. this is more of an active **code sketchbook** than a polished end product
+> A highly experimental component framework that is slowly maturing and getting its own mono repo as a new home.
+
+## Introduction 👀
+
+The components are generated within the main document of the browser.
+
+The components are created and utilized through the use of the custom HTML elements `<shae-ent />` and `<shae-prop/>` or alternatively, through the direct application of the JavaScript API.
+
+The components are therefore arranged in a hierarchy that is analogous to the DOM structure.
+
+It should be noted, however, that the components are merely lightweight containers for data in the form of properties.
+This data structure is synchronized with the worker runtime, which is outsourced to a web worker. 
+
+The component structure within the Document Object Model (DOM) is converted into an entity hierarchy within the worker. Additionally, any JavaScript objects, which are referred to as "shadow objects," can be created within the context of an entity.
+
+The *shadow objects* represent the fundamental aspect of the framework. The underlying concept is straightforward: the developer creates shadow objects, either through a `function` or a `class`, according to their preference.
+
+The shadow objects are then entered into a registry using a unique identifier.
+
+The routing determines which shadow objects are created within which entity.
+
 
 ## ⚙️ Local Dev Setup
 
@@ -30,15 +48,16 @@ $ pnpm cbt  # => clean build test
 
 | package | description |
 |-|-|
-| [`vfx`](packages/vfx/) | Web components for multi threaded offscreen rendering |
-| [`shadow-ents`](packages/shadow-ents/) | Shadow-ents moves your components into WebWorker |
-| [`shadow-ents-testing`](packages/shadow-ents-testing/) | functional tests for _shadow-ents_ |
-| [`shadow-ents-e2e`](packages/shadow-ents-e2e/) | blackbox tests for _shadow-ents_ |
-| [`offscreen-display`](packages/offscreen-display/) | Helpers for creating custom offscreen canvas elements |
-| [`rainbow-line`](packages/rainbow-line/) | A custom element that displays a cut line animated with rainbow colors |
+| [`shadow-ents`](packages/shadow-ents/) | the slightly different component framework |
+| [`vfx`](packages/vfx/) | a **offscreen canvas** as custom html **element** based on shadow-ents |
+| [`shadow-ents-testing`](packages/shadow-ents-testing/) | functional tests |
+| [`shadow-ents-e2e`](packages/shadow-ents-e2e/) | blackbox / e2e tests |
 
 ---
 
-<small>Thank you and have a nice day</small> 😄
+<figure>
 
-🚀🌱
+![spearwolf](spearwolf.svg)
+
+<figcaption><small>Thank you and have a nice day 😄</small></figcaption>
+</figure>

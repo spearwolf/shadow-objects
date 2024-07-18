@@ -8,8 +8,6 @@ const globalPkgJson = JSON.parse(fs.readFileSync(path.resolve(projectRoot, 'pack
 const PACKAGES = [
   {pkgDir: 'packages/vfx', srcDir: 'src', extension: '.js'},
   {pkgDir: 'packages/shadow-ents', srcDir: 'src', extension: '.ts'},
-  {pkgDir: 'packages/offscreen-display', srcDir: 'src', extension: '.js'},
-  {pkgDir: 'packages/rainbow-line', srcDir: 'src', extension: '.js'},
 ];
 
 // --- build reports ----------------------------------------------------------------------

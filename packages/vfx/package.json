@@ -38,10 +38,8 @@
   },
   "dependencies": {
     "@spearwolf/eventize": "^3.4.2",
-    "@spearwolf/offscreen-display": "workspace:*",
     "@spearwolf/shadow-ents": "workspace:*",
     "@spearwolf/signalize": "^0.14.0",
-    "three": "^0.165.0",
-    "xstate": "^5.9.1"
+    "three": "^0.165.0"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "exclude": ["**/dist", "**/*.mjs", "**/packages/offscreen-display/", "**/packages/rainbow-line/"],
+  "exclude": ["**/dist", "**/*.mjs"],
   "compileOnSave": false,
   "compilerOptions": {
     "rootDir": ".",
