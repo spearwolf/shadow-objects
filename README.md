@@ -23,6 +23,7 @@ The shadow objects are then entered into a registry using a unique identifier.
 
 The routing determines which shadow objects are created within which entity.
 
+[If you want to know more, just follow this link &rarr;](./packages/shadow-ents/README.md)
 
 ## ⚙️ Local Dev Setup
 
