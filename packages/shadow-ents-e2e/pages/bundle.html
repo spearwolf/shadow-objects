@@ -5,6 +5,12 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>bundle</title>
+    <style>
+      shae-prop {
+        display: inline;
+        font-style: italic;
+      }
+    </style>
   </head>
   <body>
     <script type="module" src="/src/bundle.ts"></script>
@@ -13,8 +19,11 @@
       <shae-worker ns="worker0" data-testid="workerCtx0"></shae-worker>
       <shae-ent data-testid="seBase0">
         seBase0
+        <shae-prop name="foo" value="bar">foo</shae-prop>
         <shae-ent data-testid="seBase1">
           seBase1
+          <shae-prop name="plah" value="no" type="boolean">plah</shae-prop>
+          <shae-prop name="xyz" value="1 2 3" type="number[]">xyz</shae-prop>
           <shae-ent ns="worker0" data-testid="seBase4">seBase4</shae-ent>
           <shae-ent data-testid="seBase3">seBase3</shae-ent>
         </shae-ent>

@@ -33,6 +33,10 @@
       "default": "./dist/src/shae-ent.js",
       "types": "./dist/src/shae-ent.d.ts"
     },
+    "./shae-prop.js": {
+      "default": "./dist/src/shae-prop.js",
+      "types": "./dist/src/shae-prop.d.ts"
+    },
     "./shae-worker.js": {
       "default": "./dist/src/shae-worker.js",
       "types": "./dist/src/shae-worker.d.ts"
@@ -42,12 +46,14 @@
     "build/src/view/ComponentContext.js",
     "build/src/view/ShadowEnv.js",
     "build/src/shae-ent.js",
+    "build/src/shae-prop.js",
     "build/src/shae-worker.js",
     "build/src/bundle.js",
     "build/src/index.js",
     "dist/src/view/ComponentContext.js",
     "dist/src/view/ShadowEnv.js",
     "dist/src/shae-ent.js",
+    "dist/src/shae-prop.js",
     "dist/src/shae-worker.js",
     "dist/src/bundle.js",
     "dist/src/index.js",
@@ -72,10 +78,7 @@
     "esbuild-plugin-inline-worker": "^0.1.1"
   },
   "dependencies": {
-    "@lit/context": "^1.1.2",
     "@spearwolf/eventize": "^3.4.2",
-    "@spearwolf/signalize": "^0.14.0",
-    "lit": "3.1.4",
-    "xstate": "^5.13.0"
+    "@spearwolf/signalize": "^0.14.0"
   }
 }

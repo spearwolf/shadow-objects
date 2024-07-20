@@ -2,6 +2,7 @@ export * from './constants.js';
 export * from './elements/constants.js';
 export * from './elements/ShaeElement.js';
 export * from './elements/ShaeEntElement.js';
+export * from './elements/ShaePropElement.js';
 export * from './elements/ShaeWorkerElement.js';
 export * from './entities/events.js';
 export * from './entities/Kernel.js';

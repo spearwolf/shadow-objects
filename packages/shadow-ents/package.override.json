@@ -6,6 +6,7 @@
     "src/view/ComponentContext.js",
     "src/view/ShadowEnv.js",
     "src/shae-ent.js",
+    "src/shae-prop.js",
     "src/shae-worker.js"
   ],
   "scripts": null,
