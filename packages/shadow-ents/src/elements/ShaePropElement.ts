@@ -163,15 +163,80 @@ export class ShaePropElement extends HTMLElement {
             value = value.split(/\W+/).map((v) => parseFloat(v));
             break;
 
+          case 'int[]':
+          case 'integer[]':
+            value = value.split(/\W+/).map((v) => parseInt(v));
+            break;
+
+          case 'hex[]':
+          case 'hexadecimal[]':
+            value = value.split(/\W+/).map((v) => parseInt(v, 16));
+            break;
+
+          case 'oct[]':
+          case 'octal[]':
+            value = value.split(/\W+/).map((v) => parseInt(v, 8));
+            break;
+
+          case 'bin[]':
+          case 'binary[]':
+            value = value.split(/\W+/).map((v) => parseInt(v, 2));
+            break;
+
+          case 'bool[]':
+          case 'boolean[]':
+            value = value.split(/\W+/).map((v) => TRUTHY_VALUES.has(v));
+            break;
+
+          case 'int8array':
+            value = new Int8Array(value.split(/\W+/).map((v) => Number(v)));
+            break;
+
+          case 'uint8array':
+            value = new Uint8Array(value.split(/\W+/).map((v) => Number(v)));
+            break;
+
+          case 'uint8clampedarray':
+            value = new Uint8ClampedArray(value.split(/\W+/).map((v) => Number(v)));
+            break;
+
+          case 'int16array':
+            value = new Int16Array(value.split(/\W+/).map((v) => Number(v)));
+            break;
+
+          case 'uint16array':
+            value = new Uint16Array(value.split(/\W+/).map((v) => Number(v)));
+            break;
+
+          case 'int32array':
+            value = new Int32Array(value.split(/\W+/).map((v) => Number(v)));
+            break;
+
+          case 'uint32array':
+            value = new Uint32Array(value.split(/\W+/).map((v) => Number(v)));
+            break;
+
+          case 'float32array':
+            value = new Float32Array(value.split(/\W+/).map((v) => Number(v)));
+            break;
+
+          case 'float64array':
+            value = new Float64Array(value.split(/\W+/).map((v) => Number(v)));
+            break;
+
+          case 'bigint64array':
+            value = new BigInt64Array(value.split(/\W+/).map((v) => BigInt(v)));
+            break;
+
+          case 'biguint64array':
+            value = new BigUint64Array(value.split(/\W+/).map((v) => BigInt(v)));
+            break;
+
           case 'json':
             value = JSON.parse(value);
             break;
-
-          // TODO add more types
         }
       }
-
-      console.debug(`[shae-prop:"${this.name ?? '?'}"] set out value`, {value, type, shouldTrim});
 
       this.valueOut$.set(value);
     });
