@@ -94,13 +94,15 @@ export class ShaePropElement extends HTMLElement {
         if (name) {
           const value = this.valueOut$.get();
 
-          console.log(`[shae-prop:"${this.name}"] view-component set-property`, name, value, vc.uuid, {
-            viewComponent: vc,
-            shaeProp: this,
-          });
+          // console.log(`[shae-prop:"${this.name}"] view-component set-property`, name, value, vc.uuid, {
+          //   viewComponent: vc,
+          //   shaeProp: this,
+          // });
 
           vc.setProperty(name, value);
-          this.entNode?.syncShadowObjects();
+          if (this.isConnected) {
+            this.entNode?.syncShadowObjects();
+          }
         }
       }
     });
