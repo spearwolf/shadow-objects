@@ -1,10 +1,9 @@
 import {batch, connect, createEffect, createSignal} from '@spearwolf/signalize';
 import {readBooleanAttribute} from '../utils/attr-utils.js';
+import {TRUTHY_VALUES} from '../utils/constants.js';
 import type {ViewComponent} from '../view/ViewComponent.js';
 import {ATTR_NAME, ATTR_NO_TRIM, ATTR_TYPE, ATTR_VALUE} from './constants.js';
 import type {ShaeEntElement} from './ShaeEntElement.js';
-
-const TRUTHY_VALUES = new Set(['on', 'true', 'yes', 'local', '1']);
 
 const findEntNode = (start: HTMLElement): ShaeEntElement | undefined => {
   let el: HTMLElement | null = start.parentElement;
@@ -16,6 +15,51 @@ const findEntNode = (start: HTMLElement): ShaeEntElement | undefined => {
   }
   return undefined;
 };
+
+const TYPES = new Set([
+  'string',
+  'text',
+  'number',
+  'bigint',
+  'float',
+  'int',
+  'integer',
+  'hex',
+  'hexadecimal',
+  'oct',
+  'octal',
+  'bin',
+  'binary',
+  'bool',
+  'boolean',
+  '[]',
+  'text[]',
+  'string[]',
+  'number[]',
+  'float[]',
+  'int[]',
+  'integer[]',
+  'hex[]',
+  'hexadecimal[]',
+  'oct[]',
+  'octal[]',
+  'bin[]',
+  'binary[]',
+  'bool[]',
+  'boolean[]',
+  'int8array',
+  'uint8array',
+  'uint8clampedarray',
+  'int16array',
+  'uint16array',
+  'int32array',
+  'uint32array',
+  'float32array',
+  'float64array',
+  'bigint64array',
+  'biguint64array',
+  'json',
+]);
 
 export class ShaePropElement extends HTMLElement {
   static observedAttributes = [ATTR_NAME, ATTR_VALUE, ATTR_TYPE, ATTR_NO_TRIM];
@@ -73,19 +117,18 @@ export class ShaePropElement extends HTMLElement {
       }
     });
 
-    this.viewComponent$.onChange((vc) => {
-      // TODO set prop value on vc
-      if (vc) {
-        console.log(`[shae-prop:"${this.name}"] view-component changed to`, vc?.uuid, {
-          viewComponent: vc,
-          shaeProp: this,
-        });
-      } else {
-        console.log(`[shae-prop:"${this.name}"] lost connection to view-component :/`, {
-          shaeProp: this,
-        });
-      }
-    });
+    // this.viewComponent$.onChange((vc) => {
+    //   if (vc) {
+    //     console.log(`[shae-prop:"${this.name}"] view-component changed to`, vc?.uuid, {
+    //       viewComponent: vc,
+    //       shaeProp: this,
+    //     });
+    //   } else {
+    //     console.log(`[shae-prop:"${this.name}"] lost connection to view-component :/`, {
+    //       shaeProp: this,
+    //     });
+    //   }
+    // });
 
     createEffect(() => {
       const vc = this.viewComponent$.get();
@@ -100,6 +143,7 @@ export class ShaePropElement extends HTMLElement {
           // });
 
           vc.setProperty(name, value);
+
           if (this.isConnected) {
             this.entNode?.syncShadowObjects();
           }
@@ -118,8 +162,12 @@ export class ShaePropElement extends HTMLElement {
 
       value = value || undefined;
 
-      if (value != null && typeof value === 'string') {
+      if (value != null && typeof value === 'string' && type) {
         switch (type) {
+          case 'string':
+          case 'text':
+            break;
+
           case 'number':
             value = Number(value);
             break;
@@ -154,7 +202,13 @@ export class ShaePropElement extends HTMLElement {
 
           case 'bool':
           case 'boolean':
-            value = TRUTHY_VALUES.has(value as string);
+            value = TRUTHY_VALUES.has(value.toLowerCase());
+            break;
+
+          case '[]':
+          case 'text[]':
+          case 'string[]':
+            value = value.split(/\W+/);
             break;
 
           case 'number[]':
@@ -187,7 +241,7 @@ export class ShaePropElement extends HTMLElement {
 
           case 'bool[]':
           case 'boolean[]':
-            value = value.split(/\W+/).map((v) => TRUTHY_VALUES.has(v));
+            value = value.split(/\W+/).map((v) => TRUTHY_VALUES.has(v.toLowerCase()));
             break;
 
           case 'int8array':
@@ -237,6 +291,12 @@ export class ShaePropElement extends HTMLElement {
           case 'json':
             value = JSON.parse(value);
             break;
+
+          default:
+            console.warn(`[shae-prop:"${this.name}"] unknown type "${type}"`, {
+              value,
+              shaeProp: this,
+            });
         }
       }
 
@@ -306,7 +366,14 @@ export class ShaePropElement extends HTMLElement {
   };
 
   #readTypeAttribute = () => {
-    this.type$.set(this.getAttribute(ATTR_TYPE)?.trim().toLowerCase() ?? undefined);
+    let type = this.getAttribute(ATTR_TYPE)?.trim().toLowerCase();
+    if (type && !TYPES.has(type)) {
+      console.warn(`[shae-prop:"${this.name}"] unknown type "${type}"`, {
+        shaeProp: this,
+      });
+      type = undefined;
+    }
+    this.type$.set(type);
   };
 
   #readNoTrimAttribute = () => {
