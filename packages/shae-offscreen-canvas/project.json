@@ -1,7 +1,7 @@
 {
-  "name": "vfx",
+  "name": "shae-offscreen-canvas",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "root": "packages/vfx",
+  "root": "packages/shae-offscreen-canvas",
   "sourceRoot": "{projectRoot}/src",
   "projectType": "library",
   "targets": {

@@ -50,7 +50,7 @@ $ pnpm cbt  # => clean build test
 | package | description |
 |-|-|
 | [`shadow-objects`](packages/shadow-objects/) | the slightly different component framework |
-| [`vfx`](packages/vfx/) | a **offscreen canvas** as custom html **element** based on shadow-objects |
+| [`shae-offscreen-canvas`](packages/shae-offscreen-canvas/) | a **offscreen canvas** as custom html **element** based on shadow-objects |
 | [`shadow-objects-testing`](packages/shadow-objects-testing/) | functional tests |
 | [`shadow-objects-e2e`](packages/shadow-objects-e2e/) | blackbox / e2e tests |
 

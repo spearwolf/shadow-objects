@@ -29,7 +29,7 @@ const InitialHTML = `
   <div class="frame">
     <canvas id="${DISPLAY_ID}" class="content"></canvas>
     <div class="content">
-      <shae-ent id="${ENTITY_ID}" token="vfx-display">
+      <shae-ent id="${ENTITY_ID}" token="shae-offscreen-canvas">
         <slot></slot>
       </shae-ent>
     </div>
@@ -38,7 +38,7 @@ const InitialHTML = `
 
 const ATTR_PIXEL_ZOOM = 'pixel-zoom';
 
-export class VfxDisplayElement extends HTMLElement {
+export class ShaeOffscreenCanvasElement extends HTMLElement {
   #frameLoop = new FrameLoop();
 
   constructor(initialHTML = InitialHTML) {
@@ -56,11 +56,11 @@ export class VfxDisplayElement extends HTMLElement {
     });
 
     createEffect(() => {
-      // TODO refactor and verify VfxDisplayElement -> ContextLost effect
+      // TODO refactor and verify ShaeOffscreenCanvasElement -> ContextLost effect
       const vc = this.shadowEntity.viewComponent$.get();
       if (vc) {
         return vc.on(ContextLost, () => {
-          console.warn('[VfxDisplayElement] context lost', this);
+          console.warn('[ShaeOffscreenCanvasElement] context lost', this);
           this.#reCreateCanvas();
           this.#transferCanvasToShadows();
         });
@@ -104,7 +104,7 @@ export class VfxDisplayElement extends HTMLElement {
       this.#lastPixelRatio = pixelRatio / pixelZoom;
 
       if (pixelZoom !== this.#lastPixelZoom) {
-        console.log('[VfxDisplayElement] pixelZoom changed to', pixelZoom);
+        console.log('[ShaeOffscreenCanvasElement] pixelZoom changed to', pixelZoom);
 
         this.#lastPixelZoom = pixelZoom;
 

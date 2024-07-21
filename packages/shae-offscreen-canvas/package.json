@@ -1,6 +1,6 @@
 {
-  "name": "@spearwolf/vfx",
-  "description": "vfx elements and entities",
+  "name": "@spearwolf/shae-offscreen-canvas",
+  "description": "shae-offscreen-canvas elements and entities",
   "version": "0.0.1-dev",
   "type": "module",
   "license": "Apache-2.0",

@@ -1,7 +1,7 @@
 
-### VfxDisplay
+### ShaeOffscreenCanvas
 
-the vfx-display represents an offscreen canvas. however, a canvas _drawing context_ is not created.
+the shae-offscreen-canvas represents an offscreen canvas. however, a canvas _drawing context_ is not created.
 
 these contexts are provided:
 

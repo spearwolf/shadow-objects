@@ -2,7 +2,7 @@ import {createEffect, createSignal, destroySignal} from '@spearwolf/signalize';
 import {OffscreenCanvas, RequestOffscreenCanvas, RunFrameLoop} from '../shared/constants.js';
 import {FrameLoop} from '../shared/FrameLoop.js';
 
-export class VfxDisplay {
+export class ShaeOffscreenCanvas {
   #frameLoop = new FrameLoop();
 
   isRunning = false;
@@ -65,7 +65,7 @@ export class VfxDisplay {
     });
 
     onDestroy(() => {
-      console.log('[VfxDisplay] onDestroy: bye, bye!');
+      console.log('[ShaeOffscreenCanvas] onDestroy: bye, bye!');
       unsubscribe();
       destroySignal(getCanvasSize);
     });
@@ -90,7 +90,7 @@ export class VfxDisplay {
   }
 
   onViewEvent(type, data) {
-    console.debug(`[VfxDisplay] ${this.uuid} onViewEvent, type=`, type, 'data=', data);
+    console.debug(`[ShaeOffscreenCanvas] ${this.uuid} onViewEvent, type=`, type, 'data=', data);
 
     switch (type) {
       case OffscreenCanvas:
