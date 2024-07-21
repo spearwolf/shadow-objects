@@ -7,7 +7,7 @@ const globalPkgJson = JSON.parse(fs.readFileSync(path.resolve(projectRoot, 'pack
 
 const PACKAGES = [
   {pkgDir: 'packages/vfx', srcDir: 'src', extension: '.js'},
-  {pkgDir: 'packages/shadow-ents', srcDir: 'src', extension: '.ts'},
+  {pkgDir: 'packages/shadow-objects', srcDir: 'src', extension: '.ts'},
 ];
 
 // --- build reports ----------------------------------------------------------------------

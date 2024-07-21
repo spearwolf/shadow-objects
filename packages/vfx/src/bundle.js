@@ -1,5 +1,5 @@
-import '@spearwolf/shadow-ents/shae-ent.js';
-import '@spearwolf/shadow-ents/shae-worker.js';
+import '@spearwolf/shadow-objects/shae-ent.js';
+import '@spearwolf/shadow-objects/shae-worker.js';
 
 import './vfx-display.js';
 

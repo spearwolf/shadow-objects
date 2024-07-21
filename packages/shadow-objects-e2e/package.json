@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@spearwolf/eventize": "^3.4.2",
-    "@spearwolf/shadow-ents": "workspace:*"
+    "@spearwolf/shadow-objects": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.45.0",

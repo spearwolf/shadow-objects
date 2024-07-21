@@ -102,7 +102,7 @@ importers:
         specifier: ^1.6.0
         version: 1.6.0(@types/node@20.14.8)(happy-dom@14.12.3)
 
-  packages/shadow-ents:
+  packages/shadow-objects:
     dependencies:
       '@spearwolf/eventize':
         specifier: ^3.4.2
@@ -120,9 +120,9 @@ importers:
       '@spearwolf/eventize':
         specifier: ^3.4.2
         version: 3.4.2
-      '@spearwolf/shadow-ents':
+      '@spearwolf/shadow-objects':
         specifier: workspace:*
-        version: link:../shadow-ents
+        version: link:../shadow-objects
     devDependencies:
       '@playwright/test':
         specifier: ^1.45.0
@@ -136,9 +136,9 @@ importers:
 
   packages/shadow-objects-testing:
     dependencies:
-      '@spearwolf/shadow-ents':
+      '@spearwolf/shadow-objects':
         specifier: workspace:*
-        version: link:../shadow-ents
+        version: link:../shadow-objects
     devDependencies:
       '@esm-bundle/chai':
         specifier: 4.3.4-fix.0
@@ -158,9 +158,9 @@ importers:
       '@spearwolf/eventize':
         specifier: ^3.4.2
         version: 3.4.2
-      '@spearwolf/shadow-ents':
+      '@spearwolf/shadow-objects':
         specifier: workspace:*
-        version: link:../shadow-ents
+        version: link:../shadow-objects
       '@spearwolf/signalize':
         specifier: ^0.14.0
         version: 0.14.0(@spearwolf/eventize@3.4.2)

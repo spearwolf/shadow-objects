@@ -23,7 +23,7 @@ The shadow objects are then entered into a registry using a unique identifier.
 
 The routing determines which shadow objects are created within which entity.
 
-[If you want to know more, just follow this link &rarr;](./packages/shadow-ents/README.md)
+[If you want to know more, just follow this link &rarr;](./packages/shadow-objects/README.md)
 
 ## ⚙️ Local Dev Setup
 
@@ -49,8 +49,8 @@ $ pnpm cbt  # => clean build test
 
 | package | description |
 |-|-|
-| [`shadow-ents`](packages/shadow-ents/) | the slightly different component framework |
-| [`vfx`](packages/vfx/) | a **offscreen canvas** as custom html **element** based on shadow-ents |
+| [`shadow-objects`](packages/shadow-objects/) | the slightly different component framework |
+| [`vfx`](packages/vfx/) | a **offscreen canvas** as custom html **element** based on shadow-objects |
 | [`shadow-objects-testing`](packages/shadow-objects-testing/) | functional tests |
 | [`shadow-objects-e2e`](packages/shadow-objects-e2e/) | blackbox / e2e tests |
 

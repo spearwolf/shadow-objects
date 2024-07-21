@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "@spearwolf/eventize": "^3.4.2",
-    "@spearwolf/shadow-ents": "workspace:*",
+    "@spearwolf/shadow-objects": "workspace:*",
     "@spearwolf/signalize": "^0.14.0",
     "three": "^0.165.0"
   }

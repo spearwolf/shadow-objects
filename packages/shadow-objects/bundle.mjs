@@ -40,7 +40,7 @@ const copyFiles = (files) => {
 
 // --- worker ---------------------------------------------------------------------------
 
-await build('🛠️', `${buildDir}/src/shadow-ents.worker.js`, `${buildDir}/src/bundle.worker.js`);
+await build('🛠️', `${buildDir}/src/shadow-objects.worker.js`, `${buildDir}/src/bundle.worker.js`);
 
 copyFiles([
   [`${buildDir}/src/create-worker.bundle.js`, `${buildDir}/src/create-worker.js`],

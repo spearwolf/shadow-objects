@@ -1,7 +1,7 @@
 import {expect} from '@esm-bundle/chai';
-import {ComponentChangeType, ComponentContext, VoidToken} from '@spearwolf/shadow-ents';
-import '@spearwolf/shadow-ents/shae-ent.js';
-import '@spearwolf/shadow-ents/shae-worker.js';
+import {ComponentChangeType, ComponentContext, VoidToken} from '@spearwolf/shadow-objects';
+import '@spearwolf/shadow-objects/shae-ent.js';
+import '@spearwolf/shadow-objects/shae-worker.js';
 import {findElementsById} from '../src/findElementsById.js';
 import {render} from '../src/render.js';
 

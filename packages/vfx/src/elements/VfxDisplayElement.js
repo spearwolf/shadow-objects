@@ -1,5 +1,5 @@
 import {eventize} from '@spearwolf/eventize';
-import {ContextLost} from '@spearwolf/shadow-ents';
+import {ContextLost} from '@spearwolf/shadow-objects';
 import {createEffect} from '@spearwolf/signalize';
 import {OffscreenCanvas, RequestOffscreenCanvas, RunFrameLoop} from '../shared/constants.js';
 import {FrameLoop} from '../shared/FrameLoop.js';

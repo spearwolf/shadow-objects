@@ -1,4 +1,4 @@
-import {ComponentContext} from '@spearwolf/shadow-ents';
+import {ComponentContext} from '@spearwolf/shadow-objects';
 
 export function render(html) {
   document.body.style.backgroundColor = '#212123';

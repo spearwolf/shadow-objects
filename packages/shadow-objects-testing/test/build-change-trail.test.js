@@ -1,6 +1,6 @@
 import {expect} from '@esm-bundle/chai';
-import {ComponentChangeType, ComponentContext, ContextLost} from '@spearwolf/shadow-ents';
-import '@spearwolf/shadow-ents/shae-ent.js';
+import {ComponentChangeType, ComponentContext, ContextLost} from '@spearwolf/shadow-objects';
+import '@spearwolf/shadow-objects/shae-ent.js';
 import sinon from 'sinon';
 import {findElementsById} from '../src/findElementsById.js';
 import {render} from '../src/render.js';

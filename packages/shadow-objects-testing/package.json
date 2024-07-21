@@ -1,6 +1,6 @@
 {
   "name": "shadow-objects-testing",
-  "description": "testing the shadow-ents library",
+  "description": "testing the shadow-objects library",
   "version": "0.0.1",
   "author": {
     "name": "Wolfger Schramm",
@@ -13,7 +13,7 @@
     "watch": "web-test-runner \"test/**/*.test.js\" --node-resolve --watch"
   },
   "dependencies": {
-    "@spearwolf/shadow-ents": "workspace:*"
+    "@spearwolf/shadow-objects": "workspace:*"
   },
   "devDependencies": {
     "@esm-bundle/chai": "4.3.4-fix.0",

@@ -1,5 +1,5 @@
 import {expect} from '@esm-bundle/chai';
-import {ComponentChangeType, ComponentContext, ViewComponent} from '@spearwolf/shadow-ents';
+import {ComponentChangeType, ComponentContext, ViewComponent} from '@spearwolf/shadow-objects';
 
 describe('ComponentContext', () => {
   const cc = ComponentContext.get();

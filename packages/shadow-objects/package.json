@@ -1,5 +1,5 @@
 {
-  "name": "@spearwolf/shadow-ents",
+  "name": "@spearwolf/shadow-objects",
   "description": "a worker ecs with shadow-objects",
   "version": "0.0.1-dev",
   "author": {
@@ -21,9 +21,9 @@
       "default": "./dist/bundle.js",
       "types": "./dist/src/bundle.d.ts"
     },
-    "./shadow-ents.worker.js": {
-      "default": "./dist/src/shadow-ents.worker.js",
-      "types": "./dist/src/shadow-ents.worker.d.ts"
+    "./shadow-objects.worker.js": {
+      "default": "./dist/src/shadow-objects.worker.js",
+      "types": "./dist/src/shadow-objects.worker.d.ts"
     },
     "./shadow-objects.js": {
       "default": "./dist/src/shadow-objects.js",

@@ -8,7 +8,7 @@ This file contains an overview of all TODO, FIXME or XXX comments extracted from
 #### List of all packages
 
 - [vfx](#vfx)
-- [shadow-ents](#shadow-ents)
+- [shadow-objects](#shadow-objects)
 
 
 ## vfx
@@ -31,21 +31,21 @@ This file contains an overview of all TODO, FIXME or XXX comments extracted from
 | [packages/vfx/src/shadow-objects/ThreeRenderView.js](packages/vfx/src/shadow-objects/ThreeRenderView.js#L63) | 63 | OffscreenCanvas ImageBitmapRenderingContext stops rendering when canvas resized |
 
 
-## shadow-ents
+## shadow-objects
 
 ### XXXs
 | Filename | line # | XXX |
 |:------|:------:|:------|
-| [packages/shadow-ents/src/elements/ShaeWorkerElement.ts](packages/shadow-ents/src/elements/ShaeWorkerElement.ts#L68) | 68 | we don't expose ShadowEnv.AfterSync here, because the frequency of this event is too high |
+| [packages/shadow-objects/src/elements/ShaeWorkerElement.ts](packages/shadow-objects/src/elements/ShaeWorkerElement.ts#L68) | 68 | we don't expose ShadowEnv.AfterSync here, because the frequency of this event is too high |
 
 ### TODOs
 | Filename | line # | TODO |
 |:------|:------:|:------|
-| [packages/shadow-ents/src/elements/ShaeWorkerElement.ts](packages/shadow-ents/src/elements/ShaeWorkerElement.ts#L182) | 182 | @test add tests for defer destroy |
-| [packages/shadow-ents/src/entities/Entity.ts](packages/shadow-ents/src/entities/Entity.ts#L252) | 252 | @test write tests for useContext() |
-| [packages/shadow-ents/src/entities/Entity.ts](packages/shadow-ents/src/entities/Entity.ts#L258) | 258 | @test write tests for provideContext() |
-| [packages/shadow-ents/src/entities/events.ts](packages/shadow-ents/src/entities/events.ts#L7) | 7 | @test test if OnCreate is called when an entity token is changed |
-| [packages/shadow-ents/src/entities/events.ts](packages/shadow-ents/src/entities/events.ts#L25) | 25 | @test test if OnDestroy is called when an entity is destroyed |
-| [packages/shadow-ents/src/entities/events.ts](packages/shadow-ents/src/entities/events.ts#L26) | 26 | @test test if OnDestroy is called when a shadow-object is removed from an entity (token-change) |
-| [packages/shadow-ents/src/entities/Kernel.ts](packages/shadow-ents/src/entities/Kernel.ts#L30) | 30 | @test if MessageToView#traverseChildren is implemented all the way down |
+| [packages/shadow-objects/src/elements/ShaeWorkerElement.ts](packages/shadow-objects/src/elements/ShaeWorkerElement.ts#L182) | 182 | @test add tests for defer destroy |
+| [packages/shadow-objects/src/entities/Entity.ts](packages/shadow-objects/src/entities/Entity.ts#L252) | 252 | @test write tests for useContext() |
+| [packages/shadow-objects/src/entities/Entity.ts](packages/shadow-objects/src/entities/Entity.ts#L258) | 258 | @test write tests for provideContext() |
+| [packages/shadow-objects/src/entities/events.ts](packages/shadow-objects/src/entities/events.ts#L7) | 7 | @test test if OnCreate is called when an entity token is changed |
+| [packages/shadow-objects/src/entities/events.ts](packages/shadow-objects/src/entities/events.ts#L25) | 25 | @test test if OnDestroy is called when an entity is destroyed |
+| [packages/shadow-objects/src/entities/events.ts](packages/shadow-objects/src/entities/events.ts#L26) | 26 | @test test if OnDestroy is called when a shadow-object is removed from an entity (token-change) |
+| [packages/shadow-objects/src/entities/Kernel.ts](packages/shadow-objects/src/entities/Kernel.ts#L30) | 30 | @test if MessageToView#traverseChildren is implemented all the way down |
 

@@ -1,6 +1,6 @@
 # Welcome to _shadow-ents_ :wave:
 
-Shadow-ents is a JavaScript library that's all about making your life easier when dealing with components and web workers. It's like having a superpower for your web development! :muscle:
+shadow-objects is a JavaScript library that's all about making your life easier when dealing with components and web workers. It's like having a superpower for your web development! :muscle:
 
 ![architecture overview](./docs/architecture@2x.png)
 
@@ -11,11 +11,11 @@ Shadow-ents is a JavaScript library that's all about making your life easier whe
 
 ### Offloading to Web Workers :construction_worker:
 
-Shadow-ents takes the heavy lifting off your main thread and moves it to web workers. This means your components stay light and breezy, just like a hibiscus flower in the wind. :hibiscus:
+shadow-objects takes the heavy lifting off your main thread and moves it to web workers. This means your components stay light and breezy, just like a hibiscus flower in the wind. :hibiscus:
 
 ### Entities :ghost:
 
-Yes, we've got entities too! In Shadow-ents, an _entity_ belongs to a _view-component_, but it lives in a _web worker_. That's why we call them _shadow-entities_. They're like the secret agents of your app, working behind the scenes in their own separate world.
+Yes, we've got entities too! In shadow-objects, an _entity_ belongs to a _view-component_, but it lives in a _web worker_. That's why we call them _shadow-entities_. They're like the secret agents of your app, working behind the scenes in their own separate world.
 
 ### Shadow Objects :package:
 
@@ -35,7 +35,7 @@ Shadow-objects can also provide any _context_ to other shadow-objects:
 
 A `<view-component/>` is a virtual component in the view that serves as an access point for the entities.
 
-The _shadow-ents_ package provides the custom element `<shadow-ents>` as view component. As a HTML element in the DOM, these might form their own hierarchy.
+The _shadow-ents_ package provides the custom element `<shadow-objects>` as view component. As a HTML element in the DOM, these might form their own hierarchy.
 This hierarchy is mirrored by the entities in the worker, keeping everything in sync.
 
 In the future, implementations as _react_ or _angular_ components are also conceivable.
@@ -59,7 +59,7 @@ View-components can send events to their entities, which are then passed on to t
 
 - - -
 
-So, that's a quick tour of Shadow-ents! It's all about making your web ui faster and more responsive, and assembling your code in a more structured and streamlined way. Give it a try and see the difference it can make in your projects! :rocket:
+So, that's a quick tour of shadow-objects! It's all about making your web ui faster and more responsive, and assembling your code in a more structured and streamlined way. Give it a try and see the difference it can make in your projects! :rocket:
 
 More in-depth documentation here:
 - [ShadowEnv](./src/view/README.md)

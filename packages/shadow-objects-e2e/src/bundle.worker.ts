@@ -1,3 +1,3 @@
-import '@spearwolf/shadow-ents/shadow-ents.worker.js';
+import '@spearwolf/shadow-objects/shadow-objects.worker.js';
 
 console.log('hejsan!');

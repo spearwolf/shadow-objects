@@ -1,4 +1,4 @@
-import {ComponentContext, RemoteWorkerEnv, ShadowEnv, ViewComponent} from '@spearwolf/shadow-ents';
+import {ComponentContext, RemoteWorkerEnv, ShadowEnv, ViewComponent} from '@spearwolf/shadow-objects';
 import './style.css';
 import {testAsyncAction} from './test-helpers/testAsyncAction.js';
 import {testBooleanAction} from './test-helpers/testBooleanAction.js';

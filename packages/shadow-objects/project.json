@@ -1,7 +1,7 @@
 {
-  "name": "shadow-ents",
+  "name": "shadow-objects",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "root": "packages/shadow-ents",
+  "root": "packages/shadow-objects",
   "sourceRoot": "{projectRoot}/src",
   "projectType": "library",
   "targets": {

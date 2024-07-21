@@ -5,7 +5,7 @@
 
 _Caution‼️ this is a highly experimental setup, but with a damn high awesomeness factor!_ 😉
 
-Using the [shadow-ents](../shadow-ents/) library, the vfx package provides several web components that can be used to create a shadow-objects scenario that supports general offscreen canvas rendering as well as a shared three.js offscreen renderer.
+Using the [shadow-objects](../shadow-objects/) library, the vfx package provides several web components that can be used to create a shadow-objects scenario that supports general offscreen canvas rendering as well as a shared three.js offscreen renderer.
 
 ## Integrate the web components in your page
 
