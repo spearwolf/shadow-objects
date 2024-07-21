@@ -1,7 +1,7 @@
 {
-  "name": "shadow-ents-testing",
+  "name": "shadow-objects-testing",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "root": "packages/shadow-ents-testing",
+  "root": "packages/shadow-objects-testing",
   "sourceRoot": "{projectRoot}/src",
   "projectType": "tests",
   "targets": {

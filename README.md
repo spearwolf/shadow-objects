@@ -51,7 +51,7 @@ $ pnpm cbt  # => clean build test
 |-|-|
 | [`shadow-ents`](packages/shadow-ents/) | the slightly different component framework |
 | [`vfx`](packages/vfx/) | a **offscreen canvas** as custom html **element** based on shadow-ents |
-| [`shadow-ents-testing`](packages/shadow-ents-testing/) | functional tests |
+| [`shadow-objects-testing`](packages/shadow-objects-testing/) | functional tests |
 | [`shadow-objects-e2e`](packages/shadow-objects-e2e/) | blackbox / e2e tests |
 
 ---
