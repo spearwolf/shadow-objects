@@ -16,7 +16,7 @@
     "run-s": "pnpm exec run-s -s",
     "build": "pnpm nx run-many -t build",
     "test": "pnpm nx run-many -t test",
-    "test:ci": "pnpm nx run-many -t test --exclude=shadow-ents-e2e",
+    "test:ci": "pnpm nx run-many -t test --exclude=shadow-objects-e2e",
     "lint": "pnpm nx run-many -t lint",
     "test:affected": "pnpm nx affected -t test",
     "clean": "pnpm nx run-many -t clean && pnpm rimraf dist",

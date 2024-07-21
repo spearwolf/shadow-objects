@@ -115,7 +115,7 @@ importers:
         specifier: ^0.1.1
         version: 0.1.1
 
-  packages/shadow-ents-e2e:
+  packages/shadow-objects-e2e:
     dependencies:
       '@spearwolf/eventize':
         specifier: ^3.4.2

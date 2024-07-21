@@ -1,7 +1,7 @@
 {
-  "name": "shadow-ents-e2e",
+  "name": "shadow-objects-e2e",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "root": "packages/shadow-ents-e2e",
+  "root": "packages/shadow-objects-e2e",
   "sourceRoot": "{projectRoot}/src",
   "projectType": "e2e",
   "targets": {
