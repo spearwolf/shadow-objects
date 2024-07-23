@@ -18,8 +18,7 @@
       "types": "./dist/src/index.d.ts"
     },
     "./bundle.js": {
-      "default": "./dist/bundle.js",
-      "types": "./dist/src/bundle.d.ts"
+      "default": "./dist/bundle.js"
     },
     "./shadow-objects.worker.js": {
       "default": "./dist/src/shadow-objects.worker.js",
