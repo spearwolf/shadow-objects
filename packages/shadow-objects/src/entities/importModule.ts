@@ -5,12 +5,17 @@ export async function importModule(
   kernel: Kernel,
   module: ShadowObjectsModule,
   importedModules: Set<ShadowObjectsModule>,
+  upgradeEntities = true,
 ): Promise<void> {
   if (importedModules.has(module)) {
     console.warn('importModule: skipping already imported module', module);
     return;
   } else {
     importedModules.add(module);
+  }
+
+  if (module.extends) {
+    await Promise.all(module.extends.map((subModule) => importModule(kernel, subModule, importedModules, false)));
   }
 
   const {registry} = kernel;
@@ -33,5 +38,7 @@ export async function importModule(
     registry,
   }) ?? Promise.resolve());
 
-  kernel.upgradeEntities();
+  if (upgradeEntities) {
+    kernel.upgradeEntities();
+  }
 }

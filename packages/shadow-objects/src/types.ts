@@ -112,6 +112,7 @@ export type ShadowObjectsModuleInitializer = (shadowObjects: {
 }) => Promise<void>;
 
 export interface ShadowObjectsModule {
+  extends?: ShadowObjectsModule[];
   define?: Record<string, ShadowObjectConstructor>;
   routes?: Record<string, string[]>;
   initialize?: ShadowObjectsModuleInitializer;

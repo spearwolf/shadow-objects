@@ -14,6 +14,12 @@
   "exports": {
     ".": {
       "default": "./bundle.js"
+    },
+    "./shae-offscreen-canvas.js": {
+      "default": "./shae-offscreen-canvas.js"
+    },
+    "./shadow-objects.js": {
+      "default": "./shadow-objects.js"
     }
   },
   "scripts": {
