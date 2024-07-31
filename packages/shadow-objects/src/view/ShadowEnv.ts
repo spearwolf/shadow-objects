@@ -1,4 +1,4 @@
-import {Priority, emit, eventize, on, onceAsync, retain, retainClear} from '@spearwolf/eventize';
+import {Priority, emit, on, onceAsync, retain, retainClear} from '@spearwolf/eventize';
 import {createEffect, createSignal, type SignalReader} from '@spearwolf/signalize';
 import {signal, signalReader} from '@spearwolf/signalize/decorators';
 import type {MessageToViewEvent} from '../shadow-objects.js';
@@ -37,9 +37,8 @@ export class ShadowEnv {
   @signalReader() accessor proxyReady$: SignalReader<boolean>;
 
   constructor() {
-    eventize(this);
-
     retain(this, ShadowEnv.ContextCreated);
+
     on(this, ShadowEnv.ContextLost, Priority.AAA, () => {
       retainClear(this, ShadowEnv.ContextCreated);
     });

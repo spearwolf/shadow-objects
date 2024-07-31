@@ -1,4 +1,4 @@
-import {eventize, on} from '@spearwolf/eventize';
+import {on} from '@spearwolf/eventize';
 import {ContextLost} from '@spearwolf/shadow-objects';
 import {createEffect} from '@spearwolf/signalize';
 import {OffscreenCanvas, RequestOffscreenCanvas, RunFrameLoop} from '../shared/constants.js';
@@ -43,7 +43,6 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
 
   constructor(initialHTML = InitialHTML) {
     super();
-    eventize(this);
 
     this.shadow = this.attachShadow({mode: 'open'});
     this.shadow.innerHTML = initialHTML;

@@ -1,4 +1,4 @@
-import {emit, eventize, onceAsync, retain} from '@spearwolf/eventize';
+import {emit, onceAsync, retain} from '@spearwolf/eventize';
 import {
   AppliedChangeTrail,
   ChangeTrail,
@@ -54,7 +54,6 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   }
 
   constructor() {
-    eventize(this);
     retain(this, RemoteWorkerEnv.WorkerLoaded);
   }
 

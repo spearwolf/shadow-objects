@@ -1,4 +1,4 @@
-import {emit, eventize, off, retain, retainClear} from '@spearwolf/eventize';
+import {emit, off, retain, retainClear} from '@spearwolf/eventize';
 import {createEffect, destroySignalsAndEffects, value, type SignalReader} from '@spearwolf/signalize';
 import {signal, signalReader} from '@spearwolf/signalize/decorators';
 
@@ -12,7 +12,6 @@ export class SignalsPath {
   @signalReader() accessor value$: SignalReader<unknown>;
 
   constructor() {
-    eventize(this);
     retain(this, SignalsPath.Value);
     this.value$((val) => emit(this, SignalsPath.Value, val));
   }

@@ -1,4 +1,4 @@
-import {emit, eventize, off, on, once, Priority} from '@spearwolf/eventize';
+import {emit, off, on, once, Priority} from '@spearwolf/eventize';
 import {
   batch,
   createSignal,
@@ -106,7 +106,6 @@ export class Entity {
   }
 
   constructor(kernel: Kernel, uuid: string) {
-    eventize(this);
     this.#kernel = kernel;
     this.#uuid = uuid;
     once(this, onDestroy, Priority.Min, this);
