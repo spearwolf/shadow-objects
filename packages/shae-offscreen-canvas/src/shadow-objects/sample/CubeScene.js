@@ -1,4 +1,5 @@
 import {BoxGeometry, Mesh, MeshNormalMaterial, PerspectiveCamera, Scene} from 'three';
+import {OnFrame, ThreeRenderViewContext} from '../../shared/constants.js';
 
 export function CubeScene({useContext}) {
   const scene = new Scene();
@@ -6,19 +7,21 @@ export function CubeScene({useContext}) {
   const box = new Mesh(new BoxGeometry(), new MeshNormalMaterial());
   scene.add(box);
 
-  const getRenderView = useContext('three.renderView');
+  const getRenderView = useContext(ThreeRenderViewContext);
 
   getRenderView((view) => {
-    view.scene = scene;
+    if (view) {
+      view.scene = scene;
 
-    view.camera = new PerspectiveCamera(70, view.width / view.height, 0.1, 100);
-    view.camera.position.z = 2;
+      view.camera = new PerspectiveCamera(70, view.width / view.height, 0.1, 100);
+      view.camera.position.z = 2;
 
-    console.log('CubeScene renderView initialize', view);
+      console.log('CubeScene renderView initialize', view);
+    }
   });
 
   return {
-    onRenderFrame() {
+    [OnFrame]() {
       const view = getRenderView();
       if (view == null) return;
 
@@ -27,6 +30,10 @@ export function CubeScene({useContext}) {
 
       box.rotation.x += 0.005;
       box.rotation.y += 0.01;
+    },
+
+    onDestroy() {
+      console.log('cube scene destroyed', this);
     },
   };
 }

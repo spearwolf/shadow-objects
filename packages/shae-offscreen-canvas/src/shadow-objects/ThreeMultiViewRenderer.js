@@ -1,4 +1,5 @@
 import {Vector2, WebGLRenderer} from 'three';
+import {ThreeMultiViewRendererContext} from '../shared/constants.js';
 
 const DEFAULT_WIDTH = 320;
 const DEFAULT_HEIGHT = 240;
@@ -6,13 +7,11 @@ const DEFAULT_HEIGHT = 240;
 const _size2 = new Vector2();
 
 export class ThreeMultiViewRenderer {
-  static ContextProvider = 'three.multiViewRenderer';
-
   #views = new Map();
   #lastViewId = 0;
 
   constructor({provideContext, onDestroy}) {
-    const [, setMultiViewRenderer] = provideContext(ThreeMultiViewRenderer.ContextProvider, this);
+    const [, setMultiViewRenderer] = provideContext(ThreeMultiViewRendererContext, this);
 
     onDestroy(() => {
       setMultiViewRenderer(null);
@@ -20,13 +19,11 @@ export class ThreeMultiViewRenderer {
 
     this.canvas = new OffscreenCanvas(DEFAULT_WIDTH, DEFAULT_HEIGHT);
 
-    // XXX how we can configure webgl-renderer parameters?
+    // TODO how we can configure webgl-renderer parameters?
     this.renderer = new WebGLRenderer({canvas: this.canvas, alpha: true});
 
     this.renderer.setPixelRatio(1);
     this.renderer.setScissorTest(true);
-
-    console.log('ThreeMultiViewRenderer created', this);
   }
 
   createView(width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT) {
@@ -77,14 +74,11 @@ export class ThreeMultiViewRenderer {
     this.renderer.getSize(_size2);
     if (_size2.width === width && _size2.height === height) return;
 
-    // console.log('ThreeMultiViewRenderer updateSize', width, height);
-
     this.renderer.setSize(width, height, false);
   }
 
   onDestroy() {
     this.renderer.dispose();
     this.renderer = null;
-    console.log('ThreeMultiViewRenderer destroyed', this);
   }
 }

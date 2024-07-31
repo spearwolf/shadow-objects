@@ -1,7 +1,14 @@
 import {on} from '@spearwolf/eventize';
 import {ContextLost} from '@spearwolf/shadow-objects';
 import {createEffect} from '@spearwolf/signalize';
-import {OffscreenCanvas, RequestOffscreenCanvas, RunFrameLoop} from '../shared/constants.js';
+import {
+  CanvasHeight,
+  CanvasWidth,
+  OffscreenCanvas,
+  PixelRatio,
+  RequestOffscreenCanvas,
+  RunFrameLoop,
+} from '../shared/constants.js';
 import {FrameLoop} from '../shared/FrameLoop.js';
 
 const DISPLAY_ID = 'display';
@@ -29,7 +36,7 @@ const InitialHTML = `
   <div class="frame">
     <canvas id="${DISPLAY_ID}" class="content"></canvas>
     <div class="content">
-      <shae-ent id="${ENTITY_ID}" token="shae-offscreen-canvas">
+      <shae-ent id="${ENTITY_ID}" token="ShaeOffscreenCanvas">
         <slot></slot>
       </shae-ent>
     </div>
@@ -40,6 +47,7 @@ const ATTR_PIXEL_ZOOM = 'pixel-zoom';
 
 export class ShaeOffscreenCanvasElement extends HTMLElement {
   #frameLoop = new FrameLoop();
+  #offscreenTransferred = false;
 
   constructor(initialHTML = InitialHTML) {
     super();
@@ -51,6 +59,9 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
     this.shadowEntity = this.shadow.getElementById(ENTITY_ID);
 
     on(this.viewComponent, RequestOffscreenCanvas, () => {
+      if (this.#offscreenTransferred) {
+        this.#reCreateCanvas();
+      }
       this.#transferCanvasToShadows();
     });
 
@@ -86,8 +97,7 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
   #lastPixelRatio = 0;
   #lastPixelZoom = 1;
 
-  /** called by FrameLoop */
-  onFrame() {
+  [FrameLoop.OnFrame]() {
     const clientRect = this.canvas.getBoundingClientRect();
     const pixelRatio = window.devicePixelRatio ?? 1;
     const pixelZoom = this.#getPixelZoom();
@@ -111,9 +121,9 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
       }
 
       if (this.viewComponent) {
-        this.viewComponent.setProperty('canvasWidth', this.#lastCanvasWidth);
-        this.viewComponent.setProperty('canvasHeight', this.#lastCanvasHeight);
-        this.viewComponent.setProperty('pixelRatio', this.#lastPixelRatio);
+        this.viewComponent.setProperty(CanvasWidth, this.#lastCanvasWidth);
+        this.viewComponent.setProperty(CanvasHeight, this.#lastCanvasHeight);
+        this.viewComponent.setProperty(PixelRatio, this.#lastPixelRatio);
         this.shadowEntity.syncShadowObjects();
       }
     }
@@ -144,6 +154,7 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
   #transferCanvasToShadows() {
     const offscreen = this.canvas.transferControlToOffscreen();
     this.viewComponent.dispatchShadowObjectsEvent(OffscreenCanvas, {canvas: offscreen}, [offscreen]);
+    this.#offscreenTransferred = true;
   }
 
   #reCreateCanvas() {
@@ -151,5 +162,6 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
     const canvas = this.canvas.cloneNode();
     frame.replaceChild(canvas, this.canvas);
     this.canvas = canvas;
+    this.#offscreenTransferred = false;
   }
 }

@@ -3,7 +3,7 @@ import {emit, eventize, getSubscriptionCount, off, on} from '@spearwolf/eventize
 let gUniqInstance: FrameLoop = null;
 
 export class FrameLoop {
-  static OnFrame = 'onFrame';
+  static OnFrame = Symbol('onFrame');
 
   #rafID = 0;
   #subscriptionCount = 0;

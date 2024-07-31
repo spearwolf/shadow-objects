@@ -1,18 +1,26 @@
-import {emit} from '@spearwolf/eventize';
 import {createEffect, createSignal, destroySignal} from '@spearwolf/signalize';
-import {OffscreenCanvas, RequestOffscreenCanvas, RunFrameLoop} from '../shared/constants.js';
+import {
+  CanvasContext,
+  CanvasHeight,
+  CanvasSizeContext,
+  CanvasWidth,
+  OffscreenCanvas,
+  OnFrame,
+  PixelRatio,
+  RequestOffscreenCanvas,
+  RunFrameLoop,
+  ShaeOffscreenCanvasContext,
+} from '../shared/constants.js';
 import {FrameLoop} from '../shared/FrameLoop.js';
+import {ShadowObjectBase} from './ShadowObjectBase.js';
 
-export class ShaeOffscreenCanvas {
+const vec3equals = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+
+export class ShaeOffscreenCanvas extends ShadowObjectBase {
   #frameLoop = new FrameLoop();
 
+  canvasRequested = false;
   isRunning = false;
-
-  entity = null;
-
-  get uuid() {
-    return this.entity?.uuid ?? '?';
-  }
 
   now = 0;
   frameNo = 0;
@@ -22,19 +30,23 @@ export class ShaeOffscreenCanvas {
   }
 
   constructor({entity, useProperty, provideContext, onDestroy}) {
-    this.entity = entity;
+    super(entity);
 
-    const [getCanvas, setCanvas] = provideContext('canvas');
+    const [getCanvas, setCanvas] = provideContext(CanvasContext);
+
+    provideContext(ShaeOffscreenCanvasContext, this); // TODO remove
+
+    // TODO create canvas context based on useProperty('canvasContextType')
 
     const [getCanvasSize, setCanvasSize] = createSignal([0, 0, 0], {
-      equals: (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2],
+      equals: vec3equals,
     });
 
-    provideContext('canvasSize', getCanvasSize);
+    provideContext(CanvasSizeContext, getCanvasSize);
 
-    const getCanvasWidth = useProperty('canvasWidth');
-    const getCanvasHeight = useProperty('canvasHeight');
-    const getPixelRatio = useProperty('pixelRatio');
+    const getCanvasWidth = useProperty(CanvasWidth);
+    const getCanvasHeight = useProperty(CanvasHeight);
+    const getPixelRatio = useProperty(PixelRatio);
 
     const [, unsubscribe] = createEffect(() => {
       const canvas = getCanvas();
@@ -66,7 +78,7 @@ export class ShaeOffscreenCanvas {
     });
 
     onDestroy(() => {
-      console.log('[ShaeOffscreenCanvas] onDestroy: bye, bye!');
+      console.debug('[ShaeOffscreenCanvas] onDestroy: bye, bye!, self=', this);
       unsubscribe();
       destroySignal(getCanvasSize);
     });
@@ -87,26 +99,38 @@ export class ShaeOffscreenCanvas {
       })[1],
     );
 
-    entity.dispatchMessageToView(RequestOffscreenCanvas);
+    this.requestOffscreenCanvas();
   }
 
-  onViewEvent(type, data) {
-    console.debug(`[ShaeOffscreenCanvas] ${this.uuid} onViewEvent, type=`, type, 'data=', data);
-
-    switch (type) {
-      case OffscreenCanvas:
-        this.canvas = data.canvas;
-        break;
+  requestOffscreenCanvas() {
+    if (!this.canvasRequested) {
+      this.canvasRequested = true;
+      this.entity.dispatchMessageToView(RequestOffscreenCanvas);
+      console.debug('[ShaeOffscreenCanvas] requested offscreen-canvas', this);
     }
   }
 
-  onFrame(now) {
+  onViewEvent(type, data) {
+    switch (type) {
+      case OffscreenCanvas:
+        setTimeout(() => {
+          this.canvasRequested = false;
+        }, 1000);
+        this.canvas = data.canvas;
+        console.debug('[ShaeOffscreenCanvas] received offscreen-canvas', this);
+        break;
+
+      default:
+        console.debug(`[ShaeOffscreenCanvas] unhandled view event, type=`, type, 'data=', data, 'self=', this);
+    }
+  }
+
+  [FrameLoop.OnFrame](now) {
     if (!this.canRender) return;
 
     this.now = now / 1000;
     this.frameNo++;
 
-    const data = {canvas: this.canvas, now: this.now, frameNo: this.frameNo};
-    this.entity.traverse((entity) => emit(entity, 'onRenderFrame', data));
+    this.traverseEmit(OnFrame, {canvas: this.canvas, now: this.now, frameNo: this.frameNo});
   }
 }

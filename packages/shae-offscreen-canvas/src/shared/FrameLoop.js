@@ -1,10 +1,10 @@
 import {emit, eventize, getSubscriptionCount, off, on} from '@spearwolf/eventize';
 
-const OnFrame = 'onFrame';
-
 let gUniqInstance = null;
 
 export class FrameLoop {
+  static OnFrame = Symbol('onFrame');
+
   #rafID = 0;
   #subscriptionCount = 0;
 
@@ -21,7 +21,7 @@ export class FrameLoop {
       this.#requestAnimationFrame();
     }
 
-    on(this, OnFrame, target);
+    on(this, FrameLoop.OnFrame, target);
 
     this.#subscriptionCount++;
 
@@ -31,7 +31,7 @@ export class FrameLoop {
   }
 
   stop(target) {
-    off(this, OnFrame, target);
+    off(this, FrameLoop.OnFrame, target);
 
     if (getSubscriptionCount(this) === 0) {
       this.#cancelAnimationFrame();
@@ -39,7 +39,7 @@ export class FrameLoop {
   }
 
   #onFrame = (now) => {
-    emit(this, OnFrame, now);
+    emit(this, FrameLoop.OnFrame, now);
     this.#requestAnimationFrame();
   };
 
