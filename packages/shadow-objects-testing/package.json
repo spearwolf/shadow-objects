@@ -13,6 +13,7 @@
     "watch": "web-test-runner \"test/**/*.test.js\" --node-resolve --watch"
   },
   "dependencies": {
+    "@spearwolf/eventize": "^4.0.0",
     "@spearwolf/shadow-objects": "workspace:*"
   },
   "devDependencies": {

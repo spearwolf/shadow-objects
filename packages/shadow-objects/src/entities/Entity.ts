@@ -1,9 +1,9 @@
-import {Eventize, Priority} from '@spearwolf/eventize';
+import {emit, eventize, off, on, once, Priority} from '@spearwolf/eventize';
 import {
-  SignalObject,
   batch,
   createSignal,
   destroySignals,
+  SignalObject,
   value,
   type SignalReader,
   type SignalWriter,
@@ -33,7 +33,7 @@ interface IContext {
  *
  * Shadow-objects can use the signal properties via the entity.
  */
-export class Entity extends Eventize {
+export class Entity {
   #kernel: Kernel;
   #uuid: string;
 
@@ -106,10 +106,10 @@ export class Entity extends Eventize {
   }
 
   constructor(kernel: Kernel, uuid: string) {
-    super();
+    eventize(this);
     this.#kernel = kernel;
     this.#uuid = uuid;
-    this.once(onDestroy, Priority.Min, this);
+    once(this, onDestroy, Priority.Min, this);
   }
 
   traverse(callback: (entity: Entity) => void) {
@@ -121,7 +121,7 @@ export class Entity extends Eventize {
 
   onDestroy() {
     this.#props.clear();
-    this.off();
+    off(this);
 
     for (const ctx of this.#context.values()) {
       ctx.unsubscribeFromPath();
@@ -201,7 +201,7 @@ export class Entity extends Eventize {
 
   dispatchViewEvents(events: IComponentEvent[]) {
     for (const {type, data} of events) {
-      this.emit(onViewEvent, type, data);
+      emit(this, onViewEvent, type, data);
     }
   }
 
@@ -271,7 +271,7 @@ export class Entity extends Eventize {
       const ctxPath = new SignalsPath();
       ctxPath.add(provide.get, inherited.get);
 
-      const unsubscribeFromPath = ctxPath.on(SignalsPath.Value, (val) => {
+      const unsubscribeFromPath = on(ctxPath, SignalsPath.Value, (val) => {
         queueMicrotask(() => {
           context.set(val);
         });
@@ -288,7 +288,7 @@ export class Entity extends Eventize {
   #subscribeToParentContext(ctx: IContext) {
     if (this.parent) {
       ctx.unsubscribeFromParent?.();
-      ctx.unsubscribeFromParent = this.parent.#getContext(ctx.name).ctxPath.on(SignalsPath.Value, (val) => {
+      ctx.unsubscribeFromParent = on(this.parent.#getContext(ctx.name).ctxPath, SignalsPath.Value, (val) => {
         ctx.inherited.set(val);
       });
     }

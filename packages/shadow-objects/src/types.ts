@@ -1,4 +1,4 @@
-import type {EventizeApi} from '@spearwolf/eventize';
+import type {EventizedObject} from '@spearwolf/eventize';
 import type {CompareFunc, SignalObject, SignalReader} from '@spearwolf/signalize';
 import {AppliedChangeTrail, ImportedModule, type ComponentChangeType} from './constants.js';
 import type {Entity} from './entities/Entity.js';
@@ -101,7 +101,7 @@ export interface ShadowObjectConstructor {
   displayName?: string;
 }
 
-export type ShadowObjectType = EventizeApi;
+export type ShadowObjectType = EventizedObject;
 
 export type NamespaceType = string | symbol;
 

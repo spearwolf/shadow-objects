@@ -1,3 +1,4 @@
+import {once} from '@spearwolf/eventize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {Registry} from '../entities/Registry.js';
 import {ShadowObject} from '../entities/ShadowObject.js';
@@ -74,7 +75,7 @@ describe('ShadowEnv', () => {
 
     const onDestroyEntitySpy = vi.fn();
 
-    localObjEnv.kernel.getEntity(vc.uuid).once('onDestroy', onDestroyEntitySpy);
+    once(localObjEnv.kernel.getEntity(vc.uuid), 'onDestroy', onDestroyEntitySpy);
 
     env.envProxy.destroy();
 

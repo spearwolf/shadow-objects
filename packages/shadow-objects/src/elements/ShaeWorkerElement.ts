@@ -1,3 +1,4 @@
+import {on} from '@spearwolf/eventize';
 import {batch, createEffect, createSignal} from '@spearwolf/signalize';
 import {readBooleanAttribute} from '../utils/attr-utils.js';
 import {FrameLoop} from '../utils/FrameLoop.js';
@@ -34,7 +35,7 @@ export class ShaeWorkerElement extends ShaeElement {
       this.shadowEnv.view = ComponentContext.get(ns);
     });
 
-    this.shadowEnv.on(ShadowEnv.ContextCreated, () => {
+    on(this.shadowEnv, ShadowEnv.ContextCreated, () => {
       this.dispatchEvent(
         new CustomEvent(ShadowEnv.ContextCreated.toLowerCase(), {
           bubbles: false,
@@ -43,7 +44,7 @@ export class ShaeWorkerElement extends ShaeElement {
       );
     });
 
-    this.shadowEnv.on(ShadowEnv.ContextLost, () => {
+    on(this.shadowEnv, ShadowEnv.ContextLost, () => {
       this.dispatchEvent(
         new CustomEvent(ShadowEnv.ContextLost.toLowerCase(), {
           bubbles: false,

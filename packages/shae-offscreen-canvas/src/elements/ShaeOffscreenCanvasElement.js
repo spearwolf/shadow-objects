@@ -1,4 +1,4 @@
-import {eventize} from '@spearwolf/eventize';
+import {eventize, on} from '@spearwolf/eventize';
 import {ContextLost} from '@spearwolf/shadow-objects';
 import {createEffect} from '@spearwolf/signalize';
 import {OffscreenCanvas, RequestOffscreenCanvas, RunFrameLoop} from '../shared/constants.js';
@@ -51,7 +51,7 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
     this.canvas = this.shadow.getElementById(DISPLAY_ID);
     this.shadowEntity = this.shadow.getElementById(ENTITY_ID);
 
-    this.viewComponent.on(RequestOffscreenCanvas, () => {
+    on(this.viewComponent, RequestOffscreenCanvas, () => {
       this.#transferCanvasToShadows();
     });
 
@@ -59,7 +59,7 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
       // TODO refactor and verify ShaeOffscreenCanvasElement -> ContextLost effect
       const vc = this.shadowEntity.viewComponent$.get();
       if (vc) {
-        return vc.on(ContextLost, () => {
+        return on(vc, ContextLost, () => {
           console.warn('[ShaeOffscreenCanvasElement] context lost', this);
           this.#reCreateCanvas();
           this.#transferCanvasToShadows();

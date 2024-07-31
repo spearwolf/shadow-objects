@@ -37,9 +37,9 @@
     "vite": "^5.3.1"
   },
   "dependencies": {
-    "@spearwolf/eventize": "^3.4.2",
+    "@spearwolf/eventize": "^4.0.0",
     "@spearwolf/shadow-objects": "workspace:*",
-    "@spearwolf/signalize": "^0.14.0",
+    "@spearwolf/signalize": "^0.15.0",
     "three": "^0.165.0"
   }
 }

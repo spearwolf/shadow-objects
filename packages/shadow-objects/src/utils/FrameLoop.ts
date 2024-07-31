@@ -1,8 +1,6 @@
-import {eventize, getSubscriptionCount, type EventizeApi} from '@spearwolf/eventize';
+import {emit, eventize, getSubscriptionCount, off, on} from '@spearwolf/eventize';
 
 let gUniqInstance: FrameLoop = null;
-
-export interface FrameLoop extends EventizeApi {}
 
 export class FrameLoop {
   static OnFrame = 'onFrame';
@@ -23,7 +21,7 @@ export class FrameLoop {
       this.#requestAnimationFrame();
     }
 
-    this.on(FrameLoop.OnFrame, target);
+    on(this, FrameLoop.OnFrame, target);
 
     this.#subscriptionCount++;
 
@@ -33,7 +31,7 @@ export class FrameLoop {
   }
 
   stop(target: object | Function) {
-    this.off(FrameLoop.OnFrame, target);
+    off(this, FrameLoop.OnFrame, target);
 
     if (getSubscriptionCount(this) === 0) {
       this.#cancelAnimationFrame();
@@ -41,7 +39,7 @@ export class FrameLoop {
   }
 
   #onFrame = (now: number) => {
-    this.emit(FrameLoop.OnFrame, now);
+    emit(this, FrameLoop.OnFrame, now);
     this.#requestAnimationFrame();
   };
 

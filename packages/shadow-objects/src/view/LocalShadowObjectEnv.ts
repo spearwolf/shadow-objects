@@ -1,3 +1,4 @@
+import {on} from '@spearwolf/eventize';
 import {MessageToView, ShadowObjectsExport} from '../constants.js';
 import {Kernel, type MessageToViewEvent} from '../entities/Kernel.js';
 import type {Registry} from '../entities/Registry.js';
@@ -23,7 +24,7 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
   constructor(registry?: Registry) {
     this.kernel = new Kernel(registry);
 
-    this.kernel.on(MessageToView, (message: MessageToViewEvent) => {
+    on(this.kernel, MessageToView, (message: MessageToViewEvent) => {
       if ((this as IShadowObjectEnvProxy).onMessageToView != null) {
         const {type, uuid, traverseChildren} = message;
         const data = structuredClone(message.data, {transfer: message.transferables});

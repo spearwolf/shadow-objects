@@ -1,8 +1,6 @@
-import {eventize, type EventizeApi} from '@spearwolf/eventize';
+import {emit, eventize, off, retain, retainClear} from '@spearwolf/eventize';
 import {createEffect, destroySignalsAndEffects, value, type SignalReader} from '@spearwolf/signalize';
 import {signal, signalReader} from '@spearwolf/signalize/decorators';
-
-export interface SignalsPath extends EventizeApi {}
 
 export class SignalsPath {
   static Value = 'value';
@@ -15,8 +13,8 @@ export class SignalsPath {
 
   constructor() {
     eventize(this);
-    this.retain(SignalsPath.Value);
-    this.value$((val) => this.emit(SignalsPath.Value, val));
+    retain(this, SignalsPath.Value);
+    this.value$((val) => emit(this, SignalsPath.Value, val));
   }
 
   add(...signals: SignalReader<unknown>[]) {
@@ -33,9 +31,9 @@ export class SignalsPath {
 
   dispose() {
     this.clear();
-    this.off();
+    off(this);
     destroySignalsAndEffects(this);
-    this.retainClear(SignalsPath.Value);
+    retainClear(this, SignalsPath.Value);
   }
 
   #clearEffect() {

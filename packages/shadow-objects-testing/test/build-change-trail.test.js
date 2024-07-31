@@ -1,4 +1,5 @@
 import {expect} from '@esm-bundle/chai';
+import {on} from '@spearwolf/eventize';
 import {ComponentChangeType, ComponentContext, ContextLost} from '@spearwolf/shadow-objects';
 import '@spearwolf/shadow-objects/shae-ent.js';
 import sinon from 'sinon';
@@ -117,7 +118,7 @@ describe('build-change-trail', () => {
     const [a, b, c, d, e, f] = findElementsById('a', 'b', 'c', 'd', 'e', 'f');
 
     const contextLostSpy = sinon.spy();
-    f.viewComponent.on(ContextLost, contextLostSpy);
+    on(f.viewComponent, ContextLost, contextLostSpy);
 
     let changeTrail = cc.buildChangeTrails();
 

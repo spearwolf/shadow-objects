@@ -1,3 +1,4 @@
+import {on, onceAsync} from '@spearwolf/eventize';
 import {ComponentContext, RemoteWorkerEnv, ShadowEnv, ViewComponent} from '@spearwolf/shadow-objects';
 import './style.css';
 import {testAsyncAction} from './test-helpers/testAsyncAction.js';
@@ -27,7 +28,7 @@ async function main() {
   const foo = new ViewComponent('foo');
   foo.setProperty('xyz', 123);
 
-  foo.on('helloFromFoo', (...args) => {
+  on(foo, 'helloFromFoo', (...args) => {
     console.log('HELLO', ...args);
   });
 
@@ -39,6 +40,6 @@ async function main() {
   });
 
   await testAsyncAction('shadow-env-hello', async () => {
-    await foo.onceAsync('helloFromFoo');
+    await onceAsync(foo, 'helloFromFoo');
   });
 }

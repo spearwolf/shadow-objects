@@ -1,4 +1,4 @@
-import {Eventize} from '@spearwolf/eventize';
+import {emit, eventize} from '@spearwolf/eventize';
 import {VoidToken} from '../constants.js';
 import {generateUUID} from '../utils/generateUUID.js';
 import {ComponentContext} from './ComponentContext.js';
@@ -10,7 +10,7 @@ class ViewComponentError extends Error {
   }
 }
 
-export class ViewComponent extends Eventize {
+export class ViewComponent {
   readonly #uuid: string;
 
   #token: string;
@@ -84,7 +84,7 @@ export class ViewComponent extends Eventize {
   }
 
   constructor(token: string, options?: {parent?: ViewComponent; order?: number; context?: ComponentContext; uuid?: string}) {
-    super();
+    eventize(this);
 
     if (options instanceof ViewComponent) {
       options = {parent: options};
@@ -140,7 +140,7 @@ export class ViewComponent extends Eventize {
   }
 
   dispatchEvent(type: string, data: unknown, traverseChildren: boolean) {
-    this.emit(type, data);
+    emit(this, type, data);
 
     if (traverseChildren) {
       for (const child of this.#context!.getChildren(this)) {

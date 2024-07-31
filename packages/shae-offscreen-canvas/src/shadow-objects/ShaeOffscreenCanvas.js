@@ -1,3 +1,4 @@
+import {emit} from '@spearwolf/eventize';
 import {createEffect, createSignal, destroySignal} from '@spearwolf/signalize';
 import {OffscreenCanvas, RequestOffscreenCanvas, RunFrameLoop} from '../shared/constants.js';
 import {FrameLoop} from '../shared/FrameLoop.js';
@@ -106,6 +107,6 @@ export class ShaeOffscreenCanvas {
     this.frameNo++;
 
     const data = {canvas: this.canvas, now: this.now, frameNo: this.frameNo};
-    this.entity.traverse((entity) => entity.emit('onRenderFrame', data));
+    this.entity.traverse((entity) => emit(entity, 'onRenderFrame', data));
   }
 }

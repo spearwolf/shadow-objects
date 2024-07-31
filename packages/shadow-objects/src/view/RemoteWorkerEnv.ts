@@ -1,4 +1,4 @@
-import {eventize, type EventizeApi} from '@spearwolf/eventize';
+import {emit, eventize, onceAsync, retain} from '@spearwolf/eventize';
 import {
   AppliedChangeTrail,
   ChangeTrail,
@@ -38,8 +38,6 @@ const removeTransferables = (changeTrail: ChangeTrailType): TransferablesType | 
   return transferables;
 };
 
-export interface RemoteWorkerEnv extends EventizeApi {}
-
 export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   static WorkerLoaded = 'workerLoaded';
 
@@ -52,12 +50,12 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   }
 
   get workerLoaded(): Promise<RemoteWorkerEnv> {
-    return this.onceAsync<RemoteWorkerEnv>(RemoteWorkerEnv.WorkerLoaded);
+    return onceAsync<RemoteWorkerEnv>(this, RemoteWorkerEnv.WorkerLoaded);
   }
 
   constructor() {
     eventize(this);
-    this.retain(RemoteWorkerEnv.WorkerLoaded);
+    retain(this, RemoteWorkerEnv.WorkerLoaded);
   }
 
   async start(): Promise<void> {
@@ -84,7 +82,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
       worker.addEventListener('message', this.onMessageFromWorker.bind(this));
 
       queueMicrotask(() => {
-        this.emit(RemoteWorkerEnv.WorkerLoaded, this);
+        emit(this, RemoteWorkerEnv.WorkerLoaded, this);
       });
     } catch (error) {
       console.error('RemoteWorkerEnv: failed to start', error);

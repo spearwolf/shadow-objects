@@ -1,4 +1,4 @@
-import {Priority} from '@spearwolf/eventize';
+import {Priority, on} from '@spearwolf/eventize';
 import {createEffect, createSignal, destroySignal} from '@spearwolf/signalize';
 import {ThreeMultiViewRenderer} from './ThreeMultiViewRenderer.js';
 
@@ -40,7 +40,7 @@ export function ThreeRenderView({entity, useContext, provideContext}) {
 
   let logOn1stFrame = true; // TODO remove me
 
-  const unsubscribeFromRenderFrame = entity.on('onRenderFrame', Priority.Low, async ({canvas}) => {
+  const unsubscribeFromRenderFrame = on(entity, 'onRenderFrame', Priority.Low, async ({canvas}) => {
     const view = getRenderView();
 
     if (view != null) {

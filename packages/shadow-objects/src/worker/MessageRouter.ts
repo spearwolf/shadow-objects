@@ -1,3 +1,4 @@
+import {off, on} from '@spearwolf/eventize';
 import {
   AppliedChangeTrail,
   ChangeTrail,
@@ -34,7 +35,7 @@ export class MessageRouter {
 
     this.postMessage = options?.postMessage ?? self.postMessage.bind(self);
 
-    this.kernel.on(MessageToView, 'onMessageToView', this);
+    on(this.kernel, MessageToView, 'onMessageToView', this);
   }
 
   route(event: MessageEvent) {
@@ -97,7 +98,7 @@ export class MessageRouter {
 
   #onDestroy(data: any) {
     console.debug('[MessageRouter] on destroy', data);
-    this.kernel.off(this);
+    off(this.kernel, this);
     this.#importedModules.clear();
     this.postMessage({type: Destroyed});
   }

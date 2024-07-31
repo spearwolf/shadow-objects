@@ -1,4 +1,4 @@
-import {Priority, eventize, type EventizeApi} from '@spearwolf/eventize';
+import {Priority, emit, eventize, on, onceAsync, retain, retainClear} from '@spearwolf/eventize';
 import {createEffect, createSignal, type SignalReader} from '@spearwolf/signalize';
 import {signal, signalReader} from '@spearwolf/signalize/decorators';
 import type {MessageToViewEvent} from '../shadow-objects.js';
@@ -10,8 +10,6 @@ declare global {
   // eslint-disable-next-line no-var
   var __shadowEnvs: Map<NamespaceType, ShadowEnv> | undefined;
 }
-
-export interface ShadowEnv extends EventizeApi {}
 
 export class ShadowEnv {
   static AfterSync = 'afterSync';
@@ -41,21 +39,21 @@ export class ShadowEnv {
   constructor() {
     eventize(this);
 
-    this.retain(ShadowEnv.ContextCreated);
-    this.on(ShadowEnv.ContextLost, Priority.AAA, () => {
-      this.retainClear(ShadowEnv.ContextCreated);
+    retain(this, ShadowEnv.ContextCreated);
+    on(this, ShadowEnv.ContextLost, Priority.AAA, () => {
+      retainClear(this, ShadowEnv.ContextCreated);
     });
 
     createEffect(() => {
       if (this.viewReady && this.proxyReady) {
         this.view!.reCreateChanges();
-        this.emit(ShadowEnv.ContextCreated, this);
+        emit(this, ShadowEnv.ContextCreated, this);
         if (this.#syncAfterContextCreated) {
           this.#syncAfterContextCreated = false;
           this.#syncNow();
         }
         return () => {
-          this.emit(ShadowEnv.ContextLost, this);
+          emit(this, ShadowEnv.ContextLost, this);
         };
       }
     }, [this.viewReady$, this.proxyReady$]);
@@ -125,7 +123,7 @@ export class ShadowEnv {
   }
 
   readonly ready = (): Promise<ShadowEnv> => {
-    return this.isReady ? Promise.resolve(this) : this.onceAsync(ShadowEnv.ContextCreated);
+    return this.isReady ? Promise.resolve(this) : onceAsync(this, ShadowEnv.ContextCreated);
   };
 
   sync(): void {
@@ -142,7 +140,7 @@ export class ShadowEnv {
     this.#syncWaitForConfirmation = true;
     this.sync();
     if (this.#afterNextSync) return this.#afterNextSync;
-    this.#afterNextSync = this.onceAsync<ChangeTrailType>(ShadowEnv.AfterSync).then((changeTrail) => {
+    this.#afterNextSync = onceAsync<ChangeTrailType>(this, ShadowEnv.AfterSync).then((changeTrail) => {
       this.#afterNextSync = undefined;
       return changeTrail;
     });
@@ -183,7 +181,7 @@ export class ShadowEnv {
         } catch (error) {
           console.error('ShadowEnv: failed to apply change trail', error);
         } finally {
-          this.emit(ShadowEnv.AfterSync, data);
+          emit(this, ShadowEnv.AfterSync, data);
         }
       }
     }

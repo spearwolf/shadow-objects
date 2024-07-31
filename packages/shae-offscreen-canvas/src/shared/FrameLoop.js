@@ -1,4 +1,4 @@
-import {eventize, getSubscriptionCount} from '@spearwolf/eventize';
+import {emit, eventize, getSubscriptionCount, off, on} from '@spearwolf/eventize';
 
 const OnFrame = 'onFrame';
 
@@ -21,7 +21,7 @@ export class FrameLoop {
       this.#requestAnimationFrame();
     }
 
-    this.on(OnFrame, target);
+    on(this, OnFrame, target);
 
     this.#subscriptionCount++;
 
@@ -31,7 +31,7 @@ export class FrameLoop {
   }
 
   stop(target) {
-    this.off(OnFrame, target);
+    off(this, OnFrame, target);
 
     if (getSubscriptionCount(this) === 0) {
       this.#cancelAnimationFrame();
@@ -39,7 +39,7 @@ export class FrameLoop {
   }
 
   #onFrame = (now) => {
-    this.emit(OnFrame, now);
+    emit(this, OnFrame, now);
     this.#requestAnimationFrame();
   };
 

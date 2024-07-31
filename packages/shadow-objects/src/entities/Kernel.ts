@@ -1,4 +1,4 @@
-import {Eventize, eventize} from '@spearwolf/eventize';
+import {emit, eventize, off, on, once} from '@spearwolf/eventize';
 import {
   batch,
   connect,
@@ -56,7 +56,7 @@ enum ShadowObjectAction {
  *
  * Which shadow-objects are created is determined by the token.
  */
-export class Kernel extends Eventize {
+export class Kernel {
   registry: Registry;
 
   #entities: Map<string, EntityEntry> = new Map();
@@ -67,7 +67,7 @@ export class Kernel extends Eventize {
   #allEntitiesNeedUpdate = true;
 
   constructor(registry?: Registry) {
-    super();
+    eventize(this);
     this.registry = Registry.get(registry);
   }
 
@@ -218,7 +218,7 @@ export class Kernel extends Eventize {
     const {entity, usedConstructors} = this.#entities.get(uuid);
 
     entity.removeFromParent();
-    entity.emit(onDestroy, this);
+    emit(entity, onDestroy, this);
 
     usedConstructors.clear();
 
@@ -269,7 +269,7 @@ export class Kernel extends Eventize {
 
   dispatchMessageToView(message: MessageToViewEvent): void {
     queueMicrotask(() => {
-      this.emit(MessageToView, message);
+      emit(this, MessageToView, message);
     });
   }
 
@@ -358,7 +358,7 @@ export class Kernel extends Eventize {
       } as ShadowObjectParams),
     );
 
-    shadowObject.once(onDestroy, () => {
+    once(shadowObject, onDestroy, () => {
       console.debug('destroy shadow-object', shadowObject, Array.from(unsubscribe));
 
       for (const callback of unsubscribe) {
@@ -429,7 +429,7 @@ export class Kernel extends Eventize {
   private attachShadowObject(shadowObject: object, entity: Entity): void {
     // Like all other objects, the new shadow-object should be able to respond to the events that the entity receives.
     //
-    entity.on(shadowObject);
+    on(entity, shadowObject);
 
     // Finally, the `shadowObject.onCreate(entity)` callback is called on the shadow-object.
     //
@@ -443,7 +443,7 @@ export class Kernel extends Eventize {
       (shadowObject as OnDestroy)[onDestroy](entity);
     }
 
-    entity.off(shadowObject);
+    off(entity, shadowObject);
   }
 
   destroy(): void {
