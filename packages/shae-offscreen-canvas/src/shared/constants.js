@@ -9,7 +9,7 @@ export const PixelRatio = 'pixelRatio';
 export const RunFrameLoop = 'runFrameLoop';
 
 // provide context
-export const OffscreenCanvasContext = 'shae-offscreen-canvas';
+export const OffscreenCanvasContext = 'ShaeOffscreenCanvas';
 export const CanvasContext = 'canvas';
 export const CanvasSizeContext = 'canvasSize';
 
@@ -27,14 +27,14 @@ export const OnFrame = 'onFrame';
 // ----------------------------------------------------------------------------
 
 // provide context
-export const ThreeMultiViewRendererContext = 'three-multi-view-renderer';
+export const ThreeMultiViewRendererContext = 'ThreeMultiViewRenderer';
 
 // ----------------------------------------------------------------------------
 // ThreeRenderView
 // ----------------------------------------------------------------------------
 
 // provide context
-export const ThreeRenderViewContext = 'three-render-view';
+export const ThreeRenderViewContext = 'ThreeRenderView';
 
 // ----------------------------------------------------------------------------
 // CanvasRenderingContext2D
