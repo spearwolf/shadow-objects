@@ -1,13 +1,11 @@
-import {OnFrame, ShaeOffscreenCanvasContext} from '../../shared/constants.js';
+import {CanvasRenderingContext2D, OnFrame} from '../../shared/constants.js';
 
 export function TestImageOnCanvas2D({entity, useContext, onDestroy}) {
-  const getShaeOffscreenCanvas = useContext(ShaeOffscreenCanvasContext);
+  const getCanvas2D = useContext(CanvasRenderingContext2D);
 
   const [r, g, b] = [Math.floor(Math.random() * 255), Math.floor(Math.random() * 255), Math.floor(Math.random() * 255)];
   const fillStyle0 = `rgb(${r} ${g} ${b})`;
   const fillStyle1 = `rgb(${255 - r} ${255 - g} ${255 - b})`;
-
-  let ctx = null;
 
   console.log(`[TestImageOnCanvas2D] ${entity.uuid} Ready.`);
 
@@ -16,15 +14,11 @@ export function TestImageOnCanvas2D({entity, useContext, onDestroy}) {
   });
 
   return {
-    [OnFrame]({canvas}) {
-      ctx ??= canvas.getContext('2d');
+    [OnFrame]() {
+      const ctx = getCanvas2D();
+      if (ctx == null) return;
 
-      if (ctx == null) {
-        getShaeOffscreenCanvas()?.requestOffscreenCanvas();
-        return;
-      }
-
-      const [w, h] = [canvas.width, canvas.height];
+      const [w, h] = [ctx.canvas.width, ctx.canvas.height];
       const halfH = Math.floor(h / 2);
 
       ctx.fillStyle = fillStyle0;

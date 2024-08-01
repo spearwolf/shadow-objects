@@ -2,21 +2,27 @@ import {Priority, on} from '@spearwolf/eventize';
 import {createEffect, createSignal, destroySignal} from '@spearwolf/signalize';
 import {
   CanvasSizeContext,
+  ImageBitmapRenderingContext,
   OnFrame,
-  ShaeOffscreenCanvasContext,
   ThreeMultiViewRendererContext,
   ThreeRenderViewContext,
 } from '../shared/constants.js';
 
+let id = 0;
+
 export class ThreeRenderView {
+  static displayName = 'ThreeRenderView';
+
   constructor({entity, useContext, provideContext, onDestroy}) {
-    const getCanvasSize = useContext(CanvasSizeContext);
+    this.id = ++id;
+
     const getMultiViewRenderer = useContext(ThreeMultiViewRendererContext);
-    const getShaeOffscreenCanvas = useContext(ShaeOffscreenCanvasContext);
+    const getImageBitmapRenderer = useContext(ImageBitmapRenderingContext);
+    const getCanvasSize = useContext(CanvasSizeContext);
 
     const [getRenderView, setRenderView] = createSignal();
 
-    createEffect(() => {
+    const [, unsubscribeCreateView] = createEffect(() => {
       const canvasSize = getCanvasSize();
       if (canvasSize == null) return;
 
@@ -25,55 +31,62 @@ export class ThreeRenderView {
       const multiViewRenderer = getMultiViewRenderer();
 
       if (multiViewRenderer == null) {
-        if (view != null) {
+        if (view) {
           setRenderView(undefined);
         }
         return;
       }
 
+      const [width, height] = canvasSize;
+
       if (view == null) {
-        view = multiViewRenderer.createView(canvasSize[0], canvasSize[1]);
+        view = multiViewRenderer.createView(width, height);
         setRenderView(view);
       } else {
-        view.width = canvasSize[0];
-        view.height = canvasSize[1];
+        view.width = width;
+        view.height = height;
       }
-    }, [getCanvasSize, getMultiViewRenderer]);
+    });
+
+    const [, unsubscribeDestroyView] = createEffect(() => {
+      const view = getRenderView();
+      const multiViewRenderer = getMultiViewRenderer();
+
+      if (view && multiViewRenderer) {
+        return () => {
+          multiViewRenderer.destroyView(view);
+        };
+      }
+    });
 
     provideContext(ThreeRenderViewContext, getRenderView);
 
-    let canvasCtx = undefined;
-
-    const unsubscribe = on(entity, OnFrame, Priority.Low, async ({canvas}) => {
+    const unsubscribeOnFrame = on(entity, OnFrame, Priority.Low, async () => {
       const view = getRenderView();
 
       if (view) {
         const multiViewRenderer = getMultiViewRenderer();
 
-        if (multiViewRenderer) {
+        if (multiViewRenderer && getImageBitmapRenderer()) {
           const image = await multiViewRenderer.renderView(view);
 
           if (image) {
-            canvasCtx ??= canvas.getContext('bitmaprenderer');
-            if (canvasCtx) {
-              canvasCtx.transferFromImageBitmap(image);
-            } else {
-              getShaeOffscreenCanvas()?.requestOffscreenCanvas();
-            }
+            getImageBitmapRenderer()?.transferFromImageBitmap(image);
+            image.close();
           }
         }
       }
     });
 
     onDestroy(() => {
-      unsubscribe();
+      unsubscribeOnFrame();
 
-      const view = getRenderView();
-      if (view != null) {
-        getMultiViewRenderer()?.destroyView(view);
-      }
+      setRenderView(undefined);
 
       destroySignal(getRenderView);
+
+      unsubscribeCreateView();
+      unsubscribeDestroyView();
     });
   }
 }

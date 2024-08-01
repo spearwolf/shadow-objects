@@ -49,6 +49,8 @@ enum ShadowObjectAction {
   DestroyOnly,
 }
 
+const getDisplayName = (constructor: ShadowObjectConstructor) => constructor.displayName || constructor.name;
+
 /**
  * The entity kernel manages the lifecycle of all entities and shadow-objects.
  *
@@ -358,8 +360,10 @@ export class Kernel {
       } as ShadowObjectParams),
     );
 
+    console.debug('[Kernel] create shadow-object', getDisplayName(constructor), {shadowObject, entity: entry.entity});
+
     once(shadowObject, onDestroy, () => {
-      console.debug('destroy shadow-object', shadowObject, Array.from(unsubscribe));
+      console.debug('[Kernel] destroy shadow-object', getDisplayName(constructor), {shadowObject, entity: entry.entity});
 
       for (const callback of unsubscribe) {
         callback();
@@ -442,6 +446,8 @@ export class Kernel {
     if (typeof (shadowObject as OnDestroy)[onDestroy] === 'function') {
       (shadowObject as OnDestroy)[onDestroy](entity);
     }
+
+    emit(shadowObject, onDestroy, entity);
 
     off(entity, shadowObject);
   }

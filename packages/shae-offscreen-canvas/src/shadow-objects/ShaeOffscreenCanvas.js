@@ -5,11 +5,11 @@ import {
   CanvasSizeContext,
   CanvasWidth,
   OffscreenCanvas,
+  OffscreenCanvasContext,
   OnFrame,
   PixelRatio,
   RequestOffscreenCanvas,
   RunFrameLoop,
-  ShaeOffscreenCanvasContext,
 } from '../shared/constants.js';
 import {FrameLoop} from '../shared/FrameLoop.js';
 import {ShadowObjectBase} from './ShadowObjectBase.js';
@@ -17,6 +17,8 @@ import {ShadowObjectBase} from './ShadowObjectBase.js';
 const vec3equals = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
 
 export class ShaeOffscreenCanvas extends ShadowObjectBase {
+  static displayName = 'ShaeOffscreenCanvas';
+
   #frameLoop = new FrameLoop();
 
   canvasRequested = false;
@@ -34,7 +36,7 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
 
     const [getCanvas, setCanvas] = provideContext(CanvasContext);
 
-    provideContext(ShaeOffscreenCanvasContext, this); // TODO remove
+    provideContext(OffscreenCanvasContext, this);
 
     // TODO create canvas context based on useProperty('canvasContextType')
 
@@ -50,6 +52,7 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
 
     const [, unsubscribe] = createEffect(() => {
       const canvas = getCanvas();
+
       if (canvas) {
         const w = getCanvasWidth();
         const h = getCanvasHeight();
@@ -78,7 +81,6 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
     });
 
     onDestroy(() => {
-      console.debug('[ShaeOffscreenCanvas] onDestroy: bye, bye!, self=', this);
       unsubscribe();
       destroySignal(getCanvasSize);
     });
@@ -105,19 +107,17 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
   requestOffscreenCanvas() {
     if (!this.canvasRequested) {
       this.canvasRequested = true;
+      console.debug('[ShaeOffscreenCanvas] request offscreen-canvas', this);
       this.entity.dispatchMessageToView(RequestOffscreenCanvas);
-      console.debug('[ShaeOffscreenCanvas] requested offscreen-canvas', this);
     }
   }
 
   onViewEvent(type, data) {
     switch (type) {
       case OffscreenCanvas:
-        setTimeout(() => {
-          this.canvasRequested = false;
-        }, 1000);
-        this.canvas = data.canvas;
         console.debug('[ShaeOffscreenCanvas] received offscreen-canvas', this);
+        this.canvasRequested = false;
+        this.canvas = data.canvas;
         break;
 
       default:

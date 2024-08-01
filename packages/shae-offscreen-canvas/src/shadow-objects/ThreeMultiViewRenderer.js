@@ -7,6 +7,8 @@ const DEFAULT_HEIGHT = 240;
 const _size2 = new Vector2();
 
 export class ThreeMultiViewRenderer {
+  static displayName = 'ThreeMultiViewRenderer';
+
   #views = new Map();
   #lastViewId = 0;
 

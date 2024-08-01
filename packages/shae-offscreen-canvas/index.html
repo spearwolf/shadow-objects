@@ -79,17 +79,14 @@
     <script type="module">
       import GUI from 'lil-gui';
 
-      const gui = new GUI();
+      const LAYERS = ['layer0', 'layer1', 'layer2'];
+      const TOKENS = ['test-image-0', 'test-image-1', 'cube'];
 
-      const layers = {
-        layer0: document.getElementById('layer0').getAttribute('token'),
-        layer1: document.getElementById('layer1').getAttribute('token'),
-        layer2: document.getElementById('layer2').getAttribute('token'),
-      };
+      const gui = new GUI();
+      const layers = Object.fromEntries(LAYERS.map((layer) => [layer, document.getElementById(layer).getAttribute('token')]));
 
       for (const layer of ['layer0', 'layer1', 'layer2']) {
-        gui.add(layers, layer, ['test-image-0', 'test-image-1', 'cube']).onChange((token) => {
-          console.log('next layer=', layer, 'token=', token);
+        gui.add(layers, layer, TOKENS).onChange((token) => {
           document.getElementById(layer).setAttribute('token', token);
         });
       }

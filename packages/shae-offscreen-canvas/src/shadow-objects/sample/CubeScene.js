@@ -1,3 +1,4 @@
+import {createEffect} from '@spearwolf/signalize';
 import {BoxGeometry, Mesh, MeshNormalMaterial, PerspectiveCamera, Scene} from 'three';
 import {OnFrame, ThreeRenderViewContext} from '../../shared/constants.js';
 
@@ -9,14 +10,16 @@ export function CubeScene({useContext}) {
 
   const getRenderView = useContext(ThreeRenderViewContext);
 
-  getRenderView((view) => {
+  const [, unsubscribe] = createEffect(() => {
+    const view = getRenderView();
+
     if (view) {
       view.scene = scene;
 
       view.camera = new PerspectiveCamera(70, view.width / view.height, 0.1, 100);
       view.camera.position.z = 2;
 
-      console.log('CubeScene renderView initialize', view);
+      console.log('[CubeScene] setup renderView', view);
     }
   });
 
@@ -33,7 +36,8 @@ export function CubeScene({useContext}) {
     },
 
     onDestroy() {
-      console.log('cube scene destroyed', this);
+      console.log('[CubeScene] destroy', this);
+      unsubscribe();
     },
   };
 }
