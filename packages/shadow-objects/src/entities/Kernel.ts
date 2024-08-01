@@ -2,6 +2,7 @@ import {emit, eventize, off, on, once} from '@spearwolf/eventize';
 import {
   batch,
   connect,
+  createEffect,
   createSignal,
   destroySignal,
   SignalObject,
@@ -311,7 +312,8 @@ export class Kernel {
   }
 
   private constructShadowObject(constructor: ShadowObjectConstructor, entry: EntityEntry): ShadowObjectType {
-    const unsubscribe = new Set<() => any>();
+    const unsubscribe0 = new Set<() => any>();
+    const unsubscribe1 = new Set<() => any>();
 
     const contextReaders = new Map<string | symbol, SignalReader<any>>();
     const contextProviders = new Map<string | symbol, SignalObject<any>>();
@@ -327,7 +329,7 @@ export class Kernel {
             ctxProvider = createSignal(initialValue, isEqual ? {compareFn: isEqual} : undefined);
             contextProviders.set(name, ctxProvider);
             const con = connect(ctxProvider, entry.entity.provideContext(name));
-            unsubscribe.add(con.destroy.bind(con));
+            unsubscribe1.add(con.destroy.bind(con));
           }
           return ctxProvider;
         },
@@ -338,7 +340,7 @@ export class Kernel {
             [ctxReader] = createSignal<any>(undefined, isEqual ? {compareFn: isEqual} : undefined);
             contextReaders.set(name, ctxReader);
             const con = connect(entry.entity.useContext(name), ctxReader);
-            unsubscribe.add(con.destroy.bind(con));
+            unsubscribe1.add(con.destroy.bind(con));
           }
           return ctxReader;
         },
@@ -349,13 +351,34 @@ export class Kernel {
             [propReader] = createSignal<any>(undefined, isEqual ? {compareFn: isEqual} : undefined);
             propertyReaders.set(name, propReader);
             const con = connect(entry.entity.getPropertyReader(name), propReader);
-            unsubscribe.add(con.destroy.bind(con));
+            unsubscribe1.add(con.destroy.bind(con));
           }
           return propReader;
         },
 
+        createEffect(...args: Parameters<typeof createEffect>): ReturnType<typeof createEffect> {
+          const effect = createEffect(...args);
+          unsubscribe1.add(effect[1]);
+          return effect;
+        },
+
+        createSignal(...args: Parameters<typeof createSignal>): ReturnType<typeof createSignal> {
+          const sig = createSignal(...args);
+          unsubscribe1.add(() => {
+            destroySignal(sig);
+          });
+          return sig;
+        },
+
+        on(...args: Parameters<typeof on>): ReturnType<typeof on> {
+          // @ts-ignore
+          const unsubscribe = on(...args);
+          unsubscribe1.add(unsubscribe);
+          return unsubscribe;
+        },
+
         onDestroy(callback: () => any) {
-          unsubscribe.add(callback);
+          unsubscribe0.add(callback);
         },
       } as ShadowObjectParams),
     );
@@ -365,7 +388,11 @@ export class Kernel {
     once(shadowObject, onDestroy, () => {
       console.debug('[Kernel] destroy shadow-object', getDisplayName(constructor), {shadowObject, entity: entry.entity});
 
-      for (const callback of unsubscribe) {
+      for (const callback of unsubscribe0) {
+        callback();
+      }
+
+      for (const callback of unsubscribe1) {
         callback();
       }
 
@@ -381,6 +408,8 @@ export class Kernel {
         destroySignal(sig);
       }
 
+      unsubscribe0.clear();
+      unsubscribe1.clear();
       contextReaders.clear();
       propertyReaders.clear();
       contextProviders.clear();

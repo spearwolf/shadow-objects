@@ -1,4 +1,3 @@
-import {createEffect, createSignal, destroySignal} from '@spearwolf/signalize';
 import {
   CanvasContext,
   CanvasHeight,
@@ -31,7 +30,7 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
     return this.isRunning && this.canvas != null && this.canvas.width > 0 && this.canvas.height > 0;
   }
 
-  constructor({entity, useProperty, provideContext, onDestroy}) {
+  constructor({entity, useProperty, provideContext, createSignal, createEffect}) {
     super(entity);
 
     const [getCanvas, setCanvas] = provideContext(CanvasContext);
@@ -50,7 +49,7 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
     const getCanvasHeight = useProperty(CanvasHeight);
     const getPixelRatio = useProperty(PixelRatio);
 
-    const [, unsubscribe] = createEffect(() => {
+    createEffect(() => {
       const canvas = getCanvas();
 
       if (canvas) {
@@ -80,26 +79,19 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
       },
     });
 
-    onDestroy(() => {
-      unsubscribe();
-      destroySignal(getCanvasSize);
-    });
-
     const getRunFrameLoop = useProperty(RunFrameLoop);
 
-    onDestroy(
-      createEffect(() => {
-        if (getRunFrameLoop()) {
-          if (!this.isRunning) {
-            this.isRunning = true;
-            this.#frameLoop.start(this);
-          }
-        } else if (this.isRunning) {
-          this.isRunning = false;
-          this.#frameLoop.stop(this);
+    createEffect(() => {
+      if (getRunFrameLoop()) {
+        if (!this.isRunning) {
+          this.isRunning = true;
+          this.#frameLoop.start(this);
         }
-      })[1],
-    );
+      } else if (this.isRunning) {
+        this.isRunning = false;
+        this.#frameLoop.stop(this);
+      }
+    });
 
     this.requestOffscreenCanvas();
   }

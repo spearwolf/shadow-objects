@@ -1,8 +1,7 @@
-import {createEffect} from '@spearwolf/signalize';
 import {BoxGeometry, Mesh, MeshNormalMaterial, PerspectiveCamera, Scene} from 'three';
 import {OnFrame, ThreeRenderViewContext} from '../../shared/constants.js';
 
-export function CubeScene({useContext}) {
+export function CubeScene({useContext, createEffect}) {
   const scene = new Scene();
 
   const box = new Mesh(new BoxGeometry(), new MeshNormalMaterial());
@@ -10,7 +9,7 @@ export function CubeScene({useContext}) {
 
   const getRenderView = useContext(ThreeRenderViewContext);
 
-  const [, unsubscribe] = createEffect(() => {
+  createEffect(() => {
     const view = getRenderView();
 
     if (view) {
@@ -37,7 +36,6 @@ export function CubeScene({useContext}) {
 
     onDestroy() {
       console.log('[CubeScene] destroy', this);
-      unsubscribe();
     },
   };
 }

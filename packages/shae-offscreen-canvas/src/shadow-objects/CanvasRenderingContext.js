@@ -1,10 +1,9 @@
-import {createEffect} from '@spearwolf/signalize';
 import {CanvasContext, OffscreenCanvasContext} from '../shared/constants.js';
 
 let id = 0;
 
 export class CanvasRenderingContext {
-  constructor(contextName, renderingContextType, {useContext, provideContext, onDestroy}) {
+  constructor(contextName, renderingContextType, {useContext, provideContext, onDestroy, createEffect}) {
     this.id = ++id;
 
     const getOffscreenCanvas = useContext(OffscreenCanvasContext);
@@ -12,7 +11,7 @@ export class CanvasRenderingContext {
 
     const canvasRenderCtx = provideContext(contextName);
 
-    const [, unsubscribe] = createEffect(() => {
+    createEffect(() => {
       const canvas = getCanvas();
 
       if (canvas && canvasRenderCtx.value == null) {
@@ -29,7 +28,6 @@ export class CanvasRenderingContext {
 
     onDestroy(() => {
       canvasRenderCtx.set(undefined);
-      unsubscribe();
     });
   }
 }
