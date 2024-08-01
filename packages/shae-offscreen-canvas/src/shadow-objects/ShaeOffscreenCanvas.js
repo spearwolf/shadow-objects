@@ -30,12 +30,15 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
     return this.isRunning && this.canvas != null && this.canvas.width > 0 && this.canvas.height > 0;
   }
 
-  constructor({entity, useProperty, provideContext, createSignal, createEffect}) {
+  constructor({entity, useProperty, provideContext, createSignal, createEffect, onDestroy}) {
     super(entity);
 
     const [getCanvas, setCanvas] = provideContext(CanvasContext);
+    const [, setOffscreenCanvas] = provideContext(OffscreenCanvasContext, this);
 
-    provideContext(OffscreenCanvasContext, this);
+    onDestroy(() => {
+      setOffscreenCanvas(undefined);
+    });
 
     // TODO create canvas context based on useProperty('canvasContextType')
 
