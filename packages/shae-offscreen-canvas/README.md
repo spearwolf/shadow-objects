@@ -37,6 +37,10 @@ _thinktank_
 </html>
 ```
 
+For a real working demo, check out [./index.html](./index.html)
+
+[The documentation for the shadow objects can be found here.](./src/shadow-objects/README.md)
+
 ## Local Development Setup
 
 Run the tests with ..
