@@ -15,7 +15,7 @@ export const shadowObjects = {
   routes: {
     'test-image-0': ['Canvas2D', 'TestImageOnCanvas2D'],
     'test-image-1': ['Canvas2D', 'TestImage2OnCanvas2D'],
-    cube: ['CanvasBitmapRenderer', 'ThreeRenderView', 'CubeScene'],
+    cube: ['ThreeRenderView', 'CubeScene'],
   },
 
   initialize(...args) {

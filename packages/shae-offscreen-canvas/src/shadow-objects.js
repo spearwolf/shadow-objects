@@ -12,4 +12,8 @@ export const shadowObjects = {
     Canvas2D,
     CanvasBitmapRenderer,
   },
+
+  routes: {
+    ThreeRenderView: ['CanvasBitmapRenderer', 'ThreeRenderView'],
+  },
 };
