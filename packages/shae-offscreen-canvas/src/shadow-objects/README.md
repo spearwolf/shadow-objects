@@ -80,8 +80,8 @@ Creates a new _RenderView_ structure. Once created, the _view_ will be rendered 
 | `width` | _number_ | canvas width (real pixels) |
 | `height` | _number_ | canvas height (real pixels) |
 | `viewport` | `[x: number, y: number, width: number, height: number]` | _(optional)_ the [WebGL viewport](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/viewport), default is `[0, 0, width, height]` |
-| `scene` | [THREE.Scene]() | the scene to render |
-| `camera` | [THREE.Camera]() | the camera to render |
+| `scene` | [THREE.Scene](https://threejs.org/docs/index.html?q=scene#api/en/scenes/Scene) | the scene to render |
+| `camera` | [THREE.Camera](https://threejs.org/docs/index.html?q=camera#api/en/cameras/Camera) | the camera to render |
 | `viewId` | _number_ | the internal and unique view id _(do not overwrite)_ |
 
 > `threeMultiViewRenderer.destroyView(view)`
