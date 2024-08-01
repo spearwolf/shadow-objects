@@ -40,8 +40,6 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
       setOffscreenCanvas(undefined);
     });
 
-    // TODO create canvas context based on useProperty('canvasContextType')
-
     const [getCanvasSize, setCanvasSize] = createSignal([0, 0, 0], {
       equals: vec3equals,
     });
