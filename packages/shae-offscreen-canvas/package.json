@@ -1,7 +1,7 @@
 {
   "name": "@spearwolf/shae-offscreen-canvas",
-  "description": "shae-offscreen-canvas elements and entities",
-  "version": "0.0.1-dev",
+  "description": "an offscreen canvas element based on the shadow-objects framework",
+  "version": "0.1.0",
   "type": "module",
   "license": "Apache-2.0",
   "author": {
@@ -9,30 +9,32 @@
     "email": "wolfger@spearwolf.de",
     "url": "https://www.spearwolf.de"
   },
-  "main": "bundle.js",
-  "module": "bundle.js",
+  "main": "src/bundle.js",
+  "module": "src/bundle.js",
   "exports": {
     ".": {
-      "default": "./bundle.js"
+      "default": "./src/bundle.js"
     },
     "./shae-offscreen-canvas.js": {
-      "default": "./shae-offscreen-canvas.js"
+      "default": "./src/shae-offscreen-canvas.js"
     },
     "./shadow-objects.js": {
-      "default": "./shadow-objects.js"
+      "default": "./src/shadow-objects.js"
     }
   },
+  "sideEffects": [
+    "src/bundle.js",
+    "src/shae-offscreen-canvas.js"
+  ],
   "scripts": {
     "dev": "vite",
     "test": "web-test-runner \"src/**/*.specs.js\" --node-resolve --port 8001",
     "watch": "web-test-runner \"src/**/*.specs.js\" --node-resolve --watch --port 8001",
-    "_build": "pnpm node scripts/build.mjs",
-    "_build:pkg:prepare": "pnpm node ./scripts/buildPackage.mjs",
-    "_build:pkg:json": "pnpm node ../../scripts/makePackageJson.mjs",
-    "_build:pkg:clean": "pnpm exec rimraf .npm-pkg",
-    "_clean": "pnpm exec rimraf dist rainbow-line.js rainbow-line.worker.js .npm-pkg",
-    "_buildNpmPkg": "pnpm exec run-s build:pkg:clean build:pkg:prepare build:pkg:json",
-    "_publishNpmPkg": "pnpm node ../../scripts/publishNpmPkg.mjs .npm-pkg"
+    "build:copyFiles": "pnpm node ./build.mjs",
+    "build:packageJson": "pnpm node ../../scripts/makePackageJson.mjs",
+    "build": "pnpm exec run-s clean build:copyFiles build:packageJson",
+    "clean": "pnpm exec rimraf .npm-pkg",
+    "publishNpmPkg": "pnpm node ../../scripts/publishNpmPkg.mjs .npm-pkg"
   },
   "devDependencies": {
     "@esm-bundle/chai": "4.3.4-fix.0",
