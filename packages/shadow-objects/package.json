@@ -72,6 +72,7 @@
     "clean": "pnpm exec rimraf build types dist lib tests",
     "clean:build": "pnpm exec rimraf build dist",
     "makePackageJson": "pnpm node ../../scripts/makePackageJson.mjs dist",
+    "buildNpmPkg": "pnpm build",
     "publishNpmPkg": "pnpm node ../../scripts/publishNpmPkg.mjs dist"
   },
   "devDependencies": {
