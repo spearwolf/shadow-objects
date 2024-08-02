@@ -1,7 +1,7 @@
 {
   "name": "@spearwolf/shadow-objects",
-  "description": "a worker ecs with shadow-objects",
-  "version": "0.0.1-dev",
+  "description": "the slighty different component framework",
+  "version": "0.1.0",
   "author": {
     "name": "Wolfger Schramm",
     "email": "wolfger@spearwolf.de",
@@ -71,7 +71,8 @@
     "update": "pnpm dlx npm-check --update",
     "clean": "pnpm exec rimraf build types dist lib tests",
     "clean:build": "pnpm exec rimraf build dist",
-    "makePackageJson": "pnpm exec node ../../scripts/makePackageJson.mjs dist"
+    "makePackageJson": "pnpm node ../../scripts/makePackageJson.mjs dist",
+    "publishNpmPkg": "pnpm node ../../scripts/publishNpmPkg.mjs dist"
   },
   "devDependencies": {
     "esbuild-plugin-inline-worker": "^0.1.1"
