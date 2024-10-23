@@ -14,30 +14,30 @@
   "types": "dist/src/index.d.ts",
   "exports": {
     ".": {
-      "default": "./dist/src/index.js",
+      "import": "./dist/src/index.js",
       "types": "./dist/src/index.d.ts"
     },
     "./bundle.js": {
       "default": "./dist/bundle.js"
     },
     "./shadow-objects.worker.js": {
-      "default": "./dist/src/shadow-objects.worker.js",
+      "import": "./dist/src/shadow-objects.worker.js",
       "types": "./dist/src/shadow-objects.worker.d.ts"
     },
     "./shadow-objects.js": {
-      "default": "./dist/src/shadow-objects.js",
+      "import": "./dist/src/shadow-objects.js",
       "types": "./dist/src/shadow-objects.d.ts"
     },
     "./shae-ent.js": {
-      "default": "./dist/src/shae-ent.js",
+      "import": "./dist/src/shae-ent.js",
       "types": "./dist/src/shae-ent.d.ts"
     },
     "./shae-prop.js": {
-      "default": "./dist/src/shae-prop.js",
+      "import": "./dist/src/shae-prop.js",
       "types": "./dist/src/shae-prop.d.ts"
     },
     "./shae-worker.js": {
-      "default": "./dist/src/shae-worker.js",
+      "import": "./dist/src/shae-worker.js",
       "types": "./dist/src/shae-worker.d.ts"
     }
   },
