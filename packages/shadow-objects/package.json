@@ -1,7 +1,7 @@
 {
   "name": "@spearwolf/shadow-objects",
   "description": "the slightly different component framework",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {
     "name": "Wolfger Schramm",
     "email": "wolfger@spearwolf.de",
@@ -78,7 +78,7 @@
     "esbuild-plugin-inline-worker": "^0.1.1"
   },
   "dependencies": {
-    "@spearwolf/eventize": "^4.0.0",
-    "@spearwolf/signalize": "^0.15.0"
+    "@spearwolf/eventize": "^4.0.1",
+    "@spearwolf/signalize": "^0.18.1"
   }
 }

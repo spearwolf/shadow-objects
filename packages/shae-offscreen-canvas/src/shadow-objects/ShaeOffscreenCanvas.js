@@ -33,25 +33,25 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
   constructor({entity, useProperty, provideContext, createSignal, createEffect, onDestroy}) {
     super(entity);
 
-    const [getCanvas, setCanvas] = provideContext(CanvasContext);
-    const [, setOffscreenCanvas] = provideContext(OffscreenCanvasContext, this);
+    const canvas$ = provideContext(CanvasContext);
+    const offscreenCanvas$ = provideContext(OffscreenCanvasContext, this);
 
     onDestroy(() => {
-      setOffscreenCanvas(undefined);
+      offscreenCanvas$.set(undefined);
     });
 
-    const [getCanvasSize, setCanvasSize] = createSignal([0, 0, 0], {
-      equals: vec3equals,
+    const canvasSize$ = createSignal([0, 0, 0], {
+      compare: vec3equals,
     });
 
-    provideContext(CanvasSizeContext, getCanvasSize);
+    provideContext(CanvasSizeContext, canvasSize$);
 
     const getCanvasWidth = useProperty(CanvasWidth);
     const getCanvasHeight = useProperty(CanvasHeight);
     const getPixelRatio = useProperty(PixelRatio);
 
     createEffect(() => {
-      const canvas = getCanvas();
+      const canvas = canvas$.get();
 
       if (canvas) {
         const w = getCanvasWidth();
@@ -68,14 +68,14 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
           canvas.height = canvasHeight;
         }
 
-        setCanvasSize([canvasWidth, canvasHeight, pixelRatio]);
+        canvasSize$.set([canvasWidth, canvasHeight, pixelRatio]);
       }
-    }, [getCanvas, getCanvasWidth, getCanvasHeight, getPixelRatio]);
+    }, [canvas$, getCanvasWidth, getCanvasHeight, getPixelRatio]);
 
     Object.defineProperties(this, {
       canvas: {
-        get: getCanvas,
-        set: setCanvas,
+        get: canvas$.get,
+        set: canvas$.set,
         enumerable: true,
       },
     });

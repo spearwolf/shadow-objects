@@ -1,14 +1,14 @@
 import {on} from '@spearwolf/eventize';
 import {createSignal} from '@spearwolf/signalize';
 import {describe, expect, it, vi} from 'vitest';
-import {SignalsPath} from './SignalsPath.js';
+import {SignalsPath, VALUE} from './SignalsPath.js';
 
 describe('SignalsPath', () => {
   it('should work as expected', () => {
     const path = new SignalsPath();
 
-    const [a, setA] = createSignal();
-    const [b, setB] = createSignal();
+    const a = createSignal();
+    const b = createSignal();
 
     const valueFn = vi.fn();
 
@@ -17,30 +17,30 @@ describe('SignalsPath', () => {
 
     expect(path.value).toBe(undefined);
 
-    on(path, SignalsPath.Value, valueFn);
+    on(path, VALUE, valueFn);
 
     expect(valueFn).not.toBeCalled();
 
-    setB('b');
+    b.set('b');
 
     expect(valueFn).toHaveBeenCalledWith('b');
     valueFn.mockClear();
 
-    setA('a');
+    a.set('a');
 
     expect(valueFn).toHaveBeenCalledWith('a');
     valueFn.mockClear();
 
-    setB('b2');
+    b.set('b2');
 
     expect(valueFn).not.toBeCalled();
 
-    setA(null);
+    a.set(null);
 
     expect(valueFn).toHaveBeenCalledWith('b2');
     valueFn.mockClear();
 
-    setB(null);
+    b.set(null);
 
     expect(valueFn).toHaveBeenCalledWith(undefined);
   });
@@ -48,8 +48,8 @@ describe('SignalsPath', () => {
   it('initial value event', () => {
     const path = new SignalsPath();
 
-    const [a] = createSignal();
-    const [b] = createSignal<unknown>('b');
+    const a = createSignal();
+    const b = createSignal<unknown>('b');
 
     const valueFn = vi.fn();
 
@@ -57,7 +57,7 @@ describe('SignalsPath', () => {
 
     expect(path.value).toBe('b');
 
-    on(path, SignalsPath.Value, valueFn);
+    on(path, VALUE, valueFn);
 
     expect(valueFn).toHaveBeenCalledWith('b');
   });
@@ -65,19 +65,19 @@ describe('SignalsPath', () => {
   it('add signals to path', () => {
     const path = new SignalsPath();
 
-    const [a, setA] = createSignal();
-    const [b, setB] = createSignal();
-    const [c, setC] = createSignal();
+    const a = createSignal();
+    const b = createSignal();
+    const c = createSignal();
 
     const valueFn = vi.fn();
 
     path.add(a, b);
 
-    on(path, SignalsPath.Value, valueFn);
+    on(path, VALUE, valueFn);
 
     expect(valueFn).not.toBeCalled();
 
-    setB('b');
+    b.set('b');
 
     expect(valueFn).toHaveBeenCalledWith('b');
     valueFn.mockClear();
@@ -86,16 +86,16 @@ describe('SignalsPath', () => {
 
     expect(valueFn).not.toBeCalled();
 
-    setC('c');
+    c.set('c');
 
     expect(valueFn).not.toBeCalled();
 
-    setB(undefined);
+    b.set(undefined);
 
     expect(valueFn).toHaveBeenCalledWith('c');
     valueFn.mockClear();
 
-    setA('a');
+    a.set('a');
 
     expect(valueFn).toHaveBeenCalledWith('a');
   });
@@ -103,19 +103,19 @@ describe('SignalsPath', () => {
   it('clear() should work as expected', () => {
     const path = new SignalsPath();
 
-    const [a, setA] = createSignal();
-    const [b, setB] = createSignal();
-    const [c, setC] = createSignal();
+    const a = createSignal();
+    const b = createSignal();
+    const c = createSignal();
 
     const valueFn = vi.fn();
 
     path.add(a, b);
 
-    on(path, SignalsPath.Value, valueFn);
+    on(path, VALUE, valueFn);
 
     expect(valueFn).not.toBeCalled();
 
-    setB('b');
+    b.set('b');
 
     expect(valueFn).toHaveBeenCalledWith('b');
     valueFn.mockClear();
@@ -128,16 +128,16 @@ describe('SignalsPath', () => {
 
     expect(valueFn).not.toBeCalled();
 
-    setC('c');
+    c.set('c');
 
     expect(valueFn).not.toBeCalled();
 
-    setB(undefined);
+    b.set(undefined);
 
     expect(valueFn).toHaveBeenCalledWith('c');
     valueFn.mockClear();
 
-    setA('a');
+    a.set('a');
 
     expect(valueFn).toHaveBeenCalledWith('a');
   });

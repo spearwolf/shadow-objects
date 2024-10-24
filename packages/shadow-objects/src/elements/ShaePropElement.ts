@@ -1,4 +1,4 @@
-import {batch, connect, createEffect, createSignal} from '@spearwolf/signalize';
+import {batch, createEffect, createSignal, link} from '@spearwolf/signalize';
 import {readBooleanAttribute} from '../utils/attr-utils.js';
 import {TRUTHY_VALUES} from '../utils/constants.js';
 import type {ViewComponent} from '../view/ViewComponent.js';
@@ -108,7 +108,7 @@ export class ShaePropElement extends HTMLElement {
 
     this.entNode$.onChange((entNode) => {
       if (entNode) {
-        const con = connect(entNode.viewComponent$, this.viewComponent$);
+        const con = link(entNode.viewComponent$, this.viewComponent$);
         return () => {
           con.destroy();
         };

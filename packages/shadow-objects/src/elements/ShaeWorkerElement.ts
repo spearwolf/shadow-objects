@@ -193,7 +193,7 @@ export class ShaeWorkerElement extends ShaeElement {
   }
 
   #createAutoSyncEffect() {
-    const [, unsubscribe] = createEffect(() => {
+    const e = createEffect(() => {
       if (this.isConnected$.get()) {
         const autoSync = (this.autoSync$.get() || ShaeWorkerElement.DefaultAutoSync).trim().toLowerCase();
         let delay = undefined;
@@ -235,7 +235,7 @@ export class ShaeWorkerElement extends ShaeElement {
       }
     }, [this.autoSync$, this.isConnected$]);
 
-    this.#unsubscribeAutoSync = unsubscribe;
+    this.#unsubscribeAutoSync = () => e.destroy();
   }
 
   #updateNoStructuredClone() {

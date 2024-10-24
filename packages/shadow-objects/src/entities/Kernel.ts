@@ -1,11 +1,11 @@
 import {emit, eventize, off, on, once} from '@spearwolf/eventize';
 import {
   batch,
-  connect,
   createEffect,
   createSignal,
   destroySignal,
-  SignalObject,
+  link,
+  Signal,
   type CompareFunc,
   type SignalReader,
 } from '@spearwolf/signalize';
@@ -312,59 +312,59 @@ export class Kernel {
   }
 
   private constructShadowObject(constructor: ShadowObjectConstructor, entry: EntityEntry): ShadowObjectType {
-    const unsubscribe0 = new Set<() => any>();
-    const unsubscribe1 = new Set<() => any>();
+    const unsubscribePrimary = new Set<() => any>();
+    const unsubscribeSecondary = new Set<() => any>();
 
     const contextReaders = new Map<string | symbol, SignalReader<any>>();
-    const contextProviders = new Map<string | symbol, SignalObject<any>>();
+    const contextProviders = new Map<string | symbol, Signal<any>>();
     const propertyReaders = new Map<string, SignalReader<any>>();
 
     const shadowObject = eventize(
       new constructor({
         entity: entry.entity,
 
-        provideContext<T = unknown>(name: string | symbol, initialValue?: T, isEqual?: CompareFunc<T>) {
+        provideContext<T = unknown>(name: string | symbol, initialValue?: T, compare?: CompareFunc<T>) {
           let ctxProvider = contextProviders.get(name);
           if (ctxProvider === undefined) {
-            ctxProvider = createSignal(initialValue, isEqual ? {compareFn: isEqual} : undefined);
+            ctxProvider = createSignal(initialValue, compare ? {compare} : undefined);
             contextProviders.set(name, ctxProvider);
-            const con = connect(ctxProvider, entry.entity.provideContext(name));
-            unsubscribe1.add(con.destroy.bind(con));
+            const con = link(ctxProvider, entry.entity.provideContext(name));
+            unsubscribeSecondary.add(con.destroy.bind(con));
           }
           return ctxProvider;
         },
 
-        useContext(name: string | symbol, isEqual?: CompareFunc<any>) {
+        useContext(name: string | symbol, compare?: CompareFunc<any>) {
           let ctxReader = contextReaders.get(name);
           if (ctxReader === undefined) {
-            [ctxReader] = createSignal<any>(undefined, isEqual ? {compareFn: isEqual} : undefined);
+            ctxReader = createSignal<any>(undefined, compare ? {compare} : undefined).get;
             contextReaders.set(name, ctxReader);
-            const con = connect(entry.entity.useContext(name), ctxReader);
-            unsubscribe1.add(con.destroy.bind(con));
+            const con = link(entry.entity.useContext(name), ctxReader);
+            unsubscribeSecondary.add(con.destroy.bind(con));
           }
           return ctxReader;
         },
 
-        useProperty(name: string, isEqual?: CompareFunc<any>) {
+        useProperty(name: string, compare?: CompareFunc<any>) {
           let propReader = propertyReaders.get(name);
           if (propReader === undefined) {
-            [propReader] = createSignal<any>(undefined, isEqual ? {compareFn: isEqual} : undefined);
+            propReader = createSignal<any>(undefined, compare ? {compare} : undefined).get;
             propertyReaders.set(name, propReader);
-            const con = connect(entry.entity.getPropertyReader(name), propReader);
-            unsubscribe1.add(con.destroy.bind(con));
+            const con = link(entry.entity.getPropertyReader(name), propReader);
+            unsubscribeSecondary.add(con.destroy.bind(con));
           }
           return propReader;
         },
 
         createEffect(...args: Parameters<typeof createEffect>): ReturnType<typeof createEffect> {
           const effect = createEffect(...args);
-          unsubscribe1.add(effect[1]);
+          unsubscribeSecondary.add(effect.destroy);
           return effect;
         },
 
         createSignal(...args: Parameters<typeof createSignal>): ReturnType<typeof createSignal> {
           const sig = createSignal(...args);
-          unsubscribe1.add(() => {
+          unsubscribeSecondary.add(() => {
             destroySignal(sig);
           });
           return sig;
@@ -373,12 +373,12 @@ export class Kernel {
         on(...args: Parameters<typeof on>): ReturnType<typeof on> {
           // @ts-ignore
           const unsubscribe = on(...args);
-          unsubscribe1.add(unsubscribe);
+          unsubscribeSecondary.add(unsubscribe);
           return unsubscribe;
         },
 
         onDestroy(callback: () => any) {
-          unsubscribe0.add(callback);
+          unsubscribePrimary.add(callback);
         },
       } as ShadowObjectParams),
     );
@@ -388,11 +388,11 @@ export class Kernel {
     once(shadowObject, onDestroy, () => {
       console.debug('[Kernel] destroy shadow-object', getDisplayName(constructor), {shadowObject, entity: entry.entity});
 
-      for (const callback of unsubscribe0) {
+      for (const callback of unsubscribePrimary) {
         callback();
       }
 
-      for (const callback of unsubscribe1) {
+      for (const callback of unsubscribeSecondary) {
         callback();
       }
 
@@ -404,12 +404,12 @@ export class Kernel {
         destroySignal(sig);
       }
 
-      for (const [sig] of contextProviders.values()) {
+      for (const sig of contextProviders.values()) {
         destroySignal(sig);
       }
 
-      unsubscribe0.clear();
-      unsubscribe1.clear();
+      unsubscribePrimary.clear();
+      unsubscribeSecondary.clear();
       contextReaders.clear();
       propertyReaders.clear();
       contextProviders.clear();

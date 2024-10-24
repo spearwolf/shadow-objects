@@ -236,7 +236,7 @@ export class ShaeEntElement extends ShaeElement {
     this.#unsubscribeFromParent = undefined;
 
     if (parent) {
-      const [, unsubscribe] = createEffect(() => {
+      const e = createEffect(() => {
         const vc = this.viewComponent$.get();
         if (vc) {
           const parentVC = parent.viewComponent$.get();
@@ -249,7 +249,7 @@ export class ShaeEntElement extends ShaeElement {
           this.syncShadowObjects();
         }
       });
-      this.#unsubscribeFromParent = unsubscribe;
+      this.#unsubscribeFromParent = () => e.destroy();
     } else {
       const vc = this.viewComponent;
       if (vc.parent) {

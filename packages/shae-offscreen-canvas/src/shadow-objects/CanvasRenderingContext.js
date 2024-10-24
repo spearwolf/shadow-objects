@@ -9,25 +9,25 @@ export class CanvasRenderingContext {
     const getOffscreenCanvas = useContext(OffscreenCanvasContext);
     const getCanvas = useContext(CanvasContext);
 
-    const canvasRenderCtx = provideContext(contextName);
+    const canvasRenderCtx$ = provideContext(contextName);
 
     createEffect(() => {
       const canvas = getCanvas();
 
-      if (canvas && canvasRenderCtx.value == null) {
+      if (canvas && canvasRenderCtx$.value == null) {
         const ctx = canvas.getContext(renderingContextType);
         if (ctx) {
-          canvasRenderCtx.set(ctx);
+          canvasRenderCtx$.set(ctx);
         } else {
           getOffscreenCanvas()?.requestOffscreenCanvas();
         }
       } else if (canvas == null) {
-        canvasRenderCtx.set(undefined);
+        canvasRenderCtx$.set(undefined);
       }
     });
 
     onDestroy(() => {
-      canvasRenderCtx.set(undefined);
+      canvasRenderCtx$.set(undefined);
     });
   }
 }

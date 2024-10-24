@@ -19,19 +19,19 @@ export class ThreeRenderView {
     const getImageBitmapRenderer = useContext(ImageBitmapRenderingContext);
     const getCanvasSize = useContext(CanvasSizeContext);
 
-    const [getRenderView, setRenderView] = createSignal();
+    const renderView = createSignal();
 
     createEffect(() => {
       const canvasSize = getCanvasSize();
       if (canvasSize == null) return;
 
-      let view = getRenderView();
+      let view = renderView.get();
 
       const multiViewRenderer = getMultiViewRenderer();
 
       if (multiViewRenderer == null) {
         if (view) {
-          setRenderView(undefined);
+          renderView.set(undefined);
         }
         return;
       }
@@ -40,7 +40,7 @@ export class ThreeRenderView {
 
       if (view == null) {
         view = multiViewRenderer.createView(width, height);
-        setRenderView(view);
+        renderView.set(view);
       } else {
         view.width = width;
         view.height = height;
@@ -48,7 +48,7 @@ export class ThreeRenderView {
     });
 
     createEffect(() => {
-      const view = getRenderView();
+      const view = renderView.get();
       const multiViewRenderer = getMultiViewRenderer();
 
       if (view && multiViewRenderer) {
@@ -58,10 +58,10 @@ export class ThreeRenderView {
       }
     });
 
-    provideContext(ThreeRenderViewContext, getRenderView);
+    provideContext(ThreeRenderViewContext, renderView);
 
     on(entity, OnFrame, Priority.Low, async () => {
-      const view = getRenderView();
+      const view = renderView.get();
 
       if (view) {
         const multiViewRenderer = getMultiViewRenderer();
@@ -78,7 +78,7 @@ export class ThreeRenderView {
     });
 
     onDestroy(() => {
-      setRenderView(undefined);
+      renderView.set(undefined);
     });
   }
 }

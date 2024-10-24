@@ -13,10 +13,10 @@ export class ThreeMultiViewRenderer {
   #lastViewId = 0;
 
   constructor({provideContext, onDestroy}) {
-    const [, setMultiViewRenderer] = provideContext(ThreeMultiViewRendererContext, this);
+    const multiViewRenderer = provideContext(ThreeMultiViewRendererContext, this);
 
     onDestroy(() => {
-      setMultiViewRenderer(null);
+      multiViewRenderer.set(null);
     });
 
     this.canvas = new OffscreenCanvas(DEFAULT_WIDTH, DEFAULT_HEIGHT);

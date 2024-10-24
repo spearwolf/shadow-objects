@@ -1,26 +1,18 @@
 import {emit, off, on, once, Priority} from '@spearwolf/eventize';
-import {
-  batch,
-  createSignal,
-  destroySignals,
-  SignalObject,
-  value,
-  type SignalReader,
-  type SignalWriter,
-} from '@spearwolf/signalize';
+import {batch, createSignal, Signal, value, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
 import type {IComponentEvent} from '../types.js';
 import {Kernel} from './Kernel.js';
 import {SignalsMap} from './SignalsMap.js';
-import {SignalsPath} from './SignalsPath.js';
+import {SignalsPath, VALUE} from './SignalsPath.js';
 import {onDestroy, onViewEvent} from './events.js';
 
 type ContextNameType = string | symbol;
 
-interface IContext {
+interface IContextItem {
   name: ContextNameType;
-  inherited: SignalObject<unknown>;
-  provide: SignalObject<unknown>;
-  context: SignalObject<unknown>;
+  inherited: Signal<unknown>;
+  provide: Signal<unknown>;
+  context: Signal<unknown>;
   ctxPath: SignalsPath;
   unsubscribeFromPath: () => void;
   unsubscribeFromParent?: () => void;
@@ -38,7 +30,7 @@ export class Entity {
   #uuid: string;
 
   #props = new SignalsMap();
-  #context: Map<ContextNameType, IContext> = new Map();
+  #context: Map<ContextNameType, IContextItem> = new Map();
 
   #parentUuid?: string;
   #parent?: Entity;
@@ -126,7 +118,9 @@ export class Entity {
       ctx.unsubscribeFromPath();
       ctx.unsubscribeFromParent?.();
       ctx.ctxPath.dispose();
-      destroySignals(ctx.inherited, ctx.provide, ctx.context);
+      ctx.inherited.destroy();
+      ctx.provide.destroy();
+      ctx.context.destroy();
     }
 
     this.#parentUuid = undefined;
@@ -208,7 +202,7 @@ export class Entity {
     this.dispatchViewEvents([{type, data}]);
   }
 
-  #getPropSignal<T = unknown>(key: string): SignalObject<T> {
+  #getPropSignal<T = unknown>(key: string): Signal<T> {
     return this.#props.getSignal<T>(key);
   }
 
@@ -256,11 +250,11 @@ export class Entity {
 
   // TODO(test) write tests for provideContext()
 
-  provideContext<T = unknown>(name: ContextNameType): SignalObject<T> {
-    return this.#getContext(name).provide as SignalObject<T>;
+  provideContext<T = unknown>(name: ContextNameType): Signal<T> {
+    return this.#getContext(name).provide as Signal<T>;
   }
 
-  #getContext(name: ContextNameType): IContext {
+  #getContext(name: ContextNameType): IContextItem {
     let ctx = this.#context.get(name);
     if (ctx == null) {
       const inherited = createSignal();
@@ -270,7 +264,7 @@ export class Entity {
       const ctxPath = new SignalsPath();
       ctxPath.add(provide.get, inherited.get);
 
-      const unsubscribeFromPath = on(ctxPath, SignalsPath.Value, (val) => {
+      const unsubscribeFromPath = on(ctxPath, VALUE, (val) => {
         queueMicrotask(() => {
           context.set(val);
         });
@@ -284,10 +278,10 @@ export class Entity {
     return ctx;
   }
 
-  #subscribeToParentContext(ctx: IContext) {
+  #subscribeToParentContext(ctx: IContextItem) {
     if (this.parent) {
       ctx.unsubscribeFromParent?.();
-      ctx.unsubscribeFromParent = on(this.parent.#getContext(ctx.name).ctxPath, SignalsPath.Value, (val) => {
+      ctx.unsubscribeFromParent = on(this.parent.#getContext(ctx.name).ctxPath, VALUE, (val) => {
         ctx.inherited.set(val);
       });
     }

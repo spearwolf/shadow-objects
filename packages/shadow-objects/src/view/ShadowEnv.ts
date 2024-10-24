@@ -1,6 +1,6 @@
 import {Priority, emit, on, onceAsync, retain, retainClear} from '@spearwolf/eventize';
-import {createEffect, createSignal, type SignalReader} from '@spearwolf/signalize';
-import {signal, signalReader} from '@spearwolf/signalize/decorators';
+import {createEffect, createSignal, findObjectSignalByName} from '@spearwolf/signalize';
+import {signal} from '@spearwolf/signalize/decorators';
 import type {MessageToViewEvent} from '../shadow-objects.js';
 import type {ChangeTrailType, NamespaceType} from '../types.js';
 import {ComponentContext} from './ComponentContext.js';
@@ -31,10 +31,7 @@ export class ShadowEnv {
   readonly ns$ = createSignal<NamespaceType | undefined>();
 
   @signal() accessor viewReady = false;
-  @signalReader() accessor viewReady$: SignalReader<boolean>;
-
   @signal() accessor proxyReady = false;
-  @signalReader() accessor proxyReady$: SignalReader<boolean>;
 
   constructor() {
     retain(this, ShadowEnv.ContextCreated);
@@ -55,7 +52,7 @@ export class ShadowEnv {
           emit(this, ShadowEnv.ContextLost, this);
         };
       }
-    }, [this.viewReady$, this.proxyReady$]);
+    }, [findObjectSignalByName(this, 'viewReady'), findObjectSignalByName(this, 'proxyReady')]);
   }
 
   get view(): ComponentContext | undefined {
@@ -160,6 +157,8 @@ export class ShadowEnv {
         }
       }
     }
+
+    // XXX destroyObjectSignals(this) ?
   }
 
   #syncIfScheduled = () => {

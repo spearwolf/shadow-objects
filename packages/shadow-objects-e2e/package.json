@@ -15,15 +15,16 @@
     "clean": "pnpm exec rimraf build dist playwright-report test-results",
     "test:ui": "pnpm playwright test --ui",
     "show-report": "pnpm playwright show-report",
+    "update": "pnpm dlx npm-check --update",
     "test": "pnpm playwright test"
   },
   "dependencies": {
-    "@spearwolf/eventize": "^4.0.0",
+    "@spearwolf/eventize": "^4.0.1",
     "@spearwolf/shadow-objects": "workspace:*"
   },
   "devDependencies": {
-    "@playwright/test": "^1.45.0",
-    "typescript": "^5.5.2",
-    "vite": "^5.3.1"
+    "@playwright/test": "^1.48.1",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
   }
 }

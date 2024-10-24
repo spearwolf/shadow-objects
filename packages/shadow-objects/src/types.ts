@@ -1,5 +1,5 @@
 import type {EventizedObject} from '@spearwolf/eventize';
-import type {CompareFunc, SignalObject, SignalReader} from '@spearwolf/signalize';
+import type {CompareFunc, Signal, SignalReader} from '@spearwolf/signalize';
 import {AppliedChangeTrail, ImportedModule, type ComponentChangeType} from './constants.js';
 import type {Entity} from './entities/Entity.js';
 import type {Kernel} from './entities/Kernel.js';
@@ -89,7 +89,7 @@ export interface AppliedChangeTrailEvent {
 export interface ShadowObjectParams {
   entity: Entity;
 
-  provideContext<T = unknown>(name: string | symbol, initialValue?: T, isEqual?: CompareFunc<T>): SignalObject<T>;
+  provideContext<T = unknown>(name: string | symbol, initialValue?: T, isEqual?: CompareFunc<T>): Signal<T>;
   useContext<T = any>(name: string | symbol, isEqual?: CompareFunc<T>): SignalReader<T>;
   useProperty<T = any>(name: string, isEqual?: CompareFunc<T>): SignalReader<T>;
 

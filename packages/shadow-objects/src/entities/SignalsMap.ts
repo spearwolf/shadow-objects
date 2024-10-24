@@ -1,13 +1,15 @@
-import {SignalObject, createSignal, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
+import {Signal, createSignal, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
+
+// TODO replace SignalsMap with @spearwolf/signalize:SignalGroup
 
 export class SignalsMap {
-  #signals = new Map<string, SignalObject<any>>();
+  #signals = new Map<string, Signal<any>>();
 
   keys(): IterableIterator<string> {
     return this.#signals.keys();
   }
 
-  entries(): IterableIterator<[string, SignalObject<any>]> {
+  entries(): IterableIterator<[string, Signal<any>]> {
     return this.#signals.entries();
   }
 
@@ -22,7 +24,7 @@ export class SignalsMap {
     return this.#signals.has(key);
   }
 
-  getSignal<T = unknown>(key: string): SignalObject<T> {
+  getSignal<T = unknown>(key: string): Signal<T> {
     if (!this.#signals.has(key)) {
       const signal = createSignal<T>();
       this.#signals.set(key, signal);

@@ -27,6 +27,7 @@
     "src/shae-offscreen-canvas.js"
   ],
   "scripts": {
+    "update": "pnpm dlx npm-check --update",
     "dev": "vite",
     "test": "web-test-runner \"src/**/*.specs.js\" --node-resolve --port 8001",
     "watch": "web-test-runner \"src/**/*.specs.js\" --node-resolve --watch --port 8001",
@@ -40,14 +41,14 @@
     "@esm-bundle/chai": "4.3.4-fix.0",
     "@web/test-runner": "^0.18.2",
     "esbuild-plugin-inline-worker": "^0.1.1",
-    "lit-html": "^3.1.4",
+    "lit-html": "^3.2.1",
     "sinon": "^17.0.1",
-    "vite": "^5.3.1"
+    "vite": "^5.4.10"
   },
   "dependencies": {
-    "@spearwolf/eventize": "^4.0.0",
+    "@spearwolf/eventize": "^4.0.1",
     "@spearwolf/shadow-objects": "workspace:*",
-    "@spearwolf/signalize": "^0.15.0",
+    "@spearwolf/signalize": "^0.18.1",
     "three": "^0.165.0"
   }
 }
