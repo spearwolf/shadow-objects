@@ -1,5 +1,5 @@
-import {Priority, emit, on, onceAsync, retain, retainClear} from '@spearwolf/eventize';
-import {createEffect, createSignal, findObjectSignalByName} from '@spearwolf/signalize';
+import {Priority, emit, off, on, onceAsync, retain, retainClear} from '@spearwolf/eventize';
+import {createEffect, createSignal, destroyObjectSignals, findObjectSignalByName} from '@spearwolf/signalize';
 import {signal} from '@spearwolf/signalize/decorators';
 import type {MessageToViewEvent} from '../shadow-objects.js';
 import type {ChangeTrailType, NamespaceType} from '../types.js';
@@ -32,6 +32,12 @@ export class ShadowEnv {
 
   @signal() accessor viewReady = false;
   @signal() accessor proxyReady = false;
+
+  #isDestroyed = false;
+
+  get isDestroyed() {
+    return this.#isDestroyed;
+  }
 
   constructor() {
     retain(this, ShadowEnv.ContextCreated);
@@ -115,11 +121,11 @@ export class ShadowEnv {
   }
 
   get isReady(): boolean {
-    return Boolean(this.#comCtx && this.#shaObjEnvProxy && this.proxyReady);
+    return Boolean(this.#comCtx && this.#shaObjEnvProxy && this.proxyReady && !this.isDestroyed);
   }
 
-  readonly ready = (): Promise<ShadowEnv> => {
-    return this.isReady ? Promise.resolve(this) : onceAsync(this, ShadowEnv.ContextCreated);
+  readonly ready = async (): Promise<ShadowEnv> => {
+    return this.isReady ? this : onceAsync(this, ShadowEnv.ContextCreated);
   };
 
   sync(): void {
@@ -158,7 +164,11 @@ export class ShadowEnv {
       }
     }
 
-    // XXX destroyObjectSignals(this) ?
+    destroyObjectSignals(this);
+    off(this);
+
+    this.#isDestroyed = true;
+    Object.freeze(this);
   }
 
   #syncIfScheduled = () => {

@@ -28,7 +28,7 @@ export interface MessageToViewEvent {
   data?: unknown;
   transferables?: Transferable[];
   traverseChildren?: boolean;
-  // TODO @test if MessageToView#traverseChildren is implemented all the way down
+  // TODO(test) if MessageToView#traverseChildren is implemented all the way down
 }
 
 interface EntityEntry {
