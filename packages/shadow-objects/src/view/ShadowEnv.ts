@@ -3,6 +3,7 @@ import {createEffect, createSignal, destroyObjectSignals, findObjectSignalByName
 import {signal} from '@spearwolf/signalize/decorators';
 import type {MessageToViewEvent} from '../shadow-objects.js';
 import type {ChangeTrailType, NamespaceType} from '../types.js';
+import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {ComponentContext} from './ComponentContext.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
@@ -27,6 +28,8 @@ export class ShadowEnv {
   #syncAfterContextCreated = false;
   #syncWaitForConfirmation = false;
   #afterNextSync?: Promise<ChangeTrailType>;
+
+  readonly logger = new ConsoleLogger('ShadowEnv');
 
   readonly ns$ = createSignal<NamespaceType | undefined>();
 
@@ -76,11 +79,13 @@ export class ShadowEnv {
       if (this.#comCtx && this.#comCtx.ns) {
         globalThis.__shadowEnvs ??= new Map();
         if (globalThis.__shadowEnvs.has(this.#comCtx.ns) && globalThis.__shadowEnvs.get(this.#comCtx.ns) !== this) {
-          console.warn(
-            'ShadowEnv: overwrite a namespace already in use',
-            this.#comCtx.ns,
-            globalThis.__shadowEnvs.get(this.#comCtx.ns),
-          );
+          if (this.logger.isWarn) {
+            this.logger.warn(
+              'overwrite a namespace already in use',
+              this.#comCtx.ns,
+              globalThis.__shadowEnvs.get(this.#comCtx.ns),
+            );
+          }
         }
         globalThis.__shadowEnvs.set(this.#comCtx.ns, this);
       }
@@ -114,7 +119,7 @@ export class ShadowEnv {
           this.proxyReady = true;
         })
         .catch((error) => {
-          console.error('ShadowEnv: failed to start envProxy', error);
+          this.logger.error('failed to start envProxy', error);
           this.proxyReady = false;
         });
     }
@@ -187,7 +192,7 @@ export class ShadowEnv {
           this.#syncWaitForConfirmation = false;
           await this.envProxy!.applyChangeTrail(data, waitForConfirmation);
         } catch (error) {
-          console.error('ShadowEnv: failed to apply change trail', error);
+          this.logger.error('failed to apply change trail', error);
         } finally {
           emit(this, ShadowEnv.AfterSync, data);
         }
@@ -196,7 +201,9 @@ export class ShadowEnv {
   }
 
   #onMessageToView(event: Omit<MessageToViewEvent, 'transferables'>) {
-    console.debug('ShadowEnv: onMessageToView', event.type, event.data);
+    if (this.logger.isDebug) {
+      this.logger.debug('onMessageToView', event.type, event.data);
+    }
     this.view?.dispatchMessage(event.uuid, event.type, event.data, event.traverseChildren);
   }
 }

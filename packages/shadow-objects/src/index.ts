@@ -8,6 +8,7 @@ export * from './entities/events.js';
 export * from './entities/Kernel.js';
 export * from './entities/Registry.js';
 export * from './entities/ShadowObject.js';
+export * from './utils/ConsoleLogger.js';
 export * from './utils/toNamespace.js';
 export * from './view/ComponentContext.js';
 export * from './view/ComponentMemory.js';

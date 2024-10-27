@@ -18,6 +18,7 @@ import type {
   ShadowObjectType,
   SyncEvent,
 } from '../types.js';
+import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {Entity} from './Entity.js';
 import {Registry} from './Registry.js';
 import {onCreate, onDestroy, type OnCreate, type OnDestroy} from './events.js';
@@ -61,6 +62,8 @@ const getDisplayName = (constructor: ShadowObjectConstructor) => constructor.dis
  */
 export class Kernel {
   registry: Registry;
+
+  readonly logger = new ConsoleLogger('Kernel');
 
   #entities: Map<string, EntityEntry> = new Map();
   #rootEntities: Set<string> = new Set();
@@ -383,10 +386,14 @@ export class Kernel {
       } as ShadowObjectParams),
     );
 
-    console.debug('[Kernel] create shadow-object', getDisplayName(constructor), {shadowObject, entity: entry.entity});
+    if (this.logger.isInfo) {
+      this.logger.info('create shadow-object', getDisplayName(constructor), {shadowObject, entity: entry.entity});
+    }
 
     once(shadowObject, onDestroy, () => {
-      console.debug('[Kernel] destroy shadow-object', getDisplayName(constructor), {shadowObject, entity: entry.entity});
+      if (this.logger.isInfo) {
+        this.logger.info('destroy shadow-object', getDisplayName(constructor), {shadowObject, entity: entry.entity});
+      }
 
       for (const callback of unsubscribePrimary) {
         callback();

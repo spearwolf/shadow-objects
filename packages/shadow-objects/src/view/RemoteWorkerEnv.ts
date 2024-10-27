@@ -15,6 +15,7 @@ import {
 } from '../constants.js';
 import createWorker from '../create-worker.js';
 import type {AppliedChangeTrailEvent, ChangeTrailType, ImportedModuleEvent, TransferablesType} from '../types.js';
+import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {toUrlString} from '../utils/toUrlString.js';
 import {waitForMessageOfType} from '../utils/waitForMessageOfType.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
@@ -45,6 +46,8 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   #isDestroyed = false;
   #changeTrailSerial = 0;
 
+  readonly logger = new ConsoleLogger('RemoteWorkerEnv');
+
   get isDestroyed(): boolean {
     return this.#isDestroyed;
   }
@@ -59,11 +62,13 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
 
   async start(): Promise<void> {
     if (this.#worker) {
-      console.warn('RemoteWorkerEnv: already started');
+      if (this.logger.isWarn) {
+        this.logger.warn('already started');
+      }
 
       return this.workerLoaded.then(() => {
         if (this.isDestroyed) {
-          throw 'RemoteWorkerEnv: worker was destroyed';
+          throw 'worker was destroyed';
         }
         return undefined;
       });
@@ -75,7 +80,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
       await waitForMessageOfType(worker, Loaded, WorkerLoadTimeout);
 
       if (this.isDestroyed) {
-        throw 'RemoteWorkerEnv: worker was destroyed';
+        throw 'worker was destroyed';
       }
 
       worker.addEventListener('message', this.onMessageFromWorker.bind(this));
@@ -84,7 +89,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
         emit(this, RemoteWorkerEnv.WorkerLoaded, this);
       });
     } catch (error) {
-      console.error('RemoteWorkerEnv: failed to start', error);
+      this.logger.error('failed to start', error);
       this.#worker = undefined;
       throw error;
     }
@@ -93,8 +98,8 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   onMessageFromWorker(event: MessageEvent) {
     if (event.data?.type === MessageToView) {
       (this as IShadowObjectEnvProxy).onMessageToView?.(event.data.data);
-    } else {
-      console.debug('RemoteWorkerEnv: message from worker', event);
+    } else if (this.logger.isDebug) {
+      this.logger.debug('message from worker', event);
     }
   }
 

@@ -1,5 +1,6 @@
 import {batch, createEffect, createSignal, link} from '@spearwolf/signalize';
 import {readBooleanAttribute} from '../utils/attr-utils.js';
+import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {TRUTHY_VALUES} from '../utils/constants.js';
 import type {ViewComponent} from '../view/ViewComponent.js';
 import {ATTR_NAME, ATTR_NO_TRIM, ATTR_TYPE, ATTR_VALUE} from './constants.js';
@@ -75,6 +76,8 @@ export class ShaePropElement extends HTMLElement {
   protected readonly type$ = createSignal<string | undefined>();
   protected readonly shouldTrim$ = createSignal(true);
 
+  protected readonly logger = new ConsoleLogger('ShaePropElement');
+
   get name(): string | undefined {
     return this.name$.value;
   }
@@ -137,10 +140,12 @@ export class ShaePropElement extends HTMLElement {
         if (name) {
           const value = this.valueOut$.get();
 
-          // console.log(`[shae-prop:"${this.name}"] view-component set-property`, name, value, vc.uuid, {
-          //   viewComponent: vc,
-          //   shaeProp: this,
-          // });
+          if (this.logger.isDebug) {
+            this.logger.debug(`[${this.name}] view-component set-property`, name, value, vc.uuid, {
+              viewComponent: vc,
+              shaeProp: this,
+            });
+          }
 
           vc.setProperty(name, value);
 
@@ -293,10 +298,12 @@ export class ShaePropElement extends HTMLElement {
             break;
 
           default:
-            console.warn(`[shae-prop:"${this.name}"] unknown type "${type}"`, {
-              value,
-              shaeProp: this,
-            });
+            if (this.logger.isWarn) {
+              this.logger.warn(`[${this.name}] unknown type "${type}"`, {
+                value,
+                shaeProp: this,
+              });
+            }
         }
       }
 
@@ -368,9 +375,11 @@ export class ShaePropElement extends HTMLElement {
   #readTypeAttribute = () => {
     let type = this.getAttribute(ATTR_TYPE)?.trim().toLowerCase();
     if (type && !TYPES.has(type)) {
-      console.warn(`[shae-prop:"${this.name}"] unknown type "${type}"`, {
-        shaeProp: this,
-      });
+      if (this.logger.isWarn) {
+        this.logger.warn(`[${this.name}] unknown type "${type}"`, {
+          shaeProp: this,
+        });
+      }
       type = undefined;
     }
     this.type$.set(type);

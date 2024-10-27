@@ -1,5 +1,5 @@
 import {on} from '@spearwolf/eventize';
-import {ContextLost} from '@spearwolf/shadow-objects';
+import {ConsoleLogger, ContextLost} from '@spearwolf/shadow-objects';
 import {createEffect} from '@spearwolf/signalize';
 import {
   CanvasHeight,
@@ -49,6 +49,8 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
   #frameLoop = new FrameLoop();
   #offscreenTransferred = false;
 
+  logger = new ConsoleLogger('ShaeOffscreenCanvasElement');
+
   constructor(initialHTML = InitialHTML) {
     super();
 
@@ -70,7 +72,9 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
       const vc = this.shadowEntity.viewComponent$.get();
       if (vc) {
         return on(vc, ContextLost, () => {
-          console.warn('[ShaeOffscreenCanvasElement] context lost', this);
+          if (this.logger.isWarn) {
+            this.logger.warn('ContextLost', this);
+          }
           this.#reCreateCanvas();
           this.#transferCanvasToShadows();
         });
@@ -113,7 +117,9 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
       this.#lastPixelRatio = pixelRatio / pixelZoom;
 
       if (pixelZoom !== this.#lastPixelZoom) {
-        console.log('[ShaeOffscreenCanvasElement] pixelZoom changed to', pixelZoom);
+        if (this.logger.isInfo) {
+          this.logger.info('pixelZoom changed to', pixelZoom);
+        }
 
         this.#lastPixelZoom = pixelZoom;
 
