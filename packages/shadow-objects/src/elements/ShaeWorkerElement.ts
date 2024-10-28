@@ -1,5 +1,5 @@
 import {on} from '@spearwolf/eventize';
-import {batch, createEffect, createSignal, Effect} from '@spearwolf/signalize';
+import {batch, createEffect, createSignal, destroySignal, Effect} from '@spearwolf/signalize';
 import {readBooleanAttribute} from '../utils/attr-utils.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {FrameLoop} from '../utils/FrameLoop.js';
@@ -25,12 +25,14 @@ export class ShaeWorkerElement extends ShaeElement {
 
   isConnected$ = createSignal(false);
   autoSync$ = createSignal(ShaeWorkerElement.DefaultAutoSync);
+  src$ = createSignal('');
 
   #shouldDestroy = false;
   #started = false;
 
   #frameLoop?: FrameLoop;
   #autoSync?: Effect;
+  #importScript?: Effect;
 
   constructor() {
     super();
@@ -40,6 +42,7 @@ export class ShaeWorkerElement extends ShaeElement {
     });
 
     on(this.shadowEnv, ShadowEnv.ContextCreated, () => {
+      this.#importScript?.run();
       this.dispatchEvent(
         new CustomEvent(ShadowEnv.ContextCreated.toLowerCase(), {
           bubbles: false,
@@ -73,6 +76,19 @@ export class ShaeWorkerElement extends ShaeElement {
     // XXX we don't expose ShadowEnv.AfterSync here, because the frequency of this event is too high
 
     this.#createAutoSyncEffect();
+    this.#createImportScriptEffect();
+  }
+
+  #createImportScriptEffect() {
+    this.#importScript = createEffect(
+      () => {
+        const src = this.src$.get();
+        if (src) {
+          this.importScript(src);
+        }
+      },
+      {autorun: false},
+    );
   }
 
   get shouldAutostart(): boolean {
@@ -110,7 +126,7 @@ export class ShaeWorkerElement extends ShaeElement {
     }
     const shadowEnv = await this.shadowEnv.ready();
     if (this.logger.isInfo) {
-      this.logger.info('shadowEnv', shadowEnv);
+      this.logger.info('shadowEnv importScript:', src, {shadowEnv});
     }
     await shadowEnv.envProxy.importScript(src);
     return this;
@@ -155,7 +171,12 @@ export class ShaeWorkerElement extends ShaeElement {
     }
 
     if (name === ATTR_SRC) {
-      this.importScript(this.getAttribute(ATTR_SRC));
+      // this.importScript(this.getAttribute(ATTR_SRC));
+      const src = (this.getAttribute(ATTR_SRC) || '').trim();
+      this.src$.set(src);
+      if (this.shadowEnv.isReady) {
+        this.#importScript?.run();
+      }
     }
   }
 
@@ -178,9 +199,11 @@ export class ShaeWorkerElement extends ShaeElement {
   }
 
   destroy() {
-    this.shadowEnv.envProxy = undefined;
     this.#autoSync?.destroy();
-    // TODO shadowEnv destroy ?
+    this.#importScript?.destroy();
+    destroySignal(this.isConnected$, this.autoSync$, this.src$);
+    this.shadowEnv.envProxy = undefined;
+    this.shadowEnv.destroy();
   }
 
   // TODO(test) add tests for defer destroy
