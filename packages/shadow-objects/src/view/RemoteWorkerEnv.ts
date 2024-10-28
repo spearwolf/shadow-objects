@@ -15,7 +15,7 @@ import {
 } from '../constants.js';
 import createWorker from '../create-worker.js';
 import type {AppliedChangeTrailEvent, ChangeTrailType, ImportedModuleEvent, TransferablesType} from '../types.js';
-import {ConsoleLogger} from '../utils/ConsoleLogger.js';
+import {CONSOLE_LOGGER, ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {toUrlString} from '../utils/toUrlString.js';
 import {waitForMessageOfType} from '../utils/waitForMessageOfType.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
@@ -75,6 +75,8 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     }
 
     const worker = (this.#worker = createWorker());
+
+    this.configureConsoleLogger(worker);
 
     try {
       await waitForMessageOfType(worker, Loaded, WorkerLoadTimeout);
@@ -145,6 +147,25 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
 
     waitForMessageOfType(worker, Destroyed, WorkerDestroyTimeout).finally(() => {
       worker.terminate();
+    });
+  }
+
+  private configureConsoleLogger(worker: Worker) {
+    const workerConfigKey = `${CONSOLE_LOGGER}.RemoteWorkerEnv.workerConfig`;
+    const workerConfig = JSON.parse(localStorage.getItem(workerConfigKey) ?? '{}');
+
+    if (this.logger.isInfo) {
+      this.logger.info('load console-logger worker config', {localStorageKey: workerConfigKey, workerConfig});
+    }
+
+    worker.postMessage({
+      type: CONSOLE_LOGGER,
+      config: {
+        ...ConsoleLogger.sharedConfig,
+        enable: this.logger.isEnabled,
+        ...workerConfig,
+        ...(ConsoleLogger.isEnabled ? {} : {enable: false}),
+      },
     });
   }
 }

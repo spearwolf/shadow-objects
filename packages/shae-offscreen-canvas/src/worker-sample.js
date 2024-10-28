@@ -19,6 +19,6 @@ export const shadowObjects = {
   },
 
   initialize(...args) {
-    console.log('moin moin @spearwolf/shae-offscreen-canvas/worker-sample.js', import.meta.url, {args});
+    console.debug('moin moin @spearwolf/shae-offscreen-canvas/worker-sample.js', import.meta.url, {args});
   },
 };

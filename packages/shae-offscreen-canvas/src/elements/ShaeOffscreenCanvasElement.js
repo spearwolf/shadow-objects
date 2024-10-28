@@ -1,5 +1,6 @@
 import {on} from '@spearwolf/eventize';
-import {ConsoleLogger, ContextLost} from '@spearwolf/shadow-objects';
+import {ContextLost} from '@spearwolf/shadow-objects';
+import {ConsoleLogger} from '@spearwolf/shadow-objects/ConsoleLogger.js';
 import {createEffect} from '@spearwolf/signalize';
 import {
   CanvasHeight,

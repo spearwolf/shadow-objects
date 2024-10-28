@@ -1,11 +1,18 @@
 import {Loaded} from '../constants.js';
+import {CONSOLE_LOGGER, CONSOLE_LOGGER_STORAGE} from '../utils/ConsoleLogger.js';
 import {MessageRouter} from './MessageRouter.js';
 
 export class WorkerRuntime {
-  router = new MessageRouter();
+  router?: MessageRouter;
 
   onmessage = (event: MessageEvent): void => {
-    this.router.route(event);
+    if (event.data.type === CONSOLE_LOGGER) {
+      // @ts-ignore
+      globalThis[CONSOLE_LOGGER_STORAGE] = event.data.config;
+    } else {
+      this.router ??= new MessageRouter();
+      this.router.route(event);
+    }
   };
 
   start() {

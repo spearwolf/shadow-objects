@@ -18,7 +18,7 @@ export function CubeScene({useContext, createEffect}) {
       view.camera = new PerspectiveCamera(70, view.width / view.height, 0.1, 100);
       view.camera.position.z = 2;
 
-      console.log('[CubeScene] setup renderView', view);
+      console.debug('CubeScene: setup renderView', view);
     }
   });
 
@@ -35,7 +35,7 @@ export function CubeScene({useContext, createEffect}) {
     },
 
     onDestroy() {
-      console.log('[CubeScene] destroy', this);
+      console.debug('CubeScene: destroy', this);
     },
   };
 }

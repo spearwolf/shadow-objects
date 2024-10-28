@@ -5,6 +5,7 @@
     "src/index.js",
     "src/view/ComponentContext.js",
     "src/view/ShadowEnv.js",
+    "src/utils/ConsoleLogger.js",
     "src/shae-ent.js",
     "src/shae-prop.js",
     "src/shae-worker.js"

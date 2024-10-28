@@ -7,10 +7,10 @@ export function TestImageOnCanvas2D({entity, useContext, onDestroy}) {
   const fillStyle0 = `rgb(${r} ${g} ${b})`;
   const fillStyle1 = `rgb(${255 - r} ${255 - g} ${255 - b})`;
 
-  console.log(`[TestImageOnCanvas2D] ${entity.uuid} Ready.`);
+  console.debug(`TestImageOnCanvas2D: ${entity.uuid} Ready.`);
 
   onDestroy(() => {
-    console.log(`[TestImageOnCanvas2D] ${entity.uuid} Thank you for the fish.`);
+    console.debug(`TestImageOnCanvas2D: ${entity.uuid} Thank you for the fish.`);
   });
 
   return {

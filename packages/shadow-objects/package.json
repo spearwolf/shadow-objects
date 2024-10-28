@@ -39,11 +39,16 @@
     "./shae-worker.js": {
       "import": "./dist/src/shae-worker.js",
       "types": "./dist/src/shae-worker.d.ts"
+    },
+    "./ConsoleLogger.js": {
+      "import": "./dist/src/utils/ConsoleLogger.js",
+      "types": "./dist/src/utils/ConsoleLogger.d.ts"
     }
   },
   "sideEffects": [
     "build/src/view/ComponentContext.js",
     "build/src/view/ShadowEnv.js",
+    "build/src/utils/ConsoleLogger.js",
     "build/src/shae-ent.js",
     "build/src/shae-prop.js",
     "build/src/shae-worker.js",
@@ -51,6 +56,7 @@
     "build/src/index.js",
     "dist/src/view/ComponentContext.js",
     "dist/src/view/ShadowEnv.js",
+    "dist/src/utils/ConsoleLogger.js",
     "dist/src/shae-ent.js",
     "dist/src/shae-prop.js",
     "dist/src/shae-worker.js",

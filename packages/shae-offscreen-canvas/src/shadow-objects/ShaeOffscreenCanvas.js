@@ -1,3 +1,4 @@
+import {ConsoleLogger} from '@spearwolf/shadow-objects/ConsoleLogger.js';
 import {
   CanvasContext,
   CanvasHeight,
@@ -25,6 +26,8 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
 
   now = 0;
   frameNo = 0;
+
+  logger = new ConsoleLogger('ShaeOffscreenCanvas');
 
   get canRender() {
     return this.isRunning && this.canvas != null && this.canvas.width > 0 && this.canvas.height > 0;
@@ -100,7 +103,9 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
   requestOffscreenCanvas() {
     if (!this.canvasRequested) {
       this.canvasRequested = true;
-      console.debug('[ShaeOffscreenCanvas] request offscreen-canvas', this);
+      if (this.logger.isDebug) {
+        this.logger.debug('request offscreen-canvas', this);
+      }
       this.entity.dispatchMessageToView(RequestOffscreenCanvas);
     }
   }
@@ -108,13 +113,17 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
   onViewEvent(type, data) {
     switch (type) {
       case OffscreenCanvas:
-        console.debug('[ShaeOffscreenCanvas] received offscreen-canvas', this);
+        if (this.logger.isDebug) {
+          this.logger.debug('received offscreen-canvas', this);
+        }
         this.canvasRequested = false;
         this.canvas = data.canvas;
         break;
 
       default:
-        console.debug(`[ShaeOffscreenCanvas] unhandled view event, type=`, type, 'data=', data, 'self=', this);
+        if (this.logger.isWarn) {
+          this.logger.warn('unhandled view event, type=', type, 'data=', data, 'self=', this);
+        }
     }
   }
 
