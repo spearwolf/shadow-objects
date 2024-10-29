@@ -27,7 +27,7 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
   now = 0;
   frameNo = 0;
 
-  logger = new ConsoleLogger('ShaeOffscreenCanvas');
+  logger = new ConsoleLogger(ShaeOffscreenCanvas.displayName);
 
   get canRender() {
     return this.isRunning && this.canvas != null && this.canvas.width > 0 && this.canvas.height > 0;
@@ -132,6 +132,8 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
 
     this.now = now / 1000;
     this.frameNo++;
+
+    // TODO(feat) limit OnFrame events to fixed fps, e.g. 60fps
 
     this.traverseEmit(OnFrame, {canvas: this.canvas, now: this.now, frameNo: this.frameNo});
   }

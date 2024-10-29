@@ -73,7 +73,7 @@ export class ShaeWorkerElement extends ShaeElement {
       }
     });
 
-    // XXX we don't expose ShadowEnv.AfterSync here, because the frequency of this event is too high
+    // XXX we don't wanna expose ShadowEnv.AfterSync, because the frequency of this event is way too high
 
     this.#createAutoSyncEffect();
     this.#createImportScriptEffect();
@@ -171,7 +171,6 @@ export class ShaeWorkerElement extends ShaeElement {
     }
 
     if (name === ATTR_SRC) {
-      // this.importScript(this.getAttribute(ATTR_SRC));
       const src = (this.getAttribute(ATTR_SRC) || '').trim();
       this.src$.set(src);
       if (this.shadowEnv.isReady) {
@@ -243,8 +242,8 @@ export class ShaeWorkerElement extends ShaeElement {
           delay = parseInt(autoSync, 10);
           if (isNaN(delay)) {
             delay = undefined;
-            if (!['false', 'no', 'off'].includes(autoSync) && this.logger.isWarn) {
-              this.logger.warn(`invalid auto-sync value: ${autoSync}`);
+            if (!['false', 'no', 'off'].includes(autoSync)) {
+              this.logger.error(`invalid auto-sync value: ${autoSync}`);
             }
           }
         }
