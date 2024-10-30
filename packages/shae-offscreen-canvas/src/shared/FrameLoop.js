@@ -29,9 +29,6 @@ class RAF {
   constructor() {
     eventize(this);
     this.start();
-    //setInterval(() => {
-    //  console.debug('measured fps', this.measuredFps);
-    //}, 10000);
   }
 
   #onFrame = (now) => {
@@ -76,23 +73,61 @@ class RAF {
 export class FrameLoop {
   static OnFrame = OnFrame;
 
-  constructor() {
-    eventize(this);
+  #maxFps = 0;
+  #subscribers = new Set();
+  #lastFrame = undefined;
+
+  get subscriptionCount() {
+    return this.#subscribers.size;
   }
 
-  // TODO(feat) FrameLoop#setFps(fps: number)
+  constructor(maxFps = 0) {
+    eventize(this);
+    this.setFps(maxFps);
+  }
+
+  setFps(maxFps) {
+    this.#maxFps = Number.isFinite(maxFps) ? Math.abs(maxFps) : 0;
+  }
 
   start(target) {
     if (target == null) return;
+    if (this.#subscribers.has(target)) return;
 
-    on(RAF.get(), FrameLoop.OnFrame, target);
+    this.#subscribers.add(target);
+
+    if (this.subscriptionCount === 1) {
+      on(RAF.get(), OnFrame, this);
+    }
+
+    on(this, FrameLoop.OnFrame, target);
 
     return () => {
       this.stop(target);
     };
   }
 
+  [OnFrame](now, frameNo, measuredFps) {
+    if (this.#maxFps === 0 || this.#lastFrame == null || now - this.#lastFrame >= 0.95 * (1000 / this.#maxFps)) {
+      this.#lastFrame = now;
+      emit(this, FrameLoop.OnFrame, now, frameNo, measuredFps);
+    }
+  }
+
   stop(target) {
-    off(RAF.get(), FrameLoop.OnFrame, target);
+    if (target == null) return;
+    if (this.#subscribers.has(target)) {
+      off(RAF.get(), FrameLoop.OnFrame, target);
+      this.#subscribers.delete(target);
+      if (this.subscriptionCount === 0) {
+        off(RAF.get(), OnFrame, this);
+      }
+    }
+  }
+
+  clear() {
+    for (const target of Array.from(this.#subscribers)) {
+      this.stop(target);
+    }
   }
 }

@@ -4,6 +4,7 @@ import {
   CanvasHeight,
   CanvasSizeContext,
   CanvasWidth,
+  Fps,
   OffscreenCanvas,
   OffscreenCanvasContext,
   OnFrame,
@@ -19,7 +20,7 @@ const vec3equals = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
 export class ShaeOffscreenCanvas extends ShadowObjectBase {
   static displayName = 'ShaeOffscreenCanvas';
 
-  #frameLoop = new FrameLoop();
+  #frameLoop = new FrameLoop(90);
 
   canvasRequested = false;
   isRunning = false;
@@ -28,6 +29,9 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
   frameNo = 0;
 
   logger = new ConsoleLogger(ShaeOffscreenCanvas.displayName);
+
+  fpsCounter = 0;
+  fpsCounterTime = undefined;
 
   get canRender() {
     return this.isRunning && this.canvas != null && this.canvas.width > 0 && this.canvas.height > 0;
@@ -52,6 +56,11 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
     const getCanvasWidth = useProperty(CanvasWidth);
     const getCanvasHeight = useProperty(CanvasHeight);
     const getPixelRatio = useProperty(PixelRatio);
+    const getFps = useProperty(Fps);
+
+    createEffect(() => {
+      this.#frameLoop.setFps(getFps() ?? 60);
+    });
 
     createEffect(() => {
       const canvas = canvas$.get();
@@ -128,6 +137,16 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
   }
 
   [FrameLoop.OnFrame](now) {
+    this.fpsCounter++;
+    this.fpsCounterTime ??= now;
+    if (now - this.fpsCounterTime >= 1000) {
+      this.fpsCounterTime = now;
+      if (this.logger.isDebug) {
+        this.logger.debug('fpsCounter=', this.fpsCounter);
+      }
+      this.fpsCounter = 0;
+    }
+
     if (!this.canRender) return;
 
     this.now = now / 1000;

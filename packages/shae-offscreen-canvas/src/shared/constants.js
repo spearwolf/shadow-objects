@@ -6,6 +6,7 @@
 export const CanvasWidth = 'canvasWidth';
 export const CanvasHeight = 'canvasHeight';
 export const PixelRatio = 'pixelRatio';
+export const Fps = 'fps';
 export const RunFrameLoop = 'runFrameLoop';
 
 // provide context

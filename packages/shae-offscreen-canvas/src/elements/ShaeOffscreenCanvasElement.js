@@ -5,6 +5,7 @@ import {createEffect} from '@spearwolf/signalize';
 import {
   CanvasHeight,
   CanvasWidth,
+  Fps,
   OffscreenCanvas,
   PixelRatio,
   RequestOffscreenCanvas,
@@ -14,6 +15,8 @@ import {FrameLoop} from '../shared/FrameLoop.js';
 
 const DISPLAY_ID = 'display';
 const ENTITY_ID = 'entity';
+
+const DEFAULT_FPS = 60;
 
 const InitialHTML = `
   <style>
@@ -45,6 +48,7 @@ const InitialHTML = `
 `;
 
 const ATTR_PIXEL_ZOOM = 'pixel-zoom';
+const ATTR_FPS = 'fps';
 
 export class ShaeOffscreenCanvasElement extends HTMLElement {
   #frameLoop = new FrameLoop();
@@ -101,21 +105,31 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
   #lastCanvasHeight = 0;
   #lastPixelRatio = 0;
   #lastPixelZoom = 1;
+  #lastFps = 0;
 
   [FrameLoop.OnFrame]() {
     const clientRect = this.canvas.getBoundingClientRect();
     const pixelRatio = window.devicePixelRatio ?? 1;
     const pixelZoom = this.#getPixelZoom();
+    const fps = this.#getFps();
 
     if (
       this.#lastCanvasWidth !== clientRect.width ||
       this.#lastCanvasHeight !== clientRect.height ||
       this.#lastPixelRatio !== pixelRatio ||
-      this.#lastPixelZoom !== pixelZoom
+      this.#lastPixelZoom !== pixelZoom ||
+      this.#lastFps !== fps
     ) {
       this.#lastCanvasWidth = clientRect.width;
       this.#lastCanvasHeight = clientRect.height;
       this.#lastPixelRatio = pixelRatio / pixelZoom;
+
+      if (fps !== this.#lastFps) {
+        if (this.logger.isInfo) {
+          this.logger.info('fps changed to', fps);
+        }
+        this.#lastFps = fps;
+      }
 
       if (pixelZoom !== this.#lastPixelZoom) {
         if (this.logger.isInfo) {
@@ -131,6 +145,7 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
         this.viewComponent.setProperty(CanvasWidth, this.#lastCanvasWidth);
         this.viewComponent.setProperty(CanvasHeight, this.#lastCanvasHeight);
         this.viewComponent.setProperty(PixelRatio, this.#lastPixelRatio);
+        this.viewComponent.setProperty(Fps, this.#lastFps);
         this.shadowEntity.syncShadowObjects();
       }
     }
@@ -154,6 +169,17 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
     let val = parseInt(this.getAttribute(ATTR_PIXEL_ZOOM), 10);
     if (isNaN(val) || val < 1) {
       val = 1;
+    }
+    return val;
+  }
+
+  #getFps() {
+    if (!this.hasAttribute(ATTR_FPS)) {
+      return DEFAULT_FPS;
+    }
+    let val = parseInt(this.getAttribute(ATTR_FPS), 10);
+    if (isNaN(val) || val < 1) {
+      val = 0;
     }
     return val;
   }
