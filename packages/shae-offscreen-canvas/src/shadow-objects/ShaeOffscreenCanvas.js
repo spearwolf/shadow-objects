@@ -142,7 +142,7 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
     if (now - this.fpsCounterTime >= 1000) {
       this.fpsCounterTime = now;
       if (this.logger.isDebug) {
-        this.logger.debug('fpsCounter=', this.fpsCounter);
+        this.logger.debug('fpsCounter=', this.fpsCounter, 'measuredFps=', this.#frameLoop.measuredFps);
       }
       this.fpsCounter = 0;
     }
@@ -151,8 +151,6 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
 
     this.now = now / 1000;
     this.frameNo++;
-
-    // TODO(feat) limit OnFrame events to fixed fps, e.g. 60fps
 
     this.traverseEmit(OnFrame, {canvas: this.canvas, now: this.now, frameNo: this.frameNo});
   }

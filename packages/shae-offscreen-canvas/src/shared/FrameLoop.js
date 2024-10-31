@@ -77,6 +77,11 @@ export class FrameLoop {
   #subscribers = new Set();
   #lastFrame = undefined;
 
+  frameNo = 0;
+  now = 0;
+  deltaTime = 0;
+  measuredFps = 0;
+
   get subscriptionCount() {
     return this.#subscribers.size;
   }
@@ -107,10 +112,16 @@ export class FrameLoop {
     };
   }
 
+  // called by RAF
   [OnFrame](now, frameNo, measuredFps) {
     if (this.#maxFps === 0 || this.#lastFrame == null || now - this.#lastFrame >= 0.95 * (1000 / this.#maxFps)) {
+      this.now = now;
+      ++this.frameNo;
+      this.measuredFps = measuredFps;
+      this.deltaTime = this.frameNo === 1 ? 0 : now - this.#lastFrame;
       this.#lastFrame = now;
-      emit(this, FrameLoop.OnFrame, now, frameNo, measuredFps);
+      // call FrameLoop subscribers
+      emit(this, FrameLoop.OnFrame, now, this.frameNo, this.deltaTime, this.measuredFps);
     }
   }
 
