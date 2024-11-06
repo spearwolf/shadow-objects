@@ -1,9 +1,9 @@
 # shadow-objects
 
-*the slightly different component framework*
+A view-decoupled component framework for games and other complex in-browser applications.
 
-> A highly experimental component framework that is slowly maturing and getting its own mono repo as a new home.
-
+> [!WARNING]
+> A highly experimental component framework that is slowly maturing.
 ## Introduction 👀
 
 The components are generated within the main document of the browser.
