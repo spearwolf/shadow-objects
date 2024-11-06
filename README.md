@@ -1,9 +1,12 @@
 # shadow-objects
 
+![shadow-objects hero](./20241106-shadow-objects-hero.webp)
+
 A view-decoupled component framework for games and other complex in-browser applications.
 
 > [!WARNING]
 > A highly experimental component framework that is slowly maturing.
+
 ## Introduction 👀
 
 The components are generated within the main document of the browser.
