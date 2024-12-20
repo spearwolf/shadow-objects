@@ -66,7 +66,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
         this.logger.warn('already started');
       }
 
-      return this.workerLoaded.then(() => {
+      return this.workerLoaded.then((): void => {
         if (this.isDestroyed) {
           throw 'worker was destroyed';
         }
