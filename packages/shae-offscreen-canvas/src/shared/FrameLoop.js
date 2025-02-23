@@ -2,7 +2,7 @@ import {emit, eventize, off, on} from '@spearwolf/eventize';
 
 const OnFrame = Symbol.for('onFrame');
 
-const MEASURE_FPS_AFTER_NTH_FRAME = 25;
+const MEASURE_FPS_AFTER_NTH_FRAME = 30;
 const MEASURE_COLLECTION_SIZE = 10;
 
 class RAF {
@@ -114,7 +114,7 @@ export class FrameLoop {
 
   // called by RAF
   [OnFrame](now, frameNo, measuredFps) {
-    if (this.#maxFps === 0 || this.#lastFrame == null || now - this.#lastFrame >= 0.95 * (1000 / this.#maxFps)) {
+    if (this.#maxFps === 0 || this.#lastFrame == null || now - this.#lastFrame >= 0.98 * (1000 / this.#maxFps)) {
       this.now = now;
       ++this.frameNo;
       this.measuredFps = measuredFps;

@@ -17,6 +17,8 @@ import {ShadowObjectBase} from './ShadowObjectBase.js';
 
 const vec3equals = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
 
+const SHOW_FPS_COUNTER_INTERVAL_SECONDS = 5;
+
 export class ShaeOffscreenCanvas extends ShadowObjectBase {
   static displayName = 'ShaeOffscreenCanvas';
 
@@ -26,6 +28,8 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
   isRunning = false;
 
   now = 0;
+  lastNow = 0;
+  deltaTime = 0;
   frameNo = 0;
 
   logger = new ConsoleLogger(ShaeOffscreenCanvas.displayName);
@@ -137,21 +141,34 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
   }
 
   [FrameLoop.OnFrame](now) {
+    this.now = now / 1000;
+    this.deltaTime = this.now - this.lastNow;
+    this.lastNow = this.now;
+
+    if (!this.canRender) return;
+
+    this.frameNo++;
+
     this.fpsCounter++;
     this.fpsCounterTime ??= now;
-    if (now - this.fpsCounterTime >= 1000) {
+    if (now - this.fpsCounterTime >= 1000 * SHOW_FPS_COUNTER_INTERVAL_SECONDS) {
       this.fpsCounterTime = now;
-      if (this.logger.isDebug) {
-        this.logger.debug('fpsCounter=', this.fpsCounter, 'measuredFps=', this.#frameLoop.measuredFps);
+      if (this.logger.isInfo) {
+        this.logger.info(
+          'fpsCounter=',
+          Math.round(this.fpsCounter / SHOW_FPS_COUNTER_INTERVAL_SECONDS),
+          'measuredFps=',
+          this.#frameLoop.measuredFps,
+        );
       }
       this.fpsCounter = 0;
     }
 
-    if (!this.canRender) return;
-
-    this.now = now / 1000;
-    this.frameNo++;
-
-    this.traverseEmit(OnFrame, {canvas: this.canvas, now: this.now, frameNo: this.frameNo});
+    this.traverseEmit(OnFrame, {
+      canvas: this.canvas,
+      now: this.now,
+      deltaTime: this.deltaTime,
+      frameNo: this.frameNo,
+    });
   }
 }
