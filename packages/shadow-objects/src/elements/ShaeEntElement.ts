@@ -39,6 +39,13 @@ export class ShaeEntElement extends ShaeElement {
   constructor() {
     super();
 
+    this.ns$.onChange((ns) => {
+      this.componentContext$.set(ComponentContext.get(ns));
+      if (this.isConnected) {
+        this.#dispatchRequestParent();
+      }
+    });
+
     this.#updateTokenValue();
 
     this.token$.onChange((token) => {
@@ -46,13 +53,6 @@ export class ShaeEntElement extends ShaeElement {
         this.removeAttribute(ATTR_TOKEN);
       } else if (this.getAttribute(ATTR_TOKEN) !== token) {
         this.setAttribute(ATTR_TOKEN, token);
-      }
-    });
-
-    this.ns$.onChange((ns) => {
-      this.componentContext$.set(ComponentContext.get(ns));
-      if (this.isConnected) {
-        this.#dispatchRequestParent();
       }
     });
 
@@ -73,7 +73,6 @@ export class ShaeEntElement extends ShaeElement {
 
     this.token$.onChange((token) => {
       const vc = this.viewComponent$.value;
-
       if (vc) {
         vc.token = token;
         this.syncShadowObjects();

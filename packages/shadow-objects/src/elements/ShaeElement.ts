@@ -36,10 +36,12 @@ export class ShaeElement extends HTMLElement {
         this.removeAttribute(ATTR_NS);
       }
     });
+
+    this.#updateNs();
   }
 
   connectedCallback() {
-    this.#updateNs();
+    // ntd
   }
 
   attributeChangedCallback(name: string) {

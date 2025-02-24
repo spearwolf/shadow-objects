@@ -40,7 +40,7 @@ const InitialHTML = `
   <div class="frame">
     <canvas id="${DISPLAY_ID}" class="content"></canvas>
     <div class="content">
-      <shae-ent id="${ENTITY_ID}" token="ShaeOffscreenCanvas">
+      <shae-ent id="${ENTITY_ID}" %NS% token="ShaeOffscreenCanvas">
         <slot></slot>
       </shae-ent>
     </div>
@@ -49,40 +49,54 @@ const InitialHTML = `
 
 const ATTR_PIXEL_ZOOM = 'pixel-zoom';
 const ATTR_FPS = 'fps';
+const ATTR_NS = 'ns';
 
 export class ShaeOffscreenCanvasElement extends HTMLElement {
   #frameLoop = new FrameLoop();
   #offscreenTransferred = false;
+  #frameLoopIsRunning = false;
 
   logger = new ConsoleLogger('ShaeOffscreenCanvasElement');
+
+  get ns() {
+    return this.shadowEntity?.ns;
+  }
 
   constructor(initialHTML = InitialHTML) {
     super();
 
     this.shadow = this.attachShadow({mode: 'open'});
-    this.shadow.innerHTML = initialHTML;
+
+    const ns = this.#readNsAttr() || '';
+    this.shadow.innerHTML = initialHTML.replaceAll('%NS%', ns ? `ns="${ns}"` : '');
 
     this.canvas = this.shadow.getElementById(DISPLAY_ID);
     this.shadowEntity = this.shadow.getElementById(ENTITY_ID);
 
-    on(this.viewComponent, RequestOffscreenCanvas, () => {
-      if (this.#offscreenTransferred) {
-        this.#reCreateCanvas();
-      }
-      this.#transferCanvasToShadows();
-    });
-
     createEffect(() => {
-      // TODO refactor and verify ShaeOffscreenCanvasElement -> ContextLost effect
       const vc = this.shadowEntity.viewComponent$.get();
       if (vc) {
-        return on(vc, ContextLost, () => {
+        const unsubscribeRequestOffscreenCanvas = on(vc, RequestOffscreenCanvas, () => {
+          if (this.#offscreenTransferred) {
+            this.#reCreateCanvas();
+          }
+          this.#transferCanvasToShadows();
+        });
+
+        const unsubscribeContextlost = on(vc, ContextLost, () => {
           if (this.logger.isWarn) {
             this.logger.warn('ContextLost', this);
           }
           this.#reCreateCanvas();
           this.#transferCanvasToShadows();
         });
+
+        vc.setProperty(RunFrameLoop, this.#frameLoopIsRunning);
+
+        return () => {
+          unsubscribeRequestOffscreenCanvas();
+          unsubscribeContextlost();
+        };
       }
     });
   }
@@ -93,12 +107,23 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
 
   connectedCallback() {
     this.#frameLoop.start(this);
-    this.viewComponent.setProperty(RunFrameLoop, true);
+    this.frameLoopIsRunning = true;
+  }
+
+  get frameLoopIsRunning() {
+    return this.#frameLoopIsRunning;
+  }
+
+  set frameLoopIsRunning(val) {
+    this.#frameLoopIsRunning = val;
+    if (this.viewComponent) {
+      this.viewComponent.setProperty(RunFrameLoop, val);
+    }
   }
 
   disconnectedCallback() {
     this.#frameLoop.stop(this);
-    this.viewComponent.setProperty(RunFrameLoop, false);
+    this.frameLoopIsRunning = false;
   }
 
   #lastCanvasWidth = 0;
@@ -196,5 +221,12 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
     frame.replaceChild(canvas, this.canvas);
     this.canvas = canvas;
     this.#offscreenTransferred = false;
+  }
+
+  #readNsAttr() {
+    if (this.hasAttribute(ATTR_NS)) {
+      return this.getAttribute(ATTR_NS)?.trim() || '';
+    }
+    return '';
   }
 }

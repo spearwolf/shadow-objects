@@ -62,22 +62,25 @@
       <p class="hello">hello spearwolf/shae-offscreen-canvas ❗</p>
 
       <shae-worker src="src/worker-sample.js"></shae-worker>
+      <shae-worker ns=foo src="src/worker-sample.js"></shae-worker>
 
       <div class="display">
         <shae-ent token="ThreeMultiViewRenderer">
-          <shae-offscreen-canvas class="layer" pixel-zoom="8">
-            <shae-ent id="layer0" token="test-image-0"></shae-ent>
-          </shae-offscreen-canvas>
+          <shae-ent ns="foo" token="ThreeMultiViewRenderer">
+            <shae-offscreen-canvas class="layer" pixel-zoom="8">
+              <shae-ent id="layer0" token="test-image-0"></shae-ent>
+            </shae-offscreen-canvas>
 
-          <div class="layer blur" id="blur-layer"></div>
+            <div class="layer blur" id="blur-layer"></div>
 
-          <shae-offscreen-canvas class="layer">
-            <shae-ent id="layer1" token="test-image-1"></shae-ent>
-          </shae-offscreen-canvas>
+            <shae-offscreen-canvas class="layer" fps="30" ns="foo">
+              <shae-ent ns="foo" id="layer1" token="test-image-1"></shae-ent>
+            </shae-offscreen-canvas>
 
-          <shae-offscreen-canvas class="layer minimap-layer" pixel-zoom="3">
-            <shae-ent id="layer2" token="cube"></shae-ent>
-          </shae-offscreen-canvas>
+            <shae-offscreen-canvas class="layer minimap-layer" pixel-zoom="3">
+              <shae-ent id="layer2" token="cube"></shae-ent>
+            </shae-offscreen-canvas>
+          </shae-ent>
         </shae-ent>
       </div>
     </main>
@@ -91,11 +94,11 @@
       const TOKENS = ['test-image-0', 'test-image-1', 'cube'];
 
       const gui = new GUI();
-      const layers = Object.fromEntries(LAYERS.map((layer) => [layer, document.getElementById(layer).getAttribute('token')]));
+      const layers = Object.fromEntries(LAYERS.map((layer) => [layer, document.getElementById(layer)?.getAttribute('token')]));
 
       for (const layer of ['layer0', 'layer1', 'layer2']) {
         gui.add(layers, layer, TOKENS).onChange((token) => {
-          document.getElementById(layer).setAttribute('token', token);
+          document.getElementById(layer)?.setAttribute('token', token);
         });
       }
 
@@ -106,7 +109,7 @@
       gui.add(cfg, 'blur', 0, 64, 2)
 	      .name('blur back layer')
         .onChange((value) => {
-          document.getElementById('blur-layer').style.setProperty('backdrop-filter', value == 0 ? 'none' : `blur(${value}px)`);
+          document.getElementById('blur-layer')?.style.setProperty('backdrop-filter', value == 0 ? 'none' : `blur(${value}px)`);
 	      });
     </script>
   </body>
