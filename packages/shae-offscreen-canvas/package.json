@@ -28,7 +28,7 @@
   ],
   "scripts": {
     "update": "pnpm dlx npm-check --update",
-    "dev": "vite",
+    "dev": "vite --host",
     "test": "web-test-runner \"src/**/*.specs.js\" --node-resolve --port 8001",
     "watch": "web-test-runner \"src/**/*.specs.js\" --node-resolve --watch --port 8001",
     "build:copyFiles": "pnpm node ./build.mjs",

@@ -16,6 +16,7 @@
 
       main {
         height: 100%;
+        height: 100dvh;
       }
 
       .hello {
@@ -45,7 +46,6 @@
       .display.grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 1em;
       }
 
       .grid .layer {
@@ -157,7 +157,7 @@
       };
 
       gui.add(cfg, 'blur', 0, 64, 2)
-	      .name('blur layer1')
+	      .name('blur layer0')
         .onChange((value) => {
           document.getElementById('blur-layer')?.style.setProperty('backdrop-filter', value == 0 ? 'none' : `blur(${value}px)`);
 	      });
