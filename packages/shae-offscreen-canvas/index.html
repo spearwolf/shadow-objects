@@ -62,18 +62,18 @@
       <p class="hello">hello spearwolf/shae-offscreen-canvas ❗</p>
 
       <shae-worker src="src/worker-sample.js"></shae-worker>
-      <shae-worker ns=foo src="src/worker-sample.js"></shae-worker>
+      <shae-worker local ns=foo src="src/worker-sample.js"></shae-worker>
 
       <div class="display">
         <shae-ent token="ThreeMultiViewRenderer">
           <shae-ent ns="foo" token="ThreeMultiViewRenderer">
-            <shae-offscreen-canvas class="layer" pixel-zoom="8">
+            <shae-offscreen-canvas class="layer" pixel-zoom="8" fps="0">
               <shae-ent id="layer0" token="test-image-0"></shae-ent>
             </shae-offscreen-canvas>
 
             <div class="layer blur" id="blur-layer"></div>
 
-            <shae-offscreen-canvas class="layer" fps="30" ns="foo">
+            <shae-offscreen-canvas class="layer" fps="60" ns="foo">
               <shae-ent ns="foo" id="layer1" token="test-image-1"></shae-ent>
             </shae-offscreen-canvas>
 

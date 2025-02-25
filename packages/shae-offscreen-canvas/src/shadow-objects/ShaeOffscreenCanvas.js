@@ -27,9 +27,6 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
   canvasRequested = false;
   isRunning = false;
 
-  now = 0;
-  lastNow = 0;
-  deltaTime = 0;
   frameNo = 0;
 
   logger = new ConsoleLogger(ShaeOffscreenCanvas.displayName);
@@ -73,7 +70,6 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
         const w = getCanvasWidth();
         const h = getCanvasHeight();
         const pixelRatio = getPixelRatio();
-
         if (isNaN(w) || isNaN(h) || isNaN(pixelRatio)) return;
 
         const canvasWidth = Math.round(w * pixelRatio);
@@ -140,18 +136,26 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
     }
   }
 
-  [FrameLoop.OnFrame](now) {
-    this.now = now / 1000;
-    this.deltaTime = this.now - this.lastNow;
-    this.lastNow = this.now;
-
+  [FrameLoop.OnFrame]({now, deltaTime}) {
     if (!this.canRender) return;
 
     this.frameNo++;
 
+    this.updateFpsCounter(now);
+
+    this.traverseEmit(OnFrame, {
+      now,
+      deltaTime,
+      canvas: this.canvas,
+      frameNo: this.frameNo,
+    });
+  }
+
+  updateFpsCounter(now) {
     this.fpsCounter++;
     this.fpsCounterTime ??= now;
-    if (now - this.fpsCounterTime >= 1000 * SHOW_FPS_COUNTER_INTERVAL_SECONDS) {
+
+    if (now - this.fpsCounterTime >= SHOW_FPS_COUNTER_INTERVAL_SECONDS) {
       this.fpsCounterTime = now;
       if (this.logger.isInfo) {
         this.logger.info(
@@ -163,12 +167,5 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
       }
       this.fpsCounter = 0;
     }
-
-    this.traverseEmit(OnFrame, {
-      canvas: this.canvas,
-      now: this.now,
-      deltaTime: this.deltaTime,
-      frameNo: this.frameNo,
-    });
   }
 }
