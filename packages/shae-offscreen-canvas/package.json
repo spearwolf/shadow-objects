@@ -42,13 +42,13 @@
     "@web/test-runner": "^0.20.0",
     "esbuild-plugin-inline-worker": "^0.1.1",
     "lit-html": "^3.2.1",
-    "sinon": "^17.0.1",
-    "vite": "^5.4.10"
+    "sinon": "^19.0.2",
+    "vite": "^6.2.0"
   },
   "dependencies": {
     "@spearwolf/eventize": "^4.0.1",
     "@spearwolf/shadow-objects": "workspace:*",
     "@spearwolf/signalize": "^0.18.1",
-    "three": "^0.165.0"
+    "three": "^0.173.0"
   }
 }

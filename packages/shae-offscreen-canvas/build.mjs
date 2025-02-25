@@ -1,6 +1,6 @@
 import {cp} from 'fs/promises';
 import path from 'path';
-import {fileURLToPath} from 'url';
+//import {fileURLToPath} from 'url';
 
 const targetSubDir = process.argv[2] || '.npm-pkg';
 
