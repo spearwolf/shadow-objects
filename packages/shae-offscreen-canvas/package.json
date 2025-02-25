@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@esm-bundle/chai": "4.3.4-fix.0",
-    "@web/test-runner": "^0.18.2",
+    "@web/test-runner": "^0.20.0",
     "esbuild-plugin-inline-worker": "^0.1.1",
     "lit-html": "^3.2.1",
     "sinon": "^17.0.1",
