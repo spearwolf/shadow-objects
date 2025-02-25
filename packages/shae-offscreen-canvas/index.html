@@ -9,50 +9,97 @@
         margin: 0;
         padding: 0;
         height: 100vh;
-        background-color: #212121;
+        background-color: #111f21;
         color: #f0f0f0;
+        overflow: hidden;
       }
+
       main {
+        height: 100%;
+      }
+
+      .hello {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 1em;
+        z-index: 1000;
+        padding: 0.25em 1em 0.75em;
+        background-color: rgba(0, 0, 0, 0.5);
+        margin: 0;
+        font-size: 11px;
+        font-weight: 400;
+        font-family: monospace;
+      }
+
+      .display {
+        position: relative;
         display: flex;
         flex-direction: column;
         height: 100%;
-      }
-      .hello {
-        margin: 0;
-        padding: 0.5em 1em 0.75em;
-        background-color: #28292a;
-      }
-      .display {
-        position: relative;
+        align-items: center;
+        justify-content: center;
         flex-grow: 1;
       }
-      .layer {
-        position: absolute;
+      .display.grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1em;
       }
-      .layer.blur {
+
+      .grid .layer {
+        position: relative;
+        height: 300px;
+      }
+
+      .stacked .layer {
+        position: absolute;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
       }
-      .minimap-layer {
+
+      .layer.blur {
+        position: absolute;
         top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .grid .layer.blur {
+        z-index: 1;
+      }
+
+      .stacked .minimap-layer {
+        top: 0;
+        left: auto;
         right: 0;
         width: 320px;
         height: 240px;
         max-width: 50%;
         max-height: 75%;
-        animation-name: moveit;
-        animation-duration: 4s;
+        animation: moveitx 4s, moveity 3s;
         animation-direction: alternate;
         animation-iteration-count: infinite;
       }
-      @keyframes moveit {
+
+      @keyframes moveitx {
         from {
           right: 0;
         }
         to {
           right: calc(100% - 320px);
+        }
+      }
+
+      @keyframes moveity {
+        from {
+          top: 0;
+        }
+        to {
+          top: calc(100% - 320px);
         }
       }
     </style>
@@ -64,25 +111,28 @@
       <shae-worker src="src/worker-sample.js"></shae-worker>
       <shae-worker local ns=foo src="src/worker-sample.js"></shae-worker>
 
-      <div class="display">
-        <shae-ent token="ThreeMultiViewRenderer">
-          <shae-ent ns="foo" token="ThreeMultiViewRenderer">
-            <shae-offscreen-canvas class="layer" pixel-zoom="8" fps="0">
+      <shae-ent token="ThreeMultiViewRenderer">
+        <shae-ent ns="foo" token="ThreeMultiViewRenderer">
+
+          <div class="display stacked">
+            <shae-offscreen-canvas class="layer" pixel-zoom="8" fps="90">
               <shae-ent id="layer0" token="test-image-0"></shae-ent>
             </shae-offscreen-canvas>
 
-            <div class="layer blur" id="blur-layer"></div>
-
-            <shae-offscreen-canvas class="layer" fps="60" ns="foo">
-              <shae-ent ns="foo" id="layer1" token="test-image-1"></shae-ent>
-            </shae-offscreen-canvas>
+            <div class="layer">
+              <div class="layer blur" id="blur-layer"></div>
+              <shae-offscreen-canvas class="layer" fps="60" ns="foo">
+                <shae-ent ns="foo" id="layer1" token="test-image-1"></shae-ent>
+              </shae-offscreen-canvas>
+            </div>
 
             <shae-offscreen-canvas class="layer minimap-layer" pixel-zoom="3">
               <shae-ent id="layer2" token="cube"></shae-ent>
             </shae-offscreen-canvas>
-          </shae-ent>
+          </div>
+
         </shae-ent>
-      </div>
+      </shae-ent>
     </main>
 
     <script type="module" src="src/bundle.js"></script>
@@ -107,10 +157,20 @@
       };
 
       gui.add(cfg, 'blur', 0, 64, 2)
-	      .name('blur back layer')
+	      .name('blur layer1')
         .onChange((value) => {
           document.getElementById('blur-layer')?.style.setProperty('backdrop-filter', value == 0 ? 'none' : `blur(${value}px)`);
 	      });
+
+      const LAYOUTS = ['stacked', 'grid'];
+
+      gui.add({ layout: 'stacked' }, 'layout', LAYOUTS)
+        .name('layout')
+        .onChange((value) => {
+          const el = document.querySelector('.display');
+          el.classList.remove(...LAYOUTS);
+          el.classList.add(value);
+        });
     </script>
   </body>
 </html>
