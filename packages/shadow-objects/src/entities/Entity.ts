@@ -2,7 +2,7 @@ import {emit, off, on, once, Priority} from '@spearwolf/eventize';
 import {batch, createSignal, Signal, value, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
 import type {IComponentEvent} from '../types.js';
 import {Kernel} from './Kernel.js';
-import {SignalsMap} from './SignalsMap.js';
+import {SignalAutoMap} from './SignalAutoMap.js';
 import {SignalsPath, VALUE} from './SignalsPath.js';
 import {onDestroy, onViewEvent} from './events.js';
 
@@ -29,7 +29,7 @@ export class Entity {
   #kernel: Kernel;
   #uuid: string;
 
-  #props = new SignalsMap();
+  #props = new SignalAutoMap<string>();
   #context: Map<ContextNameType, IContextItem> = new Map();
 
   #parentUuid?: string;
@@ -203,7 +203,7 @@ export class Entity {
   }
 
   #getPropSignal<T = unknown>(key: string): Signal<T> {
-    return this.#props.getSignal<T>(key);
+    return this.#props.get<T>(key);
   }
 
   getPropertyReader<T = unknown>(key: string): SignalReader<T> {

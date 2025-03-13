@@ -73,8 +73,6 @@ export class ShaeWorkerElement extends ShaeElement {
       }
     });
 
-    // XXX we don't wanna expose ShadowEnv.AfterSync, because the frequency of this event is way too high
-
     this.#createAutoSyncEffect();
     this.#createImportScriptEffect();
   }
