@@ -2,9 +2,11 @@ import {emit, off, retain, retainClear} from '@spearwolf/eventize';
 import {createEffect, destroyObjectSignals, Effect, findObjectSignalByName, value, type SignalLike} from '@spearwolf/signalize';
 import {signal} from '@spearwolf/signalize/decorators';
 
-export const VALUE = 'value';
+const VALUE = 'value';
 
 export class SignalsPath {
+  static readonly Value = VALUE;
+
   #signals: SignalLike<unknown>[] = [];
   #effect?: Effect;
 

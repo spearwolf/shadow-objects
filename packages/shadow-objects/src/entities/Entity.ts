@@ -1,9 +1,8 @@
 import {emit, off, on, once, Priority} from '@spearwolf/eventize';
-import {batch, createSignal, Signal, value, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
+import {batch, createSignal, Signal, SignalAutoMap, value, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
 import type {IComponentEvent} from '../types.js';
 import {Kernel} from './Kernel.js';
-import {SignalAutoMap} from './SignalAutoMap.js';
-import {SignalsPath, VALUE} from './SignalsPath.js';
+import {SignalsPath} from './SignalsPath.js';
 import {onDestroy, onViewEvent} from './events.js';
 
 type ContextNameType = string | symbol;
@@ -29,7 +28,7 @@ export class Entity {
   #kernel: Kernel;
   #uuid: string;
 
-  #props = new SignalAutoMap<string>();
+  #props = new SignalAutoMap();
   #context: Map<ContextNameType, IContextItem> = new Map();
 
   #parentUuid?: string;
@@ -231,11 +230,11 @@ export class Entity {
   }
 
   propKeys(): string[] {
-    return Array.from(this.#props.keys());
+    return Array.from(this.#props.keys()) as string[];
   }
 
   propEntries(): [string, unknown][] {
-    return Array.from(this.#props.entries()).map(([key, sig]) => [key, sig.value]);
+    return Array.from(this.#props.entries()).map(([key, sig]) => [key, sig.value]) as [string, unknown][];
   }
 
   hasContext(name: ContextNameType): boolean {
@@ -264,7 +263,7 @@ export class Entity {
       const ctxPath = new SignalsPath();
       ctxPath.add(provide.get, inherited.get);
 
-      const unsubscribeFromPath = on(ctxPath, VALUE, (val) => {
+      const unsubscribeFromPath = on(ctxPath, SignalsPath.Value, (val) => {
         queueMicrotask(() => {
           context.set(val);
         });
@@ -281,7 +280,7 @@ export class Entity {
   #subscribeToParentContext(ctx: IContextItem) {
     if (this.parent) {
       ctx.unsubscribeFromParent?.();
-      ctx.unsubscribeFromParent = on(this.parent.#getContext(ctx.name).ctxPath, VALUE, (val) => {
+      ctx.unsubscribeFromParent = on(this.parent.#getContext(ctx.name).ctxPath, SignalsPath.Value, (val) => {
         ctx.inherited.set(val);
       });
     }

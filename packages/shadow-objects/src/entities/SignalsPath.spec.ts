@@ -1,7 +1,7 @@
 import {on} from '@spearwolf/eventize';
 import {createSignal} from '@spearwolf/signalize';
 import {describe, expect, it, vi} from 'vitest';
-import {SignalsPath, VALUE} from './SignalsPath.js';
+import {SignalsPath} from './SignalsPath.js';
 
 describe('SignalsPath', () => {
   it('should work as expected', () => {
@@ -17,7 +17,7 @@ describe('SignalsPath', () => {
 
     expect(path.value).toBe(undefined);
 
-    on(path, VALUE, valueFn);
+    on(path, SignalsPath.Value, valueFn);
 
     expect(valueFn).not.toBeCalled();
 
@@ -57,7 +57,7 @@ describe('SignalsPath', () => {
 
     expect(path.value).toBe('b');
 
-    on(path, VALUE, valueFn);
+    on(path, SignalsPath.Value, valueFn);
 
     expect(valueFn).toHaveBeenCalledWith('b');
   });
@@ -73,7 +73,7 @@ describe('SignalsPath', () => {
 
     path.add(a, b);
 
-    on(path, VALUE, valueFn);
+    on(path, SignalsPath.Value, valueFn);
 
     expect(valueFn).not.toBeCalled();
 
@@ -111,7 +111,7 @@ describe('SignalsPath', () => {
 
     path.add(a, b);
 
-    on(path, VALUE, valueFn);
+    on(path, SignalsPath.Value, valueFn);
 
     expect(valueFn).not.toBeCalled();
 

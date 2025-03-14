@@ -23,8 +23,8 @@
     "@spearwolf/shadow-objects": "workspace:*"
   },
   "devDependencies": {
-    "@playwright/test": "^1.48.1",
-    "typescript": "^5.6.3",
+    "@playwright/test": "^1.51.0",
+    "typescript": "^5.8.2",
     "vite": "^5.4.10"
   }
 }
