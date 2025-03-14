@@ -105,8 +105,8 @@ export class ViewComponent {
     this.context = ctx;
   }
 
-  isChildOf(entity: ViewComponent) {
-    return this.#parent === entity;
+  isChildOf(parent: ViewComponent) {
+    return this.#parent === parent;
   }
 
   removeFromParent() {

@@ -97,14 +97,6 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     }
   }
 
-  onMessageFromWorker(event: MessageEvent) {
-    if (event.data?.type === MessageToView) {
-      (this as IShadowObjectEnvProxy).onMessageToView?.(event.data.data);
-    } else if (this.logger.isDebug) {
-      this.logger.debug('message from worker', event);
-    }
-  }
-
   applyChangeTrail(changeTrail: ChangeTrailType, waitForConfirmation: boolean): Promise<void> {
     const transferables = removeTransferables(changeTrail);
     const message = {type: ChangeTrail, changeTrail} as any;
@@ -148,6 +140,14 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     waitForMessageOfType(worker, Destroyed, WorkerDestroyTimeout).finally(() => {
       worker.terminate();
     });
+  }
+
+  private onMessageFromWorker(event: MessageEvent) {
+    if (event.data?.type === MessageToView) {
+      (this as IShadowObjectEnvProxy).onMessageToView?.(event.data.data);
+    } else if (this.logger.isDebug) {
+      this.logger.debug('message from worker', event);
+    }
   }
 
   private configureConsoleLogger(worker: Worker) {
