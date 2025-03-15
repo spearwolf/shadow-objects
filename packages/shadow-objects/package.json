@@ -1,7 +1,7 @@
 {
   "name": "@spearwolf/shadow-objects",
-  "description": "a slightly different component framework",
-  "version": "0.6.0",
+  "description": "a standalone entity-component framework that feels at home in the shadows",
+  "version": "0.7.0",
   "author": {
     "name": "Wolfger Schramm",
     "email": "wolfger@spearwolf.de",
@@ -16,6 +16,9 @@
     ".": {
       "import": "./dist/src/index.js",
       "types": "./dist/src/index.d.ts"
+    },
+    "./elements.js": {
+      "default": "./dist/elements.js"
     },
     "./bundle.js": {
       "default": "./dist/bundle.js"
@@ -61,6 +64,7 @@
     "dist/src/shae-prop.js",
     "dist/src/shae-worker.js",
     "dist/src/bundle.js",
+    "dist/src/elements.js",
     "dist/src/index.js",
     "dist/bundle.js"
   ],

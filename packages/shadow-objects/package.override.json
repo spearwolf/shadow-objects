@@ -2,6 +2,7 @@
   "sideEffects": [
     "bundle.js",
     "src/bundle.js",
+    "src/elements.js",
     "src/index.js",
     "src/view/ComponentContext.js",
     "src/view/ShadowEnv.js",
