@@ -6,7 +6,7 @@ _hi! welcome to .._
 _Shadow-objects_ is a standalone entity component framework.
 The original idea is visualized in this overview:
 
-![architecture overview](./docs/architecture@2x.png)
+![architecture overview](https://raw.githubusercontent.com/spearwolf/shadow-objects/main/packages/shadow-objects/docs/architecture%402x.png)
 
 > _ents_ is short for latin _"entitatis"_, which translates to _"shadow entities"_
 
@@ -32,9 +32,9 @@ The components are created in the view space. Hierarchical. In your browser. The
 TODO ... add documentation here ... !
 
 Here is the big class graph overview:
-![class graph overview](./src/view/ClassGraphOverview.drawio.svg)
+![class graph overview](https://raw.githubusercontent.com/spearwolf/shadow-objects/main/packages/shadow-objects/src/view/ClassGraphOverview.drawio.svg)
 
 More in-depth docs here:
-- [ShadowEnv](./src/view/README.md)
-- [ComponentContext](./src/view/ComponentContext.md)
-- [ViewComponent](./src/view/ViewComponent.md)
+- [ShadowEnv](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/src/view/README.md)
+- [ComponentContext](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/src/view/ComponentContext.md)
+- [ViewComponent](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/src/view/ViewComponent.md)
