@@ -1,9 +1,9 @@
 # shadow-objects
 
-A standalone entity&larr;component framework that feels home in the shadows 🧛
+A reactive entity&larr;component framework that feels home in the shadows 🧛
 
 > [!WARNING]
-> 🚀 This is a highly experimental framework that is slowly maturing. Use at your own risk.
+> 🚀 This is a highly experimental framework that is slowly maturing. Use at your own risk. 🔥
 
 ## Introduction 👀
 

@@ -3,7 +3,8 @@ _hi! welcome to .._
 
 ## Introduction
 
-_Shadow-objects_ is a standalone entity component framework.
+_Shadow-objects_ is a standalone, reactive entity&larr;component framework 🔥
+
 The original idea is visualized in this overview:
 
 ![architecture overview](https://raw.githubusercontent.com/spearwolf/shadow-objects/main/packages/shadow-objects/docs/architecture%402x.png)
@@ -23,6 +24,33 @@ The components are created in the view space. Hierarchical. In your browser. The
     <shae-prop name="myNumbers" value="1 2 3" type="integer[]" />
   </shae-ent>
 </shae-ent>
+```
+
+In the shadows, the _shadow objects_ come and go with the entities. An entity can cover many shadows. But all are united by the entity _token_. That token, which is specified by the _view components_.
+
+The _shadow object module_ stores which shadow objects are hidden behind a token. Either a _function_ or a _class_.
+
+```js
+shadowObjects.define('token', function() {
+  console.log('The simplest shadow object ever.');
+});
+
+@ShadowObject('token')
+class Foo {
+  constructor({
+    entity,
+    provideContext,
+    useContext,
+    useProperty,
+    onDestroy,
+  }: ShadowObjectParams) {
+    console.log('hello');    
+    
+    onDestroy(() => {
+      console.log('bye');
+    });
+  }
+}
 ```
 
 > [!WARNING]
