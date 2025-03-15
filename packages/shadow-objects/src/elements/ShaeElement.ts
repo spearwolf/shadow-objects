@@ -1,22 +1,44 @@
-import {createSignal} from '@spearwolf/signalize';
+import {createSignal, Signal} from '@spearwolf/signalize';
 import {GlobalNS} from '../constants.js';
 import {readNamespaceAttribute} from '../utils/attr-utils.js';
 import {toNamespace} from '../utils/toNamespace.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
 import {ATTR_NS} from './constants.js';
+import type {NamespaceType} from '../types.ts';
+
+const updateNamespace = (el: HTMLElement, ns: Signal<NamespaceType>) => {
+  ns.set(readNamespaceAttribute(el));
+};
+
+const SyncNamespaces = new Set<NamespaceType>();
+let nextSyncIsScheduled = false;
+
+const syncShadowObjects = (ns: NamespaceType) => {
+  SyncNamespaces.add(ns);
+  if (!nextSyncIsScheduled) {
+    nextSyncIsScheduled = true;
+    queueMicrotask(() => {
+      nextSyncIsScheduled = false;
+      for (const ns of SyncNamespaces) {
+        ShadowEnv.get(ns)?.sync();
+      }
+      SyncNamespaces.clear();
+    });
+  }
+};
 
 export class ShaeElement extends HTMLElement {
   static observedAttributes = [ATTR_NS];
 
   readonly isShaeElement = true;
 
-  readonly ns$ = createSignal<string | symbol>(GlobalNS);
+  readonly ns$ = createSignal<NamespaceType>(GlobalNS);
 
-  get ns(): string | symbol {
+  get ns(): NamespaceType {
     return this.ns$.value;
   }
 
-  set ns(ns: string | symbol) {
+  set ns(ns: NamespaceType) {
     if (typeof ns === 'symbol') {
       this.ns$.set(ns);
     } else {
@@ -37,31 +59,16 @@ export class ShaeElement extends HTMLElement {
       }
     });
 
-    this.#updateNs();
-  }
-
-  connectedCallback() {
-    // ntd
+    updateNamespace(this, this.ns$);
   }
 
   attributeChangedCallback(name: string) {
     if (name === ATTR_NS) {
-      this.#updateNs();
+      updateNamespace(this, this.ns$);
     }
   }
 
-  #needsSyncShadowObjects = false;
-
   syncShadowObjects() {
-    if (this.#needsSyncShadowObjects) return;
-    this.#needsSyncShadowObjects = true;
-    queueMicrotask(() => {
-      this.#needsSyncShadowObjects = false;
-      ShadowEnv.get(this.ns)?.sync();
-    });
-  }
-
-  #updateNs() {
-    this.ns$.set(readNamespaceAttribute(this));
+    syncShadowObjects(this.ns);
   }
 }

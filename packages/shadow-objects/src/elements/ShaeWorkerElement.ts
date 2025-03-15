@@ -105,9 +105,7 @@ export class ShaeWorkerElement extends ShaeElement {
   }
 
   get frameLoop(): FrameLoop {
-    if (this.#frameLoop == null) {
-      this.#frameLoop = new FrameLoop();
-    }
+    this.#frameLoop ??= new FrameLoop();
     return this.#frameLoop;
   }
 
@@ -130,16 +128,13 @@ export class ShaeWorkerElement extends ShaeElement {
     return this;
   }
 
-  override connectedCallback() {
-    super.connectedCallback();
-
+  connectedCallback() {
     batch(() => {
       if (this.hasAttribute(ATTR_AUTO_SYNC)) {
         this.autoSync$.set(this.getAttribute(ATTR_AUTO_SYNC));
       }
       this.isConnected$.set(true);
     });
-
     if (this.shouldAutostart) {
       this.start();
     }
@@ -147,7 +142,6 @@ export class ShaeWorkerElement extends ShaeElement {
 
   disconnectedCallback() {
     this.isConnected$.set(false);
-
     this.#deferDestroy();
   }
 

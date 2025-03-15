@@ -23,8 +23,7 @@
     "clear-cache": "pnpm nx reset && pnpm nx run-many -t clean && pnpm rimraf dist",
     "update": "pnpm dlx npm-check --update",
     "cbt": "pnpm run-s clean build test",
-    "site": "pnpm nx dev site",
-    "start": "pnpm nx dev site",
+    "start": "pnpm nx dev shae-offscreen-canvas",
     "make:todo": "pnpm node scripts/makeTODO.mjs TODO.md",
     "ci": "pnpm run-s build lint test:ci",
     "publishNpmPkg": "pnpm nx run-many -t publishNpmPkg"

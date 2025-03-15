@@ -132,7 +132,7 @@ export class ShaeEntElement extends ShaeElement {
     return this.#shadowRootHost;
   }
 
-  override connectedCallback() {
+  connectedCallback() {
     this.#shadowRootHostNeedsUpdate = true;
 
     this.addEventListener('slotchange', this.#onSlotChange, {capture: false, passive: false});
@@ -142,9 +142,6 @@ export class ShaeEntElement extends ShaeElement {
 
     // --- token ---
     beQuiet(() => this.#updateTokenValue());
-
-    // --- ns ---
-    super.connectedCallback();
 
     // --- componentContext | viewComponent ---
     if (this.componentContext == null) {
