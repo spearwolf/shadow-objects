@@ -38,8 +38,8 @@ A first demo can simply be started with `pnpm start`. This is very useful to see
 
 | package | description |
 |-|-|
-| [`shadow-objects`](packages/shadow-objects/) | the slightly different component framework |
-| [`shae-offscreen-canvas`](packages/shae-offscreen-canvas/) | a **offscreen canvas** as custom html **element** based on shadow-objects |
+| [`shadow-objects`](packages/shadow-objects/) | the main framework |
+| [`shae-offscreen-canvas`](packages/shae-offscreen-canvas/) | an **offscreen canvas** as custom html **element** based on shadow-objects |
 | [`shadow-objects-testing`](packages/shadow-objects-testing/) | functional tests |
 | [`shadow-objects-e2e`](packages/shadow-objects-e2e/) | blackbox / e2e tests |
 

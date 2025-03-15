@@ -1,5 +1,5 @@
 _hi! welcome to .._
-# shadow-objects :wave:
+# shadow-objects 🧛
 
 ## Introduction
 
@@ -28,6 +28,8 @@ The components are created in the view space. Hierarchical. In your browser. The
 > [!WARNING]
 > Sorry, at this point there should be a precise and crisp introduction to the concepts of the framework, but unfortunately this is not currently available.
 > Instead of that, a few insights into the implementation will follow
+
+TODO ... add documentation here ... !
 
 Here is the big class graph overview:
 ![class graph overview](./src/view/ClassGraphOverview.drawio.svg)
