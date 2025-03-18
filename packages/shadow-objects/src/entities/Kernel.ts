@@ -10,14 +10,7 @@ import {
   type SignalReader,
 } from '@spearwolf/signalize';
 import {ComponentChangeType, MessageToView} from '../constants.js';
-import type {
-  IComponentChangeType,
-  IComponentEvent,
-  ShadowObjectConstructor,
-  ShadowObjectParams,
-  ShadowObjectType,
-  SyncEvent,
-} from '../types.js';
+import type {IComponentChangeType, IComponentEvent, ShadowObjectConstructor, ShadowObjectType, SyncEvent} from '../types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {Entity} from './Entity.js';
 import {Registry} from './Registry.js';
@@ -365,8 +358,8 @@ export class Kernel {
           return effect;
         },
 
-        createSignal(...args: Parameters<typeof createSignal>): ReturnType<typeof createSignal> {
-          const sig = createSignal(...args);
+        createSignal<T = unknown>(...args: Parameters<typeof createSignal<T>>): ReturnType<typeof createSignal<T>> {
+          const sig = createSignal<T>(...args);
           unsubscribeSecondary.add(() => {
             destroySignal(sig);
           });
@@ -375,15 +368,22 @@ export class Kernel {
 
         on(...args: Parameters<typeof on>): ReturnType<typeof on> {
           // @ts-ignore
-          const unsubscribe = on(...args);
-          unsubscribeSecondary.add(unsubscribe);
-          return unsubscribe;
+          const unsub = on(...args);
+          unsubscribeSecondary.add(unsub);
+          return unsub;
+        },
+
+        once(...args: Parameters<typeof once>): ReturnType<typeof once> {
+          // @ts-ignore
+          const unsub = once(...args);
+          unsubscribeSecondary.add(unsub);
+          return unsub;
         },
 
         onDestroy(callback: () => any) {
           unsubscribePrimary.add(callback);
         },
-      } as ShadowObjectParams),
+      }),
     );
 
     if (this.logger.isInfo) {

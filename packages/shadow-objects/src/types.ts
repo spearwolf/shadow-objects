@@ -1,5 +1,5 @@
-import type {EventizedObject} from '@spearwolf/eventize';
-import type {CompareFunc, Signal, SignalReader} from '@spearwolf/signalize';
+import type {EventizedObject, on, once} from '@spearwolf/eventize';
+import type {CompareFunc, createEffect, createSignal, Signal, SignalReader} from '@spearwolf/signalize';
 import {AppliedChangeTrail, ImportedModule, type ComponentChangeType} from './constants.js';
 import type {Entity} from './entities/Entity.js';
 import type {Kernel} from './entities/Kernel.js';
@@ -93,11 +93,22 @@ export interface ShadowObjectParams {
   useContext<T = any>(name: string | symbol, isEqual?: CompareFunc<T>): SignalReader<T>;
   useProperty<T = any>(name: string, isEqual?: CompareFunc<T>): SignalReader<T>;
 
+  createEffect(...args: Parameters<typeof createEffect>): ReturnType<typeof createEffect>;
+  createSignal<T = unknown>(...args: Parameters<typeof createSignal<T>>): ReturnType<typeof createSignal<T>>;
+
+  on(...args: Parameters<typeof on>): ReturnType<typeof on>;
+  once(...args: Parameters<typeof once>): ReturnType<typeof once>;
+
   onDestroy(callback: () => any): void;
 }
 
 export interface ShadowObjectConstructor {
-  new (...args: any[]): {};
+  new (params: ShadowObjectParams): {};
+  displayName?: string;
+}
+
+export interface ShadowObjectConstructorFunc {
+  (params: ShadowObjectParams): object | undefined | void;
   displayName?: string;
 }
 
@@ -106,14 +117,14 @@ export type ShadowObjectType = EventizedObject;
 export type NamespaceType = string | symbol;
 
 export type ShadowObjectsModuleInitializer = (shadowObjects: {
-  define: (token: string, constructor: ShadowObjectConstructor) => void;
+  define: (token: string, constructor: ShadowObjectConstructor | ShadowObjectConstructorFunc) => void;
   kernel: Kernel;
   registry: Registry;
 }) => Promise<void>;
 
 export interface ShadowObjectsModule {
   extends?: ShadowObjectsModule[];
-  define?: Record<string, ShadowObjectConstructor>;
+  define?: Record<string, ShadowObjectConstructor | ShadowObjectConstructorFunc>;
   routes?: Record<string, string[]>;
   initialize?: ShadowObjectsModuleInitializer;
 }
