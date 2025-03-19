@@ -36,6 +36,14 @@ export interface OnDestroy {
 
 // ----------------------------------------------------------------------------
 
+export const onParentChanged = 'onParentChanged';
+
+export interface OnParentChangedEvent {
+  [onParentChanged](entity: Entity): void;
+}
+
+// ----------------------------------------------------------------------------
+
 export const onViewEvent = 'onViewEvent';
 
 export interface OnViewEvent {

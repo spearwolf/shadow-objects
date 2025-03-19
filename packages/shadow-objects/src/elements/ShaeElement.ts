@@ -1,10 +1,10 @@
 import {createSignal, Signal} from '@spearwolf/signalize';
 import {GlobalNS} from '../constants.js';
+import type {NamespaceType} from '../types.ts';
 import {readNamespaceAttribute} from '../utils/attr-utils.js';
 import {toNamespace} from '../utils/toNamespace.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
 import {ATTR_NS} from './constants.js';
-import type {NamespaceType} from '../types.ts';
 
 const updateNamespace = (el: HTMLElement, ns: Signal<NamespaceType>) => {
   ns.set(readNamespaceAttribute(el));

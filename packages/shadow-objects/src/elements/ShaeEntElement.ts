@@ -37,6 +37,8 @@ export class ShaeEntElement extends ShaeElement {
 
   entParentNode?: ShaeEntElement;
 
+  #parentObserver?: MutationObserver;
+
   constructor() {
     super();
 
@@ -135,6 +137,12 @@ export class ShaeEntElement extends ShaeElement {
     return this.#shadowRootHost;
   }
 
+  protected getParentNodeForObserver() {
+    const parent = this.parentNode;
+    if (parent) return parent;
+    return (parent as ShadowRoot).host ?? parent;
+  }
+
   connectedCallback() {
     this.#shadowRootHostNeedsUpdate = true;
 
@@ -154,16 +162,48 @@ export class ShaeEntElement extends ShaeElement {
     // --- viewComponent.parent ---
     this.#dispatchRequestParent();
 
-    // --- reRequestParentRoots ---
+    // --- parents ---
     this.componentContext?.dispatchReRequestParentRoots();
+    this.#createParentObserver();
 
     // --- sync! ---
     this.syncShadowObjects();
   }
 
+  #createParentObserver() {
+    this.#destroyParentObserver();
+    const parent = this.getParentNodeForObserver();
+    if (parent) {
+      this.#parentObserver = new MutationObserver((mutations, _observer) => {
+        for (const {target, removedNodes} of mutations) {
+          if (target === parent) {
+            for (const node of removedNodes) {
+              if (node === this) {
+                this.#destroyParentObserver();
+                this.onParentChanged(this.getParentNodeForObserver(), parent);
+                break;
+              }
+            }
+          }
+        }
+      });
+      this.#parentObserver.observe(parent, {childList: true, subtree: false, attributes: false});
+    }
+  }
+
+  onParentChanged(_newParent: Node | undefined, _oldParent: Node) {
+    // TODO we need to destroy.. the viewComponent when the element is moved outside of a shae-worker context!
+    this.#setParent(undefined);
+    this.#dispatchRequestParent();
+  }
+
+  #destroyParentObserver() {
+    this.#parentObserver?.disconnect();
+    this.#parentObserver = undefined;
+  }
+
   override attributeChangedCallback(name: string) {
     super.attributeChangedCallback(name);
-
     if (name === ATTR_TOKEN) {
       this.#updateTokenValue();
     }
@@ -171,6 +211,8 @@ export class ShaeEntElement extends ShaeElement {
 
   disconnectedCallback() {
     this.#shadowRootHostNeedsUpdate = true;
+
+    this.#destroyParentObserver();
 
     this.removeEventListener('slotchange', this.#onSlotChange, {capture: false});
     this.removeEventListener(RequestEntParentEventName, this.#onRequestParent, {capture: false});
@@ -186,6 +228,7 @@ export class ShaeEntElement extends ShaeElement {
 
   #reReuestParentRoot() {
     if (this.isConnected) {
+      this.#setParent(undefined);
       this.#dispatchRequestParent();
     }
   }

@@ -14,7 +14,7 @@ import type {IComponentChangeType, IComponentEvent, ShadowObjectConstructor, Sha
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {Entity} from './Entity.js';
 import {Registry} from './Registry.js';
-import {onCreate, onDestroy, type OnCreate, type OnDestroy} from './events.js';
+import {onCreate, onDestroy, onParentChanged, type OnCreate, type OnDestroy} from './events.js';
 
 export interface MessageToViewEvent {
   uuid: string;
@@ -240,6 +240,17 @@ export class Kernel {
     } else {
       this.#rootEntities.add(uuid);
     }
+
+    queueMicrotask(() => {
+      if (this.logger.isInfo) {
+        this.logger.info('onParentChanged', {uuid, parentUuid, order});
+      }
+      if (this.logger.isWarn) {
+        this.logger.warn('TODO(impl) recalculate context signals after parent changed');
+      }
+      // TODO recalculate context signals !!
+      emit(e, onParentChanged, e);
+    });
   }
 
   updateOrder(uuid: string, order: number): void {
