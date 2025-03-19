@@ -1,3 +1,4 @@
+import {on} from '@spearwolf/eventize';
 import {beQuiet, createEffect, createSignal} from '@spearwolf/signalize';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
@@ -59,8 +60,10 @@ export class ShaeEntElement extends ShaeElement {
     createEffect(() => {
       const vc = this.viewComponent$.get();
       if (vc) {
+        const unsubcribe = on(vc, ComponentContext.ReRequestParentRoots, () => this.#reReuestParentRoot());
         const oldNs = vc.context?.ns;
         return () => {
+          unsubcribe();
           vc.destroy();
           if (oldNs && oldNs !== this.ns) {
             ShadowEnv.get(oldNs)?.sync();
@@ -151,6 +154,9 @@ export class ShaeEntElement extends ShaeElement {
     // --- viewComponent.parent ---
     this.#dispatchRequestParent();
 
+    // --- reRequestParentRoots ---
+    this.componentContext?.dispatchReRequestParentRoots();
+
     // --- sync! ---
     this.syncShadowObjects();
   }
@@ -176,6 +182,12 @@ export class ShaeEntElement extends ShaeElement {
     this.syncShadowObjects();
 
     this.#destroyViewComponentEffect();
+  }
+
+  #reReuestParentRoot() {
+    if (this.isConnected) {
+      this.#dispatchRequestParent();
+    }
   }
 
   #dispatchRequestParent() {

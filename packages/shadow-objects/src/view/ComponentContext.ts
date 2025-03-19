@@ -37,6 +37,8 @@ declare global {
  * There is only one {@link ComponentContext} (a singleton) for each namespace.
  */
 export class ComponentContext {
+  static readonly ReRequestParentRoots = 're-request-parent-roots';
+
   static getContextsMap(): Map<NamespaceType, ComponentContext> {
     if (globalThis.__shadowEntsContexts == null) {
       globalThis.__shadowEntsContexts = new Map<NamespaceType, ComponentContext>();
@@ -230,6 +232,15 @@ export class ComponentContext {
    */
   dispatchMessage(uuid: string, type: string, data: unknown = undefined, traverseChildren = false) {
     this.#components.get(uuid)?.component.dispatchEvent(type, data, traverseChildren);
+  }
+
+  /**
+   * Inform all root components that they should re-request their parents
+   */
+  dispatchReRequestParentRoots() {
+    for (const uuid of this.#rootComponents) {
+      this.dispatchMessage(uuid, ComponentContext.ReRequestParentRoots);
+    }
   }
 
   /**

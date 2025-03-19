@@ -86,6 +86,8 @@ export interface AppliedChangeTrailEvent {
   error?: string;
 }
 
+// TODO split into separate files, one for view and another for shadow objects
+
 export interface ShadowObjectParams {
   entity: Entity;
 
