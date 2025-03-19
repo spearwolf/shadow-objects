@@ -24,6 +24,11 @@ export class SignalsPath {
     this.#updateEffect();
   }
 
+  pop() {
+    this.#signals.pop();
+    this.#updateEffect();
+  }
+
   clear() {
     this.#signals.length = 0;
     this.#clearEffect();

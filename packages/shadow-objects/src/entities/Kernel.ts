@@ -241,15 +241,14 @@ export class Kernel {
       this.#rootEntities.add(uuid);
     }
 
+    e.reSubscribeToParentContexts();
+
     queueMicrotask(() => {
       if (this.logger.isInfo) {
         this.logger.info('onParentChanged', {uuid, parentUuid, order});
       }
-      if (this.logger.isWarn) {
-        this.logger.warn('TODO(impl) recalculate context signals after parent changed');
-      }
-      // TODO recalculate context signals !!
       emit(e, onParentChanged, e);
+      // console.log('entity-graph', this.getEntityGraph());
     });
   }
 
@@ -324,6 +323,7 @@ export class Kernel {
 
     const contextReaders = new Map<string | symbol, SignalReader<any>>();
     const contextProviders = new Map<string | symbol, Signal<any>>();
+
     const propertyReaders = new Map<string, SignalReader<any>>();
 
     const shadowObject = eventize(

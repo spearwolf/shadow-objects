@@ -187,6 +187,12 @@ export class Entity {
     }
   }
 
+  reSubscribeToParentContexts() {
+    for (const [, ctx] of this.#context) {
+      this.#subscribeToParentContext(ctx);
+    }
+  }
+
   dispatchMessageToView(type: string, data?: unknown, transferables?: Transferable[], traverseChildren = false) {
     this.#kernel.dispatchMessageToView({uuid: this.#uuid, type, data, transferables, traverseChildren});
   }
@@ -278,11 +284,16 @@ export class Entity {
   }
 
   #subscribeToParentContext(ctx: IContextItem) {
+    ctx.unsubscribeFromParent?.();
+    ctx.unsubscribeFromParent = undefined;
     if (this.parent) {
-      ctx.unsubscribeFromParent?.();
-      ctx.unsubscribeFromParent = on(this.parent.#getContext(ctx.name).ctxPath, SignalsPath.Value, (val) => {
+      const parentCtxPath = this.parent.#getContext(ctx.name).ctxPath;
+      ctx.inherited.set(parentCtxPath.value);
+      ctx.unsubscribeFromParent = on(parentCtxPath, SignalsPath.Value, (val) => {
         ctx.inherited.set(val);
       });
+    } else {
+      ctx.inherited.set(undefined);
     }
   }
 }
