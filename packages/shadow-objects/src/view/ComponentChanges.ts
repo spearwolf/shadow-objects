@@ -173,7 +173,7 @@ export class ComponentChanges {
         if (isNew) {
           trail.push(this.makeCreateEntityChange());
         } else if (!isDestroyed) {
-          if (this.#nextParentUuid !== undefined) {
+          if (this.#nextParentUuid !== undefined && !(this.#nextParentUuid === ROOT && this.#parentUuid === undefined)) {
             trail.push(this.makeSetParentChange());
           } else if (this.#nextOrder !== undefined && this.#nextOrder !== this.#order) {
             trail.push(this.makeUpdateOrderChange());
@@ -225,7 +225,9 @@ export class ComponentChanges {
     if (this.#nextParentUuid !== undefined) {
       const nextParentUuid = this.#nextParentUuid === ROOT ? undefined : this.#nextParentUuid;
       this.#parentUuid = nextParentUuid;
-      entry.parentUuid = nextParentUuid;
+      if (nextParentUuid !== undefined) {
+        entry.parentUuid = nextParentUuid;
+      }
     }
 
     if (this.#nextProperties.size > 0) {

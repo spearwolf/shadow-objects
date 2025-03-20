@@ -142,8 +142,10 @@ export class ComponentContext {
 
   moveToRoot(childUuid: string) {
     const childEntry = this.#components.get(childUuid)!;
-    childEntry.changes.setParent(undefined);
-    this.#appendToOrdered(childEntry.component, this.#rootComponents);
+    if (childEntry) {
+      childEntry.changes?.setParent(undefined);
+      this.#appendToOrdered(childEntry.component, this.#rootComponents);
+    }
     this.#viewInstances = undefined;
   }
 

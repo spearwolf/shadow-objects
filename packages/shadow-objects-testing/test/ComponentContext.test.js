@@ -116,9 +116,10 @@ describe('ComponentContext', () => {
 
     let changes = cc.buildChangeTrails();
 
-    expect(changes).to.deep.equal([
-      {type: ComponentChangeType.CreateEntities, uuid: a.uuid, token: 'a', properties: [['foo', 'bar']]},
-    ]);
+    expect(changes).to.deep.equal(
+      [{type: ComponentChangeType.CreateEntities, uuid: a.uuid, token: 'a', properties: [['foo', 'bar']]}],
+      'a) create',
+    );
 
     // ---
 
@@ -131,16 +132,19 @@ describe('ComponentContext', () => {
 
     changes = cc.buildChangeTrails();
 
-    expect(changes).to.deep.equal([
-      {
-        type: ComponentChangeType.ChangeProperties,
-        uuid: a.uuid,
-        properties: [
-          ['y', 1],
-          ['x', 0],
-        ],
-      },
-    ]);
+    expect(changes).to.deep.equal(
+      [
+        {
+          type: ComponentChangeType.ChangeProperties,
+          uuid: a.uuid,
+          properties: [
+            ['y', 1],
+            ['x', 0],
+          ],
+        },
+      ],
+      'b) just change props',
+    );
   });
 
   it('should ignore create and destroy in same change trail', () => {
