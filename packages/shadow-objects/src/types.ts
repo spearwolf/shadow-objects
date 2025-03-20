@@ -2,8 +2,7 @@ import type {EventizedObject, on, once} from '@spearwolf/eventize';
 import type {CompareFunc, createEffect, createSignal, Signal, SignalReader} from '@spearwolf/signalize';
 import {AppliedChangeTrail, ImportedModule, type ComponentChangeType} from './constants.js';
 import type {Entity} from './entities/Entity.js';
-import type {Kernel} from './entities/Kernel.js';
-import type {Registry} from './entities/Registry.js';
+import type {Kernel, Registry} from './shadow-objects.js';
 
 export type ChangeTrailType = IComponentChangeType[];
 
@@ -86,10 +85,16 @@ export interface AppliedChangeTrailEvent {
   error?: string;
 }
 
-// TODO split into separate files, one for view and another for shadow objects
+export type EntityApi = Pick<
+  Entity,
+  'hasParent' | 'children' | 'dispatchMessageToView' | 'setProperties' | 'setProperty' | 'propKeys' | 'propEntries'
+> &
+  Readonly<Pick<Entity, 'uuid' | 'order' | 'parentUuid' | 'parent'>> & {
+    traverse(callback: (entity: EntityApi) => any): void;
+  };
 
 export interface ShadowObjectParams {
-  entity: Entity;
+  entity: EntityApi;
 
   provideContext<T = unknown>(name: string | symbol, initialValue?: T, isEqual?: CompareFunc<T>): Signal<T>;
   useContext<T = any>(name: string | symbol, isEqual?: CompareFunc<T>): SignalReader<T>;
