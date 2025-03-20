@@ -192,7 +192,6 @@ export class ShaeEntElement extends ShaeElement {
   }
 
   onParentChanged(_newParent: Node | undefined, _oldParent: Node) {
-    // TODO we need to destroy.. the viewComponent when the element is moved outside of a shae-worker context!
     this.#setParent(undefined);
     this.#dispatchRequestParent();
   }

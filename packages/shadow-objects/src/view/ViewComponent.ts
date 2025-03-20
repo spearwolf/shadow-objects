@@ -113,6 +113,8 @@ export class ViewComponent {
     if (this.#parent) {
       this.#context?.removeFromParent(this.uuid, this.#parent);
       this.#parent = undefined;
+    } else {
+      this.#context?.moveToRoot(this.uuid);
     }
   }
 

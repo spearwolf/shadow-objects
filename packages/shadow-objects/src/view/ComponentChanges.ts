@@ -12,6 +12,8 @@ import type {
 } from '../types.js';
 import {appendToEnd, removeFrom} from '../utils/array-utils.js';
 
+const ROOT = '#root';
+
 export class ComponentChanges {
   readonly #uuid: string;
 
@@ -58,7 +60,7 @@ export class ComponentChanges {
     this.#createCount++;
 
     this.#nextToken = token;
-    this.#nextParentUuid = parentUuid;
+    this.#nextParentUuid = parentUuid ?? ROOT;
     this.#nextOrder = !order ? undefined : order;
   }
 
@@ -96,7 +98,7 @@ export class ComponentChanges {
     if (parentUuid === this.#parentUuid) {
       this.#nextParentUuid = undefined;
     } else {
-      this.#nextParentUuid = parentUuid ?? null;
+      this.#nextParentUuid = parentUuid ?? ROOT;
       this.#serial++;
     }
   }
@@ -171,7 +173,7 @@ export class ComponentChanges {
         if (isNew) {
           trail.push(this.makeCreateEntityChange());
         } else if (!isDestroyed) {
-          if (this.#nextParentUuid !== undefined && this.#nextParentUuid !== this.#parentUuid) {
+          if (this.#nextParentUuid !== undefined) {
             trail.push(this.makeSetParentChange());
           } else if (this.#nextOrder !== undefined && this.#nextOrder !== this.#order) {
             trail.push(this.makeUpdateOrderChange());
@@ -221,7 +223,9 @@ export class ComponentChanges {
     this.#token = this.#nextToken;
 
     if (this.#nextParentUuid !== undefined) {
-      entry.parentUuid = this.#parentUuid = this.#nextParentUuid;
+      const nextParentUuid = this.#nextParentUuid === ROOT ? undefined : this.#nextParentUuid;
+      this.#parentUuid = nextParentUuid;
+      entry.parentUuid = nextParentUuid;
     }
 
     if (this.#nextProperties.size > 0) {
@@ -244,7 +248,7 @@ export class ComponentChanges {
   }
 
   makeSetParentChange(): ISetParentChange {
-    this.#parentUuid = this.#nextParentUuid ?? undefined;
+    this.#parentUuid = this.#nextParentUuid === ROOT ? undefined : this.#nextParentUuid;
 
     const entry: ISetParentChange = {
       type: ComponentChangeType.SetParent,

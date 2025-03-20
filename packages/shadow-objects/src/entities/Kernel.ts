@@ -244,11 +244,10 @@ export class Kernel {
     e.reSubscribeToParentContexts();
 
     queueMicrotask(() => {
-      if (this.logger.isInfo) {
-        this.logger.info('onParentChanged', {uuid, parentUuid, order});
+      if (this.logger.isDebug) {
+        this.logger.debug('entity.onParentChanged', {uuid, parentUuid, order, entity: e});
       }
       emit(e, onParentChanged, e);
-      // console.log('entity-graph', this.getEntityGraph());
     });
   }
 

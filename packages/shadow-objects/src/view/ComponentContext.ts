@@ -129,15 +129,22 @@ export class ComponentContext {
   removeFromParent(childUuid: string, parent: ViewComponent) {
     if (this.hasComponent(parent)) {
       const childEntry = this.#components.get(childUuid)!;
-      const entry = this.#components.get(parent.uuid)!;
-      const childIdx = entry.children.indexOf(childUuid);
+      const parentEntry = this.#components.get(parent.uuid)!;
+      const childIdx = parentEntry.children.indexOf(childUuid);
       if (childIdx !== -1) {
-        entry.children.splice(childIdx, 1);
+        parentEntry.children.splice(childIdx, 1);
         childEntry.changes.setParent(undefined);
       }
       this.#appendToOrdered(childEntry.component, this.#rootComponents);
       this.#viewInstances = undefined;
     }
+  }
+
+  moveToRoot(childUuid: string) {
+    const childEntry = this.#components.get(childUuid)!;
+    childEntry.changes.setParent(undefined);
+    this.#appendToOrdered(childEntry.component, this.#rootComponents);
+    this.#viewInstances = undefined;
   }
 
   changeToken(component: ViewComponent, token?: string) {
