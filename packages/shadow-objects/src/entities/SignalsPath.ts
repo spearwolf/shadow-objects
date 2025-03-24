@@ -1,5 +1,13 @@
 import {emit, off, retain, retainClear} from '@spearwolf/eventize';
-import {createEffect, destroyObjectSignals, Effect, findObjectSignalByName, value, type SignalLike} from '@spearwolf/signalize';
+import {
+  createEffect,
+  destroyObjectSignals,
+  Effect,
+  findObjectSignalByName,
+  value,
+  type Signal,
+  type SignalLike,
+} from '@spearwolf/signalize';
 import {signal} from '@spearwolf/signalize/decorators';
 
 const VALUE = 'value';
@@ -12,9 +20,17 @@ export class SignalsPath {
 
   @signal({name: VALUE}) accessor value: unknown;
 
-  constructor() {
+  readonly value$: Signal<unknown>;
+
+  constructor(signals?: SignalLike<unknown>[]) {
     retain(this, VALUE);
-    findObjectSignalByName(this, VALUE).onChange((val) => emit(this, VALUE, val));
+
+    this.value$ = findObjectSignalByName(this, VALUE);
+    this.value$.onChange((val) => emit(this, VALUE, val));
+
+    if (signals) {
+      this.add(...signals);
+    }
   }
 
   add(...signals: SignalLike<unknown>[]) {
@@ -39,6 +55,7 @@ export class SignalsPath {
     retainClear(this, VALUE);
     off(this);
     destroyObjectSignals(this);
+    this.value$.destroy();
   }
 
   #clearEffect() {

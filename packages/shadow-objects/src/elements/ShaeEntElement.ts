@@ -244,7 +244,6 @@ export class ShaeEntElement extends ShaeElement {
   }
 
   #unsubscribeFromParent?: () => void;
-  #parentsOnTheWayToShae?: WeakSet<HTMLElement>;
 
   #setParent(parent?: ShaeEntElement) {
     if (this.entParentNode === parent) return;
@@ -260,26 +259,6 @@ export class ShaeEntElement extends ShaeElement {
         capture: false,
         passive: false,
       });
-    }
-
-    this.#parentsOnTheWayToShae = undefined;
-
-    // we memorize all elements on the way to the <shae-ent> parent so that we can
-    // request a new parent in case of a custom element upgrade with shae elements in the shadow dom
-    if (parent) {
-      const elements: HTMLElement[] = [];
-      let current = this.parentElement;
-      while (current && current !== parent) {
-        elements.push(current);
-        if (current.parentElement == null && current.parentNode) {
-          current = (current.parentNode as ShadowRoot).host as HTMLElement;
-        } else {
-          current = current.parentElement;
-        }
-      }
-      if (elements.length > 0) {
-        this.#parentsOnTheWayToShae = new WeakSet(elements);
-      }
     }
 
     this.#unsubscribeFromParent?.();
@@ -312,7 +291,6 @@ export class ShaeEntElement extends ShaeElement {
   #onSlotChange = () => {
     const shadowRootHost = this.findShadowRootHost();
     if (shadowRootHost == null) return;
-
     this.dispatchEvent(
       new CustomEvent(ReRequestEntParentEventName, {
         bubbles: true,
@@ -332,9 +310,7 @@ export class ShaeEntElement extends ShaeElement {
     const shadowRootHost = event.detail?.shadowRootHost as HTMLElement | undefined;
 
     if (shadowRootHost) {
-      if (this.#parentsOnTheWayToShae?.has(shadowRootHost)) {
-        this.#dispatchRequestParent();
-      }
+      this.#dispatchRequestParent();
     }
   };
 

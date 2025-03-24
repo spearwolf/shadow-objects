@@ -376,6 +376,8 @@ export class Kernel {
           return sig;
         },
 
+        // TODO createMemo
+
         on(...args: Parameters<typeof on>): ReturnType<typeof on> {
           // @ts-ignore
           const unsub = on(...args);

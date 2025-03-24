@@ -1,5 +1,14 @@
 import {emit, off, on, once, Priority} from '@spearwolf/eventize';
-import {batch, createSignal, Signal, SignalAutoMap, value, type SignalReader, type SignalWriter} from '@spearwolf/signalize';
+import {
+  batch,
+  createSignal,
+  link,
+  Signal,
+  SignalAutoMap,
+  value,
+  type SignalReader,
+  type SignalWriter,
+} from '@spearwolf/signalize';
 import type {IComponentEvent} from '../types.js';
 import {Kernel} from './Kernel.js';
 import {SignalsPath} from './SignalsPath.js';
@@ -7,15 +16,34 @@ import {onDestroy, onViewEvent} from './events.js';
 
 type ContextNameType = string | symbol;
 
-interface IContextItem {
+interface IContextValue {
   name: ContextNameType;
   inherited: Signal<unknown>;
   provide: Signal<unknown>;
   context: Signal<unknown>;
-  ctxPath: SignalsPath;
-  unsubscribeFromPath: () => void;
-  unsubscribeFromParent?: () => void;
+  valuePath: SignalsPath;
+
+  unsubscribePathValue: () => void;
+  unsubscribeParent?: () => void;
 }
+
+const updateContextValues: Map<Signal<unknown>, unknown> = new Map();
+let requestedContextValueBatchUpdate = false;
+
+const deferContextValueUpdate = (sig: Signal<unknown>, val: unknown) => {
+  updateContextValues.set(sig, val);
+  if (!requestedContextValueBatchUpdate) {
+    requestedContextValueBatchUpdate = true;
+    queueMicrotask(() => {
+      requestedContextValueBatchUpdate = false;
+      const contextValues = Array.from(updateContextValues.entries());
+      updateContextValues.clear();
+      for (const [sig, val] of contextValues) {
+        sig.set(val);
+      }
+    });
+  }
+};
 
 /**
  * An entity has a parent and children, replicating the hierarchy of view-components.
@@ -29,7 +57,7 @@ export class Entity {
   #uuid: string;
 
   #props = new SignalAutoMap();
-  #context: Map<ContextNameType, IContextItem> = new Map();
+  #context: Map<ContextNameType, IContextValue> = new Map();
 
   #parentUuid?: string;
   #parent?: Entity;
@@ -114,9 +142,9 @@ export class Entity {
     off(this);
 
     for (const ctx of this.#context.values()) {
-      ctx.unsubscribeFromPath();
-      ctx.unsubscribeFromParent?.();
-      ctx.ctxPath.dispose();
+      ctx.unsubscribePathValue();
+      ctx.unsubscribeParent?.();
+      ctx.valuePath.dispose();
       ctx.inherited.destroy();
       ctx.provide.destroy();
       ctx.context.destroy();
@@ -148,7 +176,7 @@ export class Entity {
     this.resortChildren();
 
     for (const [, ctx] of child.#context) {
-      child.#subscribeToParentContext(ctx);
+      child.#subscribeToParent(ctx);
     }
 
     // this.emit(onAddChild, this, child);
@@ -177,9 +205,9 @@ export class Entity {
       this.#parentUuid = undefined;
 
       for (const [, ctx] of this.#context) {
-        if (ctx.unsubscribeFromParent) {
-          ctx.unsubscribeFromParent();
-          ctx.unsubscribeFromParent = undefined;
+        if (ctx.unsubscribeParent) {
+          ctx.unsubscribeParent();
+          ctx.unsubscribeParent = undefined;
         }
       }
 
@@ -189,7 +217,7 @@ export class Entity {
 
   reSubscribeToParentContexts() {
     for (const [, ctx] of this.#context) {
-      this.#subscribeToParentContext(ctx);
+      this.#subscribeToParent(ctx);
     }
   }
 
@@ -250,48 +278,47 @@ export class Entity {
   // TODO(test) write tests for useContext()
 
   useContext<T = unknown>(name: ContextNameType): SignalReader<T> {
-    return this.#getContext(name).context.get as SignalReader<T>;
+    return this.#findOrCreateContext(name).context.get as SignalReader<T>;
   }
 
   // TODO(test) write tests for provideContext()
 
   provideContext<T = unknown>(name: ContextNameType): Signal<T> {
-    return this.#getContext(name).provide as Signal<T>;
+    return this.#findOrCreateContext(name).provide as Signal<T>;
   }
 
-  #getContext(name: ContextNameType): IContextItem {
-    let ctx = this.#context.get(name);
-    if (ctx == null) {
-      const inherited = createSignal();
-      const provide = createSignal();
-      const context = createSignal();
-
-      const ctxPath = new SignalsPath();
-      ctxPath.add(provide.get, inherited.get);
-
-      const unsubscribeFromPath = on(ctxPath, SignalsPath.Value, (val) => {
-        queueMicrotask(() => {
-          context.set(val);
-        });
-      });
-
-      ctx = {name, inherited, provide, context, ctxPath, unsubscribeFromPath};
-      this.#context.set(name, ctx);
-
-      this.#subscribeToParentContext(ctx);
+  #findOrCreateContext(name: ContextNameType): IContextValue {
+    if (this.#context.has(name)) {
+      return this.#context.get(name)!;
     }
+
+    const inherited = createSignal();
+    const provide = createSignal();
+    const context = createSignal();
+
+    const valuePath = new SignalsPath([provide, inherited]);
+
+    const unsubscribePathValue = on(valuePath, SignalsPath.Value, (val) => {
+      deferContextValueUpdate(context, val);
+    });
+
+    const ctx: IContextValue = {name, inherited, provide, context, valuePath, unsubscribePathValue};
+    this.#context.set(name, ctx);
+
+    this.#subscribeToParent(ctx);
+
     return ctx;
   }
 
-  #subscribeToParentContext(ctx: IContextItem) {
-    ctx.unsubscribeFromParent?.();
-    ctx.unsubscribeFromParent = undefined;
+  #subscribeToParent(ctx: IContextValue) {
+    ctx.unsubscribeParent?.();
+    ctx.unsubscribeParent = undefined;
     if (this.parent) {
-      const parentCtxPath = this.parent.#getContext(ctx.name).ctxPath;
-      ctx.inherited.set(parentCtxPath.value);
-      ctx.unsubscribeFromParent = on(parentCtxPath, SignalsPath.Value, (val) => {
-        ctx.inherited.set(val);
-      });
+      const parentCtx = this.parent.#findOrCreateContext(ctx.name);
+      const linkToParent = link(parentCtx.context, ctx.inherited);
+      ctx.unsubscribeParent = () => {
+        linkToParent.destroy();
+      };
     } else {
       ctx.inherited.set(undefined);
     }
