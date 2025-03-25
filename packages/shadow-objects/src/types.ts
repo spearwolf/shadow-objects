@@ -1,5 +1,5 @@
 import type {EventizedObject, on, once} from '@spearwolf/eventize';
-import type {CompareFunc, createEffect, createSignal, Signal, SignalReader} from '@spearwolf/signalize';
+import type {CompareFunc, createEffect, createMemo, createSignal, Signal, SignalReader} from '@spearwolf/signalize';
 import {AppliedChangeTrail, ImportedModule, type ComponentChangeType} from './constants.js';
 import type {Entity} from './entities/Entity.js';
 import type {Kernel, Registry} from './shadow-objects.js';
@@ -102,6 +102,7 @@ export interface ShadowObjectParams {
 
   createEffect(...args: Parameters<typeof createEffect>): ReturnType<typeof createEffect>;
   createSignal<T = unknown>(...args: Parameters<typeof createSignal<T>>): ReturnType<typeof createSignal<T>>;
+  createMemo<T = unknown>(...args: Parameters<typeof createMemo<T>>): SignalReader<T>;
 
   on(...args: Parameters<typeof on>): ReturnType<typeof on>;
   once(...args: Parameters<typeof once>): ReturnType<typeof once>;

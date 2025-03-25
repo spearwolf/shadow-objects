@@ -2,6 +2,7 @@ import {emit, eventize, off, on, once} from '@spearwolf/eventize';
 import {
   batch,
   createEffect,
+  createMemo,
   createSignal,
   destroySignal,
   link,
@@ -351,7 +352,7 @@ export class Kernel {
           return ctxReader;
         },
 
-        useProperty(name: string, compare?: CompareFunc<any>) {
+        useProperty<T = any>(name: string, compare?: CompareFunc<T>): SignalReader<T> {
           let propReader = propertyReaders.get(name);
           if (propReader === undefined) {
             propReader = createSignal<any>(undefined, compare ? {compare} : undefined).get;
@@ -376,7 +377,13 @@ export class Kernel {
           return sig;
         },
 
-        // TODO createMemo
+        createMemo<T = unknown>(...args: Parameters<typeof createMemo<T>>): SignalReader<T> {
+          const sig = createMemo<T>(...args);
+          unsubscribeSecondary.add(() => {
+            destroySignal(sig);
+          });
+          return sig;
+        },
 
         on(...args: Parameters<typeof on>): ReturnType<typeof on> {
           // @ts-ignore
