@@ -142,6 +142,7 @@ export class Entity {
     off(this);
 
     for (const ctx of this.#context.values()) {
+      ctx.context.set(undefined);
       ctx.unsubscribePathValue();
       ctx.unsubscribeParent?.();
       ctx.valuePath.dispose();

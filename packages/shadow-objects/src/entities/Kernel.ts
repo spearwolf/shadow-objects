@@ -1,4 +1,4 @@
-import {emit, eventize, off, on, once} from '@spearwolf/eventize';
+import {emit, eventize, off, on, once, Priority} from '@spearwolf/eventize';
 import {
   batch,
   createEffect,
@@ -145,6 +145,9 @@ export class Kernel {
   }
 
   run(event: SyncEvent): void {
+    if (this.logger.isDebug) {
+      this.logger.debug('sync', event);
+    }
     batch(() => {
       for (const entry of event.changeTrail) {
         this.parse(entry);
@@ -330,6 +333,8 @@ export class Kernel {
       new constructor({
         entity: entry.entity,
 
+        // TODO provideContext(.. {global: true}) or provideGlobalContext(...)?
+
         provideContext<T = unknown>(name: string | symbol, initialValue?: T, compare?: CompareFunc<T>) {
           let ctxProvider = contextProviders.get(name);
           if (ctxProvider === undefined) {
@@ -340,6 +345,8 @@ export class Kernel {
           }
           return ctxProvider;
         },
+
+        // TODO useContext(.. {skipSelf: true}) - to get context from parent entity and skip the current entity
 
         useContext(name: string | symbol, compare?: CompareFunc<any>) {
           let ctxReader = contextReaders.get(name);
@@ -409,7 +416,7 @@ export class Kernel {
       this.logger.info('create shadow-object', getDisplayName(constructor), {shadowObject, entity: entry.entity});
     }
 
-    once(shadowObject, onDestroy, () => {
+    once(entry.entity, onDestroy, Priority.Low, () => {
       if (this.logger.isInfo) {
         this.logger.info('destroy shadow-object', getDisplayName(constructor), {shadowObject, entity: entry.entity});
       }
