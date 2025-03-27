@@ -109,36 +109,39 @@ describe('SignalsPath', () => {
 
     const valueFn = vi.fn();
 
-    path.add(a, b);
+    path.add(a, b); // --- [ b:- | c:- ]
 
     on(path, SignalsPath.Value, valueFn);
 
-    expect(valueFn).not.toBeCalled();
+    expect(valueFn, 'path just initialized').not.toBeCalled();
 
-    b.set('b');
+    b.set('b'); // --- [ b:b | c:- ]
 
-    expect(valueFn).toHaveBeenCalledWith('b');
+    expect(valueFn, 'b').toHaveBeenCalledWith('b');
     valueFn.mockClear();
 
-    path.clear();
+    path.clear(); // --- []
 
-    expect(valueFn).not.toBeCalled();
-
-    path.add(a, b, c);
-
-    expect(valueFn).not.toBeCalled();
-
-    c.set('c');
-
-    expect(valueFn).not.toBeCalled();
-
-    b.set(undefined);
-
-    expect(valueFn).toHaveBeenCalledWith('c');
+    expect(valueFn, 'after 1st clear()').toHaveBeenCalledWith(undefined);
     valueFn.mockClear();
 
-    a.set('a');
+    path.add(a, b, c); // --- [ a:- | b:b | c:- ]
 
-    expect(valueFn).toHaveBeenCalledWith('a');
+    expect(valueFn, 'after a, b, c added').toHaveBeenCalledWith('b');
+    valueFn.mockClear();
+
+    c.set('c'); // --- [ a:- | b:b | c:c ]
+
+    expect(valueFn, 'c').not.toBeCalled();
+    valueFn.mockClear();
+
+    b.set(undefined); // --- [ a:- | b:- | c:c ]
+
+    expect(valueFn, 'set to undef').toHaveBeenCalledWith('c');
+    valueFn.mockClear();
+
+    a.set('a'); // --- [ a:a | b:- | c:c ]
+
+    expect(valueFn, 'last a').toHaveBeenCalledWith('a');
   });
 });

@@ -96,7 +96,15 @@ export type EntityApi = Pick<
 export interface ShadowObjectParams {
   entity: EntityApi;
 
+  // provideContext<T = unknown>(
+  //   name: string | symbol,
+  //   initialValue?: T,
+  //   options?: {global?: boolean; isEqual?: CompareFunc<T>} | CompareFunc<T>,
+  // ): Signal<T>;
+
   provideContext<T = unknown>(name: string | symbol, initialValue?: T, isEqual?: CompareFunc<T>): Signal<T>;
+  provideGlobalContext<T = unknown>(name: string | symbol, initialValue?: T, isEqual?: CompareFunc<T>): Signal<T>;
+
   useContext<T = any>(name: string | symbol, isEqual?: CompareFunc<T>): SignalReader<T>;
   useProperty<T = any>(name: string, isEqual?: CompareFunc<T>): SignalReader<T>;
 

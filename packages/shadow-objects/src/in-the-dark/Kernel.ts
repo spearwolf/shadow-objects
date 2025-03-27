@@ -14,8 +14,9 @@ import {ComponentChangeType, MessageToView} from '../constants.js';
 import type {IComponentChangeType, IComponentEvent, ShadowObjectConstructor, ShadowObjectType, SyncEvent} from '../types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {Entity} from './Entity.js';
-import {Registry} from './Registry.js';
 import {onCreate, onDestroy, onParentChanged, type OnCreate, type OnDestroy} from './events.js';
+import {Registry} from './Registry.js';
+import {SignalsPath} from './SignalsPath.js';
 
 export interface MessageToViewEvent {
   uuid: string;
@@ -65,6 +66,8 @@ export class Kernel {
   #allEntities?: Entity[];
   #allEntitiesReversed?: Entity[];
   #allEntitiesNeedUpdate = true;
+
+  #rootContexts: Map<string | symbol, SignalsPath> = new Map();
 
   constructor(registry?: Registry) {
     eventize(this);
@@ -326,6 +329,7 @@ export class Kernel {
 
     const contextReaders = new Map<string | symbol, SignalReader<any>>();
     const contextProviders = new Map<string | symbol, Signal<any>>();
+    const contextRootProviders = new Map<string | symbol, Signal<any>>();
 
     const propertyReaders = new Map<string, SignalReader<any>>();
 
@@ -333,16 +337,31 @@ export class Kernel {
       new constructor({
         entity: entry.entity,
 
-        // TODO provideContext(.. {global: true}) or provideGlobalContext(...)?
-
-        provideContext<T = unknown>(name: string | symbol, initialValue?: T, compare?: CompareFunc<T>) {
+        provideContext<T = unknown>(name: string | symbol, initialValue?: T, isEqual?: CompareFunc<T>) {
           let ctxProvider = contextProviders.get(name);
-          if (ctxProvider === undefined) {
-            ctxProvider = createSignal(initialValue, compare ? {compare} : undefined);
+
+          if (ctxProvider == null) {
+            ctxProvider = createSignal(initialValue, isEqual ? {compare: isEqual} : undefined);
+
+            const ln = link(ctxProvider, entry.entity.provideContext(name));
+            unsubscribeSecondary.add(ln.destroy.bind(ln));
             contextProviders.set(name, ctxProvider);
-            const con = link(ctxProvider, entry.entity.provideContext(name));
-            unsubscribeSecondary.add(con.destroy.bind(con));
           }
+
+          return ctxProvider;
+        },
+
+        provideGlobalContext<T = unknown>(name: string | symbol, initialValue?: T, isEqual?: CompareFunc<T>) {
+          let ctxProvider = contextRootProviders.get(name);
+
+          if (ctxProvider == null) {
+            ctxProvider = createSignal(initialValue, isEqual ? {compare: isEqual} : undefined);
+
+            const ln = link(ctxProvider, entry.entity.provideGlobalContext(name));
+            unsubscribeSecondary.add(ln.destroy.bind(ln));
+            contextRootProviders.set(name, ctxProvider);
+          }
+
           return ctxProvider;
         },
 
@@ -441,11 +460,16 @@ export class Kernel {
         destroySignal(sig);
       }
 
+      for (const sig of contextRootProviders.values()) {
+        destroySignal(sig);
+      }
+
       unsubscribePrimary.clear();
       unsubscribeSecondary.clear();
       contextReaders.clear();
       propertyReaders.clear();
       contextProviders.clear();
+      contextRootProviders.clear();
 
       const otherShadowObjects = entry.usedConstructors.get(constructor);
       if (otherShadowObjects) {
@@ -514,7 +538,21 @@ export class Kernel {
     off(entity, shadowObject);
   }
 
+  findOrCreateRootContext(name: string | symbol): SignalsPath {
+    let ctx = this.#rootContexts.get(name);
+    if (!ctx) {
+      ctx = new SignalsPath();
+      this.#rootContexts.set(name, ctx);
+    }
+    return ctx;
+  }
+
   destroy(): void {
+    for (const ctx of this.#rootContexts.values()) {
+      ctx.dispose();
+    }
+    this.#rootContexts.clear();
+
     for (const entity of this.traverseLevelOrderBFS().reverse()) {
       this.destroyEntity(entity.uuid);
     }

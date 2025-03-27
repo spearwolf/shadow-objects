@@ -24,7 +24,7 @@ interface IContextValue {
   valuePath: SignalsPath;
 
   unsubscribePathValue: () => void;
-  unsubscribeParent?: () => void;
+  unsubscribeFromParent?: () => void;
 }
 
 const updateContextValues: Map<Signal<unknown>, unknown> = new Map();
@@ -58,6 +58,8 @@ export class Entity {
 
   #props = new SignalAutoMap();
   #context: Map<ContextNameType, IContextValue> = new Map();
+
+  #rootContexts: Map<ContextNameType, {cleanup: () => void; signal: Signal<any>}> = new Map();
 
   #parentUuid?: string;
   #parent?: Entity;
@@ -141,10 +143,16 @@ export class Entity {
     this.#props.clear();
     off(this);
 
+    for (const rootCtx of this.#rootContexts.values()) {
+      rootCtx.cleanup();
+      rootCtx.signal.destroy();
+    }
+    this.#rootContexts.clear();
+
     for (const ctx of this.#context.values()) {
       ctx.context.set(undefined);
       ctx.unsubscribePathValue();
-      ctx.unsubscribeParent?.();
+      ctx.unsubscribeFromParent?.();
       ctx.valuePath.dispose();
       ctx.inherited.destroy();
       ctx.provide.destroy();
@@ -206,9 +214,9 @@ export class Entity {
       this.#parentUuid = undefined;
 
       for (const [, ctx] of this.#context) {
-        if (ctx.unsubscribeParent) {
-          ctx.unsubscribeParent();
-          ctx.unsubscribeParent = undefined;
+        if (ctx.unsubscribeFromParent) {
+          ctx.unsubscribeFromParent();
+          ctx.unsubscribeFromParent = undefined;
         }
       }
 
@@ -288,6 +296,17 @@ export class Entity {
     return this.#findOrCreateContext(name).provide as Signal<T>;
   }
 
+  provideGlobalContext<T = unknown>(name: ContextNameType): Signal<T> {
+    if (this.#rootContexts.has(name)) {
+      return this.#rootContexts.get(name)!.signal as Signal<T>;
+    }
+    const rootCtx = this.#kernel.findOrCreateRootContext(name);
+    const signal = createSignal<T>();
+    const cleanup = rootCtx.add(signal);
+    this.#rootContexts.set(name, {cleanup, signal});
+    return signal;
+  }
+
   #findOrCreateContext(name: ContextNameType): IContextValue {
     if (this.#context.has(name)) {
       return this.#context.get(name)!;
@@ -312,16 +331,16 @@ export class Entity {
   }
 
   #subscribeToParent(ctx: IContextValue) {
-    ctx.unsubscribeParent?.();
-    ctx.unsubscribeParent = undefined;
+    ctx.unsubscribeFromParent?.();
+    ctx.unsubscribeFromParent = undefined;
     if (this.parent) {
       const parentCtx = this.parent.#findOrCreateContext(ctx.name);
       const linkToParent = link(parentCtx.context, ctx.inherited);
-      ctx.unsubscribeParent = () => {
-        linkToParent.destroy();
-      };
+      ctx.unsubscribeFromParent = linkToParent.destroy.bind(linkToParent);
     } else {
-      ctx.inherited.set(undefined);
+      const rootCtx = this.#kernel.findOrCreateRootContext(ctx.name);
+      const linkToRoot = link(rootCtx.value$, ctx.inherited);
+      ctx.unsubscribeFromParent = linkToRoot.destroy.bind(linkToRoot);
     }
   }
 }
