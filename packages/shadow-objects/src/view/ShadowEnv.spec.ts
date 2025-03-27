@@ -1,7 +1,7 @@
 import {once} from '@spearwolf/eventize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {Registry} from '../entities/Registry.js';
-import {ShadowObject} from '../entities/ShadowObject.js';
+import {Registry} from '../in-the-dark/Registry.js';
+import {ShadowObject} from '../in-the-dark/ShadowObject.js';
 import {ComponentContext} from './ComponentContext.js';
 import {LocalShadowObjectEnv} from './LocalShadowObjectEnv.js';
 import {ShadowEnv} from './ShadowEnv.js';

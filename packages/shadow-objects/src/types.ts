@@ -1,7 +1,7 @@
 import type {EventizedObject, on, once} from '@spearwolf/eventize';
 import type {CompareFunc, createEffect, createMemo, createSignal, Signal, SignalReader} from '@spearwolf/signalize';
 import {AppliedChangeTrail, ImportedModule, type ComponentChangeType} from './constants.js';
-import type {Entity} from './entities/Entity.js';
+import type {Entity} from './in-the-dark/Entity.js';
 import type {Kernel, Registry} from './shadow-objects.js';
 
 export type ChangeTrailType = IComponentChangeType[];

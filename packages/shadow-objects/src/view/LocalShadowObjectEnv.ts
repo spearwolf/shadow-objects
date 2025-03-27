@@ -1,8 +1,8 @@
 import {on} from '@spearwolf/eventize';
 import {MessageToView, ShadowObjectsExport} from '../constants.js';
-import {Kernel, type MessageToViewEvent} from '../entities/Kernel.js';
-import type {Registry} from '../entities/Registry.js';
-import {importModule} from '../entities/importModule.js';
+import {Kernel, type MessageToViewEvent} from '../in-the-dark/Kernel.js';
+import type {Registry} from '../in-the-dark/Registry.js';
+import {importModule} from '../in-the-dark/importModule.js';
 import type {ChangeTrailType, ShadowObjectsModule, SyncEvent} from '../types.js';
 import {toUrlString} from '../utils/toUrlString.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';

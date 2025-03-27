@@ -9,8 +9,8 @@ import {
   MessageToView,
   ShadowObjectsExport,
 } from '../constants.js';
-import {Kernel, type MessageToViewEvent} from '../entities/Kernel.js';
-import {importModule} from '../entities/importModule.js';
+import {Kernel, type MessageToViewEvent} from '../in-the-dark/Kernel.js';
+import {importModule} from '../in-the-dark/importModule.js';
 import type {AppliedChangeTrailEvent, ImportedModuleEvent, ShadowObjectsModule, SyncEvent} from '../types.js';
 import {toUrlString} from '../utils/toUrlString.js';
 
