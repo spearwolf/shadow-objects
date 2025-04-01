@@ -79,17 +79,24 @@ describe('Kernel', () => {
       // name = 'plah';
     }
 
+    @ShadowObject({token: 'obDir'})
+    class ObersteDirektive {}
+
     const registry = Registry.get();
 
     registry.appendRoute('testA', ['foo', 'bar']);
     registry.appendRoute('testB', ['bar', 'plah']);
+    registry.appendRoute('testB', ['bar', 'plah']);
+    registry.appendRoute('@plah', ['obDir']);
 
     expect(Foo).toBeDefined();
     expect(Bar).toBeDefined();
     expect(Plah).toBeDefined();
+    expect(ObersteDirektive).toBeDefined();
 
     expect(registry.hasRoute('testA')).toBeTruthy();
     expect(registry.hasRoute('testB')).toBeTruthy();
+    expect(registry.hasRoute('@plah'), '@plah should be no ordinary route').toBeFalsy();
 
     expect(registry.findConstructors('testA'), 'testA should contain Foo').toContain(Foo);
     expect(registry.findConstructors('testA'), 'testA should contain Bar').toContain(Bar);
@@ -108,7 +115,7 @@ describe('Kernel', () => {
     //   shadowObjects.map((so) => so.name),
     // );
 
-    expect(shadowObjects).toHaveLength(2);
+    expect(shadowObjects, 'testA shadow-constructors').toHaveLength(2);
     expect(
       shadowObjects.find((so) => so instanceof Foo),
       'should contain instanceof Foo',
@@ -121,7 +128,7 @@ describe('Kernel', () => {
 
     shadowObjects = kernel.findShadowObjects(uuid); // as unknown as {name: string}[];
 
-    expect(shadowObjects).toHaveLength(2);
+    expect(shadowObjects, 'check 2').toHaveLength(2);
 
     // console.log(
     //   'shadowObjects after changeToken',
@@ -136,6 +143,20 @@ describe('Kernel', () => {
     expect(
       shadowObjects.find((so) => so instanceof Plah),
       'should contain instanceof Plah',
+    ).toBeDefined();
+
+    kernel.changeProperties(uuid, [['plah', 'hello']]);
+
+    // console.log('truthyProps', Array.from(kernel.getEntity(uuid).truthyProps()));
+    // console.log('changeProperties', Array.from(kernel.getEntity(uuid).propKeys()));
+
+    shadowObjects = kernel.findShadowObjects(uuid);
+
+    expect(shadowObjects, 'check 3').toHaveLength(3);
+
+    expect(
+      shadowObjects.find((so) => so instanceof ObersteDirektive),
+      'should contain instanceof ObersteDirektive',
     ).toBeDefined();
   });
 });

@@ -257,6 +257,7 @@ export class Entity {
   }
 
   setProperties(properties: [string, unknown][]) {
+    this.clearTruthyPropsCache();
     batch(() => {
       for (const [key, val] of properties) {
         this.setProperty(key, val);
@@ -278,6 +279,29 @@ export class Entity {
 
   propEntries(): [string, unknown][] {
     return Array.from(this.#props.entries()).map(([key, sig]) => [key, sig.value]) as [string, unknown][];
+  }
+
+  #truthyPropsCache: Set<string> | undefined;
+
+  clearTruthyPropsCache() {
+    this.#truthyPropsCache = undefined;
+  }
+
+  truthyProps(): Set<string> | undefined {
+    if (this.#truthyPropsCache) {
+      return this.#truthyPropsCache.size ? this.#truthyPropsCache : undefined;
+    }
+    const truthyProps = new Set<string>();
+    for (const [key, sig] of this.#props.entries()) {
+      if (typeof key === 'string') {
+        const val = sig.value;
+        if (val != null && val !== false && val !== '') {
+          truthyProps.add(key);
+        }
+      }
+    }
+    this.#truthyPropsCache = truthyProps;
+    return truthyProps.size ? truthyProps : undefined;
   }
 
   hasContext(name: ContextNameType): boolean {

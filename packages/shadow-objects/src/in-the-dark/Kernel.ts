@@ -138,13 +138,17 @@ export class Kernel {
   }
 
   upgradeEntities(): void {
+    const entityConstructors = new Map<String, Set<ShadowObjectConstructor>>();
+
     for (const entity of this.traverseLevelOrderBFS(true)) {
-      this.updateShadowObjects(entity.uuid, ShadowObjectAction.DestroyOnly);
+      entityConstructors.set(entity.uuid, this.updateShadowObjects(entity.uuid, ShadowObjectAction.DestroyOnly));
     }
 
     for (const entity of this.traverseLevelOrderBFS(false)) {
-      this.updateShadowObjects(entity.uuid, ShadowObjectAction.JustCreate);
+      this.updateShadowObjects(entity.uuid, ShadowObjectAction.JustCreate, entityConstructors.get(entity.uuid));
     }
+
+    entityConstructors.clear();
   }
 
   run(event: SyncEvent): void {
@@ -268,6 +272,7 @@ export class Kernel {
 
   changeProperties(uuid: string, properties: [string, unknown][]): void {
     this.getEntity(uuid).setProperties(properties);
+    this.updateShadowObjects(uuid);
   }
 
   changeToken(uuid: string, token: string): void {
@@ -292,9 +297,13 @@ export class Kernel {
    * Create or destroy the shadow-objects of an entity using the registered constructors.
    * After a token change or registry changes, an entity may be given different shadow-objects.
    */
-  private updateShadowObjects(uuid: string, action = ShadowObjectAction.CreateAndDestroy): void {
+  private updateShadowObjects(
+    uuid: string,
+    action = ShadowObjectAction.CreateAndDestroy,
+    nextConstructors?: Set<ShadowObjectConstructor>,
+  ): Set<ShadowObjectConstructor> {
     const entry = this.#entities.get(uuid);
-    const nextConstructors = new Set(this.registry.findConstructors(entry.token));
+    nextConstructors ??= new Set(this.registry.findConstructors(entry.token, entry.entity.truthyProps()));
 
     const shouldDestroy = action === ShadowObjectAction.CreateAndDestroy || action === ShadowObjectAction.DestroyOnly;
     const shouldCreate = action === ShadowObjectAction.CreateAndDestroy || action === ShadowObjectAction.JustCreate;
@@ -321,6 +330,8 @@ export class Kernel {
         }
       }
     }
+
+    return nextConstructors;
   }
 
   private constructShadowObject(constructor: ShadowObjectConstructor, entry: EntityEntry): ShadowObjectType {
@@ -497,7 +508,7 @@ export class Kernel {
   private createShadowObjects(uuid: string): void {
     const entry = this.#entities.get(uuid);
 
-    this.registry.findConstructors(entry.token)?.forEach((constructor) => {
+    this.registry.findConstructors(entry.token, entry.entity.truthyProps())?.forEach((constructor) => {
       this.constructShadowObject(constructor, entry);
     });
   }

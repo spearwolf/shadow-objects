@@ -8,7 +8,7 @@ describe('Registry', () => {
     registry.appendRoute('foo', ['bar', 'plah']);
     registry.appendRoute('plah', ['foo', 'xyz', 'abc']);
 
-    expect(registry.findTokensByRoute('foo')).toEqual(['foo', 'bar', 'plah', 'xyz', 'abc']);
+    expect(Array.from(registry.findTokensByRoute('foo')).sort()).toEqual(['abc', 'bar', 'foo', 'plah', 'xyz']);
   });
 
   it('overlapping routes', () => {
@@ -17,7 +17,33 @@ describe('Registry', () => {
     registry.appendRoute('testA', ['foo', 'bar']);
     registry.appendRoute('testB', ['bar', 'plah']);
 
-    expect(registry.findTokensByRoute('testA'), 'testA').toEqual(['testA', 'foo', 'bar']);
-    expect(registry.findTokensByRoute('testB'), 'testB').toEqual(['testB', 'bar', 'plah']);
+    expect(Array.from(registry.findTokensByRoute('testA')).sort(), 'testA').toEqual(['bar', 'foo', 'testA']);
+    expect(Array.from(registry.findTokensByRoute('testB')).sort(), 'testB').toEqual(['bar', 'plah', 'testB']);
+  });
+
+  it('prop based routings - simple', () => {
+    const registry = new Registry();
+
+    registry.appendRoute('foo', ['bar', 'plah']);
+    registry.appendRoute('@x', ['xyz', 'abc']);
+    registry.appendRoute('@y', ['abc']);
+
+    expect(Array.from(registry.findTokensByRoute('foo', new Set('x'))).sort()).toEqual(['abc', 'bar', 'foo', 'plah', 'xyz']);
+  });
+
+  it('prop based routings - advanced', () => {
+    const registry = new Registry();
+
+    registry.appendRoute('foo', ['bar', 'plah']);
+    registry.appendRoute('plah@y', ['abc']);
+    registry.appendRoute('abc@x', ['xyz']);
+
+    expect(Array.from(registry.findTokensByRoute('foo', new Set(['x', 'y']))).sort()).toEqual([
+      'abc',
+      'bar',
+      'foo',
+      'plah',
+      'xyz',
+    ]);
   });
 });
