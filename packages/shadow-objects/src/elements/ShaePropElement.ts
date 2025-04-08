@@ -217,16 +217,16 @@ export class ShaePropElement extends HTMLElement {
             break;
 
           case 'number[]':
-            value = value.split(/\W+/).map((v) => Number(v));
+            value = value.split(/\s+/).map((v) => Number(v));
             break;
 
           case 'float[]':
-            value = value.split(/\W+/).map((v) => parseFloat(v));
+            value = value.split(/\s+/).map((v) => parseFloat(v));
             break;
 
           case 'int[]':
           case 'integer[]':
-            value = value.split(/\W+/).map((v) => parseInt(v));
+            value = value.split(/\s+/).map((v) => parseInt(v));
             break;
 
           case 'hex[]':
@@ -278,11 +278,11 @@ export class ShaePropElement extends HTMLElement {
             break;
 
           case 'float32array':
-            value = new Float32Array(value.split(/\W+/).map((v) => Number(v)));
+            value = new Float32Array(value.split(/\s+/).map((v) => Number(v)));
             break;
 
           case 'float64array':
-            value = new Float64Array(value.split(/\W+/).map((v) => Number(v)));
+            value = new Float64Array(value.split(/\s+/).map((v) => Number(v)));
             break;
 
           case 'bigint64array':
