@@ -100,6 +100,7 @@ export interface ShadowObjectParams {
   provideGlobalContext<T = unknown>(name: string | symbol, initialValue?: T, isEqual?: CompareFunc<T>): Signal<T>;
 
   useContext<T = any>(name: string | symbol, isEqual?: CompareFunc<T>): SignalReader<T>;
+  useParentContext<T = any>(name: string | symbol, isEqual?: CompareFunc<T>): SignalReader<T>;
   useProperty<T = any>(name: string, isEqual?: CompareFunc<T>): SignalReader<T>;
 
   createEffect(...args: Parameters<typeof createEffect>): ReturnType<typeof createEffect>;

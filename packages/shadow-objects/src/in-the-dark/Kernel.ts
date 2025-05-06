@@ -339,6 +339,7 @@ export class Kernel {
     const unsubscribeSecondary = new Set<() => any>();
 
     const contextReaders = new Map<string | symbol, SignalReader<any>>();
+    const contextParentReaders = new Map<string | symbol, SignalReader<any>>();
     const contextProviders = new Map<string | symbol, Signal<any>>();
     const contextRootProviders = new Map<string | symbol, Signal<any>>();
 
@@ -376,14 +377,23 @@ export class Kernel {
           return ctxProvider;
         },
 
-        // TODO useContext(.. {skipSelf: true}) - to get context from parent entity and skip the current entity
-
         useContext(name: string | symbol, compare?: CompareFunc<any>) {
           let ctxReader = contextReaders.get(name);
           if (ctxReader === undefined) {
             ctxReader = createSignal<any>(undefined, compare ? {compare} : undefined).get;
             contextReaders.set(name, ctxReader);
             const con = link(entry.entity.useContext(name), ctxReader);
+            unsubscribeSecondary.add(con.destroy.bind(con));
+          }
+          return ctxReader;
+        },
+
+        useParentContext(name: string | symbol, compare?: CompareFunc<any>) {
+          let ctxReader = contextParentReaders.get(name);
+          if (ctxReader === undefined) {
+            ctxReader = createSignal<any>(undefined, compare ? {compare} : undefined).get;
+            contextParentReaders.set(name, ctxReader);
+            const con = link(entry.entity.useParentContext(name), ctxReader);
             unsubscribeSecondary.add(con.destroy.bind(con));
           }
           return ctxReader;
@@ -463,6 +473,10 @@ export class Kernel {
         destroySignal(sig);
       }
 
+      for (const sig of contextParentReaders.values()) {
+        destroySignal(sig);
+      }
+
       for (const sig of propertyReaders.values()) {
         destroySignal(sig);
       }
@@ -478,6 +492,7 @@ export class Kernel {
       unsubscribePrimary.clear();
       unsubscribeSecondary.clear();
       contextReaders.clear();
+      contextParentReaders.clear();
       propertyReaders.clear();
       contextProviders.clear();
       contextRootProviders.clear();

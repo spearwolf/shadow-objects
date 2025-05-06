@@ -314,6 +314,12 @@ export class Entity {
     return this.#findOrCreateContext(name).context.get as SignalReader<T>;
   }
 
+  // TODO(test) write tests for useParentContext()
+
+  useParentContext<T = unknown>(name: ContextNameType): SignalReader<T> {
+    return this.#findOrCreateContext(name).inherited.get as SignalReader<T>;
+  }
+
   // TODO(test) write tests for provideContext()
 
   provideContext<T = unknown>(name: ContextNameType): Signal<T> {
