@@ -107,8 +107,8 @@ export interface ShadowObjectParams {
   createSignal<T = unknown>(...args: Parameters<typeof createSignal<T>>): ReturnType<typeof createSignal<T>>;
   createMemo<T = unknown>(...args: Parameters<typeof createMemo<T>>): SignalReader<T>;
 
-  on(...args: Parameters<typeof on>): ReturnType<typeof on>;
-  once(...args: Parameters<typeof once>): ReturnType<typeof once>;
+  on(...args: Parameters<typeof on>): ReturnType<typeof on>; // TODO fix args type
+  once(...args: Parameters<typeof once>): ReturnType<typeof once>; // TODO fix args type
 
   onDestroy(callback: () => any): void;
 }
