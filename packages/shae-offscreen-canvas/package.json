@@ -39,16 +39,16 @@
   },
   "devDependencies": {
     "@esm-bundle/chai": "4.3.4-fix.0",
-    "@web/test-runner": "^0.20.0",
+    "@web/test-runner": "^0.20.2",
     "esbuild-plugin-inline-worker": "^0.1.1",
-    "lit-html": "^3.2.1",
+    "lit-html": "^3.3.1",
     "sinon": "^19.0.2",
     "vite": "^6.2.2"
   },
   "dependencies": {
-    "@spearwolf/eventize": "^4.0.1",
+    "@spearwolf/eventize": "^4.0.2",
     "@spearwolf/shadow-objects": "workspace:*",
-    "@spearwolf/signalize": "^0.20.1",
-    "three": "^0.174.0"
+    "@spearwolf/signalize": "^0.23.0",
+    "three": "^0.179.1"
   }
 }

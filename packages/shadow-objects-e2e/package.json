@@ -19,12 +19,12 @@
     "test": "pnpm playwright test"
   },
   "dependencies": {
-    "@spearwolf/eventize": "^4.0.1",
+    "@spearwolf/eventize": "^4.0.2",
     "@spearwolf/shadow-objects": "workspace:*"
   },
   "devDependencies": {
-    "@playwright/test": "^1.51.0",
-    "typescript": "^5.8.2",
+    "@playwright/test": "^1.55.0",
+    "typescript": "^5.9.2",
     "vite": "^5.4.10"
   }
 }
