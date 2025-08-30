@@ -111,8 +111,8 @@ importers:
         specifier: ^4.0.2
         version: 4.0.2
       '@spearwolf/signalize':
-        specifier: ^0.23.0
-        version: 0.23.0(@spearwolf/eventize@4.0.2)
+        specifier: ^0.24.0
+        version: 0.24.0(@spearwolf/eventize@4.0.2)
     devDependencies:
       esbuild-plugin-inline-worker:
         specifier: ^0.1.1
@@ -168,8 +168,8 @@ importers:
         specifier: workspace:*
         version: link:../shadow-objects
       '@spearwolf/signalize':
-        specifier: ^0.23.0
-        version: 0.23.0(@spearwolf/eventize@4.0.2)
+        specifier: ^0.24.0
+        version: 0.24.0(@spearwolf/eventize@4.0.2)
       three:
         specifier: ^0.179.1
         version: 0.179.1
@@ -1963,8 +1963,8 @@ packages:
     resolution: {integrity: sha512-CyyT2MXoRmp9yRVz2f7xyPhiSr3Gnn4m5Ofu9oN7VH4uS1Evlji5onP5UCdJW8H+ZMVn25DQn3OAJLGRi/ymLA==}
     engines: {node: '>=18.16'}
 
-  '@spearwolf/signalize@0.23.0':
-    resolution: {integrity: sha512-Cq4hR2+bo6mZ1Wt2zOwQt/NwVkJZLP7pQVQgWkj1cpqpRnuQDVU1XjR4ej71/l43KxEMZWG1G2ZO67+G/LyeaQ==}
+  '@spearwolf/signalize@0.24.0':
+    resolution: {integrity: sha512-ZuLbCDDfSwllLA80EcINkYjObGE0WSWGOvzMzLsEkjSrcUUvGbxYeSKg52oaNXDCqXvGR1LNEKN0vWAQ12093Q==}
     engines: {node: '>=20.12'}
     peerDependencies:
       '@spearwolf/eventize': ^4.0.1
@@ -7421,7 +7421,7 @@ snapshots:
 
   '@spearwolf/eventize@4.0.2': {}
 
-  '@spearwolf/signalize@0.23.0(@spearwolf/eventize@4.0.2)':
+  '@spearwolf/signalize@0.24.0(@spearwolf/eventize@4.0.2)':
     dependencies:
       '@spearwolf/eventize': 4.0.2
 

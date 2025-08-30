@@ -1,7 +1,7 @@
 {
   "name": "@spearwolf/shae-offscreen-canvas",
   "description": "an offscreen canvas element based on the shadow-objects framework",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "license": "Apache-2.0",
   "author": {
@@ -48,7 +48,7 @@
   "dependencies": {
     "@spearwolf/eventize": "^4.0.2",
     "@spearwolf/shadow-objects": "workspace:*",
-    "@spearwolf/signalize": "^0.23.0",
+    "@spearwolf/signalize": "^0.24.0",
     "three": "^0.179.1"
   }
 }
