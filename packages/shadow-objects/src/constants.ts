@@ -40,9 +40,9 @@ export const Destroyed = 'destroyed';
  */
 export const MessageToView = 'messageToView';
 
-export const WorkerLoadTimeout = 16000;
-export const WorkerConfigureTimeout = 16000;
-export const WorkerChangeTrailTimeout = 4000;
-export const WorkerDestroyTimeout = 1000;
+export const WorkerLoadTimeout = 60000;
+export const WorkerConfigureTimeout = 60000;
+export const WorkerChangeTrailTimeout = 5000;
+export const WorkerDestroyTimeout = 5000;
 
 export const ShadowObjectsExport = 'shadowObjects';
