@@ -4,6 +4,7 @@
   "compilerOptions": {
     "outDir": "./dist",
     "declarationDir": "./dist",
-    "removeComments": false
+    "removeComments": false,
+    "importHelpers": false
   }
 }
