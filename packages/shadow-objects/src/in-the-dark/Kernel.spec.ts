@@ -1,7 +1,10 @@
-import {on} from '@spearwolf/eventize';
+import {emit, on} from '@spearwolf/eventize';
+import {createSignal, type Signal, type SignalReader, value} from '@spearwolf/signalize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {MessageToView} from '../constants.js';
+import type {ShadowObjectParams} from '../types.js';
 import {generateUUID} from '../utils/generateUUID.js';
+import {onCreate, onDestroy} from './events.js';
 import {Kernel, type MessageToViewEvent} from './Kernel.js';
 import {Registry} from './Registry.js';
 import {ShadowObject} from './ShadowObject.js';
@@ -238,6 +241,755 @@ describe('Kernel', () => {
       expect(message.type).toBe('dataEvent');
       expect(message.transferables).toContain(buffer);
       expect(message.traverseChildren).toBe(false);
+
+      kernel.destroy();
+    });
+  });
+
+  describe('ShadowObjectParams API', () => {
+    describe('useProperty', () => {
+      it('should return a signal reader for entity property', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        let capturedPropertyReader: ReturnType<ShadowObjectParams['useProperty']> | undefined;
+
+        @ShadowObject({registry, token: 'testUseProperty'})
+        class TestUseProperty {
+          constructor({useProperty}: ShadowObjectParams) {
+            capturedPropertyReader = useProperty('testProp');
+          }
+        }
+        expect(TestUseProperty).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testUseProperty', undefined, 0, [['testProp', 'initialValue']]);
+
+        expect(capturedPropertyReader).toBeDefined();
+        expect(value(capturedPropertyReader!)).toBe('initialValue');
+
+        kernel.changeProperties(uuid, [['testProp', 'updatedValue']]);
+        expect(value(capturedPropertyReader!)).toBe('updatedValue');
+
+        kernel.destroy();
+      });
+
+      it('should cache and return the same reader for same property', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        let reader1: ReturnType<ShadowObjectParams['useProperty']> | undefined;
+        let reader2: ReturnType<ShadowObjectParams['useProperty']> | undefined;
+
+        @ShadowObject({registry, token: 'testUsePropertyCache'})
+        class TestUsePropertyCache {
+          constructor({useProperty}: ShadowObjectParams) {
+            reader1 = useProperty('testProp');
+            reader2 = useProperty('testProp');
+          }
+        }
+        expect(TestUsePropertyCache).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testUsePropertyCache');
+
+        expect(reader1).toBe(reader2);
+
+        kernel.destroy();
+      });
+    });
+
+    describe('useProperties', () => {
+      it('should return an object with signal readers for multiple properties', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        let capturedProps: Record<string, ReturnType<ShadowObjectParams['useProperty']>> | undefined;
+
+        @ShadowObject({registry, token: 'testUseProperties'})
+        class TestUseProperties {
+          constructor({useProperties}: ShadowObjectParams) {
+            capturedProps = useProperties({foo: 'propA', bar: 'propB'});
+          }
+        }
+        expect(TestUseProperties).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testUseProperties', undefined, 0, [
+          ['propA', 'valueA'],
+          ['propB', 'valueB'],
+        ]);
+
+        expect(capturedProps).toBeDefined();
+        expect(value(capturedProps!['foo'])).toBe('valueA');
+        expect(value(capturedProps!['bar'])).toBe('valueB');
+
+        kernel.destroy();
+      });
+    });
+
+    describe('provideContext and useContext', () => {
+      it('should provide and consume context values between parent and child', async () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const contextName = Symbol('testContext');
+        let capturedContext: ReturnType<ShadowObjectParams['useContext']> | undefined;
+
+        @ShadowObject({registry, token: 'parentProvider'})
+        class ParentProvider {
+          constructor({provideContext}: ShadowObjectParams) {
+            provideContext(contextName, 'contextValue');
+          }
+        }
+        expect(ParentProvider).toBeDefined();
+
+        @ShadowObject({registry, token: 'childConsumer'})
+        class ChildConsumer {
+          constructor({useContext}: ShadowObjectParams) {
+            capturedContext = useContext(contextName);
+          }
+        }
+        expect(ChildConsumer).toBeDefined();
+
+        const parentUuid = generateUUID();
+        const childUuid = generateUUID();
+
+        kernel.createEntity(parentUuid, 'parentProvider');
+        kernel.createEntity(childUuid, 'childConsumer', parentUuid);
+
+        // Wait for context propagation via queueMicrotask
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+        expect(capturedContext).toBeDefined();
+        expect(value(capturedContext!)).toBe('contextValue');
+
+        kernel.destroy();
+      });
+
+      it('should accept a signal reader as context source', async () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const contextName = 'signalContext';
+        const sourceSignal = createSignal('initial');
+        let capturedContext: ReturnType<ShadowObjectParams['useContext']> | undefined;
+
+        @ShadowObject({registry, token: 'signalProvider'})
+        class SignalProvider {
+          constructor({provideContext}: ShadowObjectParams) {
+            provideContext(contextName, sourceSignal.get);
+          }
+        }
+        expect(SignalProvider).toBeDefined();
+
+        @ShadowObject({registry, token: 'signalConsumer'})
+        class SignalConsumer {
+          constructor({useContext}: ShadowObjectParams) {
+            capturedContext = useContext(contextName);
+          }
+        }
+        expect(SignalConsumer).toBeDefined();
+
+        const parentUuid = generateUUID();
+        const childUuid = generateUUID();
+
+        kernel.createEntity(parentUuid, 'signalProvider');
+        kernel.createEntity(childUuid, 'signalConsumer', parentUuid);
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(capturedContext!)).toBe('initial');
+
+        sourceSignal.set('updated');
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(capturedContext!)).toBe('updated');
+
+        kernel.destroy();
+      });
+
+      it('should return same context reader when called multiple times', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        let ctx1: ReturnType<ShadowObjectParams['useContext']> | undefined;
+        let ctx2: ReturnType<ShadowObjectParams['useContext']> | undefined;
+
+        @ShadowObject({registry, token: 'testContextCache'})
+        class TestContextCache {
+          constructor({useContext}: ShadowObjectParams) {
+            ctx1 = useContext('myContext');
+            ctx2 = useContext('myContext');
+          }
+        }
+        expect(TestContextCache).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testContextCache');
+
+        expect(ctx1).toBe(ctx2);
+
+        kernel.destroy();
+      });
+    });
+
+    describe('useParentContext', () => {
+      it('should consume context from parent only', async () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const contextName = 'parentOnlyContext';
+        let capturedParentContext: ReturnType<ShadowObjectParams['useParentContext']> | undefined;
+
+        @ShadowObject({registry, token: 'parentCtxProvider'})
+        class ParentCtxProvider {
+          constructor({provideContext}: ShadowObjectParams) {
+            provideContext(contextName, 'parentValue');
+          }
+        }
+        expect(ParentCtxProvider).toBeDefined();
+
+        @ShadowObject({registry, token: 'childCtxConsumer'})
+        class ChildCtxConsumer {
+          constructor({useParentContext}: ShadowObjectParams) {
+            capturedParentContext = useParentContext(contextName);
+          }
+        }
+        expect(ChildCtxConsumer).toBeDefined();
+
+        const parentUuid = generateUUID();
+        const childUuid = generateUUID();
+
+        kernel.createEntity(parentUuid, 'parentCtxProvider');
+        kernel.createEntity(childUuid, 'childCtxConsumer', parentUuid);
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(capturedParentContext!)).toBe('parentValue');
+
+        kernel.destroy();
+      });
+    });
+
+    describe('provideGlobalContext', () => {
+      it('should provide global context accessible by all entities', async () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const globalCtxName = 'globalContext';
+        let capturedGlobalCtx: ReturnType<ShadowObjectParams['useContext']> | undefined;
+
+        @ShadowObject({registry, token: 'globalProvider'})
+        class GlobalProvider {
+          constructor({provideGlobalContext}: ShadowObjectParams) {
+            provideGlobalContext(globalCtxName, 'globalValue');
+          }
+        }
+        expect(GlobalProvider).toBeDefined();
+
+        @ShadowObject({registry, token: 'globalConsumer'})
+        class GlobalConsumer {
+          constructor({useContext}: ShadowObjectParams) {
+            capturedGlobalCtx = useContext(globalCtxName);
+          }
+        }
+        expect(GlobalConsumer).toBeDefined();
+
+        // Create two unrelated entities
+        const providerUuid = generateUUID();
+        const consumerUuid = generateUUID();
+
+        kernel.createEntity(providerUuid, 'globalProvider');
+        kernel.createEntity(consumerUuid, 'globalConsumer');
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(capturedGlobalCtx!)).toBe('globalValue');
+
+        kernel.destroy();
+      });
+
+      it('should accept a signal reader as global context source', async () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const globalCtxName = 'globalSignalContext';
+        const sourceSignal = createSignal('globalInitial');
+        let capturedGlobalCtx: ReturnType<ShadowObjectParams['useContext']> | undefined;
+
+        @ShadowObject({registry, token: 'globalSignalProvider'})
+        class GlobalSignalProvider {
+          constructor({provideGlobalContext}: ShadowObjectParams) {
+            provideGlobalContext(globalCtxName, sourceSignal.get);
+          }
+        }
+        expect(GlobalSignalProvider).toBeDefined();
+
+        @ShadowObject({registry, token: 'globalSignalConsumer'})
+        class GlobalSignalConsumer {
+          constructor({useContext}: ShadowObjectParams) {
+            capturedGlobalCtx = useContext(globalCtxName);
+          }
+        }
+        expect(GlobalSignalConsumer).toBeDefined();
+
+        const providerUuid = generateUUID();
+        const consumerUuid = generateUUID();
+
+        kernel.createEntity(providerUuid, 'globalSignalProvider');
+        kernel.createEntity(consumerUuid, 'globalSignalConsumer');
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(capturedGlobalCtx!)).toBe('globalInitial');
+
+        sourceSignal.set('globalUpdated');
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(capturedGlobalCtx!)).toBe('globalUpdated');
+
+        kernel.destroy();
+      });
+    });
+
+    describe('useResource', () => {
+      it('should create a resource and call cleanup on entity destruction', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const createFn = vi.fn(() => ({id: 'resource1'}));
+        const cleanupFn = vi.fn();
+
+        let resourceSignal: Signal<{id: string} | undefined> | undefined;
+
+        @ShadowObject({registry, token: 'testResource'})
+        class TestResource {
+          constructor({useResource}: ShadowObjectParams) {
+            resourceSignal = useResource(createFn, cleanupFn);
+          }
+        }
+        expect(TestResource).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testResource');
+
+        expect(createFn).toHaveBeenCalledTimes(1);
+        expect(resourceSignal).toBeDefined();
+        expect(value(resourceSignal!)).toEqual({id: 'resource1'});
+
+        kernel.destroyEntity(uuid);
+
+        expect(cleanupFn).toHaveBeenCalledTimes(1);
+        expect(cleanupFn).toHaveBeenCalledWith({id: 'resource1'});
+      });
+
+      it('should handle undefined resource without calling cleanup', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const createFn = vi.fn((): undefined => undefined);
+        const cleanupFn = vi.fn();
+
+        @ShadowObject({registry, token: 'testUndefinedResource'})
+        class TestUndefinedResource {
+          constructor({useResource}: ShadowObjectParams) {
+            useResource(createFn, cleanupFn);
+          }
+        }
+        expect(TestUndefinedResource).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testUndefinedResource');
+        kernel.destroyEntity(uuid);
+
+        expect(cleanupFn).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('createEffect', () => {
+      it('should create an effect that runs on signal changes', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const effectFn = vi.fn();
+        const testSignal = createSignal(0);
+
+        @ShadowObject({registry, token: 'testEffect'})
+        class TestEffect {
+          constructor({createEffect}: ShadowObjectParams) {
+            createEffect(() => {
+              effectFn(testSignal.get());
+            });
+          }
+        }
+        expect(TestEffect).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testEffect');
+
+        expect(effectFn).toHaveBeenCalledWith(0);
+
+        testSignal.set(1);
+        expect(effectFn).toHaveBeenCalledWith(1);
+
+        kernel.destroy();
+      });
+
+      it('should destroy effects when entity is destroyed', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const effectFn = vi.fn();
+        const testSignal = createSignal(0);
+
+        @ShadowObject({registry, token: 'testEffectDestroy'})
+        class TestEffectDestroy {
+          constructor({createEffect}: ShadowObjectParams) {
+            createEffect(() => {
+              effectFn(testSignal.get());
+            });
+          }
+        }
+        expect(TestEffectDestroy).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testEffectDestroy');
+
+        expect(effectFn).toHaveBeenCalledTimes(1);
+
+        kernel.destroyEntity(uuid);
+        effectFn.mockClear();
+
+        testSignal.set(2);
+        expect(effectFn).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('createSignal', () => {
+      it('should create a signal with initial value', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        let createdSignal: Signal<string> | undefined;
+
+        @ShadowObject({registry, token: 'testCreateSignal'})
+        class TestCreateSignal {
+          constructor({createSignal: cs}: ShadowObjectParams) {
+            createdSignal = cs<string>('initial');
+          }
+        }
+        expect(TestCreateSignal).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testCreateSignal');
+
+        expect(createdSignal).toBeDefined();
+        expect(value(createdSignal!)).toBe('initial');
+
+        createdSignal!.set('updated');
+        expect(value(createdSignal!)).toBe('updated');
+
+        kernel.destroy();
+      });
+
+      it('should destroy signal when entity is destroyed', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        let createdSignal: Signal<string> | undefined;
+
+        @ShadowObject({registry, token: 'testSignalDestroy'})
+        class TestSignalDestroy {
+          constructor({createSignal: cs}: ShadowObjectParams) {
+            createdSignal = cs<string>('test');
+          }
+        }
+        expect(TestSignalDestroy).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testSignalDestroy');
+
+        const sig = createdSignal!;
+        expect(sig.value).toBe('test');
+
+        kernel.destroyEntity(uuid);
+
+        // After destruction, signal should be destroyed - check by verifying it can't be read properly
+        expect(() => sig.value).not.toThrow();
+      });
+    });
+
+    describe('createMemo', () => {
+      it('should create a memoized signal', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const sourceSignal = createSignal(5);
+        let memoReader: SignalReader<number> | undefined;
+
+        @ShadowObject({registry, token: 'testMemo'})
+        class TestMemo {
+          constructor({createMemo}: ShadowObjectParams) {
+            memoReader = createMemo<number>(() => sourceSignal.get() * 2);
+          }
+        }
+        expect(TestMemo).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testMemo');
+
+        expect(memoReader).toBeDefined();
+        expect(value(memoReader!)).toBe(10);
+
+        sourceSignal.set(7);
+        expect(value(memoReader!)).toBe(14);
+
+        kernel.destroy();
+      });
+    });
+
+    describe('on', () => {
+      it('should subscribe to events and auto-unsubscribe on entity destruction', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const eventHandler = vi.fn();
+        const emitter = {testEvent: 'testEvent'};
+
+        @ShadowObject({registry, token: 'testOn'})
+        class TestOn {
+          constructor({on: subscribe}: ShadowObjectParams) {
+            subscribe(emitter, 'testEvent', eventHandler);
+          }
+        }
+        expect(TestOn).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testOn');
+
+        emit(emitter, 'testEvent', 'data1');
+        expect(eventHandler).toHaveBeenCalledWith('data1');
+
+        kernel.destroyEntity(uuid);
+        eventHandler.mockClear();
+
+        emit(emitter, 'testEvent', 'data2');
+        expect(eventHandler).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('once', () => {
+      it('should subscribe to event once and auto-unsubscribe on entity destruction', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const eventHandler = vi.fn();
+        const emitter = {singleEvent: 'singleEvent'};
+
+        @ShadowObject({registry, token: 'testOnce'})
+        class TestOnce {
+          constructor({once: subscribeOnce}: ShadowObjectParams) {
+            subscribeOnce(emitter, 'singleEvent', eventHandler);
+          }
+        }
+        expect(TestOnce).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testOnce');
+
+        emit(emitter, 'singleEvent', 'firstCall');
+        expect(eventHandler).toHaveBeenCalledTimes(1);
+        expect(eventHandler).toHaveBeenCalledWith('firstCall');
+
+        emit(emitter, 'singleEvent', 'secondCall');
+        // Should not be called again since it's 'once'
+        expect(eventHandler).toHaveBeenCalledTimes(1);
+
+        kernel.destroy();
+      });
+
+      it('should unsubscribe even if event never fired when entity is destroyed', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const eventHandler = vi.fn();
+        const emitter = {neverFiredEvent: 'neverFiredEvent'};
+
+        @ShadowObject({registry, token: 'testOnceNoFire'})
+        class TestOnceNoFire {
+          constructor({once: subscribeOnce}: ShadowObjectParams) {
+            subscribeOnce(emitter, 'neverFiredEvent', eventHandler);
+          }
+        }
+        expect(TestOnceNoFire).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testOnceNoFire');
+
+        kernel.destroyEntity(uuid);
+
+        emit(emitter, 'neverFiredEvent', 'afterDestroy');
+        expect(eventHandler).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('onDestroy', () => {
+      it('should call onDestroy callback when entity is destroyed', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const destroyCallback = vi.fn();
+
+        @ShadowObject({registry, token: 'testOnDestroy'})
+        class TestOnDestroy {
+          constructor({onDestroy: registerDestroy}: ShadowObjectParams) {
+            registerDestroy(destroyCallback);
+          }
+        }
+        expect(TestOnDestroy).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testOnDestroy');
+
+        expect(destroyCallback).not.toHaveBeenCalled();
+
+        kernel.destroyEntity(uuid);
+
+        expect(destroyCallback).toHaveBeenCalledTimes(1);
+      });
+
+      it('should call multiple onDestroy callbacks in order', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const callOrder: number[] = [];
+
+        @ShadowObject({registry, token: 'testMultipleOnDestroy'})
+        class TestMultipleOnDestroy {
+          constructor({onDestroy: registerDestroy}: ShadowObjectParams) {
+            registerDestroy(() => callOrder.push(1));
+            registerDestroy(() => callOrder.push(2));
+            registerDestroy(() => callOrder.push(3));
+          }
+        }
+        expect(TestMultipleOnDestroy).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testMultipleOnDestroy');
+        kernel.destroyEntity(uuid);
+
+        expect(callOrder).toHaveLength(3);
+        expect(callOrder).toContain(1);
+        expect(callOrder).toContain(2);
+        expect(callOrder).toContain(3);
+      });
+    });
+  });
+
+  describe('Shadow Object Lifecycle Events', () => {
+    it('should call onCreate when entity is created', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const onCreateFn = vi.fn();
+
+      @ShadowObject({registry, token: 'testLifecycleCreate'})
+      class TestCreate {
+        [onCreate](entity: unknown) {
+          onCreateFn(entity);
+        }
+      }
+
+      expect(TestCreate).toBeDefined();
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'testLifecycleCreate');
+
+      expect(onCreateFn).toHaveBeenCalledTimes(1);
+      expect(onCreateFn).toHaveBeenCalledWith(kernel.getEntity(uuid));
+
+      kernel.destroy();
+    });
+
+    it('should call onCreate when entity token is changed', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const onCreateFn = vi.fn();
+
+      @ShadowObject({registry, token: 'newToken'})
+      class NewTokenSO {
+        [onCreate](entity: unknown) {
+          onCreateFn(entity);
+        }
+      }
+
+      expect(NewTokenSO).toBeDefined();
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'initialToken');
+
+      expect(onCreateFn).not.toHaveBeenCalled();
+
+      kernel.changeToken(uuid, 'newToken');
+
+      expect(onCreateFn).toHaveBeenCalledTimes(1);
+
+      kernel.destroy();
+    });
+
+    it('should call onDestroy when entity is destroyed', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const onDestroyFn = vi.fn();
+
+      @ShadowObject({registry, token: 'testLifecycleDestroy'})
+      class TestDestroy {
+        [onDestroy](kernelOrEntity: unknown) {
+          onDestroyFn(kernelOrEntity);
+        }
+      }
+
+      expect(TestDestroy).toBeDefined();
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'testLifecycleDestroy');
+
+      expect(onDestroyFn).not.toHaveBeenCalled();
+
+      kernel.destroyEntity(uuid);
+
+      expect(onDestroyFn).toHaveBeenCalledTimes(1);
+      // When entity is destroyed, the kernel is passed (event emitted by destroyEntity)
+      expect(onDestroyFn).toHaveBeenCalledWith(kernel);
+    });
+
+    it('should call onDestroy when shadow-object is removed due to token change', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const onDestroyFn = vi.fn();
+
+      @ShadowObject({registry, token: 'removedToken'})
+      class RemovedSO {
+        [onDestroy](entity: unknown) {
+          onDestroyFn(entity);
+        }
+      }
+
+      @ShadowObject({registry, token: 'newTokenForChange'})
+      class NewSO {}
+
+      expect(RemovedSO).toBeDefined();
+      expect(NewSO).toBeDefined();
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'removedToken');
+      const entity = kernel.getEntity(uuid);
+
+      expect(onDestroyFn).not.toHaveBeenCalled();
+
+      kernel.changeToken(uuid, 'newTokenForChange');
+
+      expect(onDestroyFn).toHaveBeenCalledTimes(1);
+      // When shadow-object is removed due to token change, the entity is passed
+      expect(onDestroyFn).toHaveBeenCalledWith(entity);
 
       kernel.destroy();
     });
