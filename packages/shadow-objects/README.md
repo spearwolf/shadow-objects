@@ -1,154 +1,124 @@
 _hi! welcome to .._
-# shadow-objects 🧛
+# Shadow Objects Framework 🧛
 
-## Introduction
+The **Shadow Objects Framework** is a library for managing application state and logic that runs "in the dark" (in a worker or separate context), mirroring a view hierarchy (like the DOM). It decouples business logic and state management from the UI rendering layer.
 
-_Shadow-objects_ is a standalone, reactive entity&larr;component framework 🔥
+## Core Concepts
 
-The original idea is visualized in this overview:
+### 1. Entities
+An **Entity** is the fundamental unit in the framework. It represents a node in the hierarchy, mirroring a view component (e.g., a Web Component or a DOM element).
+- **Hierarchy**: Entities have parents and children, forming a tree structure.
+- **Properties**: Entities hold reactive properties that sync with the view.
+- **Context**: Entities participate in a hierarchical context system (dependency injection).
 
-![architecture overview](https://raw.githubusercontent.com/spearwolf/shadow-objects/main/packages/shadow-objects/docs/architecture%402x.png)
+### 2. Shadow Objects
+A **Shadow Object** is a functional unit of logic attached to an Entity.
+- **Logic Containers**: They contain the state, effects, and business logic for a specific feature.
+- **Lifecycle**: They are automatically created and destroyed by the **Kernel** based on the Entity's **Token**.
+- **Reactivity**: They use **Signals** and **Effects** (via `@spearwolf/signalize`) to react to changes in properties or context.
 
-> _ents_ is short for latin _"entitatis"_, which translates to _"shadow entities"_
+### 3. The Kernel
+The **Kernel** is the brain of the framework.
+- **Manages Entities**: Handles creation, destruction, and hierarchy updates of Entities.
+- **Orchestrates Shadow Objects**: Instantiates the correct Shadow Objects for each Entity based on its Token and the Registry.
+- **Message Dispatch**: Handles communication between the View (UI) and the Shadow World.
 
-> [!IMPORTANT]
-> _Dear adventurer, be warned: everything here is highly experimental and in active development and constant flux!_
+### 4. The Registry
+The **Registry** maps **Tokens** to **Shadow Object Constructors**.
+- **Tokens**: Strings that identify what logic an Entity should have (e.g., `"my-component"`).
+- **Routes**: Defines rules for composing multiple Shadow Objects. For example, a token can "route" to other tokens, causing multiple Shadow Objects to be instantiated for a single Entity.
+- **Conditional Routing**: Routes can be triggered based on the presence of specific "truthy" properties on the Entity (e.g., `@myProp` routes only if `myProp` is set).
 
-The components are created in the view space. Hierarchical. In your browser. There is a JavaScript API for this. But to keep things simple, there are also ready-to-use web components.
+## Lifecycle
 
-```html
-<shae-worker-env local? src="./my-personal-shadow-objects.js" />
+1.  **Creation**: When an Entity is created (e.g., a Web Component connects), the Kernel looks up its Token in the Registry.
+2.  **Instantiation**: The Kernel instantiates all Shadow Objects associated with that Token (and its routes).
+3.  **Execution**: The Shadow Object function runs, setting up signals, effects, and context providers.
+4.  **Updates**:
+    *   **Properties**: When view properties change, the Entity's signals update, triggering any dependent effects in the Shadow Object.
+    *   **Context**: If a parent Entity changes a provided context, child Shadow Objects consuming that context automatically update.
+5.  **Destruction**: When an Entity is removed or its Token changes, the Kernel destroys the associated Shadow Objects, cleaning up all signals and effects.
 
-<shae-ent ns? token="foo">
-  <shae-ent ns? token="bar">
-    <shae-prop name="myNumbers" value="1 2 3" type="integer[]" />
-  </shae-ent>
-</shae-ent>
-```
+## API: Writing Shadow Objects
 
-In the shadows, the _shadow objects_ come and go with the entities. An entity can cover many shadows. But all are united by the entity _token_. That token, which is specified by the _view components_.
+Shadow Objects are defined as functions (or classes) that receive a `ShadowObjectParams` object.
 
-The _shadow object module_ stores which shadow objects are hidden behind a token. Either a _function_ or a _class_.
+```typescript
+import { ShadowObjectParams } from "@spearwolf/shadow-objects";
 
-```js
-shadowObjects.define('token', function() {
-  console.log('The simplest shadow object ever.');
-});
+export function MyShadowObject({
+  useProperty,
+  useProperties,
+  useContext,
+  provideContext,
+  useResource,
+  createEffect,
+  on
+}: ShadowObjectParams) {
 
-@ShadowObject('token')
-class Foo {
-  constructor({
-    entity,
-    provideContext,
-    useContext,
-    useProperty,
-    onDestroy,
-  }: ShadowObjectParams) {
-    console.log('hello');    
-    
-    onDestroy(() => {
-      console.log('bye');
-    });
-  }
+  // 1. Read Properties from the View
+  const getTitle = useProperty("title");
+  // or bulk access:
+  const props = useProperties({
+    title: "title",
+    isEnabled: "enabled"
+  });
+
+  // 2. Consume Context from Parents
+  const getTheme = useContext("theme");
+
+  // 3. Manage Resources (Lifecycle)
+  // Automatically creates/destroys the resource when dependencies change
+  const myService$ = useResource(() => {
+    const title = props.title();
+    if (!title) return;
+    return new MyService(title);
+  }, (service) => service.dispose());
+
+  // 4. Provide Context to Children
+  // Can pass a value or a signal directly
+  provideContext("myService", myService$);
+
+  // 5. Side Effects
+  createEffect(() => {
+    console.log("Title changed to:", props.title());
+  });
+
+  // 6. Event Listeners
+  on(entity, "some-event", (data) => { /* ... */ });
 }
 ```
 
-> [!WARNING]
-> Sorry, at this point there should be a precise and crisp introduction to the concepts of the framework, but unfortunately this is not currently available.
-> Instead of that, a few insights into the implementation will follow
+### Key API Methods
 
-## 📖 Shadow Objects CHEAT SHEET
+*   **`useProperty(name)`**: Returns a signal reader for a specific property on the Entity.
+*   **`useProperties(map)`**: Returns an object of signal readers for multiple properties.
+*   **`useContext(name)`**: Returns a signal reader for a value provided by a parent Entity.
+*   **`provideContext(name, value)`**: Makes a value (or signal) available to descendant Entities.
+*   **`useResource(factory, cleanup)`**: A helper to create and manage objects that need explicit cleanup (like Three.js objects or subscriptions).
+*   **`createEffect(callback)`**: Runs a side effect whenever accessed signals change.
+*   **`createSignal(initialValue)`**: Creates a local reactive state.
 
-There are two ways to create a _shadow object component_: either as a _function_ or as a _class_:
+## Architecture Diagram
 
-### Create Shadow Object by FUNCTION
+```mermaid
+graph TD
+    View[View / DOM] -->|Messages| Kernel
+    Kernel -->|Updates| EntityTree[Entity Tree]
 
-```js
-import { onDestroy, type ShadowObjectParams, type Entity } from "@spearwolf/shadow-objects/shadow-objects.js";
+    subgraph "Shadow World"
+        EntityTree
+        Entity[Entity]
+        SO[Shadow Object]
 
-function MyShadowObject(params: ShadowObjectParams) {
-  //
-  // ... PUT YOUR IMPLEMENTATION HERE ...
-  //
- 
-  // Return an object. This step is optional.
-  return {
-    // All methods here are reactive and correspond to entity events of the same name!
+        EntityTree --> Entity
+        Entity -->|Has| SO
 
-    [onDestroy](entity: Entity) {
-      // Called when the shadow object is destroyed.
-      // This is one of the predefined events that a shadow object can receive.
+        SO -->|Reads| Props[Properties]
+        SO -->|Reads/Writes| Context
+        SO -->|Runs| Logic[Business Logic]
+    end
 
-      // This can happen when the entity is destroyed or the shadow object component
-      // is removed from the entity (e.g., by changing the entity token, view properties, and/or routing)
-    },
-
-    fooBar(plah) {
-      /* is called when the entity receives a 'fooBar' event */
-    },
-  };
-}
+    Logic -->|Updates| Signals
+    Signals -->|Triggers| Effects
 ```
-
-### Create Shadow Object by CLASS
-
-Essentially the same as above, but as a `class`:
-
-```js
-import { onDestroy, type ShadowObjectParams, type Entity } from "@spearwolf/shadow-objects/shadow-objects.js";
-
-class MyShadowObject {
-  constructor(params: ShadowObjectParams) {
-    //
-    // ... INITIALIZE SHADOW OBJECT ...
-    //
-  }
-
-  [onDestroy](entity: Entity) {
-    // ...
-  }
-
-  fooBar(plah) {
-    // ...
-  }
-}
-```
-
-### Shadow Object Construction API
-
-The parameters that a shadow object receives when it is created contain all the important API methods for exchanging data and events with the _view_ and also with the _shadow entity hierarchy and context_.
-
-[The interface `ShadowObjectsParams` is defined here](./src/types.ts)
-
-#### Properties
-
-__entity__: The shadow entity.
-
-#### Methods
-
-| Name | Call Signature | Description |
-|------|----------------|-------------|
-| __useProperty__ | `useProperty(name, isEqual?): SignalReader` | Read access to the property value from the view |
-| __useContext__ | `useContext(name, isEqual?): SignalReader` | Get the value for a named context. The context is derived from the shadow entity hierarchy and the shadow object's position within it. |
-| __useParentContext__ | `useParentContext(name, isEqual?): SignalReader` | Unlike the `useContext` method, this method skips the context of the _current_ shadow entity and directly requests the context of the parent entity. This is useful when you want to provide a custom context that depends on the parent context. |
-| __provideContext__ | `provideContext(name, initialValue?, isEqual?): Signal` | Specify a context. This context overrides (if set) the context of the same name from the entity's parent hierarchy. The context applies to the current entity and all child entities. |
-| __provideGlobalContext__ | `provideGlobalContext(name, initialValue?, isEqual?): Signal` | Define a context that applies to _all_ entities, regardless of hierarchy. |
-| __createEffect__ | `createEffect(...): Effect` | see [@spearwolf/signalize#createEffect()](https://github.com/spearwolf/signalize) |
-| __createSignal__ | `createSignal(...): Signal` | see [@spearwolf/signalize#createSignal()](https://github.com/spearwolf/signalize) |
-| __createMemo__ | `createMemo(...): SignalReader` | see [@spearwolf/signalize#createMemo()](https://github.com/spearwolf/signalize) |
-| __on__ | `on(...): UnsubscribeCallback` | see [@spearwolf/eventize#on()](https://github.com/spearwolf/eventize) |
-| __once__ | `once(...): UnsubscribeCallback` | see [@spearwolf/eventize#once()](https://github.com/spearwolf/eventize) |
-| __onDestroy__ | `onDestroy(callback)` | Called when the shadow object is destroyed. |
-
-
-## Documentation
-
-TODO ... add documentation here ... !
-
-Here is the big class graph overview:
-![class graph overview](https://raw.githubusercontent.com/spearwolf/shadow-objects/main/packages/shadow-objects/src/view/ClassGraphOverview.drawio.svg)
-
-More in-depth docs here:
-- [ShadowEnv](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/src/view/README.md)
-- [ComponentContext](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/src/view/ComponentContext.md)
-- [ViewComponent](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/src/view/ViewComponent.md)
