@@ -1,7 +1,9 @@
-_hi! welcome to .._
 # Shadow Objects Framework 🧛
 
-The **Shadow Objects Framework** is a library for managing application state and logic that runs "in the dark" (in a worker or separate context), mirroring a view hierarchy (like the DOM). It decouples business logic and state management from the UI rendering layer.
+The **Shadow Objects Framework** is a reactive library designed to decouple business logic and state management from the UI rendering layer. It runs application logic "in the dark" (e.g., in a web worker), mirroring the view hierarchy of your application.
+
+> [!WARNING]
+> 🚀 This is a highly experimental framework that is slowly maturing. Use at your own risk. 🔥
 
 ## Core Concepts
 
@@ -29,9 +31,135 @@ The **Registry** maps **Tokens** to **Shadow Object Constructors**.
 - **Routes**: Defines rules for composing multiple Shadow Objects. For example, a token can "route" to other tokens, causing multiple Shadow Objects to be instantiated for a single Entity.
 - **Conditional Routing**: Routes can be triggered based on the presence of specific "truthy" properties on the Entity (e.g., `@myProp` routes only if `myProp` is set).
 
-## Lifecycle
+---
 
-1.  **Creation**: When an Entity is created (e.g., a Web Component connects), the Kernel looks up its Token in the Registry.
+## Developer Guide
+
+### 1. Defining Shadow Objects
+
+You can define a Shadow Object as a **Function** or a **Class**. Both receive a `ShadowObjectParams` object containing the API methods.
+
+#### Function-based (Recommended)
+
+```typescript
+import { ShadowObjectParams } from "@spearwolf/shadow-objects";
+
+export function MyShadowObject({
+  useProperty,
+  useContext,
+  createEffect,
+  on,
+  onDestroy
+}: ShadowObjectParams) {
+
+  // 1. Read Properties
+  const title = useProperty("title");
+
+  // 2. React to changes
+  createEffect(() => {
+    console.log("Title is now:", title());
+  });
+
+  // 3. Handle Lifecycle
+  onDestroy(() => {
+    console.log("Shadow Object destroyed");
+  });
+
+  // 4. Return public methods (optional)
+  return {
+    someMethod() { /* ... */ }
+  };
+}
+```
+
+#### Class-based
+
+```typescript
+import { ShadowObjectParams } from "@spearwolf/shadow-objects";
+
+export class MyShadowObject {
+  constructor({ useProperty, createEffect, onDestroy }: ShadowObjectParams) {
+    const title = useProperty("title");
+
+    createEffect(() => {
+      console.log("Title is now:", title());
+    });
+
+    onDestroy(() => this.cleanup());
+  }
+
+  cleanup() {
+    console.log("Shadow Object destroyed");
+  }
+}
+```
+
+### 2. The `ShadowObjectParams` API
+
+The `ShadowObjectParams` object provides all necessary tools to interact with the Entity, the View, and the Context system.
+
+| Method | Description |
+| :--- | :--- |
+| **`useProperty(name)`** | Returns a signal reader for a specific property on the Entity. Updates when the view property changes. |
+| **`useProperties(map)`** | Returns an object of signal readers for multiple properties. |
+| **`useContext(name)`** | Consumes a context value provided by a parent Entity. |
+| **`useParentContext(name)`** | Skips the current Entity and consumes context directly from the parent. |
+| **`provideContext(name, value)`** | Provides a context value (or signal) to descendant Entities. |
+| **`provideGlobalContext(name, value)`** | Provides a context value globally to all Entities. |
+| **`useResource(factory, cleanup)`** | Manages an external resource (e.g., a Three.js object) with automatic cleanup when dependencies change. |
+| **`createEffect(callback)`** | Runs a side effect whenever accessed signals change. |
+| **`createSignal(initialValue)`** | Creates a local reactive state signal. |
+| **`createMemo(factory)`** | Creates a derived signal that updates only when dependencies change. |
+| **`on(target, event, callback)`** | Listens for events on the Entity or other event targets. |
+| **`once(target, event, callback)`** | Listens for an event exactly once. |
+| **`onDestroy(callback)`** | Registers a callback to be executed when the Shadow Object is destroyed. |
+
+### 3. Registering Shadow Objects
+
+Shadow Objects are organized in **Modules**. A module defines which Tokens map to which Shadow Objects.
+
+```typescript
+// my-module.ts
+import { MyShadowObject } from "./MyShadowObject";
+
+export default {
+  // Map tokens to constructors
+  define: {
+    "my-component": MyShadowObject,
+  },
+  // Define routing rules
+  routes: {
+    "my-component": ["mixin-logger", "mixin-analytics"], // Composition
+    "@debug": ["debug-overlay"], // Conditional routing based on 'debug' property
+  }
+};
+```
+
+### 4. View Integration
+
+In your HTML or View layer, you use the provided Web Components to create the Entity hierarchy.
+
+```html
+<!-- 1. Initialize the Environment -->
+<shae-worker-env src="./my-module.js"></shae-worker-env>
+
+<!-- 2. Create Entities -->
+<shae-ent token="my-component">
+  <!-- Properties -->
+  <shae-prop name="title" value="Hello World"></shae-prop>
+
+  <!-- Nested Entities -->
+  <shae-ent token="child-component"></shae-ent>
+</shae-ent>
+```
+
+---
+
+## Architecture & Internals
+
+### Lifecycle
+
+1.  **Creation**: When an Entity is created (e.g., `<shae-ent>` connects), the Kernel looks up its Token in the Registry.
 2.  **Instantiation**: The Kernel instantiates all Shadow Objects associated with that Token (and its routes).
 3.  **Execution**: The Shadow Object function runs, setting up signals, effects, and context providers.
 4.  **Updates**:
@@ -39,67 +167,7 @@ The **Registry** maps **Tokens** to **Shadow Object Constructors**.
     *   **Context**: If a parent Entity changes a provided context, child Shadow Objects consuming that context automatically update.
 5.  **Destruction**: When an Entity is removed or its Token changes, the Kernel destroys the associated Shadow Objects, cleaning up all signals and effects.
 
-## API: Writing Shadow Objects
-
-Shadow Objects are defined as functions (or classes) that receive a `ShadowObjectParams` object.
-
-```typescript
-import { ShadowObjectParams } from "@spearwolf/shadow-objects";
-
-export function MyShadowObject({
-  useProperty,
-  useProperties,
-  useContext,
-  provideContext,
-  useResource,
-  createEffect,
-  on
-}: ShadowObjectParams) {
-
-  // 1. Read Properties from the View
-  const getTitle = useProperty("title");
-  // or bulk access:
-  const props = useProperties({
-    title: "title",
-    isEnabled: "enabled"
-  });
-
-  // 2. Consume Context from Parents
-  const getTheme = useContext("theme");
-
-  // 3. Manage Resources (Lifecycle)
-  // Automatically creates/destroys the resource when dependencies change
-  const myService$ = useResource(() => {
-    const title = props.title();
-    if (!title) return;
-    return new MyService(title);
-  }, (service) => service.dispose());
-
-  // 4. Provide Context to Children
-  // Can pass a value or a signal directly
-  provideContext("myService", myService$);
-
-  // 5. Side Effects
-  createEffect(() => {
-    console.log("Title changed to:", props.title());
-  });
-
-  // 6. Event Listeners
-  on(entity, "some-event", (data) => { /* ... */ });
-}
-```
-
-### Key API Methods
-
-*   **`useProperty(name)`**: Returns a signal reader for a specific property on the Entity.
-*   **`useProperties(map)`**: Returns an object of signal readers for multiple properties.
-*   **`useContext(name)`**: Returns a signal reader for a value provided by a parent Entity.
-*   **`provideContext(name, value)`**: Makes a value (or signal) available to descendant Entities.
-*   **`useResource(factory, cleanup)`**: A helper to create and manage objects that need explicit cleanup (like Three.js objects or subscriptions).
-*   **`createEffect(callback)`**: Runs a side effect whenever accessed signals change.
-*   **`createSignal(initialValue)`**: Creates a local reactive state.
-
-## Architecture Diagram
+### Architecture Diagram
 
 ```mermaid
 graph TD
@@ -122,3 +190,11 @@ graph TD
     Logic -->|Updates| Signals
     Signals -->|Triggers| Effects
 ```
+
+### Further Reading
+
+For deep dives into specific subsystems:
+
+-   [**ShadowEnv**](src/view/README.md): The environment wrapper.
+-   [**ComponentContext**](src/view/ComponentContext.md): Context implementation details.
+-   [**ViewComponent**](src/view/ViewComponent.md): Base class for view components.

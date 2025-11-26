@@ -29,8 +29,10 @@ Shadow Objects are defined as functions or classes receiving a `ShadowObjectPara
 
 ## Project Structure
 
-- Main library: `@packages/shadow-objects/`
-- Deployment package: `@spearwolf/shadow-objects`
+- **`packages/shadow-objects/`**: The main framework library. Deployment package: `@spearwolf/shadow-objects`.
+- **`packages/shae-offscreen-canvas/`**: An offscreen canvas as custom HTML element based on shadow-objects.
+- **`packages/shadow-objects-testing/`**: Functional tests.
+- **`packages/shadow-objects-e2e/`**: Blackbox / E2E tests.
 
 ## Documentation Guidelines
 
