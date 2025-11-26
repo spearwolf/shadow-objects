@@ -5,6 +5,7 @@ import {
   createMemo,
   createSignal,
   destroySignal,
+  isSignal,
   link,
   Signal,
   type CompareFunc,
@@ -345,15 +346,34 @@ export class Kernel {
 
     const propertyReaders = new Map<string, SignalReader<any>>();
 
+    const getUseProperty = <T = any>(name: string, compare?: CompareFunc<T>): SignalReader<T> => {
+      let propReader = propertyReaders.get(name);
+      if (propReader === undefined) {
+        propReader = createSignal<any>(undefined, compare ? {compare} : undefined).get;
+        propertyReaders.set(name, propReader);
+        const con = link(entry.entity.getPropertyReader(name), propReader);
+        unsubscribeSecondary.add(con.destroy.bind(con));
+      }
+      return propReader;
+    };
+
     const shadowObject = eventize(
       new constructor({
         entity: entry.entity,
 
-        provideContext<T = unknown>(name: string | symbol, initialValue?: T, isEqual?: CompareFunc<T>) {
+        provideContext<T = unknown>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T>, isEqual?: CompareFunc<T>) {
           let ctxProvider = contextProviders.get(name);
 
           if (ctxProvider == null) {
+            const isSig = isSignal(sourceOrInitialValue);
+            const initialValue = isSig ? undefined : (sourceOrInitialValue as T);
+
             ctxProvider = createSignal(initialValue, isEqual ? {compare: isEqual} : undefined);
+
+            if (isSig) {
+              const ln = link(sourceOrInitialValue as SignalReader<T>, ctxProvider);
+              unsubscribeSecondary.add(ln.destroy.bind(ln));
+            }
 
             const ln = link(ctxProvider, entry.entity.provideContext(name));
             unsubscribeSecondary.add(ln.destroy.bind(ln));
@@ -363,11 +383,19 @@ export class Kernel {
           return ctxProvider;
         },
 
-        provideGlobalContext<T = unknown>(name: string | symbol, initialValue?: T, isEqual?: CompareFunc<T>) {
+        provideGlobalContext<T = unknown>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T>, isEqual?: CompareFunc<T>) {
           let ctxProvider = contextRootProviders.get(name);
 
           if (ctxProvider == null) {
+            const isSig = isSignal(sourceOrInitialValue);
+            const initialValue = isSig ? undefined : (sourceOrInitialValue as T);
+
             ctxProvider = createSignal(initialValue, isEqual ? {compare: isEqual} : undefined);
+
+            if (isSig) {
+              const ln = link(sourceOrInitialValue as SignalReader<T>, ctxProvider);
+              unsubscribeSecondary.add(ln.destroy.bind(ln));
+            }
 
             const ln = link(ctxProvider, entry.entity.provideGlobalContext(name));
             unsubscribeSecondary.add(ln.destroy.bind(ln));
@@ -399,15 +427,39 @@ export class Kernel {
           return ctxReader;
         },
 
-        useProperty<T = any>(name: string, compare?: CompareFunc<T>): SignalReader<T> {
-          let propReader = propertyReaders.get(name);
-          if (propReader === undefined) {
-            propReader = createSignal<any>(undefined, compare ? {compare} : undefined).get;
-            propertyReaders.set(name, propReader);
-            const con = link(entry.entity.getPropertyReader(name), propReader);
-            unsubscribeSecondary.add(con.destroy.bind(con));
+        useProperty: getUseProperty,
+
+        useProperties<K extends string>(props: Record<K, string>): Record<K, SignalReader<any>> {
+          const result = {} as Record<K, SignalReader<any>>;
+          for (const key in props) {
+            if (Object.prototype.hasOwnProperty.call(props, key)) {
+              result[key] = getUseProperty(props[key]);
+            }
           }
-          return propReader;
+          return result;
+        },
+
+        useResource<T>(factory: () => T | undefined, cleanup?: (resource: T) => void): Signal<T | undefined> {
+          const resourceSignal = createSignal<T | undefined>(undefined);
+          unsubscribeSecondary.add(() => destroySignal(resourceSignal));
+
+          const effect = createEffect(() => {
+            const resource = factory();
+            resourceSignal.set(resource);
+
+            if (resource !== undefined && cleanup) {
+              return () => {
+                cleanup(resource);
+                resourceSignal.set(undefined);
+              };
+            }
+            return () => {
+              resourceSignal.set(undefined);
+            };
+          });
+          unsubscribeSecondary.add(effect.destroy);
+
+          return resourceSignal;
         },
 
         createEffect(...args: Parameters<typeof createEffect>): ReturnType<typeof createEffect> {
