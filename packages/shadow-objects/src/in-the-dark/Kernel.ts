@@ -360,6 +360,7 @@ export class Kernel {
       new constructor({
         entity: entry.entity,
 
+        // TODO create tests
         provideContext<T = unknown>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T>, isEqual?: CompareFunc<T>) {
           let ctxProvider = contextProviders.get(name);
 
@@ -382,6 +383,7 @@ export class Kernel {
           return ctxProvider;
         },
 
+        // TODO create tests
         provideGlobalContext<T = unknown>(
           name: string | symbol,
           sourceOrInitialValue?: T | SignalReader<T>,
@@ -408,6 +410,7 @@ export class Kernel {
           return ctxProvider;
         },
 
+        // TODO create tests
         useContext(name: string | symbol, compare?: CompareFunc<any>) {
           let ctxReader = contextReaders.get(name);
           if (ctxReader === undefined) {
@@ -419,6 +422,7 @@ export class Kernel {
           return ctxReader;
         },
 
+        // TODO create tests
         useParentContext(name: string | symbol, compare?: CompareFunc<any>) {
           let ctxReader = contextParentReaders.get(name);
           if (ctxReader === undefined) {
@@ -430,8 +434,10 @@ export class Kernel {
           return ctxReader;
         },
 
+        // TODO create tests
         useProperty: getUseProperty,
 
+        // TODO create tests
         useProperties<K extends string>(props: Record<K, string>): Record<K, SignalReader<any>> {
           const result = {} as Record<K, SignalReader<any>>;
           for (const key in props) {
@@ -442,6 +448,7 @@ export class Kernel {
           return result;
         },
 
+        // TODO create tests
         useResource<T>(factory: () => T | undefined, cleanup?: (resource: T) => void): Signal<T | undefined> {
           const resourceSignal = createSignal<T | undefined>(undefined);
           unsubscribeSecondary.add(() => destroySignal(resourceSignal));
@@ -465,12 +472,14 @@ export class Kernel {
           return resourceSignal;
         },
 
+        // TODO create tests
         createEffect(...args: Parameters<typeof createEffect>): ReturnType<typeof createEffect> {
           const effect = createEffect(...args);
           unsubscribeSecondary.add(effect.destroy);
           return effect;
         },
 
+        // TODO create tests
         createSignal<T = unknown>(...args: Parameters<typeof createSignal<T>>): ReturnType<typeof createSignal<T>> {
           const sig = createSignal<T>(...args);
           unsubscribeSecondary.add(() => {
@@ -479,6 +488,7 @@ export class Kernel {
           return sig;
         },
 
+        // TODO create tests
         createMemo<T = unknown>(...args: Parameters<typeof createMemo<T>>): SignalReader<T> {
           const sig = createMemo<T>(...args);
           unsubscribeSecondary.add(() => {
@@ -487,6 +497,7 @@ export class Kernel {
           return sig;
         },
 
+        // TODO create tests
         on(...args: Parameters<typeof on>): ReturnType<typeof on> {
           // @ts-ignore
           const unsub = on(...args);
@@ -494,6 +505,7 @@ export class Kernel {
           return unsub;
         },
 
+        // TODO create tests
         once(...args: Parameters<typeof once>): ReturnType<typeof once> {
           // @ts-ignore
           const unsub = once(...args);
@@ -501,6 +513,7 @@ export class Kernel {
           return unsub;
         },
 
+        // TODO create tests
         onDestroy(callback: () => any) {
           unsubscribePrimary.add(callback);
         },
