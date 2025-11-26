@@ -44,4 +44,6 @@ When generating or modifying documentation:
 ## Development Workflow
 
 - Whenever a TODO comment is added, modified, or deleted in the code, run the top-level task `pnpm make:todo` to update the automatically generated `TODO.md`.
+- When creating tests, check if additional functional and integration tests can be added to the `shadow-objects-testing` package.
+- Any functionality that directly affects the public API must also be tested in the end-to-end tests within the `shadow-objects-e2e` package, if possible and meaningful.
 
