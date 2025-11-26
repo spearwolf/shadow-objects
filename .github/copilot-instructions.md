@@ -41,3 +41,7 @@ When generating or modifying documentation:
 - Always use **Markdown** format.
 - Use simple sentences and a clear writing style, consistent with standard technical documentation practices.
 
+## Development Workflow
+
+- Whenever a TODO comment is added, modified, or deleted in the code, run the top-level task `pnpm make:todo` to update the automatically generated `TODO.md`.
+
