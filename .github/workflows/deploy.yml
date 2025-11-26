@@ -1,0 +1,32 @@
+name: Deployment
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  deploy:
+    name: Publish all NPM Packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          always-auth: true
+          registry-url: https://registry.npmjs.org
+          scope: '@spearwolf'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: true
+        env:
+          NPM_TOKEN: xxx
+
+      - run: pnpm run publishNpmPkg
+        name: Publish packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
