@@ -1,4 +1,5 @@
-import {afterEach, describe, expect, it} from 'vitest';
+import {on} from '@spearwolf/eventize';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 import {ComponentContext} from './ComponentContext.js';
 import {ViewComponent} from './ViewComponent.js';
 
@@ -142,5 +143,85 @@ describe('ViewComponent', () => {
     expect(otherCtx.isChildOf(c, b)).toBeTruthy();
 
     otherCtx.clear();
+  });
+
+  it('should dispatch event without traverseChildren', () => {
+    const parent = new ViewComponent('parent');
+    const child = new ViewComponent('child', parent);
+    const grandChild = new ViewComponent('grandChild', child);
+
+    const parentSpy = vi.fn();
+    const childSpy = vi.fn();
+    const grandChildSpy = vi.fn();
+
+    on(parent, 'testEvent', parentSpy);
+    on(child, 'testEvent', childSpy);
+    on(grandChild, 'testEvent', grandChildSpy);
+
+    parent.dispatchEvent('testEvent', {foo: 'bar'}, false);
+
+    expect(parentSpy).toHaveBeenCalledTimes(1);
+    expect(parentSpy).toHaveBeenCalledWith({foo: 'bar'});
+    expect(childSpy).not.toHaveBeenCalled();
+    expect(grandChildSpy).not.toHaveBeenCalled();
+  });
+
+  it('should dispatch event with traverseChildren=true to all descendants', () => {
+    const parent = new ViewComponent('parent');
+    const child1 = new ViewComponent('child1', parent);
+    const child2 = new ViewComponent('child2', parent);
+    const grandChild1 = new ViewComponent('grandChild1', child1);
+    const grandChild2 = new ViewComponent('grandChild2', child1);
+
+    const parentSpy = vi.fn();
+    const child1Spy = vi.fn();
+    const child2Spy = vi.fn();
+    const grandChild1Spy = vi.fn();
+    const grandChild2Spy = vi.fn();
+
+    on(parent, 'testEvent', parentSpy);
+    on(child1, 'testEvent', child1Spy);
+    on(child2, 'testEvent', child2Spy);
+    on(grandChild1, 'testEvent', grandChild1Spy);
+    on(grandChild2, 'testEvent', grandChild2Spy);
+
+    parent.dispatchEvent('testEvent', {data: 123}, true);
+
+    expect(parentSpy).toHaveBeenCalledTimes(1);
+    expect(parentSpy).toHaveBeenCalledWith({data: 123});
+
+    expect(child1Spy).toHaveBeenCalledTimes(1);
+    expect(child1Spy).toHaveBeenCalledWith({data: 123});
+
+    expect(child2Spy).toHaveBeenCalledTimes(1);
+    expect(child2Spy).toHaveBeenCalledWith({data: 123});
+
+    expect(grandChild1Spy).toHaveBeenCalledTimes(1);
+    expect(grandChild1Spy).toHaveBeenCalledWith({data: 123});
+
+    expect(grandChild2Spy).toHaveBeenCalledTimes(1);
+    expect(grandChild2Spy).toHaveBeenCalledWith({data: 123});
+  });
+
+  it('should dispatch event from child with traverseChildren=true without affecting parent', () => {
+    const parent = new ViewComponent('parent');
+    const child = new ViewComponent('child', parent);
+    const grandChild = new ViewComponent('grandChild', child);
+
+    const parentSpy = vi.fn();
+    const childSpy = vi.fn();
+    const grandChildSpy = vi.fn();
+
+    on(parent, 'testEvent', parentSpy);
+    on(child, 'testEvent', childSpy);
+    on(grandChild, 'testEvent', grandChildSpy);
+
+    child.dispatchEvent('testEvent', 'hello', true);
+
+    expect(parentSpy).not.toHaveBeenCalled();
+    expect(childSpy).toHaveBeenCalledTimes(1);
+    expect(childSpy).toHaveBeenCalledWith('hello');
+    expect(grandChildSpy).toHaveBeenCalledTimes(1);
+    expect(grandChildSpy).toHaveBeenCalledWith('hello');
   });
 });

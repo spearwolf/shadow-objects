@@ -25,7 +25,6 @@ export interface MessageToViewEvent {
   data?: unknown;
   transferables?: Transferable[];
   traverseChildren?: boolean;
-  // TODO(test) if MessageToView#traverseChildren is implemented all the way down
 }
 
 interface EntityEntry {
@@ -383,7 +382,11 @@ export class Kernel {
           return ctxProvider;
         },
 
-        provideGlobalContext<T = unknown>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T>, isEqual?: CompareFunc<T>) {
+        provideGlobalContext<T = unknown>(
+          name: string | symbol,
+          sourceOrInitialValue?: T | SignalReader<T>,
+          isEqual?: CompareFunc<T>,
+        ) {
           let ctxProvider = contextRootProviders.get(name);
 
           if (ctxProvider == null) {

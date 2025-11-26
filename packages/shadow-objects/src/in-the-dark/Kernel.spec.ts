@@ -1,6 +1,8 @@
-import {afterEach, describe, expect, it} from 'vitest';
+import {on} from '@spearwolf/eventize';
+import {afterEach, describe, expect, it, vi} from 'vitest';
+import {MessageToView} from '../constants.js';
 import {generateUUID} from '../utils/generateUUID.js';
-import {Kernel} from './Kernel.js';
+import {Kernel, type MessageToViewEvent} from './Kernel.js';
 import {Registry} from './Registry.js';
 import {ShadowObject} from './ShadowObject.js';
 
@@ -158,5 +160,86 @@ describe('Kernel', () => {
       shadowObjects.find((so) => so instanceof ObersteDirektive),
       'should contain instanceof ObersteDirektive',
     ).toBeDefined();
+  });
+
+  describe('MessageToView with traverseChildren', () => {
+    it('should emit MessageToView event with traverseChildren=false by default', async () => {
+      const kernel = new Kernel();
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'test');
+      const entity = kernel.getEntity(uuid);
+
+      const messageToViewSpy = vi.fn();
+      on(kernel, MessageToView, messageToViewSpy);
+
+      entity.dispatchMessageToView('testType', {payload: 'data'});
+
+      // Wait for queueMicrotask to complete
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+      expect(messageToViewSpy).toHaveBeenCalledTimes(1);
+
+      const message: MessageToViewEvent = messageToViewSpy.mock.calls[0][0];
+      expect(message.uuid).toBe(uuid);
+      expect(message.type).toBe('testType');
+      expect(message.data).toEqual({payload: 'data'});
+      expect(message.traverseChildren).toBe(false);
+
+      kernel.destroy();
+    });
+
+    it('should emit MessageToView event with traverseChildren=true when specified', async () => {
+      const kernel = new Kernel();
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'test');
+      const entity = kernel.getEntity(uuid);
+
+      const messageToViewSpy = vi.fn();
+      on(kernel, MessageToView, messageToViewSpy);
+
+      entity.dispatchMessageToView('broadcastEvent', {message: 'hello'}, undefined, true);
+
+      // Wait for queueMicrotask to complete
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+      expect(messageToViewSpy).toHaveBeenCalledTimes(1);
+
+      const message: MessageToViewEvent = messageToViewSpy.mock.calls[0][0];
+      expect(message.uuid).toBe(uuid);
+      expect(message.type).toBe('broadcastEvent');
+      expect(message.data).toEqual({message: 'hello'});
+      expect(message.traverseChildren).toBe(true);
+
+      kernel.destroy();
+    });
+
+    it('should emit MessageToView with transferables', async () => {
+      const kernel = new Kernel();
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'test');
+      const entity = kernel.getEntity(uuid);
+
+      const messageToViewSpy = vi.fn();
+      on(kernel, MessageToView, messageToViewSpy);
+
+      const buffer = new ArrayBuffer(8);
+      entity.dispatchMessageToView('dataEvent', {buffer}, [buffer], false);
+
+      // Wait for queueMicrotask to complete
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+      expect(messageToViewSpy).toHaveBeenCalledTimes(1);
+
+      const message: MessageToViewEvent = messageToViewSpy.mock.calls[0][0];
+      expect(message.uuid).toBe(uuid);
+      expect(message.type).toBe('dataEvent');
+      expect(message.transferables).toContain(buffer);
+      expect(message.traverseChildren).toBe(false);
+
+      kernel.destroy();
+    });
   });
 });
