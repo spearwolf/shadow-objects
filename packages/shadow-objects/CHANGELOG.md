@@ -13,6 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - enhance the shadow-objects creation api _aka_ `ShadowObjectParams`
   - added the `useProperties()` function
-  - added the `createResource()` function
+  - added the `useResource()` function
 - added lots of new tests and improved code coverage
 
