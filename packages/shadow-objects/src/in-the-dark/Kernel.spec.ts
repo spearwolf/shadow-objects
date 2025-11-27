@@ -2,7 +2,7 @@ import {emit, on} from '@spearwolf/eventize';
 import {createSignal, type Signal, type SignalReader, value} from '@spearwolf/signalize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {MessageToView} from '../constants.js';
-import type {ShadowObjectParams} from '../types.js';
+import type {ShadowObjectCreationAPI} from '../types.js';
 import {generateUUID} from '../utils/generateUUID.js';
 import {onCreate, onDestroy} from './events.js';
 import {Kernel, type MessageToViewEvent} from './Kernel.js';
@@ -246,17 +246,17 @@ describe('Kernel', () => {
     });
   });
 
-  describe('ShadowObjectParams API', () => {
+  describe('Shadow Object Creation API', () => {
     describe('useProperty', () => {
       it('should return a signal reader for entity property', () => {
         const registry = new Registry();
         const kernel = new Kernel(registry);
 
-        let capturedPropertyReader: ReturnType<ShadowObjectParams['useProperty']> | undefined;
+        let capturedPropertyReader: ReturnType<ShadowObjectCreationAPI['useProperty']> | undefined;
 
         @ShadowObject({registry, token: 'testUseProperty'})
         class TestUseProperty {
-          constructor({useProperty}: ShadowObjectParams) {
+          constructor({useProperty}: ShadowObjectCreationAPI) {
             capturedPropertyReader = useProperty('testProp');
           }
         }
@@ -278,12 +278,12 @@ describe('Kernel', () => {
         const registry = new Registry();
         const kernel = new Kernel(registry);
 
-        let reader1: ReturnType<ShadowObjectParams['useProperty']> | undefined;
-        let reader2: ReturnType<ShadowObjectParams['useProperty']> | undefined;
+        let reader1: ReturnType<ShadowObjectCreationAPI['useProperty']> | undefined;
+        let reader2: ReturnType<ShadowObjectCreationAPI['useProperty']> | undefined;
 
         @ShadowObject({registry, token: 'testUsePropertyCache'})
         class TestUsePropertyCache {
-          constructor({useProperty}: ShadowObjectParams) {
+          constructor({useProperty}: ShadowObjectCreationAPI) {
             reader1 = useProperty('testProp');
             reader2 = useProperty('testProp');
           }
@@ -304,11 +304,11 @@ describe('Kernel', () => {
         const registry = new Registry();
         const kernel = new Kernel(registry);
 
-        let capturedProps: Record<string, ReturnType<ShadowObjectParams['useProperty']>> | undefined;
+        let capturedProps: Record<string, ReturnType<ShadowObjectCreationAPI['useProperty']>> | undefined;
 
         @ShadowObject({registry, token: 'testUseProperties'})
         class TestUseProperties {
-          constructor({useProperties}: ShadowObjectParams) {
+          constructor({useProperties}: ShadowObjectCreationAPI) {
             capturedProps = useProperties({foo: 'propA', bar: 'propB'});
           }
         }
@@ -334,11 +334,11 @@ describe('Kernel', () => {
         const kernel = new Kernel(registry);
 
         const contextName = Symbol('testContext');
-        let capturedContext: ReturnType<ShadowObjectParams['useContext']> | undefined;
+        let capturedContext: ReturnType<ShadowObjectCreationAPI['useContext']> | undefined;
 
         @ShadowObject({registry, token: 'parentProvider'})
         class ParentProvider {
-          constructor({provideContext}: ShadowObjectParams) {
+          constructor({provideContext}: ShadowObjectCreationAPI) {
             provideContext(contextName, 'contextValue');
           }
         }
@@ -346,7 +346,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'childConsumer'})
         class ChildConsumer {
-          constructor({useContext}: ShadowObjectParams) {
+          constructor({useContext}: ShadowObjectCreationAPI) {
             capturedContext = useContext(contextName);
           }
         }
@@ -373,11 +373,11 @@ describe('Kernel', () => {
 
         const contextName = 'signalContext';
         const sourceSignal = createSignal('initial');
-        let capturedContext: ReturnType<ShadowObjectParams['useContext']> | undefined;
+        let capturedContext: ReturnType<ShadowObjectCreationAPI['useContext']> | undefined;
 
         @ShadowObject({registry, token: 'signalProvider'})
         class SignalProvider {
-          constructor({provideContext}: ShadowObjectParams) {
+          constructor({provideContext}: ShadowObjectCreationAPI) {
             provideContext(contextName, sourceSignal.get);
           }
         }
@@ -385,7 +385,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'signalConsumer'})
         class SignalConsumer {
-          constructor({useContext}: ShadowObjectParams) {
+          constructor({useContext}: ShadowObjectCreationAPI) {
             capturedContext = useContext(contextName);
           }
         }
@@ -411,12 +411,12 @@ describe('Kernel', () => {
         const registry = new Registry();
         const kernel = new Kernel(registry);
 
-        let ctx1: ReturnType<ShadowObjectParams['useContext']> | undefined;
-        let ctx2: ReturnType<ShadowObjectParams['useContext']> | undefined;
+        let ctx1: ReturnType<ShadowObjectCreationAPI['useContext']> | undefined;
+        let ctx2: ReturnType<ShadowObjectCreationAPI['useContext']> | undefined;
 
         @ShadowObject({registry, token: 'testContextCache'})
         class TestContextCache {
-          constructor({useContext}: ShadowObjectParams) {
+          constructor({useContext}: ShadowObjectCreationAPI) {
             ctx1 = useContext('myContext');
             ctx2 = useContext('myContext');
           }
@@ -438,11 +438,11 @@ describe('Kernel', () => {
         const kernel = new Kernel(registry);
 
         const contextName = 'parentOnlyContext';
-        let capturedParentContext: ReturnType<ShadowObjectParams['useParentContext']> | undefined;
+        let capturedParentContext: ReturnType<ShadowObjectCreationAPI['useParentContext']> | undefined;
 
         @ShadowObject({registry, token: 'parentCtxProvider'})
         class ParentCtxProvider {
-          constructor({provideContext}: ShadowObjectParams) {
+          constructor({provideContext}: ShadowObjectCreationAPI) {
             provideContext(contextName, 'parentValue');
           }
         }
@@ -450,7 +450,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'childCtxConsumer'})
         class ChildCtxConsumer {
-          constructor({useParentContext}: ShadowObjectParams) {
+          constructor({useParentContext}: ShadowObjectCreationAPI) {
             capturedParentContext = useParentContext(contextName);
           }
         }
@@ -475,11 +475,11 @@ describe('Kernel', () => {
         const kernel = new Kernel(registry);
 
         const globalCtxName = 'globalContext';
-        let capturedGlobalCtx: ReturnType<ShadowObjectParams['useContext']> | undefined;
+        let capturedGlobalCtx: ReturnType<ShadowObjectCreationAPI['useContext']> | undefined;
 
         @ShadowObject({registry, token: 'globalProvider'})
         class GlobalProvider {
-          constructor({provideGlobalContext}: ShadowObjectParams) {
+          constructor({provideGlobalContext}: ShadowObjectCreationAPI) {
             provideGlobalContext(globalCtxName, 'globalValue');
           }
         }
@@ -487,7 +487,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'globalConsumer'})
         class GlobalConsumer {
-          constructor({useContext}: ShadowObjectParams) {
+          constructor({useContext}: ShadowObjectCreationAPI) {
             capturedGlobalCtx = useContext(globalCtxName);
           }
         }
@@ -512,11 +512,11 @@ describe('Kernel', () => {
 
         const globalCtxName = 'globalSignalContext';
         const sourceSignal = createSignal('globalInitial');
-        let capturedGlobalCtx: ReturnType<ShadowObjectParams['useContext']> | undefined;
+        let capturedGlobalCtx: ReturnType<ShadowObjectCreationAPI['useContext']> | undefined;
 
         @ShadowObject({registry, token: 'globalSignalProvider'})
         class GlobalSignalProvider {
-          constructor({provideGlobalContext}: ShadowObjectParams) {
+          constructor({provideGlobalContext}: ShadowObjectCreationAPI) {
             provideGlobalContext(globalCtxName, sourceSignal.get);
           }
         }
@@ -524,7 +524,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'globalSignalConsumer'})
         class GlobalSignalConsumer {
-          constructor({useContext}: ShadowObjectParams) {
+          constructor({useContext}: ShadowObjectCreationAPI) {
             capturedGlobalCtx = useContext(globalCtxName);
           }
         }
@@ -559,7 +559,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'testResource'})
         class TestResource {
-          constructor({createResource}: ShadowObjectParams) {
+          constructor({createResource}: ShadowObjectCreationAPI) {
             resourceSignal = createResource(createFn, cleanupFn);
           }
         }
@@ -587,7 +587,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'testUndefinedResource'})
         class TestUndefinedResource {
-          constructor({createResource}: ShadowObjectParams) {
+          constructor({createResource}: ShadowObjectCreationAPI) {
             createResource(createFn, cleanupFn);
           }
         }
@@ -611,7 +611,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'testEffect'})
         class TestEffect {
-          constructor({createEffect}: ShadowObjectParams) {
+          constructor({createEffect}: ShadowObjectCreationAPI) {
             createEffect(() => {
               effectFn(testSignal.get());
             });
@@ -639,7 +639,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'testEffectDestroy'})
         class TestEffectDestroy {
-          constructor({createEffect}: ShadowObjectParams) {
+          constructor({createEffect}: ShadowObjectCreationAPI) {
             createEffect(() => {
               effectFn(testSignal.get());
             });
@@ -669,7 +669,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'testCreateSignal'})
         class TestCreateSignal {
-          constructor({createSignal: cs}: ShadowObjectParams) {
+          constructor({createSignal: cs}: ShadowObjectCreationAPI) {
             createdSignal = cs<string>('initial');
           }
         }
@@ -695,7 +695,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'testSignalDestroy'})
         class TestSignalDestroy {
-          constructor({createSignal: cs}: ShadowObjectParams) {
+          constructor({createSignal: cs}: ShadowObjectCreationAPI) {
             createdSignal = cs<string>('test');
           }
         }
@@ -724,7 +724,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'testMemo'})
         class TestMemo {
-          constructor({createMemo}: ShadowObjectParams) {
+          constructor({createMemo}: ShadowObjectCreationAPI) {
             memoReader = createMemo<number>(() => sourceSignal.get() * 2);
           }
         }
@@ -753,7 +753,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'testOn'})
         class TestOn {
-          constructor({on: subscribe}: ShadowObjectParams) {
+          constructor({on: subscribe}: ShadowObjectCreationAPI) {
             subscribe(emitter, 'testEvent', eventHandler);
           }
         }
@@ -783,7 +783,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'testOnce'})
         class TestOnce {
-          constructor({once: subscribeOnce}: ShadowObjectParams) {
+          constructor({once: subscribeOnce}: ShadowObjectCreationAPI) {
             subscribeOnce(emitter, 'singleEvent', eventHandler);
           }
         }
@@ -812,7 +812,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'testOnceNoFire'})
         class TestOnceNoFire {
-          constructor({once: subscribeOnce}: ShadowObjectParams) {
+          constructor({once: subscribeOnce}: ShadowObjectCreationAPI) {
             subscribeOnce(emitter, 'neverFiredEvent', eventHandler);
           }
         }
@@ -837,7 +837,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'testOnDestroy'})
         class TestOnDestroy {
-          constructor({onDestroy: registerDestroy}: ShadowObjectParams) {
+          constructor({onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
             registerDestroy(destroyCallback);
           }
         }
@@ -861,7 +861,7 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'testMultipleOnDestroy'})
         class TestMultipleOnDestroy {
-          constructor({onDestroy: registerDestroy}: ShadowObjectParams) {
+          constructor({onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
             registerDestroy(() => callOrder.push(1));
             registerDestroy(() => callOrder.push(2));
             registerDestroy(() => callOrder.push(3));

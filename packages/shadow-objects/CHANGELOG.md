@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- renamed `useResource()` to `createResource()` in `ShadowObjectParams` interface
+- renamed interface `ShadowObjectParams` to `ShadowObjectCreationAPI` for clarity and consistency with the concept of the _Shadow Object Creation API_
+- renamed `useResource()` to `createResource()` in `ShadowObjectCreationAPI` interface
 
 ## [0.23.0] - 2025-11-26
 
