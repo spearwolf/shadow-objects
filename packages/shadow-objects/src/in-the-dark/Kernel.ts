@@ -442,7 +442,7 @@ export class Kernel {
           return result;
         },
 
-        useResource<T>(factory: () => T | undefined, cleanup?: (resource: T) => void): Signal<T | undefined> {
+        createResource<T>(factory: () => T | undefined, cleanup?: (resource: T) => void): Signal<T | undefined> {
           const resourceSignal = createSignal<T | undefined>(undefined);
           unsubscribeSecondary.add(() => destroySignal(resourceSignal));
 
