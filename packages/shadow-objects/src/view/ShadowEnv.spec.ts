@@ -2,7 +2,7 @@ import {on, once} from '@spearwolf/eventize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {Registry} from '../in-the-dark/Registry.js';
 import {ShadowObject} from '../in-the-dark/ShadowObject.js';
-import type {ShadowObjectParams} from '../types.js';
+import type {ShadowObjectCreationAPI} from '../types.js';
 import {ComponentContext} from './ComponentContext.js';
 import {LocalShadowObjectEnv} from './LocalShadowObjectEnv.js';
 import {ShadowEnv} from './ShadowEnv.js';
@@ -118,7 +118,7 @@ describe('ShadowEnv', () => {
 
     @ShadowObject({token: 'parent'})
     class ParentShadowObject {
-      constructor({entity}: ShadowObjectParams) {
+      constructor({entity}: ShadowObjectCreationAPI) {
         entityRef = entity;
       }
     }
@@ -175,7 +175,7 @@ describe('ShadowEnv', () => {
 
     @ShadowObject({token: 'parent2'})
     class Parent2ShadowObject {
-      constructor({entity}: ShadowObjectParams) {
+      constructor({entity}: ShadowObjectCreationAPI) {
         entityRef = entity;
       }
     }

@@ -37,12 +37,12 @@ The **Registry** maps **Tokens** to **Shadow Object Constructors**.
 
 ### 1. Defining Shadow Objects
 
-You can define a Shadow Object as a **Function** or a **Class**. Both receive a `ShadowObjectParams` object containing the API methods.
+You can define a Shadow Object as a **Function** or a **Class**. Both receive a `ShadowObjectCreationAPI` object containing the API methods.
 
 #### Function-based (Recommended)
 
 ```typescript
-import { ShadowObjectParams } from "@spearwolf/shadow-objects";
+import { ShadowObjectCreationAPI } from "@spearwolf/shadow-objects";
 
 export function MyShadowObject({
   useProperty,
@@ -50,7 +50,7 @@ export function MyShadowObject({
   createEffect,
   on,
   onDestroy
-}: ShadowObjectParams) {
+}: ShadowObjectCreationAPI) {
 
   // 1. Read Properties
   const title = useProperty("title");
@@ -75,10 +75,10 @@ export function MyShadowObject({
 #### Class-based
 
 ```typescript
-import { ShadowObjectParams } from "@spearwolf/shadow-objects";
+import { ShadowObjectCreationAPI } from "@spearwolf/shadow-objects";
 
 export class MyShadowObject {
-  constructor({ useProperty, createEffect, onDestroy }: ShadowObjectParams) {
+  constructor({ useProperty, createEffect, onDestroy }: ShadowObjectCreationAPI) {
     const title = useProperty("title");
 
     createEffect(() => {
@@ -94,9 +94,9 @@ export class MyShadowObject {
 }
 ```
 
-### 2. The `ShadowObjectParams` API
+### 2. The Shadow Object Creation API
 
-The `ShadowObjectParams` object provides all necessary tools to interact with the Entity, the View, and the Context system.
+The `ShadowObjectCreationAPI` object provides all necessary tools to interact with the Entity, the View, and the Context system.
 
 | Method | Description |
 | :--- | :--- |

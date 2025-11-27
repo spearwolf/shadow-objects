@@ -93,7 +93,7 @@ export type EntityApi = Pick<
     traverse(callback: (entity: EntityApi) => any): void;
   };
 
-export interface ShadowObjectParams {
+export interface ShadowObjectCreationAPI {
   entity: EntityApi;
 
   provideContext<T = unknown>(
@@ -125,12 +125,12 @@ export interface ShadowObjectParams {
 }
 
 export interface ShadowObjectConstructor {
-  new (params: ShadowObjectParams): {};
+  new (params: ShadowObjectCreationAPI): {};
   displayName?: string;
 }
 
 export interface ShadowObjectConstructorFunc {
-  (params: ShadowObjectParams): object | undefined | void;
+  (params: ShadowObjectCreationAPI): object | undefined | void;
   displayName?: string;
 }
 
