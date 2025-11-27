@@ -197,8 +197,9 @@ export class ShaeWorkerElement extends ShaeElement {
     this.shadowEnv.destroy();
   }
 
-  // TODO(test) add tests for defer destroy
   #deferDestroy() {
+    // NOTE The destruction is halted until the next microtask—but a reconnect (adding the element back to the DOM before the next microtask)
+    //  cannot stop this process, and that's okay. Once destroyed, it's destroyed forever.
     if (!this.#shouldDestroy) {
       this.#shouldDestroy = true;
       queueMicrotask(() => {
