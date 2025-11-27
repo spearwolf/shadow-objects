@@ -172,9 +172,9 @@ export class ShaeWorkerElement extends ShaeElement {
   }
 
   start(): Promise<ShadowEnv> {
-    this.#shouldDestroy = false;
-
     if (!this.#started) {
+      this.#shouldDestroy = false;
+
       this.shadowEnv.view ??= ComponentContext.get(this.ns);
 
       if (this.shadowEnv.envProxy == null) {
@@ -197,6 +197,7 @@ export class ShaeWorkerElement extends ShaeElement {
     this.shadowEnv.destroy();
   }
 
+  // TODO(test) add tests for defer destroy
   #deferDestroy() {
     if (!this.#shouldDestroy) {
       this.#shouldDestroy = true;
