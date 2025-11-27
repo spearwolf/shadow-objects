@@ -112,7 +112,7 @@ export interface ShadowObjectParams {
   useProperty<T = any>(name: string, isEqual?: CompareFunc<T>): SignalReader<T>;
   useProperties<K extends string>(props: Record<K, string>): Record<K, SignalReader<any>>;
 
-  useResource<T>(factory: () => T | undefined, cleanup?: (resource: T) => void): Signal<T | undefined>;
+  createResource<T>(factory: () => T | undefined, cleanup?: (resource: T) => void): Signal<T | undefined>;
 
   createEffect(...args: Parameters<typeof createEffect>): ReturnType<typeof createEffect>;
   createSignal<T = unknown>(...args: Parameters<typeof createSignal<T>>): ReturnType<typeof createSignal<T>>;

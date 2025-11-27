@@ -547,7 +547,7 @@ describe('Kernel', () => {
       });
     });
 
-    describe('useResource', () => {
+    describe('createResource', () => {
       it('should create a resource and call cleanup on entity destruction', () => {
         const registry = new Registry();
         const kernel = new Kernel(registry);
@@ -559,8 +559,8 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'testResource'})
         class TestResource {
-          constructor({useResource}: ShadowObjectParams) {
-            resourceSignal = useResource(createFn, cleanupFn);
+          constructor({createResource}: ShadowObjectParams) {
+            resourceSignal = createResource(createFn, cleanupFn);
           }
         }
         expect(TestResource).toBeDefined();
@@ -587,8 +587,8 @@ describe('Kernel', () => {
 
         @ShadowObject({registry, token: 'testUndefinedResource'})
         class TestUndefinedResource {
-          constructor({useResource}: ShadowObjectParams) {
-            useResource(createFn, cleanupFn);
+          constructor({createResource}: ShadowObjectParams) {
+            createResource(createFn, cleanupFn);
           }
         }
         expect(TestUndefinedResource).toBeDefined();

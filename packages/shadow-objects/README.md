@@ -106,7 +106,7 @@ The `ShadowObjectParams` object provides all necessary tools to interact with th
 | **`useParentContext(name)`** | Skips the current Entity and consumes context directly from the parent. |
 | **`provideContext(name, value)`** | Provides a context value (or signal) to descendant Entities. |
 | **`provideGlobalContext(name, value)`** | Provides a context value globally to all Entities. |
-| **`useResource(factory, cleanup)`** | Manages an external resource (e.g., a Three.js object) with automatic cleanup when dependencies change. |
+| **`createResource(factory, cleanup)`** | Manages an external resource (e.g., a Three.js object) with automatic cleanup when dependencies change. |
 | **`createEffect(callback)`** | Runs a side effect whenever accessed signals change. |
 | **`createSignal(initialValue)`** | Creates a local reactive state signal. |
 | **`createMemo(factory)`** | Creates a derived signal that updates only when dependencies change. |
