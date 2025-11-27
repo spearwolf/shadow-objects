@@ -89,6 +89,6 @@
   },
   "dependencies": {
     "@spearwolf/eventize": "^4.0.2",
-    "@spearwolf/signalize": "^0.24.0"
+    "@spearwolf/signalize": "^0.25.0"
   }
 }
