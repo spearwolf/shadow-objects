@@ -2,6 +2,8 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {ShaeWorkerElement} from './ShaeWorkerElement.js';
 
+const waitForMicrotask = () => new Promise<void>((resolve) => queueMicrotask(resolve));
+
 describe('ShaeWorkerElement', () => {
   beforeEach(() => {
     // Register the custom element if not already registered
@@ -37,7 +39,7 @@ describe('ShaeWorkerElement', () => {
       expect(destroySpy).not.toHaveBeenCalled();
 
       // Wait for microtask to complete
-      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+      await waitForMicrotask();
 
       // Now destruction should have occurred
       expect(destroySpy).toHaveBeenCalledTimes(1);
@@ -63,7 +65,7 @@ describe('ShaeWorkerElement', () => {
       document.body.appendChild(element);
 
       // Wait for microtask to complete
-      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+      await waitForMicrotask();
 
       // Destruction should have been cancelled because element was reconnected
       expect(destroySpy).not.toHaveBeenCalled();
@@ -88,7 +90,7 @@ describe('ShaeWorkerElement', () => {
       element.remove();
 
       // Wait for microtask
-      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+      await waitForMicrotask();
 
       // ShadowEnv should be destroyed
       expect(element.shadowEnv.isReady).toBeFalsy();
@@ -109,7 +111,7 @@ describe('ShaeWorkerElement', () => {
       element.remove();
 
       // Wait for microtask
-      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+      await waitForMicrotask();
 
       // Destroy should be called exactly once
       expect(destroySpy).toHaveBeenCalledTimes(1);
