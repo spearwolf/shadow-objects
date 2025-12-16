@@ -46,28 +46,27 @@ import { ShadowObjectCreationAPI } from "@spearwolf/shadow-objects";
 
 export function MyShadowObject({
   useProperty,
-  useContext,
   createEffect,
-  on,
   onDestroy
 }: ShadowObjectCreationAPI) {
 
-  // 1. Read Properties
+  // Read Properties
   const title = useProperty("title");
 
-  // 2. React to changes
+  // React to changes
   createEffect(() => {
     console.log("Title is now:", title());
   });
 
-  // 3. Handle Lifecycle
+  // Handle Lifecycle
   onDestroy(() => {
     console.log("Shadow Object destroyed");
   });
 
-  // 4. Return public methods (optional)
+  // Return public methods (optional)
+  // These can be called by events (more on that later)
   return {
-    someMethod() { /* ... */ }
+    doSomething() { /* ... */ }
   };
 }
 ```
@@ -144,12 +143,12 @@ In your HTML or View layer, you use the provided Web Components to create the En
 <shae-worker-env src="./my-module.js"></shae-worker-env>
 
 <!-- 2. Create Entities -->
-<shae-ent token="my-component">
+<shae-ent token="my-entity">
   <!-- Properties -->
   <shae-prop name="title" value="Hello World"></shae-prop>
 
   <!-- Nested Entities -->
-  <shae-ent token="child-component"></shae-ent>
+  <shae-ent token="child-entity"></shae-ent>
 </shae-ent>
 ```
 
@@ -159,7 +158,7 @@ In your HTML or View layer, you use the provided Web Components to create the En
 
 ### Lifecycle
 
-1.  **Creation**: When an Entity is created (e.g., `<shae-ent>` connects), the Kernel looks up its Token in the Registry.
+1.  **Creation**: When an Entity is created (e.g., `<shae-ent>` connects to the document), the Kernel looks up its Token in the Registry.
 2.  **Instantiation**: The Kernel instantiates all Shadow Objects associated with that Token (and its routes).
 3.  **Execution**: The Shadow Object function runs, setting up signals, effects, and context providers.
 4.  **Updates**:
