@@ -75,6 +75,8 @@ export class ShaeWorkerElement extends ShaeElement {
 
     this.#createAutoSyncEffect();
     this.#createImportScriptEffect();
+
+    this.style.display = 'contents';
   }
 
   #createImportScriptEffect() {

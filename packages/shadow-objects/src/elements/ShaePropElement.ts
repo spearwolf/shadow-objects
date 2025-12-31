@@ -316,6 +316,8 @@ export class ShaePropElement extends HTMLElement {
       this.#readTypeAttribute();
       this.#readNoTrimAttribute();
     });
+
+    this.style.display = 'contents';
   }
 
   connectedCallback() {

@@ -83,6 +83,8 @@ export class ShaeEntElement extends ShaeElement {
         this.syncShadowObjects();
       }
     });
+
+    this.style.display = 'contents';
   }
 
   #unsubscribeViewComponentEffect?: () => void;
