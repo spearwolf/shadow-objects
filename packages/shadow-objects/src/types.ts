@@ -1,6 +1,6 @@
 import type {EventizedObject, on, once} from '@spearwolf/eventize';
 import type {CompareFunc, createEffect, createMemo, createSignal, Signal, SignalReader} from '@spearwolf/signalize';
-import {AppliedChangeTrail, ImportedModule, type ComponentChangeType} from './constants.js';
+import type {AppliedChangeTrail, ComponentChangeType, ImportedModule} from './constants.js';
 import type {Entity} from './in-the-dark/Entity.js';
 import type {Kernel, Registry} from './shadow-objects.js';
 
@@ -93,18 +93,23 @@ export type EntityApi = Pick<
     traverse(callback: (entity: EntityApi) => any): void;
   };
 
+export interface ProvideContextOptions<T> {
+  compare?: CompareFunc<T>;
+  clearOnDestroy?: boolean;
+}
+
 export interface ShadowObjectCreationAPI {
   entity: EntityApi;
 
   provideContext<T = unknown>(
     name: string | symbol,
     sourceOrInitialValue?: T | SignalReader<T>,
-    isEqual?: CompareFunc<T>,
+    isEqual?: ProvideContextOptions<T> | CompareFunc<T>,
   ): Signal<T>;
   provideGlobalContext<T = unknown>(
     name: string | symbol,
     sourceOrInitialValue?: T | SignalReader<T>,
-    isEqual?: CompareFunc<T>,
+    isEqual?: ProvideContextOptions<T> | CompareFunc<T>,
   ): Signal<T>;
 
   useContext<T = any>(name: string | symbol, isEqual?: CompareFunc<T>): SignalReader<T>;

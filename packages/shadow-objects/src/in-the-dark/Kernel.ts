@@ -1,21 +1,28 @@
 import {emit, eventize, off, on, once, Priority} from '@spearwolf/eventize';
 import {
   batch,
+  type CompareFunc,
   createEffect,
   createMemo,
   createSignal,
   destroySignal,
   isSignal,
   link,
-  Signal,
-  type CompareFunc,
+  type Signal,
   type SignalReader,
 } from '@spearwolf/signalize';
 import {ComponentChangeType, MessageToView} from '../constants.js';
-import type {IComponentChangeType, IComponentEvent, ShadowObjectConstructor, ShadowObjectType, SyncEvent} from '../types.js';
+import type {
+  IComponentChangeType,
+  IComponentEvent,
+  ProvideContextOptions,
+  ShadowObjectConstructor,
+  ShadowObjectType,
+  SyncEvent,
+} from '../types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {Entity} from './Entity.js';
-import {onCreate, onDestroy, onParentChanged, type OnCreate, type OnDestroy} from './events.js';
+import {type OnCreate, onCreate, type OnDestroy, onDestroy, onParentChanged} from './events.js';
 import {Registry} from './Registry.js';
 import {SignalsPath} from './SignalsPath.js';
 
@@ -46,7 +53,9 @@ enum ShadowObjectAction {
   DestroyOnly,
 }
 
-const getDisplayName = (constructor: ShadowObjectConstructor) => constructor.displayName || constructor.name;
+const getDisplayName = (construct: ShadowObjectConstructor) => construct.displayName || construct.name;
+
+let provideContextOptionsDeprecatedShown = false;
 
 /**
  * The entity kernel manages the lifecycle of all entities and shadow-objects.
@@ -107,12 +116,13 @@ export class Kernel {
         }
       };
 
-      this.#rootEntities.forEach((uuid) => traverse(uuid, 0));
+      this.#rootEntities.forEach((uuid) => {
+        traverse(uuid, 0);
+      });
 
       this.#allEntities = Array.from(lvl.entries())
         .sort((a, b) => a[0] - b[0])
-        .map(([, entities]) => entities)
-        .flat();
+        .flatMap(([, entities]) => entities);
 
       this.#allEntitiesReversed = this.#allEntities.slice().reverse();
       this.#allEntitiesNeedUpdate = false;
@@ -311,9 +321,9 @@ export class Kernel {
     // destroy all shadow-objects created by constructors no longer in the list
     //
     if (shouldDestroy) {
-      for (const [constructor, shadowObjects] of entry.usedConstructors) {
-        if (!nextConstructors.has(constructor)) {
-          entry.usedConstructors.delete(constructor);
+      for (const [construct, shadowObjects] of entry.usedConstructors) {
+        if (!nextConstructors.has(construct)) {
+          entry.usedConstructors.delete(construct);
           for (const obj of shadowObjects) {
             this.destroyShadowObject(obj, entry.entity);
           }
@@ -324,9 +334,9 @@ export class Kernel {
     // shadow-objects for new constructors are now created using the updated constructor list
     //
     if (shouldCreate) {
-      for (const constructor of nextConstructors) {
-        if (!entry.usedConstructors.has(constructor)) {
-          this.constructShadowObject(constructor, entry);
+      for (const construct of nextConstructors) {
+        if (!entry.usedConstructors.has(construct)) {
+          this.constructShadowObject(construct, entry);
         }
       }
     }
@@ -334,7 +344,7 @@ export class Kernel {
     return nextConstructors;
   }
 
-  private constructShadowObject(constructor: ShadowObjectConstructor, entry: EntityEntry): ShadowObjectType {
+  private constructShadowObject(construct: ShadowObjectConstructor, entry: EntityEntry): ShadowObjectType {
     const unsubscribePrimary = new Set<() => any>();
     const unsubscribeSecondary = new Set<() => any>();
 
@@ -357,17 +367,30 @@ export class Kernel {
     };
 
     const shadowObject = eventize(
-      new constructor({
+      new construct({
         entity: entry.entity,
 
-        provideContext<T = unknown>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T>, isEqual?: CompareFunc<T>) {
+        provideContext<T = unknown>(
+          name: string | symbol,
+          sourceOrInitialValue?: T | SignalReader<T>,
+          options?: ProvideContextOptions<T> | CompareFunc<T>,
+        ) {
           let ctxProvider = contextProviders.get(name);
+
+          if (!provideContextOptionsDeprecatedShown && typeof options !== 'function') {
+            console.warn(
+              '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideContext()" and "provideGlobalContext()" is now passed as {compare} argument. Please update your code accordingly.',
+            );
+            provideContextOptionsDeprecatedShown = true;
+          }
+
+          const opts = typeof options === 'function' ? {compare: options} : options;
 
           if (ctxProvider == null) {
             const isSig = isSignal(sourceOrInitialValue);
             const initialValue = isSig ? undefined : (sourceOrInitialValue as T);
 
-            ctxProvider = createSignal(initialValue, isEqual ? {compare: isEqual} : undefined);
+            ctxProvider = createSignal(initialValue, opts?.compare ? {compare: opts.compare} : undefined);
 
             if (isSig) {
               const ln = link(sourceOrInitialValue as SignalReader<T>, ctxProvider);
@@ -379,21 +402,36 @@ export class Kernel {
             contextProviders.set(name, ctxProvider);
           }
 
+          if (ctxProvider != null && (opts?.clearOnDestroy ?? true)) {
+            unsubscribePrimary.add(() => {
+              ctxProvider.set(undefined);
+            });
+          }
+
           return ctxProvider;
         },
 
         provideGlobalContext<T = unknown>(
           name: string | symbol,
           sourceOrInitialValue?: T | SignalReader<T>,
-          isEqual?: CompareFunc<T>,
+          options?: ProvideContextOptions<T> | CompareFunc<T>,
         ) {
           let ctxProvider = contextRootProviders.get(name);
+
+          if (!provideContextOptionsDeprecatedShown && typeof options !== 'function') {
+            console.warn(
+              '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideContext()" and "provideGlobalContext()" is now passed as {compare} argument. Please update your code accordingly.',
+            );
+            provideContextOptionsDeprecatedShown = true;
+          }
+
+          const opts = typeof options === 'function' ? {compare: options} : options;
 
           if (ctxProvider == null) {
             const isSig = isSignal(sourceOrInitialValue);
             const initialValue = isSig ? undefined : (sourceOrInitialValue as T);
 
-            ctxProvider = createSignal(initialValue, isEqual ? {compare: isEqual} : undefined);
+            ctxProvider = createSignal(initialValue, opts?.compare ? {compare: opts.compare} : undefined);
 
             if (isSig) {
               const ln = link(sourceOrInitialValue as SignalReader<T>, ctxProvider);
@@ -403,6 +441,12 @@ export class Kernel {
             const ln = link(ctxProvider, entry.entity.provideGlobalContext(name));
             unsubscribeSecondary.add(ln.destroy.bind(ln));
             contextRootProviders.set(name, ctxProvider);
+          }
+
+          if (ctxProvider != null && (opts?.clearOnDestroy ?? true)) {
+            unsubscribePrimary.add(() => {
+              ctxProvider.set(undefined);
+            });
           }
 
           return ctxProvider;
@@ -435,7 +479,7 @@ export class Kernel {
         useProperties<K extends string>(props: Record<K, string>): Record<K, SignalReader<any>> {
           const result = {} as Record<K, SignalReader<any>>;
           for (const key in props) {
-            if (Object.prototype.hasOwnProperty.call(props, key)) {
+            if (Object.hasOwn(props, key)) {
               result[key] = getUseProperty(props[key]);
             }
           }
@@ -508,12 +552,12 @@ export class Kernel {
     );
 
     if (this.logger.isInfo) {
-      this.logger.info('create shadow-object', getDisplayName(constructor), {shadowObject, entity: entry.entity});
+      this.logger.info('create shadow-object', getDisplayName(construct), {shadowObject, entity: entry.entity});
     }
 
     once(entry.entity, onDestroy, Priority.Low, () => {
       if (this.logger.isInfo) {
-        this.logger.info('destroy shadow-object', getDisplayName(constructor), {shadowObject, entity: entry.entity});
+        this.logger.info('destroy shadow-object', getDisplayName(construct), {shadowObject, entity: entry.entity});
       }
 
       for (const callback of unsubscribePrimary) {
@@ -552,11 +596,11 @@ export class Kernel {
       contextProviders.clear();
       contextRootProviders.clear();
 
-      const otherShadowObjects = entry.usedConstructors.get(constructor);
+      const otherShadowObjects = entry.usedConstructors.get(construct);
       if (otherShadowObjects) {
         otherShadowObjects.delete(shadowObject);
         if (otherShadowObjects.size === 0) {
-          entry.usedConstructors.delete(constructor);
+          entry.usedConstructors.delete(construct);
         }
       }
     });
@@ -564,10 +608,10 @@ export class Kernel {
     // We want to keep track which shadow-objects are created by which constructors.
     // This will all
     //
-    if (entry.usedConstructors.has(constructor)) {
-      entry.usedConstructors.get(constructor).add(shadowObject);
+    if (entry.usedConstructors.has(construct)) {
+      entry.usedConstructors.get(construct).add(shadowObject);
     } else {
-      entry.usedConstructors.set(constructor, new Set([shadowObject]));
+      entry.usedConstructors.set(construct, new Set([shadowObject]));
     }
 
     this.attachShadowObject(shadowObject, entry.entity);
@@ -578,8 +622,8 @@ export class Kernel {
   private createShadowObjects(uuid: string): void {
     const entry = this.#entities.get(uuid);
 
-    this.registry.findConstructors(entry.token, entry.entity.truthyProps())?.forEach((constructor) => {
-      this.constructShadowObject(constructor, entry);
+    this.registry.findConstructors(entry.token, entry.entity.truthyProps())?.forEach((construct) => {
+      this.constructShadowObject(construct, entry);
     });
   }
 
@@ -588,13 +632,7 @@ export class Kernel {
 
     const {usedConstructors} = this.#entities.get(uuid);
 
-    return Array.from(
-      new Set(
-        Array.from(usedConstructors.values())
-          .map((objs) => Array.from(objs))
-          .flat(),
-      ),
-    );
+    return Array.from(new Set(Array.from(usedConstructors.values()).flatMap((objs) => Array.from(objs))));
   }
 
   private attachShadowObject(shadowObject: object, entity: Entity): void {

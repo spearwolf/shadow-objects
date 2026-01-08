@@ -5,6 +5,13 @@ All notable changes to [@spearwolf/shadow-objects](https://github.com/spearwolf/
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.0] - 2026-01-08
+
+- `provideContext()` and `provideGlobalContext()` expect as third argument now an option object `{compare?, clearOnDestroy?}`
+  - the old way (third argument as `isEqual` callback) will continue to work but is now deprecated!
+- both `provide*Context()` features will now clear the context value to _undefined_ on shadow-object destruction by default
+  - opt out via `{clearOnDestroy: false}`
+
 ## [0.25.0] - 2025-12-31
 
 - use `display: contents` style for all shadow object host elements to avoid layout issues
@@ -20,4 +27,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - added the `useProperties()` function
   - added the `useResource()` function
 - added lots of new tests and improved code coverage
-
