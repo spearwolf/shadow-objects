@@ -403,7 +403,7 @@ export class Kernel {
           }
 
           if (ctxProvider != null && (opts?.clearOnDestroy ?? true)) {
-            unsubscribePrimary.add(() => {
+            unsubscribeSecondary.add(() => {
               ctxProvider.set(undefined);
             });
           }
@@ -444,7 +444,7 @@ export class Kernel {
           }
 
           if (ctxProvider != null && (opts?.clearOnDestroy ?? true)) {
-            unsubscribePrimary.add(() => {
+            unsubscribeSecondary.add(() => {
               ctxProvider.set(undefined);
             });
           }
