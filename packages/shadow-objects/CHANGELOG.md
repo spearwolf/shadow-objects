@@ -5,6 +5,10 @@ All notable changes to [@spearwolf/shadow-objects](https://github.com/spearwolf/
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.2] - 2026-01-12
+
+- fix the check for when the deprecation warning is shown in `provideContext()` and `provideGlobalContext()`
+
 ## [0.26.1] - 2026-01-08
 
 - automatic clearing of the context value is now performed by default _after_ the user-defined `onDestroy()` hooks

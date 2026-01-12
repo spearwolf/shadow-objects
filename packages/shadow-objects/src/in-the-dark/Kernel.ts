@@ -377,7 +377,7 @@ export class Kernel {
         ) {
           let ctxProvider = contextProviders.get(name);
 
-          if (!provideContextOptionsDeprecatedShown && typeof options !== 'function') {
+          if (!provideContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
             console.warn(
               '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideContext()" and "provideGlobalContext()" is now passed as {compare} argument. Please update your code accordingly.',
             );
@@ -418,7 +418,7 @@ export class Kernel {
         ) {
           let ctxProvider = contextRootProviders.get(name);
 
-          if (!provideContextOptionsDeprecatedShown && typeof options !== 'function') {
+          if (!provideContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
             console.warn(
               '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideContext()" and "provideGlobalContext()" is now passed as {compare} argument. Please update your code accordingly.',
             );
