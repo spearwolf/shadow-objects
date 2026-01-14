@@ -98,26 +98,30 @@ export interface ProvideContextOptions<T> {
   clearOnDestroy?: boolean;
 }
 
+export type Maybe<T = unknown> = NonNullable<T> | undefined;
+
 export interface ShadowObjectCreationAPI {
   entity: EntityApi;
 
   provideContext<T = unknown>(
     name: string | symbol,
     sourceOrInitialValue?: T | SignalReader<T>,
-    isEqual?: ProvideContextOptions<T> | CompareFunc<T>,
+    options?: ProvideContextOptions<T> | CompareFunc<T>,
   ): Signal<T>;
+
   provideGlobalContext<T = unknown>(
     name: string | symbol,
     sourceOrInitialValue?: T | SignalReader<T>,
-    isEqual?: ProvideContextOptions<T> | CompareFunc<T>,
+    options?: ProvideContextOptions<T> | CompareFunc<T>,
   ): Signal<T>;
 
-  useContext<T = any>(name: string | symbol, isEqual?: CompareFunc<T>): SignalReader<T>;
-  useParentContext<T = any>(name: string | symbol, isEqual?: CompareFunc<T>): SignalReader<T>;
-  useProperty<T = any>(name: string, isEqual?: CompareFunc<T>): SignalReader<T>;
+  useContext<T = unknown>(name: string | symbol, isEqual?: CompareFunc<T>): SignalReader<Maybe<T>>;
+  useParentContext<T = unknown>(name: string | symbol, isEqual?: CompareFunc<T>): SignalReader<Maybe<T>>;
+
+  useProperty<T = unknown>(name: string, isEqual?: CompareFunc<T>): SignalReader<Maybe<T>>;
   useProperties<K extends string>(props: Record<K, string>): Record<K, SignalReader<any>>;
 
-  createResource<T>(factory: () => T | undefined, cleanup?: (resource: T) => void): Signal<T | undefined>;
+  createResource<T = unknown>(factory: () => Maybe<T>, cleanup?: (resource: NonNullable<T>) => any): Signal<Maybe<T>>;
 
   createEffect(...args: Parameters<typeof createEffect>): ReturnType<typeof createEffect>;
   createSignal<T = unknown>(...args: Parameters<typeof createSignal<T>>): ReturnType<typeof createSignal<T>>;
