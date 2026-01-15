@@ -19,8 +19,10 @@ import type {
   ShadowObjectConstructor,
   ShadowObjectType,
   SyncEvent,
+  Maybe,
 } from '../types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
+import {toMaybe} from '../utils/toMaybe.js';
 import {Entity} from './Entity.js';
 import {type OnCreate, onCreate, type OnDestroy, onDestroy, onParentChanged} from './events.js';
 import {Registry} from './Registry.js';
@@ -486,12 +488,16 @@ export class Kernel {
           return result;
         },
 
-        createResource<T>(factory: () => T | undefined, cleanup?: (resource: T) => void): Signal<T | undefined> {
-          const resourceSignal = createSignal<T | undefined>(undefined);
-          unsubscribeSecondary.add(() => destroySignal(resourceSignal));
+        createResource<T>(factory: () => T | undefined, cleanup?: (resource: NonNullable<T>) => any): Signal<Maybe<T>> {
+          const resourceSignal = createSignal<Maybe<T>>();
+
+          unsubscribeSecondary.add(() => {
+            resourceSignal.set(undefined);
+            destroySignal(resourceSignal);
+          });
 
           const effect = createEffect(() => {
-            const resource = factory();
+            const resource = toMaybe(factory());
             resourceSignal.set(resource);
 
             if (resource !== undefined && cleanup) {
@@ -504,6 +510,7 @@ export class Kernel {
               resourceSignal.set(undefined);
             };
           });
+
           unsubscribeSecondary.add(effect.destroy);
 
           return resourceSignal;
