@@ -93,8 +93,11 @@ export type EntityApi = Pick<
     traverse(callback: (entity: EntityApi) => any): void;
   };
 
-export interface ProvideContextOptions<T> {
-  compare?: CompareFunc<T>;
+export interface SignalValueOptions<T> {
+  compare?: CompareFunc<T | undefined>;
+}
+
+export interface ProvideContextOptions<T> extends SignalValueOptions<T> {
   clearOnDestroy?: boolean;
 }
 
@@ -105,23 +108,31 @@ export interface ShadowObjectCreationAPI {
 
   provideContext<T = unknown>(
     name: string | symbol,
-    sourceOrInitialValue?: T | SignalReader<T>,
-    options?: ProvideContextOptions<T> | CompareFunc<T>,
+    sourceOrInitialValue?: T | SignalReader<T | undefined>,
+    options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
   ): Signal<T>;
 
   provideGlobalContext<T = unknown>(
     name: string | symbol,
-    sourceOrInitialValue?: T | SignalReader<T>,
-    options?: ProvideContextOptions<T> | CompareFunc<T>,
+    sourceOrInitialValue?: T | SignalReader<T | undefined>,
+    options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
   ): Signal<T>;
 
-  useContext<T = unknown>(name: string | symbol, isEqual?: CompareFunc<T>): SignalReader<Maybe<T>>;
-  useParentContext<T = unknown>(name: string | symbol, isEqual?: CompareFunc<T>): SignalReader<Maybe<T>>;
+  useContext<T = unknown>(
+    name: string | symbol,
+    options?: SignalValueOptions<T> | CompareFunc<T | undefined>,
+  ): SignalReader<Maybe<T>>;
 
-  useProperty<T = unknown>(name: string, isEqual?: CompareFunc<T>): SignalReader<Maybe<T>>;
+  useParentContext<T = unknown>(
+    name: string | symbol,
+    options?: SignalValueOptions<T> | CompareFunc<T | undefined>,
+  ): SignalReader<Maybe<T>>;
+
+  useProperty<T = unknown>(name: string, options?: SignalValueOptions<T> | CompareFunc<T | undefined>): SignalReader<Maybe<T>>;
+
   useProperties<K extends string>(props: Record<K, string>): Record<K, SignalReader<any>>;
 
-  createResource<T = unknown>(factory: () => T | undefined, cleanup?: (resource: NonNullable<T>) => any): Signal<Maybe<T>>;
+  createResource<T = unknown>(factory: () => T | undefined, cleanup?: (resource: NonNullable<T>) => unknown): Signal<Maybe<T>>;
 
   createEffect(...args: Parameters<typeof createEffect>): ReturnType<typeof createEffect>;
   createSignal<T = unknown>(...args: Parameters<typeof createSignal<T>>): ReturnType<typeof createSignal<T>>;

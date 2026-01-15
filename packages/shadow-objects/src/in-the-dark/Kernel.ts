@@ -20,6 +20,7 @@ import type {
   ShadowObjectType,
   SyncEvent,
   Maybe,
+  SignalValueOptions,
 } from '../types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {toMaybe} from '../utils/toMaybe.js';
@@ -58,6 +59,10 @@ enum ShadowObjectAction {
 const getDisplayName = (construct: ShadowObjectConstructor) => construct.displayName || construct.name;
 
 let provideContextOptionsDeprecatedShown = false;
+let provideGlobalContextOptionsDeprecatedShown = false;
+let useContextOptionsDeprecatedShown = false;
+let useParentContextOptionsDeprecatedShown = false;
+let usePropertyOptionsDeprecatedShown = false;
 
 /**
  * The entity kernel manages the lifecycle of all entities and shadow-objects.
@@ -357,14 +362,28 @@ export class Kernel {
 
     const propertyReaders = new Map<string, SignalReader<any>>();
 
-    const getUseProperty = <T = any>(name: string, compare?: CompareFunc<T>): SignalReader<T> => {
+    const getUseProperty = <T = any>(
+      name: string,
+      options?: SignalValueOptions<T> | CompareFunc<T | undefined>,
+    ): SignalReader<T> => {
+      if (!usePropertyOptionsDeprecatedShown && options != null && typeof options === 'function') {
+        console.warn(
+          '[shadow-objects] Deprecation Warning: The "isEqual" option of "useProperty()" is now passed as {compare} argument. Please update your code accordingly.',
+        );
+        usePropertyOptionsDeprecatedShown = true;
+      }
+
+      const opts = typeof options === 'function' ? {compare: options} : options;
+
       let propReader = propertyReaders.get(name);
+
       if (propReader === undefined) {
-        propReader = createSignal<any>(undefined, compare ? {compare} : undefined).get;
+        propReader = createSignal<any>(undefined, opts).get;
         propertyReaders.set(name, propReader);
         const con = link(entry.entity.getPropertyReader(name), propReader);
         unsubscribeSecondary.add(con.destroy.bind(con));
       }
+
       return propReader;
     };
 
@@ -374,23 +393,23 @@ export class Kernel {
 
         provideContext<T = unknown>(
           name: string | symbol,
-          sourceOrInitialValue?: T | SignalReader<T>,
-          options?: ProvideContextOptions<T> | CompareFunc<T>,
+          sourceOrInitialValue?: T | SignalReader<T | undefined>,
+          options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
         ) {
-          let ctxProvider = contextProviders.get(name);
-
           if (!provideContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
             console.warn(
-              '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideContext()" and "provideGlobalContext()" is now passed as {compare} argument. Please update your code accordingly.',
+              '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideContext()" is now passed as {compare} argument. Please update your code accordingly.',
             );
             provideContextOptionsDeprecatedShown = true;
           }
 
           const opts = typeof options === 'function' ? {compare: options} : options;
 
+          let ctxProvider = contextProviders.get(name);
+
           if (ctxProvider == null) {
             const isSig = isSignal(sourceOrInitialValue);
-            const initialValue = isSig ? undefined : (sourceOrInitialValue as T);
+            const initialValue = isSig ? undefined : toMaybe(sourceOrInitialValue as T);
 
             ctxProvider = createSignal(initialValue, opts?.compare ? {compare: opts.compare} : undefined);
 
@@ -415,23 +434,23 @@ export class Kernel {
 
         provideGlobalContext<T = unknown>(
           name: string | symbol,
-          sourceOrInitialValue?: T | SignalReader<T>,
-          options?: ProvideContextOptions<T> | CompareFunc<T>,
+          sourceOrInitialValue?: T | SignalReader<T | undefined>,
+          options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
         ) {
-          let ctxProvider = contextRootProviders.get(name);
-
-          if (!provideContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
+          if (!provideGlobalContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
             console.warn(
-              '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideContext()" and "provideGlobalContext()" is now passed as {compare} argument. Please update your code accordingly.',
+              '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideGlobalContext()" is now passed as {compare} argument. Please update your code accordingly.',
             );
-            provideContextOptionsDeprecatedShown = true;
+            provideGlobalContextOptionsDeprecatedShown = true;
           }
 
           const opts = typeof options === 'function' ? {compare: options} : options;
 
+          let ctxProvider = contextRootProviders.get(name);
+
           if (ctxProvider == null) {
             const isSig = isSignal(sourceOrInitialValue);
-            const initialValue = isSig ? undefined : (sourceOrInitialValue as T);
+            const initialValue = isSig ? undefined : toMaybe(sourceOrInitialValue as T);
 
             ctxProvider = createSignal(initialValue, opts?.compare ? {compare: opts.compare} : undefined);
 
@@ -454,25 +473,47 @@ export class Kernel {
           return ctxProvider;
         },
 
-        useContext(name: string | symbol, compare?: CompareFunc<any>) {
-          let ctxReader = contextReaders.get(name);
-          if (ctxReader === undefined) {
-            ctxReader = createSignal<any>(undefined, compare ? {compare} : undefined).get;
-            contextReaders.set(name, ctxReader);
-            const con = link(entry.entity.useContext(name), ctxReader);
-            unsubscribeSecondary.add(con.destroy.bind(con));
+        useContext<T = unknown>(name: string | symbol, options?: SignalValueOptions<T> | CompareFunc<T | undefined>) {
+          if (!useContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
+            console.warn(
+              '[shadow-objects] Deprecation Warning: The "isEqual" option of "useContext()" is now passed as {compare} argument. Please update your code accordingly.',
+            );
+            useContextOptionsDeprecatedShown = true;
           }
+
+          const opts = typeof options === 'function' ? {compare: options} : options;
+
+          let ctxReader = contextReaders.get(name);
+
+          if (ctxReader === undefined) {
+            ctxReader = createSignal<any>(undefined, opts).get;
+            contextReaders.set(name, ctxReader);
+            const ln = link(entry.entity.useContext(name), ctxReader);
+            unsubscribeSecondary.add(ln.destroy.bind(ln));
+          }
+
           return ctxReader;
         },
 
-        useParentContext(name: string | symbol, compare?: CompareFunc<any>) {
-          let ctxReader = contextParentReaders.get(name);
-          if (ctxReader === undefined) {
-            ctxReader = createSignal<any>(undefined, compare ? {compare} : undefined).get;
-            contextParentReaders.set(name, ctxReader);
-            const con = link(entry.entity.useParentContext(name), ctxReader);
-            unsubscribeSecondary.add(con.destroy.bind(con));
+        useParentContext<T = unknown>(name: string | symbol, options?: SignalValueOptions<T> | CompareFunc<T | undefined>) {
+          if (!useParentContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
+            console.warn(
+              '[shadow-objects] Deprecation Warning: The "isEqual" option of "useParentContext()" is now passed as {compare} argument. Please update your code accordingly.',
+            );
+            useParentContextOptionsDeprecatedShown = true;
           }
+
+          const opts = typeof options === 'function' ? {compare: options} : options;
+
+          let ctxReader = contextParentReaders.get(name);
+
+          if (ctxReader === undefined) {
+            ctxReader = createSignal<any>(undefined, opts).get;
+            contextParentReaders.set(name, ctxReader);
+            const ln = link(entry.entity.useParentContext(name), ctxReader);
+            unsubscribeSecondary.add(ln.destroy.bind(ln));
+          }
+
           return ctxReader;
         },
 
@@ -488,13 +529,11 @@ export class Kernel {
           return result;
         },
 
-        createResource<T>(factory: () => T | undefined, cleanup?: (resource: NonNullable<T>) => any): Signal<Maybe<T>> {
+        createResource<T = unknown>(
+          factory: () => T | undefined,
+          cleanup?: (resource: NonNullable<T>) => unknown,
+        ): Signal<Maybe<T>> {
           const resourceSignal = createSignal<Maybe<T>>();
-
-          unsubscribeSecondary.add(() => {
-            resourceSignal.set(undefined);
-            destroySignal(resourceSignal);
-          });
 
           const effect = createEffect(() => {
             const resource = toMaybe(factory());
@@ -506,12 +545,17 @@ export class Kernel {
                 resourceSignal.set(undefined);
               };
             }
+
             return () => {
               resourceSignal.set(undefined);
             };
           });
 
-          unsubscribeSecondary.add(effect.destroy);
+          unsubscribeSecondary.add(() => {
+            effect.destroy();
+            resourceSignal.set(undefined);
+            destroySignal(resourceSignal);
+          });
 
           return resourceSignal;
         },
