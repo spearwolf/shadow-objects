@@ -11,7 +11,13 @@ import {ATTR_AUTO_SYNC, ATTR_LOCAL, ATTR_NO_AUTOSTART, ATTR_NO_STRUCTURED_CLONE,
 import {ShaeElement} from './ShaeElement.js';
 
 export class ShaeWorkerElement extends ShaeElement {
-  static override observedAttributes = [...ShaeElement.observedAttributes, ATTR_LOCAL, ATTR_SRC, ATTR_NO_STRUCTURED_CLONE];
+  static override observedAttributes = [
+    ...ShaeElement.observedAttributes,
+    ATTR_LOCAL,
+    ATTR_SRC,
+    ATTR_NO_STRUCTURED_CLONE,
+    ATTR_AUTO_SYNC,
+  ];
 
   static DefaultAutoSync = 'frame';
 

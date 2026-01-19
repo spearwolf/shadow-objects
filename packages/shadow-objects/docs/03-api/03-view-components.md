@@ -55,13 +55,6 @@ Removes a property. This change is batched and sent to the Shadow World.
 component.removeProperty('score');
 ```
 
-#### `setProperties(map)`
-Updates multiple properties at once.
-
-```typescript
-component.setProperties({ x: 10, y: 20 });
-```
-
 #### `dispatchEvent(type, detail)`
 Sends a custom event to the Shadow Object.
 
