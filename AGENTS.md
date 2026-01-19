@@ -10,27 +10,28 @@ The **Shadow Objects Framework** is a reactive library designed to decouple busi
 
 ## 2. Architecture & Core Concepts
 
-### Entities
-The fundamental unit representing a node in the hierarchy, mirroring a view component (like a DOM element or Web Component). Entities form a tree structure and hold reactive properties that sync with the view.
+### Mental Model (The Shadow Theater)
+- **View (Screen):** The visible UI (DOM, Canvas). Minimal state, pure projection.
+- **Entities (Puppets):** Abstract representation of components in the Shadow World.
+- **Shadow Objects (Puppeteer):** Functional units of logic attached to Entities.
+- **Token:** String identifier linking View components to Logic.
 
-### Shadow Objects
-Functional units of logic attached to an Entity. They contain state, effects, and business logic.
-- **Lifecycle:** Automatically created/destroyed based on Entity lifecycle and Registry configuration.
-- **Reactivity:** Uses Signals and Effects (via `@spearwolf/signalize`).
+### Key Components
+- **Kernel:** The engine. Manages Entity lifecycle, orchestrates Shadow Objects, and schedules updates.
+- **Registry:** Maps **Tokens** to **Shadow Object Constructors**. Defines routing and composition rules.
+- **Message Dispatch:** Bridges the gap between Light World (UI) and Shadow World (Worker) via asynchronous messages.
 
-### The Kernel
-The brain of the framework.
-- Manages Entity lifecycle (creation, destruction, hierarchy).
-- Orchestrates Shadow Objects instantiation.
-- Handles communication (Message Dispatch) between View (UI) and Shadow World.
-
-### The Registry
-Maps **Tokens** (strings) to **Shadow Object Constructors**.
-- Defines routing rules (composition, conditional routing).
+### Reactivity
+- Uses Signals and Effects (via `@spearwolf/signalize`).
+- **Data Flow:**
+  - **Downstream (Props):** View -> Kernel -> Entity -> Shadow Object Signal.
+  - **Upstream (Events):** Shadow Object -> Entity -> Kernel -> View.
+  - **Lateral (Context):** Hierarchical dependency injection (Provider/Consumer) between Entities.
 
 ## 3. Monorepo Structure
 
 - **`packages/shadow-objects/`**: The main framework library. Deployment package: `@spearwolf/shadow-objects`.
+- **`packages/shadow-objects/docs/`**: **The authoritative source of documentation.** Contains Fundamentals, Guides, and API references.
 - **`packages/shae-offscreen-canvas/`**: An offscreen canvas as custom HTML element based on shadow-objects.
 - **`packages/shadow-objects-testing/`**: Functional tests.
 - **`packages/shadow-objects-e2e/`**: Blackbox / E2E tests.
@@ -43,10 +44,12 @@ Maps **Tokens** (strings) to **Shadow Object Constructors**.
 - **Language:** Use TypeScript for the core library.
 
 ### Documentation
-- **Public API Changes:** If you modify any publicly exported code interface, you **MUST** update:
-    1. The `README.md` in the relevant package.
-    2. The `CHANGELOG.md`.
-- **Language:** Always use **English** for documentation and comments.
+- **Authoritative Source:** The documentation lives in `packages/shadow-objects/docs/`.
+- **Public API Changes:** Any change to the public API must be reflected in:
+    1. `packages/shadow-objects/docs/` (Update relevant Markdown files).
+    2. `packages/shadow-objects/README.md`.
+    3. `packages/shadow-objects/CHANGELOG.md`.
+- **Language:** Always use **English**.
 - **Format:** Use **Markdown**.
 
 ### Development Workflow
@@ -54,7 +57,7 @@ Maps **Tokens** (strings) to **Shadow Object Constructors**.
 - **Testing:**
     - Check `packages/shadow-objects-testing/` for functional/integration tests.
     - Check `packages/shadow-objects-e2e/` for end-to-end tests.
-    - Any public API change must be tested in E2E if possible.
+    - Public API changes must be tested in E2E if possible.
 
 <!-- nx configuration start-->
 <!-- Leave the start & end comments to automatically receive updates. -->
@@ -70,11 +73,18 @@ Maps **Tokens** (strings) to **Shadow Object Constructors**.
 
 <!-- nx configuration end-->
 
-# Generial Context Information for the AI assistent
+# General Context Information for the AI assistant
 
-You are a professional developer advocate from google.
+You are a professional developer advocate from Google.
 When you write, you speak in a friendly tone.
 You don’t add extra emojis or em dashes.
 You write to developers as if they are your buddy.
 You are technical and aren’t afraid of including code samples.
 Don’t assume too much knowledge, and include quotable short lines that people could post on social media when they share your content.
+
+**Documentation Strategy:**
+- The new documentation is located at `packages/shadow-objects/docs/`.
+- Every change to the source code or public API must be reflected in this documentation folder.
+- If concepts change or are introduced, update the docs immediately.
+- After modifying source files or docs, review `AGENTS.md` (this file) to ensure it remains accurate. Remove obsolete info, add new info.
+- After modifying TODO comments, run `pnpm make:todo`.
