@@ -17,15 +17,17 @@ In Shadow Objects:
 
 ## The Two Worlds
 
-This analogy maps to two distinct realms in your application:
+This analogy maps to two distinct realms in your application, as shown in the architecture diagram:
 
-### 1. The Light World (View)
+![Shadow Objects Architecture](../architecture@2x.png)
+
+### 1. Browser Window (your Components)
 This is what the user sees and interacts with. It consists of the DOM, Web Components, and the rendering layer.
 *   **Role:** Pure projection and user input.
 *   **State:** Minimal / Transient. Ideally, the view should not hold business logic state.
-*   **Environment:** The Main Thread (Browser UI).
+*   **Environment:** The Main Thread.
 
-### 2. The Shadow World (Logic)
+### 2. Web Worker (your Entities)
 This is where your application actually "lives". It contains the business logic, state management, and side effects.
 *   **Role:** Processing logic, managing state, handling data.
 *   **State:** The source of truth.
