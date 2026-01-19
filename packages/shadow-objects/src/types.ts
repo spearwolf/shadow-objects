@@ -85,13 +85,13 @@ export interface AppliedChangeTrailEvent {
   error?: string;
 }
 
-export type EntityApi = Pick<
-  Entity,
-  'hasParent' | 'children' | 'dispatchMessageToView' | 'setProperties' | 'setProperty' | 'propKeys' | 'propEntries'
-> &
-  Readonly<Pick<Entity, 'uuid' | 'order' | 'parentUuid' | 'parent'>> & {
-    traverse(callback: (entity: EntityApi) => any): void;
-  };
+export type EntityApi = Readonly<
+  Pick<Entity, 'uuid' | 'order' | 'hasParent' | 'dispatchMessageToView' | 'propKeys' | 'propEntries'> & {
+    parent?: EntityApi;
+    children: readonly EntityApi[];
+    traverse(callback: (entity: EntityApi) => unknown): void;
+  }
+>;
 
 export interface SignalValueOptions<T> {
   compare?: CompareFunc<T | undefined>;

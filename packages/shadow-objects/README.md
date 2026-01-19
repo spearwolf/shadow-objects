@@ -140,7 +140,7 @@ In your HTML or View layer, you use the provided Web Components to create the En
 
 ```html
 <!-- 1. Initialize the Environment -->
-<shae-worker-env src="./my-module.js"></shae-worker-env>
+<shae-worker src="./my-module.js"></shae-worker>
 
 <!-- 2. Create Entities -->
 <shae-ent token="my-entity">

@@ -1,0 +1,195 @@
+# Shadow Object API Reference
+
+This document serves as a comprehensive reference for the `ShadowObjectCreationAPI`, which is the primary interface developers interact with when defining Shadow Objects.
+
+## The API Object
+
+Whether you define a Shadow Object as a function or a class, the first argument received is the `ShadowObjectCreationAPI` object. This object provides methods to hook into the Entity's lifecycle, manage state, and communicate with the View Layer.
+
+```typescript
+export function MyLogic(api: ShadowObjectCreationAPI) {
+    const { useProperty, createSignal, on } = api;
+    // ...
+}
+```
+
+---
+
+## 1. Inputs (Properties)
+
+These methods allow the Shadow Object to "read" data coming from the View Layer (properties set on `<shae-ent>` or via `component.setProperty`).
+
+### `useProperty(name)`
+
+Creates a reactive signal that tracks the value of a specific property on the Entity.
+
+*   **Signature:** `useProperty<T>(name: string): () => T`
+*   **Returns:** A signal reader function (getter). Calling it returns the current value.
+*   **Reactivity:** When the property changes in the View, any effect or computed value reading this signal will re-run.
+
+```typescript
+const title = useProperty('title');
+
+createEffect(() => {
+    console.log(`The title is now: ${title()}`);
+});
+```
+
+### `useProperties(map)`
+
+A convenience helper to create multiple property signals at once.
+
+*   **Signature:** `useProperties(map: Record<string, any>): Record<string, () => any>`
+*   **Returns:** An object where keys match the input map, and values are signal readers.
+
+```typescript
+const { x, y } = useProperties({ x: 0, y: 0 });
+// x() and y() are now signals
+```
+
+---
+
+## 2. Context (Dependency Injection)
+
+The Shadow Objects framework provides a hierarchical Dependency Injection system. Entities can provide values to their descendants.
+
+### `useContext(name)`
+
+Consumes a context value provided by the nearest ancestor Entity that provides it.
+
+*   **Signature:** `useContext<T>(name: string): T | undefined`
+*   **Returns:** The context value (which can be a static value, a signal, or an object).
+*   **Reactivity:** If the provided value is a signal, reading it makes the current computation reactive.
+
+### `useParentContext(name)`
+
+Similar to `useContext`, but skips the current Entity and starts searching from the parent. Useful for "middleware" components that want to wrap or extend a context value with the same name.
+
+*   **Signature:** `useParentContext<T>(name: string): T | undefined`
+
+### `provideContext(name, value)`
+
+Makes a value available to all descendant Entities in the subtree.
+
+*   **Signature:** `provideContext(name: string, value: any): void`
+*   **Note:** The value is often a signal or a store object to allow reactive communication.
+
+### `provideGlobalContext(name, value)`
+
+Makes a value available to **all** Entities in the entire application, regardless of hierarchy.
+
+*   **Signature:** `provideGlobalContext(name: string, value: any): void`
+
+---
+
+## 3. Reactivity Primitives
+
+The framework re-exports reactivity primitives (via `@spearwolf/signalize`). These are the building blocks of your logic.
+
+### `createSignal(initialValue)`
+
+Creates a local reactive state.
+
+*   **Signature:** `createSignal<T>(initial: T): [() => T, (val: T | ((prev: T) => T)) => void]`
+*   **Returns:** A tuple `[read, write]`.
+
+```typescript
+const [count, setCount] = createSignal(0);
+setCount(c => c + 1);
+```
+
+### `createEffect(callback)`
+
+Runs a side effect immediately, and re-runs it whenever any signal accessed within it changes.
+
+*   **Signature:** `createEffect(fn: () => void): void`
+
+### `createMemo(factory)`
+
+Creates a derived signal (computed value). It only re-evaluates when its dependencies change.
+
+*   **Signature:** `createMemo<T>(fn: () => T): () => T`
+
+```typescript
+const doubleCount = createMemo(() => count() * 2);
+```
+
+### `createResource(factory, cleanup?)`
+
+Advanced primitive for managing external resources (like Three.js objects, subscriptions, etc.) that depend on reactive state.
+
+*   **Signature:** `createResource((val) => Resource, (val, resource) => void)`
+*   **Behavior:** When dependencies in the factory change, the `cleanup` function is called for the *previous* resource, and then `factory` is called to create a *new* one.
+
+```typescript
+createResource(() => {
+    // Factory: Runs when 'id()' changes
+    return loadModel(id());
+}, (model) => {
+    // Cleanup: Runs before the next load, or on destroy
+    model.dispose();
+});
+```
+
+---
+
+## 4. Events
+
+Shadow Objects can communicate via an event system that mirrors standard DOM events but runs within the Shadow World.
+
+### `on(target, eventName, callback)`
+
+Listens for an event on a target.
+
+*   **Signature:** `on(target: object, event: string, callback: (type: string, data: any) => void): void`
+*   **Targets:** Usually `entity` (the current entity instance).
+
+#### Listening to View Events
+To listen to events dispatched from the DOM (View Layer), listen to the special event name `'onViewEvent'` on the `entity` target.
+
+```typescript
+on(entity, 'onViewEvent', (type, data) => {
+    if (type === 'click') {
+        console.log('Clicked!', data);
+    }
+});
+```
+
+### `once(target, eventName, callback)`
+
+Same as `on`, but the listener is automatically removed after the first trigger.
+
+---
+
+## 5. Lifecycle
+
+### `onDestroy(callback)`
+
+Registers a cleanup function. This is critical for preventing memory leaks when using non-framework resources (like `setInterval`).
+
+*   **Signature:** `onDestroy(fn: () => void): void`
+
+```typescript
+const interval = setInterval(tick, 1000);
+onDestroy(() => clearInterval(interval));
+```
+
+---
+
+## 6. The `entity` Instance
+
+The API provides direct access to the underlying `EntityApi` instance via the `entity` property.
+
+### `entity.dispatchMessageToView(type, detail)`
+
+Sends an event **from** the Shadow World **to** the View Layer. The `<shae-ent>` DOM element will dispatch a `CustomEvent`.
+
+*   **Signature:** `entity.dispatchMessageToView(type: string, detail?: any): void`
+
+```typescript
+// Shadow World
+entity.dispatchMessageToView('login-success', { user: 'Alice' });
+
+// View Layer (DOM)
+el.addEventListener('login-success', (e) => console.log(e.detail.user));
+```
