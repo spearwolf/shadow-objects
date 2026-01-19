@@ -83,11 +83,16 @@ The standard way to use Shadow Objects is via the provided Web Components (`<sha
 *   **Role:** These are simply a convenience wrapper.
 *   **Function:** They automatically handle the lifecycle (mount/unmount) and property syncing by calling the ViewComponent API internally.
 
-### Custom Integrations
-Because the architecture relies on the ViewComponent API, you are not forced to use Web Components. You can integrate Shadow Objects into any environment:
+### Custom Integrations & Hierarchies
+Because the architecture relies on the ViewComponent API, you are not forced to use Web Components or even the DOM structure.
+
+The View Components form their own hierarchy. While the predefined Web Components (`<shae-ent>`) conveniently mirror the DOM structure, this is just one possible implementation.
+
+The View Components API allows you to model **any logical hierarchy** representing your application's state and logic. This is a deliberate design choice:
+
+*   **Non-DOM Structures:** You can map Shadow Objects to nodes inside a GLTF file (3D model), a scenegraph in a game engine, or an abstract data structure.
 *   **React/Vue/Svelte:** You could write a wrapper that syncs a React component's lifecycle to Shadow Objects.
 *   **Vanilla JS:** You can instantiate `ViewComponent` classes directly in plain JavaScript code if you don't want to use DOM elements.
-*   **Canvas/WebGL:** You could even bind Shadow Objects to non-DOM objects, like sprites in a game engine.
 
 ## Communication Patterns
 
