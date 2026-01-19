@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## unreleased
 
 - sharpen the `EntityApi` type definitions
+- **Documentation:** Comprehensive update to the documentation structure and content.
+    - Added dedicated documentation for Web Components (`<shae-worker>`, `<shae-ent>`, `<shae-prop>`) at `docs/03-api/04-web-components.md`.
+    - Clarified the usage of Component Contexts, Namespacing (`ns` attribute), and decoupled placement of View Components.
+    - Documented the `local` (Main Thread) and `no-structured-clone` attributes for `<shae-worker>`.
+    - Documented the `order` property in ViewComponent API and Entity metadata for sorting/layering.
+    - Updated guides to reflect current API usage (e.g., `.viewComponent`).
 
 ## [0.27.0] - 2026-01-19
 

@@ -20,17 +20,21 @@ The package `@spearwolf/shadow-objects/elements` provides ready-to-use Web Compo
 This element acts as the boundary for your Shadow World. It initializes the Worker (or Main Thread kernel) and provides the `ComponentContext`.
 
 ```html
-<shae-worker src="./shadow-worker.js">
+<shae-worker src="./shadow-worker.js" ns="main-app">
   <!-- Your app goes here -->
 </shae-worker>
 ```
 
 *   **`src`**: Path to the JavaScript module that exports your Shadow Objects definitions (the Registry configuration).
-*   **`name`**: (Optional) Name for the context/worker.
+*   **`ns`**: (Optional) Namespace for the component context. Defaults to the global context.
+*   **`local`**: (Optional) Boolean attribute to run the kernel on the main thread instead of a worker.
 
 ### 2. `shae-ent` (The Entity)
 
-This element represents a **View Component**. When placed inside a `shae-worker`, it automatically registers itself and spawns a corresponding Entity in the Shadow World.
+This element represents a **View Component**. It automatically registers itself with the Component Context and spawns a corresponding Entity in the Shadow World.
+
+> [!NOTE]
+> `<shae-ent>` elements do **not** need to be placed inside a `<shae-worker>`. They can be located anywhere in the DOM. The connection to the worker/context is established solely via the **namespace** (`ns` attribute).
 
 ```html
 <shae-ent token="my-button">
@@ -39,6 +43,7 @@ This element represents a **View Component**. When placed inside a `shae-worker`
 ```
 
 *   **`token`**: The string identifier that maps to a Shadow Object in your Registry.
+*   **`ns`**: (Optional) Explicitly assign this entity to a named context. Must match the `ns` of the target `<shae-worker>`.
 
 ### 3. `shae-prop` (Property Binder)
 
@@ -65,8 +70,8 @@ To send an event to the logic:
 ```javascript
 const ent = document.querySelector('shae-ent');
 
-// The underlying ViewComponent instance is available as .component
-ent.component.dispatchEvent('viewEvent', {
+// The underlying ViewComponent instance is available as .viewComponent
+ent.viewComponent.dispatchEvent('viewEvent', {
   type: 'my-custom-action',
   payload: { foo: 'bar' }
 });
@@ -125,7 +130,8 @@ const myComponent = new ViewComponent('my-token', {
 });
 
 // 3. Add to hierarchy (optional, defaults to root)
-context.addComponent(myComponent);
+// Note: components attach to root by default if no parent is specified
+// context.addComponent(myComponent); 
 
 // 4. Send updates
 myComponent.setProperty('title', 'New Title');

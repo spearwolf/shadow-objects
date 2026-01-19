@@ -59,7 +59,7 @@ The code inside your function (or constructor) runs **once** when the object is 
     *   **Lifecycle:**
         *   `onDestroy(callback)`: Register a cleanup function to run when the object is destroyed.
     *   **Access:**
-        *   `entity`: Direct access to the underlying `EntityApi` (advanced usage).
+        *   `entity`: Direct access to the underlying `EntityApi` (advanced usage), including properties like `order` (sort index from View).
 
 ```typescript
 export function MyLogic({ 

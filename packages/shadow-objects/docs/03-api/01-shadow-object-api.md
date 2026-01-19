@@ -207,4 +207,6 @@ onDestroy(() => clearInterval(interval));
 
 The API provides direct access to the underlying `EntityApi` instance via the `entity` property. This gives access to entity metadata like `uuid`, `order`, hierarchy info (`parent`, `children`), and property inspection (`propKeys`, `propEntries`).
 
+The `order` property reflects the sort order defined in the View Layer. This is useful for systems that need to process entities in a specific sequence (e.g. rendering layers), even though the Shadow World itself doesn't enforce a DOM-like structure.
+
 Note: `dispatchMessageToView` is now a top-level method on the API object and is no longer available on the `entity` instance.

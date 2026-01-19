@@ -37,26 +37,25 @@ In your HTML file, you need to set up the environment. The `shadow-objects` fram
 </head>
 <body>
 
-    <!-- 
-      1. Initialize the Environment 
+    <!--
+      1. Initialize the Environment
       src: Points to your logic module (the Shadow World entry point)
+      ns: (Optional) Defines a named context. Defaults to the global context.
     -->
-    <shae-worker src="./my-logic.js">
-        
-        <!-- 
-          2. Define an Entity (View Component)
-          token: Matches a definition in your logic module
-        -->
-        <shae-ent token="counter-component">
-            <!-- Initial Property Value -->
-            <shae-prop name="count" value="0"></shae-prop>
-            
-            <!-- Simple UI for the user -->
-            <button id="btn">Click me</button>
-            <span id="display">Count: 0</span>
-        </shae-ent>
+    <shae-worker src="./my-logic.js"></shae-worker>
 
-    </shae-worker>
+    <!--
+        2. Define an Entity (View Component)
+        token: Matches a definition in your logic module
+    -->
+    <shae-ent token="counter-component">
+        <!-- Initial Property Value -->
+        <shae-prop name="count" value="0"></shae-prop>
+
+        <!-- Simple UI for the user -->
+        <button id="btn">Click me</button>
+        <span id="display">Count: 0</span>
+    </shae-ent>
 
     <script>
         // Glue code to forward DOM events to the Entity
@@ -68,14 +67,15 @@ In your HTML file, you need to set up the environment. The `shadow-objects` fram
         // Forward click event to the Shadow World
         btn.addEventListener('click', () => {
             // "viewEvent" is the standard channel for custom interactions
-            ent.component.dispatchEvent('viewEvent', { type: 'increment' });
+            // Note: In newer versions, direct dispatchEvent on the element is preferred if supported,
+            // but accessing the underlying component is the explicit API.
+            ent.viewComponent?.dispatchEvent('viewEvent', { type: 'increment' });
         });
 
         // Listen for property updates from the Shadow World
-        // <shae-prop> handles this automatically, but here is how to do it manually:
-        ent.addEventListener('shae-prop:count', (e) => {
-             display.textContent = `Count: ${e.detail.value}`;
-        });
+        // <shae-prop> handles data->view sync automatically for attributes,
+        // but for custom DOM updates we might listen to events or signal effects.
+        // (Simplified for this example)
     </script>
 </body>
 </html>
@@ -95,10 +95,10 @@ Now, let's create the logic file that runs in the "Shadow World". This file defi
  * The Logic Function for our Counter
  */
 function CounterLogic({ useProperty, createEffect, createSignal, on, entity }) {
-    
+
     // 1. Inputs: Read the 'count' property from the View
     const countProp = useProperty('count'); // Returns a signal reader
-    
+
     // 2. State: Create local state for logic
     // We initialize it with the value from the view
     const [count, setCount] = createSignal(countProp() || 0);

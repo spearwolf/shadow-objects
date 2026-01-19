@@ -25,6 +25,7 @@ new ViewComponent(token: string, options?: ViewComponentOptions)
     *   `context`: The `ComponentContext` instance this component belongs to.
     *   `parent`: (Optional) The parent `ViewComponent`.
     *   `props`: (Optional) Initial properties map.
+    *   `order`: (Optional) Initial sort order (number).
 
 ### Properties
 
@@ -33,6 +34,10 @@ new ViewComponent(token: string, options?: ViewComponentOptions)
 *   **`parent`**: Reference to the parent component.
 *   **`children`**: Array of child components.
 *   **`context`**: Reference to the managing context.
+*   **`order`**: Numeric value defining the sorting order within the parent's children list.
+    *   Items are sorted by ascending `order` value, then by insertion order.
+    *   Default is `0`.
+    *   Useful for controlling execution order or layout in non-DOM renderers (e.g. Canvas layers).
 
 ### Methods
 
@@ -64,7 +69,7 @@ Removes the component from the hierarchy and signals destruction to the Shadow W
 
 ## `ComponentContext`
 
-The orchestrator. It manages a group of `ViewComponent`s and handles the communication channel (Worker or Local) to the Kernel.
+The orchestrator. It manages a group of `ViewComponent`s and handles the communication channel (Worker or Local) to the Kernel. This enables **Namespacing**, allowing multiple independent Shadow Worlds to exist on the same page.
 
 ```typescript
 import { ComponentContext } from '@spearwolf/shadow-objects/view';
@@ -73,11 +78,20 @@ import { ComponentContext } from '@spearwolf/shadow-objects/view';
 ### Static Methods
 
 #### `ComponentContext.get(name)`
-Retrieves or creates a named context singleton.
+Retrieves or creates a named context singleton. If `name` is omitted, it returns the **Default Global Context**.
 
 ```typescript
-const ctx = ComponentContext.get('main-game');
+const defaultCtx = ComponentContext.get();
+const level1Ctx = ComponentContext.get('level-1');
 ```
+
+### Namespacing & Contexts
+
+A **Context** represents an isolated instance of a Shadow World (Kernel + Entities).
+- **Default Context:** Used when no namespace is specified. Ideal for single-canvas applications.
+- **Named Contexts:** Created by passing a string namespace (e.g., `'ui-overlay'`, `'minimap'`). This allows you to have completely separate logical threads (or local environments) for different parts of your application.
+
+Each `ViewComponent` belongs to exactly one Context.
 
 ### Instance Methods
 

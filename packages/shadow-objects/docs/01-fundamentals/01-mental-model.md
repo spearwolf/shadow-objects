@@ -26,12 +26,14 @@ This is what the user sees and interacts with. It consists of the DOM, Web Compo
 *   **Role:** Pure projection and user input.
 *   **State:** Minimal / Transient. Ideally, the view should not hold business logic state.
 *   **Environment:** The Main Thread.
+*   **Context:** Can be partitioned into multiple **Namespaces** (e.g. `main-game`, `ui-overlay`) to run isolated simulations side-by-side.
 
 ### 2. Web Worker (your Entities)
 This is where your application actually "lives". It contains the business logic, state management, and side effects.
 *   **Role:** Processing logic, managing state, handling data.
 *   **State:** The source of truth.
-*   **Environment:** Typically a **Web Worker** (the "Dark"), but can also run on the Main Thread for simple setups.
+*   **Environment:** Typically a **Web Worker** (the "Dark"), but can also run on the Main Thread (Local Context) for simple setups.
+*   **Isolation:** Each Context has its own Kernel and Entity Tree.
 
 ## Core Concepts
 
