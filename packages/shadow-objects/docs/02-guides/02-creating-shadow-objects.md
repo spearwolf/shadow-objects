@@ -59,14 +59,14 @@ To store state within your Shadow World logic, use **Signals**.
 Creates a read/write signal.
 
 ```typescript
-const [count, setCount] = createSignal(0);
+const count = createSignal(0);
 
 // Read
 console.log(count());
 
 // Write
-setCount(1);
-setCount(c => c + 1); // Update based on previous value
+count.set(1);
+count.set(c => c + 1); // Update based on previous value
 ```
 
 ### `createMemo`
@@ -109,7 +109,7 @@ To update the **View Component**, you should use events. This keeps the data flo
 
 ```typescript
 export function CounterLogic({ createSignal, createEffect, dispatchMessageToView }) {
-  const [count, setCount] = createSignal(0);
+  const count = createSignal(0);
 
   // Notify View of changes
   createEffect(() => {

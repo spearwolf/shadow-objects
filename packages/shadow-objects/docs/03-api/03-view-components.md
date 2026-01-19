@@ -48,6 +48,13 @@ Updates a property value. This change is batched and sent to the Shadow World.
 component.setProperty('score', 1000);
 ```
 
+#### `removeProperty(name)`
+Removes a property. This change is batched and sent to the Shadow World.
+
+```typescript
+component.removeProperty('score');
+```
+
 #### `setProperties(map)`
 Updates multiple properties at once.
 

@@ -5,18 +5,13 @@ A reactive entity&larr;component framework that feels home in the shadows 🧛
 > [!WARNING]
 > 🚀 This is a highly experimental framework that is slowly maturing. Use at your own risk. 🔥
 
-## Introduction 👀
+## Documentation 📚
 
-The **Shadow Objects Framework** is a reactive library designed to decouple business logic and state management from the UI rendering layer. It runs application logic "in the dark" (e.g., in a web worker), mirroring the view hierarchy of your application.
+**The complete and authoritative documentation is located in the [`packages/shadow-objects/docs/`](packages/shadow-objects/docs/) directory.**
 
-Key features include:
-
--   **Decoupled Logic**: Business logic resides in "Shadow Objects" separate from UI components.
--   **Entity-Component System**: Mirrors the view hierarchy (DOM) with a tree of Entities.
--   **Reactivity**: Built on signals and effects for automatic state synchronization.
--   **Context System**: Hierarchical dependency injection similar to React Context.
-
-For a detailed deep dive into the architecture and API, please refer to the [**Shadow Objects Documentation**](packages/shadow-objects/README.md).
+*   [**Fundamentals**](packages/shadow-objects/docs/01-fundamentals/): Understand the mental model, architecture, and lifecycle.
+*   [**Guides**](packages/shadow-objects/docs/02-guides/): Step-by-step instructions.
+*   [**API Reference**](packages/shadow-objects/docs/03-api/): Detailed API docs.
 
 ## 🏗️ Project Structure
 
@@ -25,63 +20,34 @@ This repository is a monorepo managed with [nx](https://nx.dev/) and [pnpm](http
 | Package | Description |
 | :--- | :--- |
 | **[`shadow-objects`](packages/shadow-objects/)** | The core framework library. |
-| **[`shae-offscreen-canvas`](packages/shae-offscreen-canvas/)** | A custom HTML element implementing an **offscreen canvas**, built with shadow-objects. |
-| **[`shadow-objects-testing`](packages/shadow-objects-testing/)** | Functional and integration tests for the framework. |
+| **[`shae-offscreen-canvas`](packages/shae-offscreen-canvas/)** | A custom HTML element implementing an **offscreen canvas**. |
+| **[`shadow-objects-testing`](packages/shadow-objects-testing/)** | Functional and integration tests. |
 | **[`shadow-objects-e2e`](packages/shadow-objects-e2e/)** | End-to-end tests using [Playwright](https://playwright.dev/). |
+
+## ⚡ Available Scripts
+
+Run these commands from the root directory:
+
+| Command | Description |
+| :--- | :--- |
+| `pnpm cbt` | **Clean, Build, Test.** Runs a full clean build and test cycle for the entire workspace. |
+| `pnpm start` | Starts the **shae-offscreen-canvas** demo server. |
+| `pnpm test` | Runs all tests (Unit, Integration, E2E) across all packages. |
+| `pnpm test:ci` | Runs tests excluding E2E (faster, for CI pipelines). |
+| `pnpm build` | Builds all packages. |
+| `pnpm lint` | Runs linting across the workspace. |
+| `pnpm clean` | Cleans all build artifacts (`dist`, `build` folders). |
 
 ## ⚙️ Development Setup
 
-### Prerequisites
-
-- **Node.js**: >=20.12.2
-- **pnpm**: >=9.1.2
-
-### Installation
-
-1.  **Install dependencies:**
-
+1.  **Prerequisites:** Node.js >=20.12.2, pnpm >=9.1.2
+2.  **Install dependencies:**
     ```sh
     pnpm install
     ```
-
-2.  **Install Playwright browsers:**
-
-    The E2E tests require Playwright browsers to be installed manually.
-
+3.  **Install Playwright browsers (for E2E):**
     ```sh
     cd packages/shadow-objects-e2e
     pnpm exec playwright install chromium firefox
     cd ../..
     ```
-
-### Common Tasks
-
--   **Build & Test All:**
-    Run a clean build and all tests (unit, functional, e2e) across the workspace.
-
-    ```sh
-    pnpm cbt
-    ```
-    *(Alias for `pnpm run-s clean build test`)*
-
--   **Start Demo:**
-    Launch the `shae-offscreen-canvas` demo to see the framework in action.
-
-    ```sh
-    pnpm start
-    ```
-
--   **Run Tests:**
-    ```sh
-    pnpm test        # Run all tests
-    pnpm test:ci     # Run tests excluding E2E (faster)
-    ```
-
--   **Linting:**
-    ```sh
-    pnpm lint
-    ```
-
-- - -
-
-> 🔎 **Note:** This project tracks tasks directly in the source code using `TODO`, `FIXME`, and `XXX` comments. See [TODO.md](TODO.md) for an auto-generated overview.

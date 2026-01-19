@@ -72,7 +72,7 @@ export function MyLogic({
 }) {
   // SETUP: Runs once
   const title = useProperty('title');
-  const [count, setCount] = createSignal(0);
+  const count = createSignal(0);
   
   createEffect(() => {
     // RUNTIME: Runs whenever 'title' or 'count' changes
@@ -84,7 +84,7 @@ export function MyLogic({
   // The first argument is the type (name) of the event, the second is the data.
   on(entity, 'onViewEvent', (type, data) => {
       if (type === 'click') {
-          setCount(c => c + 1);
+          count.set(c => c + 1);
           console.log('View was clicked!', data);
       }
   });

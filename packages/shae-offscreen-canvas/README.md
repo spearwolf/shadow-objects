@@ -1,56 +1,29 @@
-
 # @spearwolf/shae-offscreen-canvas
 
-> a multi threaded renderer 🚀 for your browser using web workers and shared offscreen canvases
+> A multi-threaded renderer 🚀 for your browser using Web Workers and shared OffscreenCanvas.
 
-_Caution‼️ this is a highly experimental setup, but with a damn high awesomeness factor!_ 😉
+This package provides custom HTML elements to create a **Shadow Objects** scenario supporting:
+*   General offscreen canvas rendering
+*   Shared Three.js offscreen renderer
 
-Using the [shadow-objects](../shadow-objects/) library, the shae-offscreen-canvas package provides several web components that can be used to create a shadow-objects scenario that supports general offscreen canvas rendering as well as a shared three.js offscreen renderer.
+**👉 [Read the Package Documentation](./docs/01-shadow-objects-api.md)**
 
-## Integrate the web components in your page
+For the core concepts, see the [Main Shadow Objects Documentation](../shadow-objects/docs/).
 
-_thinktank_
+## Usage Example
 
 ```html
-<html>
-  <body>
-    <shae-offscreen-canvas-ctx src="my-shae-offscreen-canvas-shadow-objects.js">
-    
-      <t.5d-assets-store src="textures.json" />
-    
-      <!-- somewhere in your layout -->
-      
-      <shae-offscreen-canvas>
-        <spw-starfield star-count="10000" />
-      </shae-offscreen-canvas>
+<shae-offscreen-canvas-ctx src="my-logic.js">
+  
+  <shae-offscreen-canvas>
+    <!-- Your entities here -->
+    <shae-ent token="my-scene"></shae-ent>
+  </shae-offscreen-canvas>
 
-      <!-- somewhere else in your layout -->
-      
-      <shae-offscreen-canvas>
-        <t.5d-bouncing-sprites count="500" />
-      </shae-offscreen-canvas>
-
-    </shae-offscreen-canvas-ctx>
-
-    <script type="module" src="shae-offscreen-canvas.js"></script>
-  </body>
-</html>
+</shae-offscreen-canvas-ctx>
 ```
 
-For a real working demo, check out [./index.html](./index.html)
+## Development
 
-[The documentation for the shadow objects can be found here.](./src/shadow-objects/README.md)
-
-## Local Development Setup
-
-Run the tests with ..
-
-```sh
-➜ pnpm watch  # or just use `pnpm test`
-```
-
-Run the local test server/scenario with ..
-
-```sh
-➜ pnpm dev  # or use `pnpm nx dev shae-offscreen-canvas`
-```
+*   **Start Demo Server:** `pnpm start` (from root) or `pnpm dev` (inside this package)
+*   **Run Tests:** `pnpm test`

@@ -101,7 +101,7 @@ function CounterLogic({ useProperty, createEffect, createSignal, on, entity }) {
 
     // 2. State: Create local state for logic
     // We initialize it with the value from the view
-    const [count, setCount] = createSignal(countProp() || 0);
+    const count = createSignal(countProp() || 0);
 
     // 3. Reactivity: React to changes
     createEffect(() => {
@@ -111,7 +111,7 @@ function CounterLogic({ useProperty, createEffect, createSignal, on, entity }) {
     // 4. Events: Listen for interactions from the View
     on(entity, 'onViewEvent', (type, data) => {
         if (type === 'increment') {
-            setCount(c => c + 1);
+            count.set(c => c + 1);
         }
     });
 }
@@ -138,7 +138,7 @@ export default {
     *   User clicks "Click me".
     *   Browser sends `viewEvent` -> `increment`.
     *   `CounterLogic` receives `onViewEvent`.
-    *   `setCount` updates the signal.
+    *   `count.set` updates the signal.
     *   `createEffect` runs.
     *   **Events:** The Shadow Object uses `dispatchMessageToView` to communicate back (see View Integration).
 

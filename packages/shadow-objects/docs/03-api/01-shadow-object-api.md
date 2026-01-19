@@ -90,12 +90,12 @@ The framework re-exports reactivity primitives (via `@spearwolf/signalize`). The
 
 Creates a local reactive state.
 
-*   **Signature:** `createSignal<T>(initial: T): [() => T, (val: T | ((prev: T) => T)) => void]`
-*   **Returns:** A tuple `[read, write]`.
+*   **Signature:** `createSignal<T>(initial: T): Signal<T>`
+*   **Returns:** A signal object `{ value, set(val), ... }`. Since `Signal` is also a function, calling it directly returns the value.
 
 ```typescript
-const [count, setCount] = createSignal(0);
-setCount(c => c + 1);
+const count = createSignal(0);
+count.set(c => c + 1);
 ```
 
 ### `createEffect(callback)`
