@@ -1,14 +1,14 @@
-function foo({entity, useProperty}) {
+function foo({useProperty, dispatchMessageToView}) {
   const xyz = useProperty('xyz');
 
   console.log('ShadowObject "foo" created: xyz=', xyz());
 
   xyz((val) => {
     console.log('foo.xyz changed to', val);
-    entity.dispatchMessageToView('fooEcho', xyz());
+    dispatchMessageToView('fooEcho', xyz());
   });
 
-  entity.dispatchMessageToView('helloFromFoo', {xyz: xyz()});
+  dispatchMessageToView('helloFromFoo', {xyz: xyz()});
 }
 
 export const shadowObjects = {

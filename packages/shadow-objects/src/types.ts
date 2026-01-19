@@ -86,7 +86,7 @@ export interface AppliedChangeTrailEvent {
 }
 
 export type EntityApi = Readonly<
-  Pick<Entity, 'uuid' | 'order' | 'hasParent' | 'dispatchMessageToView' | 'propKeys' | 'propEntries'> & {
+  Pick<Entity, 'uuid' | 'order' | 'hasParent' | 'propKeys' | 'propEntries'> & {
     parent?: EntityApi;
     children: readonly EntityApi[];
     traverse(callback: (entity: EntityApi) => unknown): void;
@@ -105,6 +105,8 @@ export type Maybe<T = unknown> = NonNullable<T> | undefined;
 
 export interface ShadowObjectCreationAPI {
   entity: EntityApi;
+
+  dispatchMessageToView(type: string, data?: unknown, transferables?: TransferablesType, traverseChildren?: boolean): void;
 
   provideContext<T = unknown>(
     name: string | symbol,

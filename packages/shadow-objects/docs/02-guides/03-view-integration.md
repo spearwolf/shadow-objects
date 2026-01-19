@@ -76,7 +76,7 @@ The Shadow Object receives this via `on(entity, 'onViewEvent', ...)`.
 
 ### Receiving Events from Shadow World
 
-When a Shadow Object calls `entity.dispatchMessageToView('my-event', data)`, the `<shae-ent>` element dispatches a CustomEvent.
+When a Shadow Object calls `dispatchMessageToView('my-event', data)`, the `<shae-ent>` element dispatches a CustomEvent.
 
 ```javascript
 ent.addEventListener('my-event', (e) => {
@@ -90,7 +90,7 @@ To update the UI based on state changes in the Shadow Object, you should emit ev
 // Shadow Object
 createEffect(() => {
    // Whenever count changes, notify the view
-   entity.dispatchMessageToView('count-changed', { value: count() });
+   dispatchMessageToView('count-changed', { value: count() });
 });
 ```
 
@@ -100,7 +100,7 @@ To update the UI based on state changes in the Shadow Object, you should emit ev
 // Shadow Object
 createEffect(() => {
    // Whenever count changes, notify the view
-   entity.dispatchMessageToView('count-changed', { value: count() });
+   dispatchMessageToView('count-changed', { value: count() });
 });
 
 // View Layer

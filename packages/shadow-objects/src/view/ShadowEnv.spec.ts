@@ -112,14 +112,12 @@ describe('ShadowEnv', () => {
     on(grandChildVC, 'myEvent', grandChildSpy);
 
     // Define a shadow object that will dispatch the message with traverseChildren
-    let entityRef: {
-      dispatchMessageToView: (type: string, data?: unknown, transferables?: Transferable[], traverseChildren?: boolean) => void;
-    } | null = null;
+    let dispatchMessageToView: (type: string, data?: unknown, transferables?: Transferable[], traverseChildren?: boolean) => void;
 
     @ShadowObject({token: 'parent'})
     class ParentShadowObject {
-      constructor({entity}: ShadowObjectCreationAPI) {
-        entityRef = entity;
+      constructor(api: ShadowObjectCreationAPI) {
+        dispatchMessageToView = api.dispatchMessageToView;
       }
     }
 
@@ -128,10 +126,10 @@ describe('ShadowEnv', () => {
     await env.syncWait();
 
     // Verify shadow object was created and we have the entity reference
-    expect(entityRef).not.toBeNull();
+    expect(dispatchMessageToView!).toBeDefined();
 
     // Dispatch a message with traverseChildren=true from the shadow object
-    entityRef!.dispatchMessageToView('myEvent', {testData: 'hello'}, undefined, true);
+    dispatchMessageToView!('myEvent', {testData: 'hello'}, undefined, true);
 
     // Wait for the microtask queue to process
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -169,14 +167,12 @@ describe('ShadowEnv', () => {
     on(childVC, 'myEvent', childSpy);
 
     // Define a shadow object that will dispatch the message without traverseChildren
-    let entityRef: {
-      dispatchMessageToView: (type: string, data?: unknown, transferables?: Transferable[], traverseChildren?: boolean) => void;
-    } | null = null;
+    let dispatchMessageToView: (type: string, data?: unknown, transferables?: Transferable[], traverseChildren?: boolean) => void;
 
     @ShadowObject({token: 'parent2'})
     class Parent2ShadowObject {
-      constructor({entity}: ShadowObjectCreationAPI) {
-        entityRef = entity;
+      constructor(api: ShadowObjectCreationAPI) {
+        dispatchMessageToView = api.dispatchMessageToView;
       }
     }
 
@@ -184,10 +180,10 @@ describe('ShadowEnv', () => {
 
     await env.syncWait();
 
-    expect(entityRef).not.toBeNull();
+    expect(dispatchMessageToView!).toBeDefined();
 
     // Dispatch a message with traverseChildren=false
-    entityRef!.dispatchMessageToView('myEvent', {testData: 'world'}, undefined, false);
+    dispatchMessageToView!('myEvent', {testData: 'world'}, undefined, false);
 
     // Wait for the microtask queue to process
     await new Promise((resolve) => setTimeout(resolve, 50));

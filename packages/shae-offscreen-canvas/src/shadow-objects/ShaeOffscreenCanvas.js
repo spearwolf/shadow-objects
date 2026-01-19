@@ -38,8 +38,10 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
     return this.isRunning && this.canvas != null && this.canvas.width > 0 && this.canvas.height > 0;
   }
 
-  constructor({entity, useProperty, provideContext, createSignal, createEffect, onDestroy}) {
+  constructor({entity, useProperty, provideContext, createSignal, createEffect, onDestroy, dispatchMessageToView}) {
     super(entity);
+
+    this.dispatchMessageToView = dispatchMessageToView;
 
     const canvas$ = provideContext(CanvasContext);
     const offscreenCanvas$ = provideContext(OffscreenCanvasContext, this);
@@ -115,7 +117,7 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
       if (this.logger.isDebug) {
         this.logger.debug('request offscreen-canvas', this);
       }
-      this.entity.dispatchMessageToView(RequestOffscreenCanvas);
+      this.dispatchMessageToView(RequestOffscreenCanvas);
     }
   }
 

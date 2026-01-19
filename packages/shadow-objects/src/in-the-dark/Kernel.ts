@@ -517,6 +517,10 @@ export class Kernel {
           return ctxReader;
         },
 
+        dispatchMessageToView(type: string, data?: unknown, transferables?: Transferable[], traverseChildren = false) {
+          entry.entity.dispatchMessageToView(type, data, transferables, traverseChildren);
+        },
+
         useProperty: getUseProperty,
 
         useProperties<K extends string>(props: Record<K, string>): Record<K, SignalReader<any>> {

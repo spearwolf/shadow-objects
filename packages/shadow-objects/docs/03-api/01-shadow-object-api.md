@@ -161,7 +161,34 @@ Same as `on`, but the listener is automatically removed after the first trigger.
 
 ---
 
-## 5. Lifecycle
+## 5. View Integration
+
+Shadow Objects can communicate directly with the View Layer (the DOM) by dispatching messages.
+
+### `dispatchMessageToView(type, data?, transferables?, traverseChildren?)`
+
+Sends an event **from** the Shadow World **to** the View Layer. The `<shae-ent>` DOM element will dispatch a `CustomEvent`.
+
+*   **Signature:** `dispatchMessageToView(type: string, data?: unknown, transferables?: Transferable[], traverseChildren?: boolean): void`
+
+**Parameters:**
+*   `type`: The name of the custom event to dispatch on the `<shae-ent>` element.
+*   `data`: (Optional) Data to send as `event.detail`.
+*   `transferables`: (Optional) Array of transferable objects (like `ArrayBuffer`, `MessagePort`) to transfer ownership of, instead of cloning.
+*   `traverseChildren`: (Optional) If `true`, the event will be dispatched to the corresponding view component and all its descendants in the view hierarchy. Defaults to `false`.
+
+```typescript
+// Shadow World
+dispatchMessageToView('login-success', { user: 'Alice' });
+
+// View Layer (DOM)
+el.addEventListener('login-success', (e) => console.log(e.detail.user));
+```
+
+---
+
+## 6. Lifecycle
+
 
 ### `onDestroy(callback)`
 
@@ -176,20 +203,8 @@ onDestroy(() => clearInterval(interval));
 
 ---
 
-## 6. The `entity` Instance
+## 7. The `entity` Instance
 
-The API provides direct access to the underlying `EntityApi` instance via the `entity` property.
+The API provides direct access to the underlying `EntityApi` instance via the `entity` property. This gives access to entity metadata like `uuid`, `order`, hierarchy info (`parent`, `children`), and property inspection (`propKeys`, `propEntries`).
 
-### `entity.dispatchMessageToView(type, detail)`
-
-Sends an event **from** the Shadow World **to** the View Layer. The `<shae-ent>` DOM element will dispatch a `CustomEvent`.
-
-*   **Signature:** `entity.dispatchMessageToView(type: string, detail?: any): void`
-
-```typescript
-// Shadow World
-entity.dispatchMessageToView('login-success', { user: 'Alice' });
-
-// View Layer (DOM)
-el.addEventListener('login-success', (e) => console.log(e.detail.user));
-```
+Note: `dispatchMessageToView` is now a top-level method on the API object and is no longer available on the `entity` instance.

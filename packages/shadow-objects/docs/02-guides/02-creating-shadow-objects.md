@@ -108,12 +108,12 @@ createEffect(() => {
 To update the **View Component**, you should use events. This keeps the data flow unidirectional and explicit.
 
 ```typescript
-export function CounterLogic({ entity, createSignal, createEffect }) {
+export function CounterLogic({ createSignal, createEffect, dispatchMessageToView }) {
   const [count, setCount] = createSignal(0);
 
   // Notify View of changes
   createEffect(() => {
-    entity.dispatchMessageToView('count-changed', { value: count() });
+    dispatchMessageToView('count-changed', { value: count() });
   });
 }
 ```
@@ -139,7 +139,7 @@ on(entity, 'onViewEvent', (type, data) => {
 You can also send events *up* to the View.
 
 ```typescript
-entity.dispatchMessageToView('loginSuccess', { user: 'Alice' });
+dispatchMessageToView('loginSuccess', { user: 'Alice' });
 ```
 
 In the View Layer, you would listen for this event on the component.

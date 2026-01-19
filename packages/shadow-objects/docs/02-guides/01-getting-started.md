@@ -140,7 +140,7 @@ export default {
     *   `CounterLogic` receives `onViewEvent`.
     *   `setCount` updates the signal.
     *   `createEffect` runs.
-    *   **Events:** The Shadow Object uses `entity.dispatchMessageToView` to communicate back (see View Integration).
+    *   **Events:** The Shadow Object uses `dispatchMessageToView` to communicate back (see View Integration).
 
 ## Next Steps
 

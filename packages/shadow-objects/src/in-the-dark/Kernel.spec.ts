@@ -166,17 +166,29 @@ describe('Kernel', () => {
   });
 
   describe('MessageToView with traverseChildren', () => {
+    const registry = new Registry();
+
+    // Helper class to expose dispatchMessageToView for testing
+    @ShadowObject({registry, token: 'test'})
+    class TestDispatcher {
+      dispatchMessageToView: ShadowObjectCreationAPI['dispatchMessageToView'];
+      constructor({dispatchMessageToView}: ShadowObjectCreationAPI) {
+        this.dispatchMessageToView = dispatchMessageToView;
+      }
+    }
+    expect(TestDispatcher).toBeDefined();
+
     it('should emit MessageToView event with traverseChildren=false by default', async () => {
-      const kernel = new Kernel();
+      const kernel = new Kernel(registry);
       const uuid = generateUUID();
 
       kernel.createEntity(uuid, 'test');
-      const entity = kernel.getEntity(uuid);
+      const so = kernel.findShadowObjects(uuid)[0] as any;
 
       const messageToViewSpy = vi.fn();
       on(kernel, MessageToView, messageToViewSpy);
 
-      entity.dispatchMessageToView('testType', {payload: 'data'});
+      so.dispatchMessageToView('testType', {payload: 'data'});
 
       // Wait for queueMicrotask to complete
       await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
@@ -193,16 +205,16 @@ describe('Kernel', () => {
     });
 
     it('should emit MessageToView event with traverseChildren=true when specified', async () => {
-      const kernel = new Kernel();
+      const kernel = new Kernel(registry);
       const uuid = generateUUID();
 
       kernel.createEntity(uuid, 'test');
-      const entity = kernel.getEntity(uuid);
+      const so = kernel.findShadowObjects(uuid)[0] as any;
 
       const messageToViewSpy = vi.fn();
       on(kernel, MessageToView, messageToViewSpy);
 
-      entity.dispatchMessageToView('broadcastEvent', {message: 'hello'}, undefined, true);
+      so.dispatchMessageToView('broadcastEvent', {message: 'hello'}, undefined, true);
 
       // Wait for queueMicrotask to complete
       await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
@@ -219,17 +231,17 @@ describe('Kernel', () => {
     });
 
     it('should emit MessageToView with transferables', async () => {
-      const kernel = new Kernel();
+      const kernel = new Kernel(registry);
       const uuid = generateUUID();
 
       kernel.createEntity(uuid, 'test');
-      const entity = kernel.getEntity(uuid);
+      const so = kernel.findShadowObjects(uuid)[0] as any;
 
       const messageToViewSpy = vi.fn();
       on(kernel, MessageToView, messageToViewSpy);
 
       const buffer = new ArrayBuffer(8);
-      entity.dispatchMessageToView('dataEvent', {buffer}, [buffer], false);
+      so.dispatchMessageToView('dataEvent', {buffer}, [buffer], false);
 
       // Wait for queueMicrotask to complete
       await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));

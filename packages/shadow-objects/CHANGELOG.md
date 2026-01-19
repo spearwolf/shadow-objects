@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - sharpen the `EntityApi` type definitions
 
+## [0.27.0] - 2026-01-19
+
+### ⚠️ Breaking Changes
+
+- **API Update:** `dispatchMessageToView` has been moved from the `entity` instance to the `ShadowObjectCreationAPI`.
+    - **Before:** `entity.dispatchMessageToView(...)`
+    - **After:** `dispatchMessageToView(...)` (available as an argument in the constructor/factory function)
+- **Type Definitions:** Removed `dispatchMessageToView` from `EntityApi` interface.
+
 ## [0.26.4] - 2026-01-15
 
 - fix return type definitions for `provideContext()` and `provideGlobalContext()`
