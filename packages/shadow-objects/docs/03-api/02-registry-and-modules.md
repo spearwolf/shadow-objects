@@ -24,9 +24,11 @@ export default {
 };
 ```
 
-## The `define` Block
+## `define`
 
 The `define` object maps **Tokens** (strings) to **Shadow Object Constructors**.
+
+**Use Case:** This is the primary place where you register your logic. It links the abstract "Token" used in your HTML to the concrete JavaScript class or function that implements the behavior.
 
 *   **Key:** The token string (e.g., `'my-button'`). This matches the `token` attribute on `<shae-ent>`.
 *   **Value:** A Shadow Object definition (Function or Class).
@@ -38,9 +40,11 @@ define: {
 }
 ```
 
-## The `routes` Block
+## `routes`
 
-The `routes` object defines how Tokens relate to each other. It allows for **Composition** and **Conditional Logic** without modifying the View Layer.
+The `routes` object defines how Tokens relate to each other.
+
+**Use Case:** Allows for **Composition** and **Conditional Logic** without modifying the View Layer. You can create complex entities by combining multiple Shadow Objects or enable features based on properties.
 
 ### 1. Composition (Mixin Pattern)
 
@@ -95,6 +99,44 @@ routes: {
     'header': ['menu', 'logo'],
 }
 // 'page' -> ['header', 'menu', 'logo', 'footer']
+```
+
+## `extends`
+
+The `extends` array allows you to include other modules.
+
+**Use Case:** Essential for modular architecture. It allows you to split your configuration into multiple files, share common configurations across different apps, or import third-party module libraries.
+
+```javascript
+import { CoreModule } from './core-module.js';
+
+export default {
+    extends: [CoreModule],
+    define: {
+        'my-feature': MyFeature
+    }
+};
+```
+
+## `initialize`
+
+The `initialize` function is an optional async hook that runs when the module is loaded. It receives an object with `define`, `kernel`, and `registry` properties.
+
+**Use Case:** Perform asynchronous setup tasks before the application starts. This is useful for:
+*   Fetching remote configurations or feature flags.
+*   Conditionally registering Shadow Objects based on the runtime environment (e.g., development tools).
+*   Initializing global services or connections.
+
+```javascript
+export default {
+    async initialize({ define, kernel, registry }) {
+        // Dynamic setup or async operations
+        const config = await fetchConfig();
+        if (config.featureEnabled) {
+            define('feature', FeatureLogic);
+        }
+    }
+};
 ```
 
 ## Best Practices
