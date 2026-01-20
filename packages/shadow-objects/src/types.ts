@@ -142,8 +142,11 @@ export interface ShadowObjectCreationAPI {
   createSignal<T = unknown>(...args: Parameters<typeof createSignal<T>>): ReturnType<typeof createSignal<T>>;
   createMemo<T = unknown>(...args: Parameters<typeof createMemo<T>>): SignalReader<T>;
 
-  on(...args: Parameters<typeof on>): ReturnType<typeof on>; // TODO fix args type
-  once(...args: Parameters<typeof once>): ReturnType<typeof once>; // TODO fix args type
+  on(eventName: string | symbol | Array<string | symbol>, ...args: any[]): ReturnType<typeof on>;
+  on(...args: Parameters<typeof on>): ReturnType<typeof on>;
+
+  once(eventName: string | symbol | Array<string | symbol>, ...args: any[]): ReturnType<typeof once>;
+  once(...args: Parameters<typeof once>): ReturnType<typeof once>;
 
   onDestroy(callback: () => any): void;
 }
