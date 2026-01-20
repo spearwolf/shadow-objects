@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
+- **API Update:** `on()` and `once()` in `ShadowObjectCreationAPI` now support an implicit event target.
+    - If the first argument is a `string`, `symbol`, or `string[]`, the `entity` is automatically used as the event source.
+    - Example: `on('eventName', callback)` is equivalent to `on(entity, 'eventName', callback)`.
+    - This simplifies the common case of listening to entity events.
 - sharpen the `EntityApi` type definitions
 - **Documentation:** Comprehensive update to the documentation structure and content.
     - Added dedicated documentation for Web Components (`<shae-worker>`, `<shae-ent>`, `<shae-prop>`) at `docs/03-api/04-web-components.md`.

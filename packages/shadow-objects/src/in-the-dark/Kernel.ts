@@ -586,14 +586,28 @@ export class Kernel {
           return sig;
         },
 
-        on(...args: Parameters<typeof on>): ReturnType<typeof on> {
+        on(...args: any[]): ReturnType<typeof on> {
+          const [firstArg] = args;
+          if (typeof firstArg === 'string' || typeof firstArg === 'symbol' || Array.isArray(firstArg)) {
+            // @ts-ignore
+            const unsub = on(entry.entity, ...args);
+            unsubscribeSecondary.add(unsub);
+            return unsub;
+          }
           // @ts-ignore
           const unsub = on(...args);
           unsubscribeSecondary.add(unsub);
           return unsub;
         },
 
-        once(...args: Parameters<typeof once>): ReturnType<typeof once> {
+        once(...args: any[]): ReturnType<typeof once> {
+          const [firstArg] = args;
+          if (typeof firstArg === 'string' || typeof firstArg === 'symbol' || Array.isArray(firstArg)) {
+            // @ts-ignore
+            const unsub = once(entry.entity, ...args);
+            unsubscribeSecondary.add(unsub);
+            return unsub;
+          }
           // @ts-ignore
           const unsub = once(...args);
           unsubscribeSecondary.add(unsub);

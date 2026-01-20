@@ -141,23 +141,32 @@ Shadow Objects can communicate via an event system that mirrors standard DOM eve
 
 Listens for an event on a target.
 
-*   **Signature:** `on(target: object, event: string, callback: (type: string, data: any) => void): void`
+*   **Signature:**
+    *   `on(target: object, event: string, callback: Listener): void`
+    *   `on(event: string | symbol | string[], callback: Listener): void` (implicitly uses `entity` as target)
 *   **Targets:** Usually `entity` (the current entity instance).
+*   **Automatic Cleanup:** Subscriptions created via `on()` are automatically removed when the Shadow Object is destroyed.
 
 #### Listening to View Events
 To listen to events dispatched from the DOM (View Layer), listen to the special event name `'onViewEvent'` on the `entity` target.
 
 ```typescript
-on(entity, 'onViewEvent', (type, data) => {
+// Implicitly listens on the entity
+on('onViewEvent', (type, data) => {
     if (type === 'click') {
         console.log('Clicked!', data);
     }
+});
+
+// Explicit target (equivalent to above)
+on(entity, 'onViewEvent', (type, data) => {
+   // ...
 });
 ```
 
 ### `once(target, eventName, callback)`
 
-Same as `on`, but the listener is automatically removed after the first trigger.
+Same as `on`, but the listener is automatically removed after the first trigger. Like `on`, if the first argument is a string, symbol, or array of strings/symbols, the `entity` is used as the event target.
 
 ---
 
