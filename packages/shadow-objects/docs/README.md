@@ -20,6 +20,10 @@ Core concepts, architecture, and the theory behind the framework.
 *   [**Lifecycle**](./01-concepts/03-lifecycle.md)
     *   Entity creation, updates, and destruction.
     *   Shadow Object setup and teardown phases.
+*   [**Entity Tree, Context & Events**](./01-concepts/04-entity-tree-context-events.md)
+    *   Hierarchy and scope of Shadow Objects.
+    *   How `provideContext` works across the tree.
+    *   Event bubbling and communication.
 
 ### 2. Guides
 

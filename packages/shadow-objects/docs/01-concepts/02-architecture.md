@@ -113,3 +113,5 @@ The framework implements a hierarchical **Context** system similar to React Cont
 *   **Provider:** An Entity provides a value (or signal).
 *   **Consumer:** Any descendant Entity can consume that value.
 *   **Reactive:** If the provider updates the value, all consumers update automatically.
+
+For a detailed look at the Entity Tree and Context, see [**Entity Tree, Context & Events**](./04-entity-tree-context-events.md).
