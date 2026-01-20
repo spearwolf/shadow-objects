@@ -44,7 +44,7 @@ The **Shadow Objects Framework** is a reactive library designed to decouple busi
 - **Language:** Use TypeScript for the core library.
 
 ### Documentation
-- **Authoritative Source:** The documentation lives in `packages/shadow-objects/docs/`.
+- **Authoritative Source:** The documentation lives in `packages/shadow-objects/docs/`. Any reference to "shadow-objects developer documentation" always refers to this directory.
 - **Public API Changes:** Any change to the public API must be reflected in:
     1. `packages/shadow-objects/docs/` (Update relevant Markdown files).
     2. `packages/shadow-objects/README.md`.

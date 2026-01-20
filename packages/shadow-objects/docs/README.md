@@ -3,21 +3,21 @@
 Welcome to the official developer documentation for **Shadow Objects**.
 
 > [!TIP]
-> **New here?** Start with the [Mental Model](./01-fundamentals/01-mental-model.md) to understand the core concepts in 5 minutes.
+> **New here?** Start with the [Mental Model](./01-concepts/01-mental-model.md) to understand the core concepts in 5 minutes.
 
 ## 📚 Table of Contents
 
-### 1. Fundamentals
+### 1. Concepts
 
 Core concepts, architecture, and the theory behind the framework.
 
-*   [**Mental Model**](./01-fundamentals/01-mental-model.md)
+*   [**Mental Model**](./01-concepts/01-mental-model.md)
     *   The "Shadow Theater" analogy.
     *   Separation of View (Light World) and Logic (Shadow World).
-*   [**Architecture**](./01-fundamentals/02-architecture.md)
+*   [**Architecture**](./01-concepts/02-architecture.md)
     *   The Kernel, Registry, and Message Router.
     *   How the View and Shadow World communicate.
-*   [**Lifecycle**](./01-fundamentals/03-lifecycle.md)
+*   [**Lifecycle**](./01-concepts/03-lifecycle.md)
     *   Entity creation, updates, and destruction.
     *   Shadow Object setup and teardown phases.
 
@@ -52,6 +52,16 @@ Detailed technical documentation for the framework's interfaces.
 *   [**Web Components (HTML)**](./03-api/04-web-components.md)
     *   `<shae-worker>`, `<shae-ent>`, `<shae-prop>`.
     *   Attributes and configuration.
+
+### 4. Patterns & Best Practices
+
+Idiomatic usage and design patterns distilled from real-world projects.
+
+*   [**Best Practices**](./04-patterns/best-practices.md)
+    *   State Management (Signals vs Context).
+    *   The "Context Reader" pattern for type safety.
+    *   Resource Management with `createResource`.
+    *   Shadow Object functional patterns.
 
 ---
 

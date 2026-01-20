@@ -6,9 +6,10 @@ This package contains the core library for the **Shadow Objects Framework**.
 
 ## Contents
 
-*   [**Fundamentals**](./docs/01-fundamentals/): Understand the mental model, architecture, and lifecycle.
+*   [**Concepts**](./docs/01-concepts/): Understand the mental model, architecture, and lifecycle.
 *   [**Guides**](./docs/02-guides/): Step-by-step instructions.
 *   [**API Reference**](./docs/03-api/): Detailed API docs.
+*   [**Best Practices & Patterns**](./docs/04-patterns/): Idiomatic usage and design patterns.
 
 ## Installation
 
