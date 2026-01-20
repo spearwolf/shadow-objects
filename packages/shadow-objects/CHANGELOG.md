@@ -5,19 +5,14 @@ All notable changes to [@spearwolf/shadow-objects](https://github.com/spearwolf/
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## unreleased
+## Unreleased
 
-- **API Update:** `on()` and `once()` in `ShadowObjectCreationAPI` now support an implicit event target.
-    - If the first argument is a `string`, `symbol`, or `string[]`, the `entity` is automatically used as the event source.
+- **API Update:** `on()` and `once()` in `ShadowObjectCreationAPI` now support an implicit event source.
+    - If the first argument is a `string`, `symbol`, or `[]`, the `entity` is automatically used as the event source.
     - Example: `on('eventName', callback)` is equivalent to `on(entity, 'eventName', callback)`.
     - This simplifies the common case of listening to entity events.
-- sharpen the `EntityApi` type definitions
+- **Refactor** the `EntityApi` type
 - **Documentation:** Comprehensive update to the documentation structure and content.
-    - Added dedicated documentation for Web Components (`<shae-worker>`, `<shae-ent>`, `<shae-prop>`) at `docs/03-api/04-web-components.md`.
-    - Clarified the usage of Component Contexts, Namespacing (`ns` attribute), and decoupled placement of View Components.
-    - Documented the `local` (Main Thread) and `no-structured-clone` attributes for `<shae-worker>`.
-    - Documented the `order` property in ViewComponent API and Entity metadata for sorting/layering.
-    - Updated guides to reflect current API usage (e.g., `.viewComponent`).
 
 ## [0.27.0] - 2026-01-19
 
