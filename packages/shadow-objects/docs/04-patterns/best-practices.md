@@ -127,10 +127,10 @@ const myMeshResource = createResource(
 If you need multiple properties, avoid calling `useProperty` multiple times. Use `useProperties` to get a structured object of signals.
 
 ```typescript
-const { x, y, visible } = useProperties({
+const { x, y, visible } = useProperties<{ x: number; y: number; visible: boolean }>({
   x: "position-x",
   y: "position-y",
-  visible: "is-visible"
+  visible: "is-visible",
 });
 ```
 

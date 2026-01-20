@@ -360,12 +360,12 @@ export class Kernel {
     const contextProviders = new Map<string | symbol, Signal<any>>();
     const contextRootProviders = new Map<string | symbol, Signal<any>>();
 
-    const propertyReaders = new Map<string, SignalReader<any>>();
+    const propertyReaders = new Map<string, SignalReader<unknown>>();
 
-    const getUseProperty = <T = any>(
+    const getUseProperty = <T = unknown>(
       name: string,
       options?: SignalValueOptions<T> | CompareFunc<T | undefined>,
-    ): SignalReader<T> => {
+    ): SignalReader<Maybe<T>> => {
       if (!usePropertyOptionsDeprecatedShown && options != null && typeof options === 'function') {
         console.warn(
           '[shadow-objects] Deprecation Warning: The "isEqual" option of "useProperty()" is now passed as {compare} argument. Please update your code accordingly.',
@@ -375,11 +375,11 @@ export class Kernel {
 
       const opts = typeof options === 'function' ? {compare: options} : options;
 
-      let propReader = propertyReaders.get(name);
+      let propReader = propertyReaders.get(name) as SignalReader<Maybe<T>> | undefined;
 
       if (propReader === undefined) {
-        propReader = createSignal<any>(undefined, opts).get;
-        propertyReaders.set(name, propReader);
+        propReader = createSignal<Maybe<T>>(undefined, opts).get;
+        propertyReaders.set(name, propReader as SignalReader<unknown>);
         const con = link(entry.entity.getPropertyReader(name), propReader);
         unsubscribeSecondary.add(con.destroy.bind(con));
       }
@@ -523,8 +523,10 @@ export class Kernel {
 
         useProperty: getUseProperty,
 
-        useProperties<K extends string>(props: Record<K, string>): Record<K, SignalReader<any>> {
-          const result = {} as Record<K, SignalReader<any>>;
+        useProperties<T extends Record<string, unknown> = Record<string, unknown>>(
+          props: {[K in keyof T]: string},
+        ): {[K in keyof T]: SignalReader<Maybe<T[K]>>} {
+          const result = {} as {[K in keyof T]: SignalReader<Maybe<T[K]>>};
           for (const key in props) {
             if (Object.hasOwn(props, key)) {
               result[key] = getUseProperty(props[key]);

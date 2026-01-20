@@ -9,13 +9,15 @@ The recommended way to define a Shadow Object is a simple function. This functio
 ```typescript
 import { ShadowObjectCreationAPI } from "@spearwolf/shadow-objects";
 
-export function UserProfileLogic({ 
-  useProperty, 
-  createEffect 
+export function UserProfileLogic({
+  useProperties,
+  createEffect,
 }: ShadowObjectCreationAPI) {
   
   // 1. Setup Phase: Define your reactive graph here
-  const userId = useProperty('userId');
+  const { userId } = useProperties<{userId: string}>({
+    userId: 'userId',
+  });
 
   createEffect(() => {
     // 2. Runtime Phase: This runs whenever userId changes

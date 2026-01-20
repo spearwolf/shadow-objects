@@ -118,16 +118,15 @@ class GameEntity {
         });
 
         // Sync position to Shadow World
-        this.viewComponent.setProperties({
-            x: this.x,
-            y: this.y
-        });
+        this.viewComponent.setProperty('x', this.x);
+        this.viewComponent.setProperty('y', this.y);
     }
 
     update() {
         // Send updates every frame (or optimally, only on change)
         if (this.moved) {
-            this.viewComponent.setProperties({ x: this.x, y: this.y });
+            this.viewComponent.setProperty('x', this.x);
+            this.viewComponent.setProperty('y', this.y);
         }
     }
     

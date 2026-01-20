@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## unreleased
 
 - sharpen the `EntityApi` type definitions
+- improve `useProperties()` type inference with key-to-type maps
 - **Documentation:** Comprehensive update to the documentation structure and content.
     - Added dedicated documentation for Web Components (`<shae-worker>`, `<shae-ent>`, `<shae-prop>`) at `docs/03-api/04-web-components.md`.
     - Clarified the usage of Component Contexts, Namespacing (`ns` attribute), and decoupled placement of View Components.
