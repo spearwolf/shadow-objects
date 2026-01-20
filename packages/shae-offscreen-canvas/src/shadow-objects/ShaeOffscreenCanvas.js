@@ -1,4 +1,5 @@
 import {ConsoleLogger} from '@spearwolf/shadow-objects/ConsoleLogger.js';
+import {onViewEvent} from '@spearwolf/shadow-objects/shadow-objects.js';
 import {
   CanvasContext,
   CanvasHeight,
@@ -121,7 +122,7 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
     }
   }
 
-  onViewEvent(type, data) {
+  [onViewEvent](type, data) {
     switch (type) {
       case OffscreenCanvas:
         if (this.logger.isDebug) {

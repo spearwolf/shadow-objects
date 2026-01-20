@@ -62,31 +62,30 @@ The code inside your function (or constructor) runs **once** when the object is 
         *   `entity`: Direct access to the underlying `EntityApi` (advanced usage), including properties like `order` (sort index from View).
 
 ```typescript
-export function MyLogic({ 
-  useProperty, 
-  createEffect, 
+export function MyLogic({
+  useProperty,
   createSignal,
-  on, 
-  entity, // Access to the entity instance
-  onDestroy 
+  createEffect,
+  onViewEvent,
+  onDestroy
 }) {
   // SETUP: Runs once
   const title = useProperty('title');
   const count = createSignal(0);
-  
+
   createEffect(() => {
     // RUNTIME: Runs whenever 'title' or 'count' changes
     console.log(`Title: ${title()}, Count: ${count()}`);
   });
 
   // SETUP: Listen for View events
-  // Events dispatched from the View are received on the entity instance as 'onViewEvent'.
-  // The first argument is the type (name) of the event, the second is the data.
-  on(entity, 'onViewEvent', (type, data) => {
-      if (type === 'click') {
-          count.set(c => c + 1);
-          console.log('View was clicked!', data);
-      }
+  // Events dispatched from the View are received on the entity instance as `onViewEvent` events
+  // The `onViewEvent()` method is a convenient wrapper for the event subscription
+  onViewEvent((type, data) => {
+    if (type === 'click') {
+      count.set(c => c + 1);
+      console.log('View was clicked!', data);
+    }
   });
 
   onDestroy(() => {
@@ -108,7 +107,7 @@ The Runtime phase is also driven by **Events**, which can flow in multiple direc
 
 1.  **View → Entity:** The View Layer triggers standard DOM events (like `click`, `input`) or custom events. These are sent to the Entity as events.
     *   **Mechanism:** The `ViewComponent` captures the DOM event and sends a message to the Shadow World.
-    *   **Reaction:** The Shadow Object listens to these events on the `entity` instance using `on(entity, 'onViewEvent', (type, data) => ... )`. The specific event name (e.g., 'click') is passed as the first argument.
+    *   **Reaction:** The Shadow Object listens to these events on the `entity` instance using `onViewEvent((type, data) => ... )`. The specific event name (e.g., 'click') is passed as the first argument.
 2.  **Entity → View:** The Shadow Object can emit events. The View Layer receives these messages and can trigger UI updates (e.g., navigation, playing sound).
 3.  **Entity Tree (Inter-Object):** Shadow Objects can communicate with each other via events. Because Entities form a tree, events can be dispatched through the hierarchy, allowing decoupled communication between logic units (e.g. a child item signaling a selection to a parent list).
 

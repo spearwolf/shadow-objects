@@ -55,11 +55,11 @@ Removes a property. This change is batched and sent to the Shadow World.
 component.removeProperty('score');
 ```
 
-#### `dispatchEvent(type, detail)`
+#### `dispatchShadowObjectsEvent(type, detail)`
 Sends a custom event to the Shadow Object.
 
 ```typescript
-component.dispatchEvent('playerJump', { force: 5.0 });
+component.dispatchShadowObjectsEvent('playerJump', { force: 5.0 });
 ```
 
 #### `destroy()`
@@ -130,9 +130,9 @@ class GameEntity {
             this.viewComponent.setProperties({ x: this.x, y: this.y });
         }
     }
-    
+
     onDamage() {
-        this.viewComponent.dispatchEvent('damage', { amount: 10 });
+        this.viewComponent.dispatchShadowObjectsEvent('damage', { amount: 10 });
     }
 
     destroy() {

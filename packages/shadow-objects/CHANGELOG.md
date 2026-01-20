@@ -5,14 +5,38 @@ All notable changes to [@spearwolf/shadow-objects](https://github.com/spearwolf/
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [0.28.0] - 2026-01-20
 
 - **API Update:** `on()` and `once()` in `ShadowObjectCreationAPI` now support an implicit event source.
     - If the first argument is a `string`, `symbol`, or `[]`, the `entity` is automatically used as the event source.
     - Example: `on('eventName', callback)` is equivalent to `on(entity, 'eventName', callback)`.
     - This simplifies the common case of listening to entity events.
+- **API Update:** introduce `onViewEvent()` in `ShadowObjectCreationAPI`
+    - Simplifies listening to view events dispatched to the entity.
+    - Example:
+      ```typescript
+      onViewEvent((type, data) => {
+        if (type === 'my-event') {
+          // handle event
+        }
+      });
+      ```
 - **Refactor** the `EntityApi` type
 - **Documentation:** Comprehensive update to the documentation structure and content.
+
+### ⚠️ Breaking Changes
+- The _entity_ events `onCreate`, `onDestroy`, `onParentChanged` and `onViewEvent` changed to _symbols_.
+    - Update your event listeners accordingly:
+      - import the event symbols from the package:
+        ```typescript
+        import { onCreate, onDestroy, onParentChanged, onViewEvent } from '@spearwolf/shadow-objects/shadow-objects.js';
+        ```
+      - _Functional Shadow-Objects:_
+        - **Before:** `on(entity, 'onCreate', ...)`
+        - **After:** `on(onCreate, ...)`
+      - _Class-based Shadow-Objects:_
+        - **Before:** `onCreate(entity)`
+        - **After:** `[onCreate](entity)`
 
 ## [0.27.0] - 2026-01-19
 

@@ -139,7 +139,7 @@ export class Entity {
     }
   }
 
-  onDestroy() {
+  [onDestroy]() {
     this.#props.clear();
     off(this);
 

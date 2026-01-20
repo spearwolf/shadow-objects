@@ -7,13 +7,13 @@ This guide focuses on the "Brain" of your application: The **Shadow Object**. Yo
 The recommended way to define a Shadow Object is a simple function. This function acts as the **Setup Phase** of your component logic. It runs exactly once per Entity instance.
 
 ```typescript
-import { ShadowObjectCreationAPI } from "@spearwolf/shadow-objects";
+import { ShadowObjectCreationAPI } from "@spearwolf/shadow-objects/shadow-objects.js";
 
-export function UserProfileLogic({ 
-  useProperty, 
-  createEffect 
+export function UserProfileLogic({
+  useProperty,
+  createEffect
 }: ShadowObjectCreationAPI) {
-  
+
   // 1. Setup Phase: Define your reactive graph here
   const userId = useProperty('userId');
 
@@ -23,6 +23,9 @@ export function UserProfileLogic({
   });
 }
 ```
+
+> [!NOTE]
+> All necessary exports for the shadow objects can be found in the `@spearwolf/shadow-objects/shadow-objects.js` submodule
 
 ## Reading Data (Inputs)
 
@@ -124,10 +127,13 @@ Communication isn't just data syncing; it's also about events.
 
 ### Listening to View Events
 
-When the View Component dispatches an event (e.g., via `component.dispatchEvent('viewEvent', { type: 'submit' })`), you receive it on the entity.
+When the View Component dispatches an event (e.g., via `component.dispatchShadowObjectsEvent('submit', { secret: '999' })`), you receive it on the entity.
 
 ```typescript
-on(entity, 'onViewEvent', (type, data) => {
+import { onViewEvent } from '@spearwolf/shadow-objects/shadow-objects.js';
+
+// entity is used as event source by default
+on(onViewEvent, (type, data) => {
   if (type === 'submit') {
     submitForm(data);
   }

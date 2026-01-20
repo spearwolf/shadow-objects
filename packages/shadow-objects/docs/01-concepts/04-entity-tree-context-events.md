@@ -46,7 +46,7 @@ graph TD
     subgraph "Entity (Child)"
         SO_C[Shadow Object C] -- Consumes 'Theme' --> ContextBus
     end
-    
+
     ContextBus[Context Bus] -.->|Inherits| SO_C
 ```
 
@@ -75,10 +75,11 @@ Standard DOM events dispatched by the View Component are automatically forwarded
     ```
 *   **Shadow World:**
     ```typescript
-    export function MyLogic({ on }: ShadowObjectCreationAPI) {
-      // 'entity' is implicitly the event target
-      on('my-custom-event', (data) => {
-        console.log('Received from View:', data);
+    export function MyLogic({ onViewEvent }: ShadowObjectCreationAPI) {
+      onViewEvent((type, data) => {
+        if (type === 'my-custom-event') {
+          console.log('Received from View:', data);
+        }
       });
     }
     ```

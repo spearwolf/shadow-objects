@@ -7,9 +7,9 @@ While the functional API is the recommended way to define Shadow Objects, the fr
 To define a Shadow Object as a class, you simply export a class. The `constructor` receives the same `ShadowObjectCreationAPI` object as the functional API.
 
 ```typescript
-import { ShadowObjectCreationAPI } from '@spearwolf/shadow-objects';
+import { type ShadowObjectCreationAPI, onCreate, onDestroy, type OnCreate, type onDestroy } from '@spearwolf/shadow-objects';
 
-export class MyShadowObject {
+export class MyShadowObject implements OnCreate, OnDestroy {
 
   constructor(api: ShadowObjectCreationAPI) {
     const { useProperty, createEffect, on } = api;
@@ -22,14 +22,13 @@ export class MyShadowObject {
     });
 
     // 2. Setup Lifecycle Hooks
-    // Note: You can also use the class methods onCreate/onDestroy (see below)
   }
 
   /**
    * Called when the Shadow Object is fully initialized and attached to the Entity.
    * @param entity The underlying Entity instance
    */
-  onCreate(entity) {
+  [onCreate](entity) {
     console.log('Shadow Object Created!', entity.uuid);
   }
 
@@ -37,7 +36,7 @@ export class MyShadowObject {
    * Called when the Shadow Object is about to be destroyed.
    * Use this to clean up timers, event listeners, or external resources.
    */
-  onDestroy() {
+  [onDestroy](entity) {
     console.log('Cleaning up...');
   }
 }
@@ -51,17 +50,19 @@ If your class defines a method with the same name as an event, that method will 
 
 ### Handling View Events
 
-To handle events sent from the View Layer (via `component.dispatchEvent` or standard DOM events forwarded to the entity), you can define an `onViewEvent` method:
+To handle events sent from the View Layer (via `component.dispatchShadowObjectsEvent` or standard DOM events forwarded to the entity), you can define an `[onViewEvent]` method:
 
 ```typescript
-export class MyShadowObject {
+import { onViewEvent, type onViewEvent } from '@spearwolf/shadow-objects';
+
+export class MyShadowObject implements onViewEvent {
   // ... constructor ...
 
   /**
    * Automatically called when the Entity receives an 'onViewEvent'
    * (Standard channel for View -> Shadow communication)
    */
-  onViewEvent(type: string, data: any) {
+  [onViewEvent](type: string, data: any) {
     if (type === 'click') {
       console.log('View was clicked!', data);
     } else if (type === 'submit') {
@@ -94,6 +95,7 @@ export class PlayerLogic {
 
 > [!NOTE]
 > This automatic binding is powered by [`@spearwolf/eventize`](https://github.com/spearwolf/eventize). The framework effectively calls `on(entity, shadowObjectInstance)` during initialization.
+> So there is no need for you to manually subscribe to the event: `on(entity, 'onPowerUp', ...)`
 
 ## Dependency Injection (Context)
 

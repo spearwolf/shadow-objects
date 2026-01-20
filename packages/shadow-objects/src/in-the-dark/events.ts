@@ -2,7 +2,7 @@ import type {Entity} from './Entity.js';
 
 // ----------------------------------------------------------------------------
 
-export const onCreate = 'onCreate';
+export const onCreate = Symbol('onCreate');
 
 export interface OnCreate {
   /**
@@ -18,7 +18,7 @@ export interface OnCreate {
 
 // ----------------------------------------------------------------------------
 
-export const onDestroy = 'onDestroy';
+export const onDestroy = Symbol('onDestroy');
 
 export interface OnDestroy {
   /**
@@ -31,7 +31,7 @@ export interface OnDestroy {
 
 // ----------------------------------------------------------------------------
 
-export const onParentChanged = 'onParentChanged';
+export const onParentChanged = Symbol('onParentChanged');
 
 export interface OnParentChangedEvent {
   [onParentChanged](entity: Entity): void;
@@ -39,7 +39,7 @@ export interface OnParentChangedEvent {
 
 // ----------------------------------------------------------------------------
 
-export const onViewEvent = 'onViewEvent';
+export const onViewEvent = Symbol('onViewEvent');
 
 export interface OnViewEvent {
   [onViewEvent](type: string, data: unknown): void;

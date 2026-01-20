@@ -4,7 +4,7 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 import {MessageToView} from '../constants.js';
 import type {ShadowObjectCreationAPI} from '../types.js';
 import {generateUUID} from '../utils/generateUUID.js';
-import {onCreate, onDestroy} from './events.js';
+import {onCreate, onDestroy, type OnCreate, type OnDestroy} from './events.js';
 import {Kernel, type MessageToViewEvent} from './Kernel.js';
 import {Registry} from './Registry.js';
 import {ShadowObject} from './ShadowObject.js';
@@ -901,7 +901,7 @@ describe('Kernel', () => {
       const onCreateFn = vi.fn();
 
       @ShadowObject({registry, token: 'testLifecycleCreate'})
-      class TestCreate {
+      class TestCreate implements OnCreate {
         [onCreate](entity: unknown) {
           onCreateFn(entity);
         }
@@ -925,7 +925,7 @@ describe('Kernel', () => {
       const onCreateFn = vi.fn();
 
       @ShadowObject({registry, token: 'newToken'})
-      class NewTokenSO {
+      class NewTokenSO implements OnCreate {
         [onCreate](entity: unknown) {
           onCreateFn(entity);
         }
@@ -952,9 +952,9 @@ describe('Kernel', () => {
       const onDestroyFn = vi.fn();
 
       @ShadowObject({registry, token: 'testLifecycleDestroy'})
-      class TestDestroy {
-        [onDestroy](kernelOrEntity: unknown) {
-          onDestroyFn(kernelOrEntity);
+      class TestDestroy implements OnDestroy {
+        [onDestroy](entity: unknown) {
+          onDestroyFn(entity);
         }
       }
 
@@ -965,11 +965,17 @@ describe('Kernel', () => {
 
       expect(onDestroyFn).not.toHaveBeenCalled();
 
+      const entity = kernel.getEntity(uuid);
+
+      expect(entity).toBeDefined();
+      expect(entity.uuid).toBe(uuid);
+
       kernel.destroyEntity(uuid);
 
       expect(onDestroyFn).toHaveBeenCalledTimes(1);
       // When entity is destroyed, the kernel is passed (event emitted by destroyEntity)
-      expect(onDestroyFn).toHaveBeenCalledWith(kernel);
+      expect(onDestroyFn).toHaveBeenCalledWith(entity);
+      // expect(onDestroyFn).toHaveBeenCalledWith(kernel);
     });
 
     it('should call onDestroy when shadow-object is removed due to token change', () => {
@@ -979,7 +985,7 @@ describe('Kernel', () => {
       const onDestroyFn = vi.fn();
 
       @ShadowObject({registry, token: 'removedToken'})
-      class RemovedSO {
+      class RemovedSO implements OnDestroy {
         [onDestroy](entity: unknown) {
           onDestroyFn(entity);
         }

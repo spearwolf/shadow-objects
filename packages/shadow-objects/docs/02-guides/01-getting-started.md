@@ -69,7 +69,7 @@ In your HTML file, you need to set up the environment. The `shadow-objects` fram
             // "viewEvent" is the standard channel for custom interactions
             // Note: In newer versions, direct dispatchEvent on the element is preferred if supported,
             // but accessing the underlying component is the explicit API.
-            ent.viewComponent?.dispatchEvent('viewEvent', { type: 'increment' });
+            ent.viewComponent?.dispatchShadowObjectsEvent('increment', { value: 1 });
         });
 
         // Listen for property updates from the Shadow World
@@ -94,7 +94,7 @@ Now, let's create the logic file that runs in the "Shadow World". This file defi
 /**
  * The Logic Function for our Counter
  */
-function CounterLogic({ useProperty, createEffect, createSignal, on, entity }) {
+function CounterLogic({ useProperty, createEffect, createSignal, onViewEvent }) {
 
     // 1. Inputs: Read the 'count' property from the View
     const countProp = useProperty('count'); // Returns a signal reader
@@ -109,9 +109,9 @@ function CounterLogic({ useProperty, createEffect, createSignal, on, entity }) {
     });
 
     // 4. Events: Listen for interactions from the View
-    on(entity, 'onViewEvent', (type, data) => {
+    onViewEvent((type, data) => {
         if (type === 'increment') {
-            count.set(c => c + 1);
+            count.set(c => c + (data as {value: number}).value);
         }
     });
 }

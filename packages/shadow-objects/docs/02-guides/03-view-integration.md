@@ -71,13 +71,10 @@ To send an event to the logic:
 const ent = document.querySelector('shae-ent');
 
 // The underlying ViewComponent instance is available as .viewComponent
-ent.viewComponent.dispatchEvent('viewEvent', {
-  type: 'my-custom-action',
-  payload: { foo: 'bar' }
-});
+ent.viewComponent.dispatchShadowObjectsEvent('my-custom-action', { foo: 'bar' });
 ```
 
-The Shadow Object receives this via `on(entity, 'onViewEvent', ...)`.
+The Shadow Object receives this via `on(onViewEvent, ...)` or `onViewEvent(type, payload)`.
 
 ### Receiving Events from Shadow World
 
@@ -125,13 +122,11 @@ import { ComponentContext, ViewComponent } from '@spearwolf/shadow-objects/view'
 const context = ComponentContext.get('global');
 
 // 2. Create a component
-const myComponent = new ViewComponent('my-token', {
-  context: context
-});
+const myComponent = new ViewComponent('my-token', { context });
 
 // 3. Add to hierarchy (optional, defaults to root)
 // Note: components attach to root by default if no parent is specified
-// context.addComponent(myComponent); 
+// context.addComponent(myComponent);
 
 // 4. Send updates
 myComponent.setProperty('title', 'New Title');

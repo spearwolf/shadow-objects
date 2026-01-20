@@ -25,7 +25,7 @@ import type {
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {toMaybe} from '../utils/toMaybe.js';
 import {Entity} from './Entity.js';
-import {type OnCreate, onCreate, type OnDestroy, onDestroy, onParentChanged} from './events.js';
+import {type OnCreate, onCreate, type OnDestroy, onDestroy, onParentChanged, onViewEvent} from './events.js';
 import {Registry} from './Registry.js';
 import {SignalsPath} from './SignalsPath.js';
 
@@ -245,7 +245,7 @@ export class Kernel {
     const {entity, usedConstructors} = this.#entities.get(uuid);
 
     entity.removeFromParent();
-    emit(entity, onDestroy, this);
+    emit(entity, onDestroy, entity);
 
     usedConstructors.clear();
 
@@ -614,6 +614,13 @@ export class Kernel {
           return unsub;
         },
 
+        onViewEvent(callback: (type: string, data: unknown) => any) {
+          const unsub = on(entry.entity, onViewEvent, (type: string, data: unknown) => {
+            callback(type, data);
+          });
+          unsubscribeSecondary.add(unsub);
+        },
+
         onDestroy(callback: () => any) {
           unsubscribePrimary.add(callback);
         },
@@ -711,13 +718,13 @@ export class Kernel {
 
     // Finally, the `shadowObject.onCreate(entity)` callback is called on the shadow-object.
     //
-    if (typeof (shadowObject as OnCreate)[onCreate] === 'function') {
+    if (typeof (shadowObject as any)[onCreate] === 'function') {
       (shadowObject as OnCreate)[onCreate](entity);
     }
   }
 
   private destroyShadowObject(shadowObject: object, entity: Entity): void {
-    if (typeof (shadowObject as OnDestroy)[onDestroy] === 'function') {
+    if (typeof (shadowObject as any)[onDestroy] === 'function') {
       (shadowObject as OnDestroy)[onDestroy](entity);
     }
 

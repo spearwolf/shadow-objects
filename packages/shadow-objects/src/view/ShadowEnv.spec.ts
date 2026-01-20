@@ -1,5 +1,6 @@
 import {on, once} from '@spearwolf/eventize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
+import {onCreate, onDestroy, type OnCreate, type OnDestroy} from '../in-the-dark/events.js';
 import {Registry} from '../in-the-dark/Registry.js';
 import {ShadowObject} from '../in-the-dark/ShadowObject.js';
 import type {ShadowObjectCreationAPI} from '../types.js';
@@ -52,12 +53,12 @@ describe('ShadowEnv', () => {
     const onDestroySpy = vi.fn();
 
     @ShadowObject({token: 'test'})
-    class Foo {
-      onCreate() {
+    class Foo implements OnCreate, OnDestroy {
+      [onCreate]() {
         onCreateSpy();
       }
 
-      onDestroy() {
+      [onDestroy]() {
         onDestroySpy();
       }
     }
@@ -76,7 +77,7 @@ describe('ShadowEnv', () => {
 
     const onDestroyEntitySpy = vi.fn();
 
-    once(localObjEnv.kernel.getEntity(vc.uuid), 'onDestroy', onDestroyEntitySpy);
+    once(localObjEnv.kernel.getEntity(vc.uuid), onDestroy, onDestroyEntitySpy);
 
     env.envProxy.destroy();
 
@@ -112,7 +113,7 @@ describe('ShadowEnv', () => {
     on(grandChildVC, 'myEvent', grandChildSpy);
 
     // Define a shadow object that will dispatch the message with traverseChildren
-    let dispatchMessageToView: (type: string, data?: unknown, transferables?: Transferable[], traverseChildren?: boolean) => void;
+    let dispatchMessageToView: ShadowObjectCreationAPI['dispatchMessageToView'];
 
     @ShadowObject({token: 'parent'})
     class ParentShadowObject {
