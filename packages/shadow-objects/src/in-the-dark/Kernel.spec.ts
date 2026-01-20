@@ -340,6 +340,42 @@ describe('Kernel', () => {
       });
     });
 
+    it('should support typed property maps', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      let capturedProps:
+        | {
+            foo: SignalReader<number | undefined>;
+            bar: SignalReader<string | undefined>;
+          }
+        | undefined;
+
+      @ShadowObject({registry, token: 'testTypedUseProperties'})
+      class TestTypedUseProperties {
+        constructor({useProperties}: ShadowObjectCreationAPI) {
+          const props = useProperties<{foo: number; bar: string}>({
+            foo: 'propA',
+            bar: 'propB',
+          });
+          capturedProps = props;
+        }
+      }
+      expect(TestTypedUseProperties).toBeDefined();
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'testTypedUseProperties', undefined, 0, [
+        ['propA', 123],
+        ['propB', 'valueB'],
+      ]);
+
+      expect(capturedProps).toBeDefined();
+      expect(value(capturedProps!.foo)).toBe(123);
+      expect(value(capturedProps!.bar)).toBe('valueB');
+
+      kernel.destroy();
+    });
+
     describe('provideContext and useContext', () => {
       it('should provide and consume context values between parent and child', async () => {
         const registry = new Registry();

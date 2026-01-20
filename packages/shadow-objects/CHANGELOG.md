@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       });
       ```
 - **Refactor** the `EntityApi` type
+- **Refactor** the `useProperties` supports type maps now
 - **Documentation:** Comprehensive update to the documentation structure and content.
 
 ### ⚠️ Breaking Changes

@@ -39,12 +39,13 @@ createEffect(() => {
 
 A convenience helper to create multiple property signals at once.
 
-*   **Signature:** `useProperties(map: Record<string, any>): Record<string, () => any>`
+*   **Signature:** `useProperties<T extends Record<string, unknown>>(map: {[K in keyof T]: string}): {[K in keyof T]: SignalReader<Maybe<T[K]>>}`
 *   **Returns:** An object where keys match the input map, and values are signal readers.
 
 ```typescript
-const { x, y } = useProperties({ x: 0, y: 0 });
-// x() and y() are now signals
+const { x, y, title } = useProperties{ x: number; y: number, title: string }>({ x: "x", y: "y", title: "title" });
+// x() and y() are now number|undefined values
+// title is now a signal-reader with a string value
 ```
 
 ---

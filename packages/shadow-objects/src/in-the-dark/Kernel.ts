@@ -523,8 +523,10 @@ export class Kernel {
 
         useProperty: getUseProperty,
 
-        useProperties<K extends string>(props: Record<K, string>): Record<K, SignalReader<any>> {
-          const result = {} as Record<K, SignalReader<any>>;
+        useProperties<T extends Record<string, unknown> = Record<string, unknown>>(props: {[K in keyof T]: string}): {
+          [K in keyof T]: SignalReader<Maybe<T[K]>>;
+        } {
+          const result = {} as {[K in keyof T]: SignalReader<Maybe<T[K]>>};
           for (const key in props) {
             if (Object.hasOwn(props, key)) {
               result[key] = getUseProperty(props[key]);
