@@ -98,10 +98,11 @@ Allows re-dispatching events emitted by the internal Shadow Object (ViewComponen
 **Example 1: Forward All Events**
 
 ```html
-<shae-ent token="my-button" forward-custom-events></shae-ent>
+<shae-ent token="game-level" forward-custom-events></shae-ent>
 
 <script>
   const ent = document.querySelector('shae-ent');
+
   ent.addEventListener('level-complete', (e) => {
     console.log('Yippieee! Level completed!', e.detail);
   });
