@@ -628,10 +628,11 @@ export class Kernel {
           const [firstArg] = args;
           if (typeof firstArg === 'string' || typeof firstArg === 'symbol' || Array.isArray(firstArg)) {
             // @ts-ignore
-            return emit(entry.entity, ...args);
+            emit(entry.entity, ...args);
+          } else {
+            // @ts-ignore
+            emit(...args);
           }
-          // @ts-ignore
-          emit(...args);
         },
 
         onViewEvent(callback: (type: string, data: unknown) => any) {

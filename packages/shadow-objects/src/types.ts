@@ -150,7 +150,20 @@ export interface ShadowObjectCreationAPI {
 
   onViewEvent(callback: (type: string, data: unknown) => any): void;
 
+  /**
+   * Emit an event on the *entity* associated with this shadow object.
+   *
+   * @param eventNames - The name(s) of the event(s) to emit.
+   * @param eventArgs - Arguments to pass to the event listeners.
+   */
   emit(eventNames: AnyEventNames, ...eventArgs: EventArgs): void;
+  /**
+   * Emit an event on a specific *target* object.
+   *
+   * @param target - The object to emit the event on.
+   * @param eventNames - The name(s) of the event(s) to emit.
+   * @param eventArgs - Arguments to pass to the event listeners.
+   */
   emit(target: EventizedObject, eventNames: AnyEventNames, ...eventArgs: EventArgs): void;
 
   onDestroy(callback: () => any): void;

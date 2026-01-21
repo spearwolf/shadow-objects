@@ -153,8 +153,8 @@ Listens for an event on a source.
 
 #### Listening to View Events
 
-### `on(entity, onViewEvent, callback)`
-### `onViewEvent(callback)`
+##### `on(entity, onViewEvent, callback)`
+##### `onViewEvent(callback)`
 
 To listen to events dispatched from the DOM (View Layer), listen to the special event name `onViewEvent` on the `entity` target.
 
@@ -186,6 +186,27 @@ function ShadowObject({ on, onViewEvent }: ShadowObjectCreationAPI) {
 ### `once(source, eventName, callback)`
 
 Same as `on`, but the listener is automatically removed after the first trigger. Like `on`, if the first argument is a string, symbol, or array of strings/symbols, the `entity` is used as the event source.
+
+### `emit(eventNames, ...eventArgs)`
+
+Emits an event on the *entity* associated with the current shadow object.
+
+-   **`eventNames`** (`string` | `string[]`): The name(s) of the event(s) to emit.
+-   **`...eventArgs`** (`any[]`): Arguments to pass to the event listeners.
+
+### `emit(target, eventNames, ...eventArgs)`
+
+Emits an event on a specific *target* object.
+
+-   **`target`** (`Object`): The object to emit the event on. Must be compatible with the event system.
+-   **`eventNames`** (`string` | `string[]`): The name(s) of the event(s) to emit.
+-   **`...eventArgs`** (`any[]`): Arguments to pass to the event listeners.
+
+#### Best Practices
+
+*   **Use the default signature** (`emit('name')`) for events that represent the state or actions of the component itself. This allows parent components or other systems to listen to the entity easily.
+*   **Avoid tight coupling.** Use events to notify about changes rather than directly calling methods on other objects when possible.
+
 
 ---
 
