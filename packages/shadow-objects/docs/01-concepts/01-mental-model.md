@@ -1,8 +1,38 @@
 # The Mental Model
 
-The **Shadow Objects Framework** is built upon a strict separation of concerns. To help you visualize how this works, let's start with a simple analogy.
+The **Shadow Objects Framework** is built upon a strict separation of concerns, designed to address the limitations of traditional browser-based application architectures.
+
+## The Challenge: Orthogonal Hierarchies
+
+Traditional UI frameworks (like React, Angular, or Vue) typically run on the browser's **Main Thread** and are tightly coupled to the **DOM hierarchy**. This works well for document-centric applications, but friction arises in complex, rich interactions like 3D configurators, game engines, or data-intensive tools.
+
+In addition, more complex applications are sometimes divided into different modules (UI components) based on different UI frameworks, which are then composed in the browser DOM. Web components often serve as a bridge to connect these micro UI apps with each other—but the application state often loses out, or worse, behavior differences arise between the different components (often managed by different developer teams).
+
+In these applications, we encounter two distinct perspectives that are often **orthogonal** to each other:
+
+1.  **The Visual Interface:** The hierarchical, tree-based structure of the DOM (Visual Interface Architecture).
+2.  **The Application State:** The logical structure of the data and behavior.
+
+These two models are rarely in perfect sync. For example, a game engine managing thousands of sprites operates on a flat or spatial data structure that has little in common with the nested HTML elements of the UI.
+
+Forcing this heavy, domain-specific state into the UI component tree—and constraining it to the single Main Thread—creates performance bottlenecks and architectural complexity.
+
+## The Solution: Shadow Objects
+
+Shadow Objects solves this by decoupling the **Behavior/Logic** from the **UI/Representation**.
+
+*   **View Components** act as a bridge. They sit in the DOM and handle user interaction.
+*   **Entities & Shadow Objects** live in the "Shadow World" (often a Web Worker). They manage the state and logic completely independently of the UI.
+
+This architecture enables:
+
+*   **Concurrency:** Heavy application logic runs in parallel, distributed across Workers, keeping the Main Thread responsive.
+*   **ECS-like Reusability:** Similar to an **Entity Component System (ECS)**, behavior is modular. A "Shadow Object" is a reusable component of logic that can be attached to any Entity simply by configuring it without having to customize any code.
+*   **Interchangeability:** Because logic is isolated, you can swap implementations without affecting the UI. You could replace a JavaScript-based physics simulation with a high-performance **WebAssembly (WASM)** module transparently. The UI simply syncs the minimal input data (like player controls), while the WASM Shadow Object handles the heavy lifting.
 
 ## Analogy: The Shadow Theater
+
+To help you visualize how this works, let's use a simple analogy.
 
 Imagine a **Shadow Theater** (Wayang Kulit).
 
@@ -46,9 +76,10 @@ An **Entity** is the abstract representation of a component. It exists in the Sh
 *   Participates in the **Context** system.
 
 ### 2. Shadow Object (The Brain)
-A **Shadow Object** is a functional unit of logic attached to an Entity.
-*   It is the "code" that runs for a specific component.
-*   It is reactive: it listens to property changes and triggers effects.
+A **Shadow Object** is a functional unit of logic attached to an Entity. This design encourages **Composition over Inheritance**.
+*   **Reusable:** Designed to be domain-specific and reusable across different parts of the UI.
+*   **Reactive:** It listens to property changes and triggers effects.
+*   **Interchangeable:** Can be implemented in JavaScript or even **WASM**.
 *   It can talk to other Shadow Objects via Context.
 
 ### 3. Token (The Name)
