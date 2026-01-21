@@ -13,7 +13,7 @@ Most of the time, you will not use these classes directly. Instead, you will use
 
 ## Using Web Components
 
-The package `@spearwolf/shadow-objects/elements` provides ready-to-use Web Components.
+The package export `@spearwolf/shadow-objects/elements.js` provides ready-to-use Web Components.
 
 ### 1. `shae-worker` (The Container)
 
@@ -78,11 +78,13 @@ The Shadow Object receives this via `on(onViewEvent, ...)` or `onViewEvent(type,
 
 ### Receiving Events from Shadow World
 
-When a Shadow Object calls `dispatchMessageToView('my-event', data)`, the `<shae-ent>` element dispatches a CustomEvent.
+When a Shadow Object calls `dispatchMessageToView('my-event', data)`, the `viewComponent` from the `<shae-ent>` element receives an event.
 
 ```javascript
-ent.addEventListener('my-event', (e) => {
-  console.log('Received from Shadow World:', e.detail);
+import {on} from '@spearwolf/eventize';
+
+on(ent.viewComponent, 'my-event', (data) => {
+  console.log('Received from Shadow World:', data);
 });
 ```
 
@@ -106,8 +108,8 @@ createEffect(() => {
 });
 
 // View Layer
-ent.addEventListener('count-changed', (e) => {
-   document.getElementById('count-display').innerText = e.detail.value;
+on(ent.viewComponent, 'count-changed', (data) => {
+   document.getElementById('count-display').innerText = data.value;
 });
 ```
 
@@ -116,10 +118,10 @@ ent.addEventListener('count-changed', (e) => {
 If you don't want to use `<shae-ent>`, you can implement your own view layer using the API directly.
 
 ```javascript
-import { ComponentContext, ViewComponent } from '@spearwolf/shadow-objects/view';
+import { ComponentContext, ViewComponent } from '@spearwolf/shadow-objects';
 
 // 1. Get the global context (or create one)
-const context = ComponentContext.get('global');
+const context = ComponentContext.get('my-global');
 
 // 2. Create a component
 const myComponent = new ViewComponent('my-token', { context });

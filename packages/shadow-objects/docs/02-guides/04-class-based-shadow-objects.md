@@ -7,7 +7,7 @@ While the functional API is the recommended way to define Shadow Objects, the fr
 To define a Shadow Object as a class, you simply export a class. The `constructor` receives the same `ShadowObjectCreationAPI` object as the functional API.
 
 ```typescript
-import { type ShadowObjectCreationAPI, onCreate, onDestroy, type OnCreate, type onDestroy } from '@spearwolf/shadow-objects';
+import { type ShadowObjectCreationAPI, onCreate, onDestroy, type OnCreate, type onDestroy } from '@spearwolf/shadow-objects/shadow-objects.js';
 
 export class MyShadowObject implements OnCreate, OnDestroy {
 
