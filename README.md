@@ -24,7 +24,7 @@ We separate the worlds strictly.
 ![The Shadow Theater Model](packages/shadow-objects/docs/shadow-theater.svg)
 
 1.  **In the Light (Main Thread):** The dumb View. It only displays and forwards events.
-2.  **In the Shadow (Web Worker):** The smart Logic. This is where **Entities** and **Shadow Objects** live. They process data, calculate states, and "project" the result back onto the screen.
+2.  **In the Shadow (Web Worker _or_ Main Thread):** The smart Logic. This is where **Entities** and **Shadow Objects** live. They process data, calculate states, and "project" the result back onto the screen.
 
 Through this architecture, your application logic runs parallel to the UI, decoupled and reactive.
 
