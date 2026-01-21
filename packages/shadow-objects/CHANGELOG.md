@@ -5,6 +5,17 @@ All notable changes to [@spearwolf/shadow-objects](https://github.com/spearwolf/
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] - 2026-01-21
+
+- **New Feature:** Added `emit()` helper to `ShadowObjectCreationAPI`.
+  - Simplifies emitting events from within shadow-object implementations.
+  - Example:
+    ```typescript
+    emit('my-event', { some: 'data' });
+    ```
+  - This is equivalent to `emit(entity, 'my-event', { some: 'data' })`.
+- **Refactor** Eliminate a potential memory leak when unsubcribing from event subscriptions by calling the returned unsubscribe function from `on()` and `once()` from the `ShadowObjectCreationAPI`.
+
 ## [0.29.0] - 2026-01-21
 
 - **New Feature:** Added `forward-custom-events` attribute to `<shae-ent>` custom element.

@@ -1,4 +1,4 @@
-import type {EventizedObject, SubscribeArgs, on, once} from '@spearwolf/eventize';
+import type {AnyEventNames, EventArgs, EventizedObject, SubscribeArgs, on, once} from '@spearwolf/eventize';
 import type {CompareFunc, createEffect, createMemo, createSignal, Signal, SignalReader} from '@spearwolf/signalize';
 import type {AppliedChangeTrail, ComponentChangeType, ImportedModule} from './constants.js';
 import type {Entity} from './in-the-dark/Entity.js';
@@ -149,6 +149,9 @@ export interface ShadowObjectCreationAPI {
   once(...args: Parameters<typeof once>): ReturnType<typeof once>;
 
   onViewEvent(callback: (type: string, data: unknown) => any): void;
+
+  emit(eventNames: AnyEventNames, ...eventArgs: EventArgs): void;
+  emit(target: EventizedObject, eventNames: AnyEventNames, ...eventArgs: EventArgs): void;
 
   onDestroy(callback: () => any): void;
 }

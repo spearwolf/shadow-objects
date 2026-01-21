@@ -15,12 +15,12 @@ import {ComponentChangeType, MessageToView} from '../constants.js';
 import type {
   IComponentChangeType,
   IComponentEvent,
+  Maybe,
   ProvideContextOptions,
   ShadowObjectConstructor,
   ShadowObjectType,
-  SyncEvent,
-  Maybe,
   SignalValueOptions,
+  SyncEvent,
 } from '../types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {toMaybe} from '../utils/toMaybe.js';
@@ -599,7 +599,11 @@ export class Kernel {
           // @ts-ignore
           const unsub = on(...args);
           unsubscribeSecondary.add(unsub);
-          return unsub;
+          // return unsub;
+          return Object.assign(() => {
+            unsubscribeSecondary.delete(unsub);
+            unsub();
+          }, unsub);
         },
 
         once(...args: any[]): ReturnType<typeof once> {
@@ -613,7 +617,21 @@ export class Kernel {
           // @ts-ignore
           const unsub = once(...args);
           unsubscribeSecondary.add(unsub);
-          return unsub;
+          // return unsub;
+          return Object.assign(() => {
+            unsubscribeSecondary.delete(unsub);
+            unsub();
+          }, unsub);
+        },
+
+        emit(...args: any[]): void {
+          const [firstArg] = args;
+          if (typeof firstArg === 'string' || typeof firstArg === 'symbol' || Array.isArray(firstArg)) {
+            // @ts-ignore
+            return emit(entry.entity, ...args);
+          }
+          // @ts-ignore
+          emit(...args);
         },
 
         onViewEvent(callback: (type: string, data: unknown) => any) {
