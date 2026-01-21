@@ -4,16 +4,17 @@ import {ComponentContext} from '../view/ComponentContext.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
 import {ViewComponent} from '../view/ViewComponent.js';
 import {ShaeElement} from './ShaeElement.js';
-import {ATTR_TOKEN, RequestEntParentEventName, ReRequestEntParentEventName} from './constants.js';
+import {ATTR_FORWARD_CUSTOM_EVENTS, ATTR_TOKEN, RequestEntParentEventName, ReRequestEntParentEventName} from './constants.js';
 
 export class ShaeEntElement extends ShaeElement {
-  static override observedAttributes = [...ShaeElement.observedAttributes, ATTR_TOKEN];
+  static override observedAttributes = [...ShaeElement.observedAttributes, ATTR_TOKEN, ATTR_FORWARD_CUSTOM_EVENTS];
 
   readonly isShaeEntElement = true;
 
   readonly componentContext$ = createSignal<ComponentContext | undefined>();
   readonly viewComponent$ = createSignal<ViewComponent | undefined>();
   readonly token$ = createSignal<string | undefined>();
+  readonly forwardCustomEvents$ = createSignal<Set<string> | boolean>(false);
 
   get componentContext(): ComponentContext | undefined {
     return this.componentContext$.value;
@@ -59,6 +60,23 @@ export class ShaeEntElement extends ShaeElement {
       }
     });
 
+    this.#updateForwardCustomEventsValue();
+
+    this.forwardCustomEvents$.onChange((val) => {
+      if (!val) {
+        this.removeAttribute(ATTR_FORWARD_CUSTOM_EVENTS);
+      } else if (val === true) {
+        if (!this.hasAttribute(ATTR_FORWARD_CUSTOM_EVENTS)) {
+          this.setAttribute(ATTR_FORWARD_CUSTOM_EVENTS, '');
+        }
+      } else {
+        const str = Array.from(val).join(',');
+        if (this.getAttribute(ATTR_FORWARD_CUSTOM_EVENTS) !== str) {
+          this.setAttribute(ATTR_FORWARD_CUSTOM_EVENTS, str);
+        }
+      }
+    });
+
     createEffect(() => {
       const vc = this.viewComponent$.get();
       if (vc) {
@@ -74,6 +92,50 @@ export class ShaeEntElement extends ShaeElement {
           }
         };
       }
+    });
+
+    createEffect(() => {
+      const vc = this.viewComponent$.get();
+      if (!vc) return;
+
+      // Make sure we are patching the instance method, not the prototype
+      const originalDispatchEvent = Object.hasOwn(vc, 'dispatchEvent')
+        ? Object.getPrototypeOf(vc).dispatchEvent
+        : vc.dispatchEvent;
+
+      const filter = this.forwardCustomEvents$.get();
+      if (!filter) return;
+
+      const allowedTypes = filter instanceof Set ? filter : undefined;
+
+      const newDispatch = (type: string, data: unknown, traverseChildren: boolean) => {
+        originalDispatchEvent.call(vc, type, data, traverseChildren);
+
+        if (type === ComponentContext.ReRequestParentRoots) return;
+
+        if (allowedTypes && !allowedTypes.has(type)) return;
+
+        this.dispatchEvent(
+          new CustomEvent(type, {
+            bubbles: true,
+            composed: true,
+            detail: data,
+          }),
+        );
+      };
+
+      // We use defineProperty to ensure it is writable and configurable
+      Object.defineProperty(vc, 'dispatchEvent', {
+        value: newDispatch,
+        writable: true,
+        configurable: true,
+      });
+
+      return () => {
+        if (Object.hasOwn(vc, 'dispatchEvent') && vc.dispatchEvent === newDispatch) {
+          delete vc.dispatchEvent;
+        }
+      };
     });
 
     this.token$.onChange((token) => {
@@ -156,6 +218,9 @@ export class ShaeEntElement extends ShaeElement {
     // --- token ---
     beQuiet(() => this.#updateTokenValue());
 
+    // --- forward-custom-events ---
+    beQuiet(() => this.#updateForwardCustomEventsValue());
+
     // --- componentContext | viewComponent ---
     if (this.componentContext == null) {
       this.componentContext$.set(ComponentContext.get(this.ns));
@@ -207,6 +272,8 @@ export class ShaeEntElement extends ShaeElement {
     super.attributeChangedCallback(name);
     if (name === ATTR_TOKEN) {
       this.#updateTokenValue();
+    } else if (name === ATTR_FORWARD_CUSTOM_EVENTS) {
+      this.#updateForwardCustomEventsValue();
     }
   }
 
@@ -332,6 +399,26 @@ export class ShaeEntElement extends ShaeElement {
     if (this.hasAttribute(ATTR_TOKEN)) {
       const token = this.getAttribute(ATTR_TOKEN)?.trim() || undefined;
       this.token$.set(token);
+    }
+  }
+
+  #updateForwardCustomEventsValue() {
+    if (this.hasAttribute(ATTR_FORWARD_CUSTOM_EVENTS)) {
+      const val = this.getAttribute(ATTR_FORWARD_CUSTOM_EVENTS);
+      if (!val || val.trim().length === 0) {
+        this.forwardCustomEvents$.set(true);
+      } else {
+        this.forwardCustomEvents$.set(
+          new Set(
+            val
+              .split(',')
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0),
+          ),
+        );
+      }
+    } else {
+      this.forwardCustomEvents$.set(false);
     }
   }
 }

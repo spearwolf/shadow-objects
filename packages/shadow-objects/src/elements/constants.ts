@@ -7,6 +7,7 @@ export const SHAE_PROP = 'shae-prop';
 
 // <shae-ent> attributes
 export const ATTR_TOKEN = 'token';
+export const ATTR_FORWARD_CUSTOM_EVENTS = 'forward-custom-events';
 
 // <shae-ent> + <shae-worker> attributes
 export const ATTR_NS = 'ns';
