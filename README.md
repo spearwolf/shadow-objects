@@ -16,7 +16,7 @@ Imagine a **web application** like a classic **Shadow Theater**:
 *   **The Puppeteer (Shadow Object):** The logic pulling the strings. The puppeteer decides how the puppets move but remains invisible to the audience.
 
 **The Problem with Traditional Frameworks:**
-Logic (puppeteer) and presentation (screen) are often mixed in the same thread (Main Thread). In complex applications, this leads to performance bottlenecks because UI rendering blocks business logic – and vice versa.
+Logic (puppeteer) and presentation (screen) are often mixed in the same thread (Main Thread). This works well for document-centric applications, but friction arises in complex, rich interactions like 3D configurators, game engines, or data-intensive tools and leads to complexity bottlenecks because UI rendering blocks business logic – and vice versa.
 
 **The Solution by `shadow-objects`:**
 We separate the worlds strictly.
