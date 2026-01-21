@@ -57,7 +57,7 @@ Context values are **Signals**.
 
 ## Events
 
-The framework provides a powerful event system based on **@spearwolf/eventize**. This allows decoupled communication between Shadow Objects, Entities, and the View.
+The framework provides a powerful event system based on [@spearwolf/eventize](https://github.com/spearwolf/eventize). This allows decoupled communication between Shadow Objects, Entities, and the View.
 
 ### The Event Bus: The Entity
 Every Entity acts as an event emitter. Since multiple Shadow Objects can be attached to the same Entity, the Entity serves as a shared "bus" for them.
@@ -66,15 +66,16 @@ Every Entity acts as an event emitter. Since multiple Shadow Objects can be atta
 *   **Decoupling:** Shadow Objects don't need to know about each other; they just listen to the Entity they are attached to.
 
 ### 1. View -> Shadow Events
-Standard DOM events dispatched by the View Component are automatically forwarded to the corresponding Entity.
+Events dispatched by the View Component are automatically forwarded to the corresponding Entity as _View Events_.
 
 *   **View Layer:**
     ```javascript
     // In your Web Component or View Logic
-    this.viewComponent.emit('my-custom-event', { some: 'data' });
+    this.viewComponent.dispatchShadowObjectsEvent('my-custom-event', { some: 'data' });
     ```
 *   **Shadow World:**
     ```typescript
+    // Your Shadow Object
     export function MyLogic({ onViewEvent }: ShadowObjectCreationAPI) {
       onViewEvent((type, data) => {
         if (type === 'my-custom-event') {
@@ -88,6 +89,8 @@ Standard DOM events dispatched by the View Component are automatically forwarded
 Shadow Objects attached to the same Entity can communicate via events.
 
 ```typescript
+import { emit } from '@spearwolf/eventize';
+
 // Feature A
 export function FeatureA({ on }: ShadowObjectCreationAPI) {
   // Listen for event from Feature B
@@ -101,7 +104,7 @@ export function FeatureB({ entity }: ShadowObjectCreationAPI) {
 }
 ```
 
-### 3. Broadcasting to Children (Traverse)
+### 3. Broadcasting to Children (Traverse the Entity Tree)
 You can broadcast events to all descendant Entities using the `traverse` helper. This is useful for "global" updates like a frame tick or a resize event.
 
 ```typescript
@@ -110,21 +113,28 @@ import { emit } from '@spearwolf/eventize';
 export function StageController({ entity, on }: ShadowObjectCreationAPI) {
   // Example: Broadcast a 'frame-update' event to the entire subtree
   on('tick', (deltaTime) => {
-    entity.traverse((childEntity) => {
-      emit(childEntity, 'frame-update', { deltaTime });
+    entity.traverse((e) => {
+      emit(e, 'frame-update', { deltaTime });
     });
   });
 }
 ```
 
 > [!NOTE]
-> `traverse` visits the current entity and all its descendants recursively.
+> `traverse()` visits first the current entity and then all its descendants recursively.
 
 ### 4. Shadow -> View Events
 You can send events back to the View Layer using `dispatchMessageToView`.
 
-```typescript
-export function MyLogic({ dispatchMessageToView }: ShadowObjectCreationAPI) {
-  dispatchMessageToView('notification', { message: 'Save successful!' });
-}
-```
+*   **Shadow World:**
+    ```typescript
+    export function MyLogic({ dispatchMessageToView }: ShadowObjectCreationAPI) {
+      dispatchMessageToView('notification', { message: 'Save successful!' });
+    }
+    ```
+*   **View Layer:**
+    ```javascript
+    this.viewComponent.on('notification', (data) => {
+      console.log('Received a notification:', data)
+    });
+    ```

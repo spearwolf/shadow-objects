@@ -11,7 +11,7 @@ This section documents the underlying JavaScript classes that power the View Lay
 Represents a single node in the view hierarchy that maps to a Shadow Entity.
 
 ```typescript
-import { ViewComponent } from '@spearwolf/shadow-objects/view';
+import { ViewComponent } from '@spearwolf/shadow-objects';
 ```
 
 ### Constructor
@@ -29,10 +29,9 @@ new ViewComponent(token: string, options?: ViewComponentOptions)
 
 ### Properties
 
-*   **`id`**: Unique identifier (UUID) assigned by the system.
 *   **`token`**: The token string.
+*   **`uuid`**: Unique identifier (UUID) assigned by the system.
 *   **`parent`**: Reference to the parent component.
-*   **`children`**: Array of child components.
 *   **`context`**: Reference to the managing context.
 *   **`order`**: Numeric value defining the sorting order within the parent's children list.
     *   Items are sorted by ascending `order` value, then by insertion order.
@@ -55,12 +54,15 @@ Removes a property. This change is batched and sent to the Shadow World.
 component.removeProperty('score');
 ```
 
-#### `dispatchShadowObjectsEvent(type, detail)`
+#### `dispatchShadowObjectsEvent(type, detail?, transferables?)`
 Sends a custom event to the Shadow Object.
 
 ```typescript
 component.dispatchShadowObjectsEvent('playerJump', { force: 5.0 });
 ```
+
+*   `transferables`
+    Since the Shadow Object context generally represents a different context, e.g., in a Web Worker, the data is cloned by default for each event using [structuredClone()](https://developer.mozilla.org/en-US/docs/Web/API/WorkerGlobalScope/structuredClone) helper.  The `transferables` argument offers the option of specifying [transferable objects](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Transferable_objects).
 
 #### `destroy()`
 Removes the component from the hierarchy and signals destruction to the Shadow World.
@@ -72,7 +74,7 @@ Removes the component from the hierarchy and signals destruction to the Shadow W
 The orchestrator. It manages a group of `ViewComponent`s and handles the communication channel (Worker or Local) to the Kernel. This enables **Namespacing**, allowing multiple independent Shadow Worlds to exist on the same page.
 
 ```typescript
-import { ComponentContext } from '@spearwolf/shadow-objects/view';
+import { ComponentContext } from '@spearwolf/shadow-objects';
 ```
 
 ### Static Methods
@@ -92,17 +94,6 @@ A **Context** represents an isolated instance of a Shadow World (Kernel + Entiti
 - **Named Contexts:** Created by passing a string namespace (e.g., `'ui-overlay'`, `'minimap'`). This allows you to have completely separate logical threads (or local environments) for different parts of your application.
 
 Each `ViewComponent` belongs to exactly one Context.
-
-### Instance Methods
-
-#### `addComponent(component)`
-Manually registers a component with the context. (Usually handled automatically by `ViewComponent` constructor if context is passed).
-
-#### `connect()`
-Establishes the connection to the Kernel/Worker.
-
-#### `destroy()`
-Shuts down the context and the associated Shadow World kernel.
 
 ---
 
