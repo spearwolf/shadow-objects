@@ -7,6 +7,8 @@ This document serves as a comprehensive reference for the `ShadowObjectCreationA
 Whether you define a Shadow Object as a function or a class, the first argument received is the `ShadowObjectCreationAPI` object. This object provides methods to hook into the Entity's lifecycle, manage state, and communicate with the View Layer.
 
 ```typescript
+import type { ShadowObjectCreationAPI } from '@spearwolf/shadow-objects/shadow-objects.js';
+
 export function MyLogic(api: ShadowObjectCreationAPI) {
     const { useProperty, createSignal, on } = api;
     // ...
@@ -235,4 +237,5 @@ The API provides direct access to the underlying `EntityApi` instance via the `e
 
 The `order` property reflects the sort order defined in the View Layer. This is useful for systems that need to process entities in a specific sequence (e.g. rendering layers), even though the Shadow World itself doesn't enforce a DOM-like structure.
 
-Note: `dispatchMessageToView` is now a top-level method on the API object and is no longer available on the `entity` instance.
+> [!NOTE]
+> `dispatchMessageToView` is now a top-level method on the API object and is no longer available on the `entity` instance.

@@ -129,12 +129,16 @@ You can send events back to the View Layer using `dispatchMessageToView`.
 *   **Shadow World:**
     ```typescript
     export function MyLogic({ dispatchMessageToView }: ShadowObjectCreationAPI) {
-      dispatchMessageToView('notification', { message: 'Save successful!' });
+      dispatchMessageToView('notify', { message: 'Save successful!' });
     }
     ```
 *   **View Layer:**
     ```javascript
-    this.viewComponent.on('notification', (data) => {
-      console.log('Received a notification:', data)
+    import {on} from '@spearwolf/eventize';
+
+    on(viewComponent, {
+      notify(data) {
+        console.log('Received a notification:', data);
+      }
     });
     ```

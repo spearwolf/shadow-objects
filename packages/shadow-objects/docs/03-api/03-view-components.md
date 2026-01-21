@@ -69,6 +69,18 @@ component.dispatchShadowObjectsEvent('playerJump', {force: 5.0});
 - `transferables`
   Since the Shadow Object context generally represents a different context, e.g., in a Web Worker, the data is cloned by default for each event using [structuredClone()](https://developer.mozilla.org/en-US/docs/Web/API/WorkerGlobalScope/structuredClone) helper. The `transferables` argument offers the option of specifying [transferable objects](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Transferable_objects).
 
+#### `on(type, listener)`
+
+The `ViewComponent` is an _eventized_ object (using the [@spearwolf/eventize](https://github.com/spearwolf/eventize) library). This means you can use the `on()` helper to listen for events. This is the primary way for the View Component to react to events sent **from** the Shadow Objects.
+
+```typescript
+import {on} from '@spearwolf/eventize';
+
+on(component, 'msg-from-shadow', (data) => {
+  console.log('Received:', data);
+});
+```
+
 #### `destroy()`
 
 Removes the component from the hierarchy and signals destruction to the Shadow World.

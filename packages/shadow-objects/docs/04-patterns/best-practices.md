@@ -46,7 +46,7 @@ Avoid using raw strings for context keys throughout your codebase. Instead, crea
 **Bad:**
 ```typescript
 // Consumer.ts
-const scene = useContext("three-scene") as Scene; // Magic string, type casting
+const scene = useContext("three-scene"); // Magic string, no type casting
 ```
 
 **Good:**
@@ -77,6 +77,9 @@ When integrating external libraries (like Three.js, Physics engines, or WebSocke
 
 `createResource` automatically handles the teardown and recreation of objects when their dependencies change.
 
+> [!NOTE]
+> The factory callback is an _effect_ function. Signals that are read automatically trigger a repeated call of the callback when the values change.
+
 ```typescript
 const myMeshResource = createResource(
   // Factory: Runs when dependencies change
@@ -92,6 +95,7 @@ const myMeshResource = createResource(
     return mesh;
   },
   // Cleanup: Runs before re-creation or on destruction
+  // (But only if the factory has previously returned a non-empty resource)
   (mesh) => {
     mesh.removeFromParent();
     mesh.geometry.dispose();
@@ -101,7 +105,7 @@ const myMeshResource = createResource(
 ```
 
 > [!NOTE]
-> `createResource` returns a signal. You can access the current instance via `myMeshResource()`.
+> `createResource` returns a signal. You can access the current instance via `myMeshResource.value` or `myMeshResource.get()`.
 
 ## 4. View Integration
 
@@ -122,7 +126,7 @@ const myMeshResource = createResource(
     }
     ```
 
-### Batch Property Access
+### Batch Properties
 
 If you need multiple properties, avoid calling `useProperty` multiple times. Use `useProperties` to get a structured object of signals.
 
