@@ -182,7 +182,7 @@ export function Counter({
 
   // React to changes
   createEffect(() => {
-    dispatchMessageToView('count-changed', { value: count() });
+    dispatchMessageToView('count-changed', { value: count.get() });
   });
 
   // Handle View events

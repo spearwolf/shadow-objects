@@ -32,7 +32,7 @@ When something happens in the DOM (user clicks, form submits, etc.), you send ev
 const ent = document.querySelector('shae-ent[token="my-form"]');
 
 // Dispatch an event to the Shadow Object
-ent.viewComponent.dispatchShadowObjectsEvent('submit', { 
+ent.viewComponent.dispatchShadowObjectsEvent('submit', {
   email: 'alice@example.com',
   password: 'secret123'
 });
@@ -106,7 +106,7 @@ export function GameLogic({ dispatchMessageToView }: ShadowObjectCreationAPI) {
 
   // Notify when level is complete
   function completeLevel() {
-    dispatchMessageToView('level-complete', { 
+    dispatchMessageToView('level-complete', {
       time: Date.now(),
       bonus: calculateBonus()
     });
@@ -238,11 +238,11 @@ export function UI({ dispatchMessageToView, onViewEvent }: ShadowObjectCreationA
 
 ```typescript
 export function Counter({ createSignal, createEffect, dispatchMessageToView }: ShadowObjectCreationAPI) {
-  const [count, setCount] = createSignal(0);
+  const count = createSignal(0);
 
   // Automatically notify View when count changes
   createEffect(() => {
-    dispatchMessageToView('count-changed', { value: count() });
+    dispatchMessageToView('count-changed', { value: count.get() });
   });
 }
 ```

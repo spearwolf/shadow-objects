@@ -27,14 +27,14 @@ The Shadow Object function body runs **once** when the Entity is created.
 ```typescript
 export function MyObject({ createSignal, createEffect }: ShadowObjectCreationAPI) {
   // SETUP PHASE: This code runs once
-  
+
   const count = createSignal(0);          // Initialize state
   const timer = setInterval(() => {}, 1000); // Create resources
-  
+
   createEffect(() => {                     // Register effects
     console.log(count());
   });
-  
+
   // Setup phase ends when function returns
 }
 ```
@@ -107,12 +107,12 @@ export function Timer({
   onDestroy,
 }: ShadowObjectCreationAPI) {
   const elapsed = createSignal(0);
-  
+
   // External resource: interval timer
   const intervalId = setInterval(() => {
-    elapsed.set(e => e + 1);
+    elapsed.set(elapsed.value + 1);
   }, 1000);
-  
+
   // Clean up when Entity is destroyed
   onDestroy(() => {
     clearInterval(intervalId);
@@ -129,12 +129,12 @@ export function ComplexResource({
   const socket = new WebSocket('wss://api.example.com');
   const timer = setInterval(() => {}, 1000);
   const controller = new AbortController();
-  
+
   // You can call onDestroy multiple times
   onDestroy(() => clearInterval(timer));
   onDestroy(() => socket.close());
   onDestroy(() => controller.abort());
-  
+
   // Or combine in one call
   onDestroy(() => {
     clearInterval(timer);
@@ -154,7 +154,7 @@ export function ConditionalResource({
 }: ShadowObjectCreationAPI) {
   const enabled = useProperty<boolean>('enabled');
   let connection: WebSocket | null = null;
-  
+
   createEffect(() => {
     if (enabled()) {
       // Create resource when enabled
@@ -165,7 +165,7 @@ export function ConditionalResource({
       connection = null;
     }
   });
-  
+
   // Final cleanup on destroy
   onDestroy(() => {
     connection?.close();
@@ -186,21 +186,21 @@ export function ManagedMesh({
 }: ShadowObjectCreationAPI) {
   const getScene = useContext<() => THREE.Scene>('three-scene');
   const getColor = useProperty<string>('color');
-  
+
   // createResource(factory, cleanup)
   const mesh = createResource(
     // Factory: runs when dependencies change
     () => {
       const scene = getScene?.();
       const color = getColor();
-      
+
       if (!scene || !color) return undefined; // Guard clause
-      
+
       const geometry = new THREE.BoxGeometry(1, 1, 1);
       const material = new THREE.MeshBasicMaterial({ color });
       const mesh = new THREE.Mesh(geometry, material);
       scene.add(mesh);
-      
+
       return mesh; // Return the resource
     },
     // Cleanup: runs before re-creation or on destroy
@@ -210,8 +210,7 @@ export function ManagedMesh({
       (mesh.material as THREE.Material).dispose();
     }
   );
-  
-  // Use the resource (it's a Signal)
+
   createEffect(() => {
     const m = mesh();
     if (m) {
@@ -251,15 +250,15 @@ export function DynamicSprite({
   const textureUrl = useProperty<string>('texture');
   const width = useProperty<number>('width');
   const height = useProperty<number>('height');
-  
+
   const sprite = createResource(
     () => {
       const url = textureUrl();
       const w = width() ?? 100;
       const h = height() ?? 100;
-      
+
       if (!url) return undefined;
-      
+
       // Create sprite with current dimensions
       const sprite = new Sprite(url, w, h);
       return sprite;
@@ -268,7 +267,7 @@ export function DynamicSprite({
       sprite.destroy();
     }
   );
-  
+
   // Sprite is automatically recreated when:
   // - textureUrl changes
   // - width changes
@@ -290,22 +289,22 @@ export function GameScene({
 }: ShadowObjectCreationAPI) {
   const isInitialized = createSignal(false);
   const renderer = createSignal<WebGLRenderer | null>(null);
-  
+
   // Async initialization
   (async () => {
     const canvas = await requestCanvas();
     const gl = canvas.getContext('webgl2');
     const r = new WebGLRenderer({ canvas, context: gl });
-    
+
     renderer.set(r);
     provideContext('renderer', renderer);
     isInitialized.set(true);
-    
+
     dispatchMessageToView('scene-ready', {});
   })();
-  
+
   onDestroy(() => {
-    renderer()?.dispose();
+    renderer.get()?.dispose();
   });
 }
 ```
@@ -321,16 +320,16 @@ export function LazyLoader({
 }: ShadowObjectCreationAPI) {
   const shouldLoad = useProperty<boolean>('load');
   const resource = createSignal<HeavyResource | null>(null);
-  
+
   createEffect(() => {
-    if (shouldLoad() && !resource()) {
+    if (shouldLoad() && !resource.get()) {
       // Create only when needed
       resource.set(new HeavyResource());
     }
   });
-  
+
   onDestroy(() => {
-    resource()?.dispose();
+    resource.get()?.dispose();
   });
 }
 ```
@@ -344,30 +343,30 @@ export function ObjectPool({
 }: ShadowObjectCreationAPI) {
   const pool = createSignal<Poolable[]>([]);
   const active = createSignal<Set<Poolable>>(new Set());
-  
+
   const acquire = () => {
-    const available = pool().find(obj => !active().has(obj));
+    const available = pool.get().find(obj => !active.get().has(obj));
     if (available) {
-      active.set(new Set([...active(), available]));
+      active.set(new Set([...active.value, available]));
       return available;
     }
     const newObj = new Poolable();
-    pool.set([...pool(), newObj]);
-    active.set(new Set([...active(), newObj]));
+    pool.set([...pool.value, newObj]);
+    active.set(new Set([...active.value, newObj]));
     return newObj;
   };
-  
+
   const release = (obj: Poolable) => {
-    const newActive = new Set(active());
+    const newActive = new Set(active.value);
     newActive.delete(obj);
     active.set(newActive);
     obj.reset();
   };
-  
+
   onDestroy(() => {
-    pool().forEach(obj => obj.dispose());
+    pool.get().forEach(obj => obj.dispose());
   });
-  
+
   return { acquire, release };
 }
 ```
@@ -398,7 +397,7 @@ export function DebugLifecycle({
   onDestroy,
 }: ShadowObjectCreationAPI) {
   console.log(`[${entity.token}] Setup phase started`);
-  
+
   onDestroy(() => {
     console.log(`[${entity.token}] Teardown phase started`);
   });

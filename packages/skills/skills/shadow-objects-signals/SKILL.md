@@ -27,12 +27,12 @@ A Signal is a reactive container for a value. When you read a Signal inside an E
 ```typescript
 const count = createSignal(0);
 
-// Read: count()
-console.log(count()); // 0
+// Read: count.get() for Signals
+console.log(count.get()); // 0
 
-// Write: count.set(value) or count.set(fn)
+// Write: count.set(value)
 count.set(1);
-count.set(c => c + 1);
+count.set(count.value + 1);
 ```
 
 ### The Reactive Primitives
@@ -52,24 +52,24 @@ count.set(c => c + 1);
 export function Counter({ createSignal }: ShadowObjectCreationAPI) {
   // Simple value
   const count = createSignal(0);
-  
+
   // Object state
   const player = createSignal({
     name: 'Hero',
     health: 100,
     position: { x: 0, y: 0 },
   });
-  
+
   // Read
-  console.log(count());           // 0
-  console.log(player().name);     // 'Hero'
-  
+  console.log(count.get());       // 0
+  console.log(player.get().name); // 'Hero'
+
   // Write with value
   count.set(10);
-  
-  // Write with updater function (recommended for derived updates)
-  count.set(c => c + 1);
-  player.set(p => ({ ...p, health: p.health - 10 }));
+
+  // Update based on current value
+  count.set(count.value + 1);
+  player.set({ ...player.value, health: player.value.health - 10 });
 }
 ```
 
@@ -80,7 +80,7 @@ export function Player({ useProperty }: ShadowObjectCreationAPI) {
   // Single property
   const name = useProperty<string>('player-name');
   const health = useProperty<number>('health');
-  
+
   // Reading (returns undefined if not set)
   const playerName = name() ?? 'Unknown';
   const currentHealth = health() ?? 100;
@@ -107,7 +107,7 @@ export function Sprite({
     height: 'sprite-height',
     visible: 'is-visible',
   });
-  
+
   // Each is a Signal
   const x = props.x() ?? 0;
   const y = props.y() ?? 0;
@@ -127,7 +127,7 @@ export function Logger({
   createEffect,
 }: ShadowObjectCreationAPI) {
   const message = useProperty<string>('message');
-  
+
   // Runs immediately, then re-runs when message() changes
   createEffect(() => {
     console.log('Message:', message());
@@ -145,7 +145,7 @@ export function PositionTracker({
 }: ShadowObjectCreationAPI) {
   const x = useProperty<number>('x');
   const y = useProperty<number>('y');
-  
+
   // Re-runs when EITHER x() OR y() changes
   createEffect(() => {
     const position = { x: x() ?? 0, y: y() ?? 0 };
@@ -180,14 +180,14 @@ export function Player({
 }: ShadowObjectCreationAPI) {
   const health = useProperty<number>('health');
   const maxHealth = useProperty<number>('max-health');
-  
+
   // Computed value - cached until health or maxHealth changes
   const healthPercent = createMemo(() => {
     const h = health() ?? 0;
     const max = maxHealth() ?? 100;
     return Math.round((h / max) * 100);
   });
-  
+
   // Use like a Signal
   console.log(healthPercent()); // e.g., 75
 }
@@ -201,16 +201,16 @@ export function Inventory({
   createMemo,
 }: ShadowObjectCreationAPI) {
   const items = useProperty<Item[]>('items');
-  
+
   // Only recomputes when items change
   const totalWeight = createMemo(() => {
     return (items() ?? []).reduce((sum, item) => sum + item.weight, 0);
   });
-  
+
   const totalValue = createMemo(() => {
     return (items() ?? []).reduce((sum, item) => sum + item.value, 0);
   });
-  
+
   // Memo depending on other memos
   const canCarryMore = createMemo(() => {
     return totalWeight() < 100; // max weight capacity
@@ -225,14 +225,14 @@ export function Inventory({
 ```typescript
 // GOOD: Synchronous read - tracked
 createEffect(() => {
-  const value = count(); // tracked
+  const value = count.get(); // tracked
   console.log(value);
 });
 
 // BAD: Async read - NOT tracked
 createEffect(() => {
   setTimeout(() => {
-    const value = count(); // NOT tracked!
+    const value = count.get(); // NOT tracked!
   }, 1000);
 });
 ```
@@ -245,10 +245,10 @@ const b = createSignal(2);
 const condition = createSignal(true);
 
 createEffect(() => {
-  if (condition()) {
-    console.log(a()); // tracked when condition is true
+  if (condition.get()) {
+    console.log(a.get()); // tracked when condition is true
   } else {
-    console.log(b()); // tracked when condition is false
+    console.log(b.get()); // tracked when condition is false
   }
   // 'condition' is always tracked
 });
@@ -271,13 +271,13 @@ createEffect(() => {
 export function ShoppingCart({ createSignal, createMemo }) {
   const items = createSignal<CartItem[]>([]);
   const taxRate = createSignal(0.08);
-  
+
   const subtotal = createMemo(() =>
-    items().reduce((sum, item) => sum + item.price * item.qty, 0)
+    items.get().reduce((sum, item) => sum + item.price * item.qty, 0)
   );
-  
-  const tax = createMemo(() => subtotal() * taxRate());
-  
+
+  const tax = createMemo(() => subtotal() * taxRate.get());
+
   const total = createMemo(() => subtotal() + tax());
 }
 ```
@@ -293,9 +293,9 @@ export function Search({
 }) {
   const searchTerm = useProperty<string>('search');
   const debouncedTerm = createSignal('');
-  
+
   let timeoutId: number;
-  
+
   createEffect(() => {
     const term = searchTerm() ?? '';
     clearTimeout(timeoutId);
@@ -303,15 +303,15 @@ export function Search({
       debouncedTerm.set(term);
     }, 300);
   });
-  
+
   // Use debouncedTerm for actual search
   createEffect(() => {
-    const term = debouncedTerm();
+    const term = debouncedTerm.get();
     if (term) {
       performSearch(term);
     }
   });
-  
+
   onDestroy(() => clearTimeout(timeoutId));
 }
 ```
@@ -326,15 +326,15 @@ export function Transition({
 }) {
   const value = useProperty<number>('value');
   const previousValue = createSignal<number | undefined>(undefined);
-  
+
   createEffect(() => {
     const current = value();
-    const previous = previousValue();
-    
+    const previous = previousValue.get();
+
     if (previous !== undefined && current !== previous) {
       console.log(`Changed from ${previous} to ${current}`);
     }
-    
+
     // Update previous after processing
     previousValue.set(current);
   });
@@ -351,11 +351,11 @@ export function OptionalFeature({
 }) {
   const enabled = useProperty<boolean>('enabled');
   const data = useProperty<string>('data');
-  
+
   createEffect(() => {
     // Only process data when enabled
     if (!enabled()) return;
-    
+
     const value = data();
     console.log('Processing:', value);
   });
@@ -381,13 +381,13 @@ const health = createSignal(100);
 ```typescript
 // BAD: Recomputes every time ANY dependency changes
 createEffect(() => {
-  const filtered = items().filter(complexFilterFn); // expensive
+  const filtered = items.get().filter(complexFilterFn); // expensive
   const sorted = filtered.sort(complexSortFn);      // expensive
   render(sorted);
 });
 
 // GOOD: Cache intermediate results
-const filtered = createMemo(() => items().filter(complexFilterFn));
+const filtered = createMemo(() => items.get().filter(complexFilterFn));
 const sorted = createMemo(() => filtered().sort(complexSortFn));
 
 createEffect(() => {
@@ -400,19 +400,19 @@ createEffect(() => {
 ```typescript
 // BAD: Creates new signal on every effect run
 createEffect(() => {
-  const temp = createSignal(count()); // Don't do this!
+  const temp = createSignal(count.get()); // Don't do this!
 });
 
 // GOOD: Create signals in setup phase
 const temp = createSignal(0);
 createEffect(() => {
-  temp.set(count());
+  temp.set(count.get());
 });
 ```
 
 ## Best Practices
 
-1. **Prefer updater functions**: Use `count.set(c => c + 1)` over reading and writing
+1. **Avoid reads in loops**: Cache signal values if needed
 2. **Keep effects focused**: One effect per concern
 3. **Use memos for derived data**: Don't duplicate computed logic
 4. **Clean up external resources**: Use `onDestroy` for timers, subscriptions

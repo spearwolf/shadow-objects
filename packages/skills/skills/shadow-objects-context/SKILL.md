@@ -36,27 +36,21 @@ Entity Tree:
 ### Provider (Ancestor Entity)
 
 ```typescript
-export function ThemeProvider({
-  createSignal,
-  provideContext,
-}: ShadowObjectCreationAPI) {
-  const theme = createSignal({
+export type Theme = {
+  primary: string;
+  secondary: string;
+  mode: 'light' | 'dark';
+};
+
+export function ThemeProvider({ provideContext }: ShadowObjectCreationAPI) {
+  const theme: Theme = {
     primary: '#007bff',
     secondary: '#6c757d',
     mode: 'light',
-  });
+  );
 
-  // Make theme available to all descendants
+  // Make theme available to entity and their descendants
   provideContext('theme', theme);
-
-  // Optionally return API for same-Entity Shadow Objects
-  return {
-    setTheme: (newTheme) => theme.set(newTheme),
-    toggleMode: () => theme.set(t => ({
-      ...t,
-      mode: t.mode === 'light' ? 'dark' : 'light',
-    })),
-  };
 }
 ```
 
@@ -69,10 +63,10 @@ export function ThemedButton({
   dispatchMessageToView,
 }: ShadowObjectCreationAPI) {
   // Read context provided by ancestor
-  const theme = useContext<() => Theme>('theme');
+  const theme = useContext<Theme>('theme');
 
   createEffect(() => {
-    const currentTheme = theme?.();
+    const currentTheme = theme();
     if (currentTheme) {
       dispatchMessageToView('theme-update', currentTheme);
     }
@@ -103,9 +97,14 @@ const renderer = useContext('three-renderer'); // No autocomplete
 ```typescript
 // three-scene.context.ts
 import type { Scene } from 'three';
+import type { ShadowObjectCreationAPI } from "@spearwolf/shadow-objects/shadow-objects.js";
+
+type ContextReaders =
+  | ShadowObjectCreationAPI["useContext"]
+  | ShadowObjectCreationAPI["useParentContext"];
 
 export const ThreeSceneContext = (useContext: ContextReaders) =>
-  useContext<Scene>('three-scene');
+  useContext<Scene>('three-scene');  // returns a SignalReader<Scene | undefined>
 
 export const ThreeCameraContext = (useContext: ContextReaders) =>
   useContext<PerspectiveCamera>('three-camera');
@@ -118,16 +117,23 @@ export const ThreeRendererContext = (useContext: ContextReaders) =>
 // Consumer.ts
 import { ThreeSceneContext, ThreeCameraContext } from './three.context';
 
-export function MyMesh({ useContext }: ShadowObjectCreationAPI) {
-  // Type-safe! IDE knows getScene returns Scene | undefined
+export function MyMesh({ createEffect, useContext }: ShadowObjectCreationAPI) {
+  // Type-safe! IDE knows getScene returns a SignalReader<Scene | undefined>
   const getScene = ThreeSceneContext(useContext);
   const getCamera = ThreeCameraContext(useContext);
 
-  // Use with confidence
-  const scene = getScene();
-  if (scene) {
-    scene.add(new THREE.Mesh(...));
-  }
+  createEffect(() => {
+    // Use with confidence
+    const scene = getScene();
+    if (scene) {
+      const mesh = new THREE.Mesh(...);
+      scene.add(mesh);
+      // Tidying up is good manners
+      return () => {
+        mesh.removeFromParent();
+      };
+    }
+  });
 }
 ```
 
@@ -151,13 +157,19 @@ export function LoggingWrapper({
   provideContext,    // Re-provide to children
 }: ShadowObjectCreationAPI) {
   // Get context from parent (not from self)
-  const parentTheme = useParentContext<() => Theme>('theme');
+  const parentTheme = useParentContext<Theme>('theme');
 
   // Wrap and re-provide with logging
-  const loggedTheme = () => {
-    const theme = parentTheme?.();
-    console.log('Theme accessed:', theme);
-    return theme;
+  const loggedTheme: Theme = {
+    get primary(): string {
+      console.log('Theme accessed:', theme);
+      return parentTheme.primary;
+    }
+    set primary(val: string) {
+      console.log('Theme accessed:', theme);
+      parentTheme.primary = val;
+    }
+    // ...
   };
 
   provideContext('theme', loggedTheme);
@@ -169,15 +181,12 @@ export function LoggingWrapper({
 For application-wide state accessible to ALL Entities (not just descendants):
 
 ```typescript
-export function AppBootstrap({
-  createSignal,
-  provideGlobalContext,
-}: ShadowObjectCreationAPI) {
-  const appSettings = createSignal({
+export function AppBootstrap({ provideGlobalContext }: ShadowObjectCreationAPI) {
+  const appSettings = {
     apiUrl: 'https://api.example.com',
     locale: 'en-US',
     featureFlags: { newUI: true },
-  });
+  };
 
   // Available to ALL Entities, regardless of tree position
   provideGlobalContext('app-settings', appSettings);
@@ -194,30 +203,29 @@ export function ApiClient({ useContext }: ShadowObjectCreationAPI) {
 
 ## Context Reactivity
 
-Context values are typically **Signals** - when the provider updates the value, all consumers automatically re-run their effects:
+Context values are **Signals** - when the provider updates the value, all consumers automatically re-run their effects:
 
 ```typescript
 // Provider
-export function GameStateProvider({ createSignal, provideContext }) {
-  const level = createSignal(1);
-  const score = createSignal(0);
-
-  provideContext('game-level', level);
-  provideContext('game-score', score);
+export function GameState({ provideContext }: ShadowObjectCreationAPI) {
+  const level = provideContext('game-level', 1);
+  const score = provideContext('game-score', 0);
 
   // When this runs, ALL consumers update automatically
   return {
-    nextLevel: () => level.set(l => l + 1),
-    addScore: (points) => score.set(s => s + points),
+    // call with emit("nextLevel") from another shadow-object attached to the same entity
+    nextLevel: () => level.set(level.value + 1),
+    // emit("addScore", 2)
+    addScore: (points) => score.set(score.value + points),
   };
 }
 
 // Consumer - effect re-runs when level changes
 export function LevelDisplay({ useContext, createEffect }) {
-  const level = useContext<() => number>('game-level');
+  const level = useContext<number>('game-level');
 
   createEffect(() => {
-    console.log('Level is now:', level?.()); // Automatically tracked!
+    console.log('Level is now:', level()); // Automatically tracked!
   });
 }
 ```
@@ -234,7 +242,7 @@ export function AudioServiceProvider({
   onDestroy,
 }: ShadowObjectCreationAPI) {
   const audioContext = new AudioContext();
-  
+
   const audioService = {
     play: (url: string) => { /* ... */ },
     stop: () => { /* ... */ },
@@ -264,12 +272,12 @@ export function StoreProvider({ createSignal, provideContext }) {
 
   // Actions
   const actions = {
-    setUser: (user) => state.set(s => ({ ...s, user })),
-    addItem: (item) => state.set(s => ({ 
-      ...s, 
-      items: [...s.items, item] 
-    })),
-    setLoading: (loading) => state.set(s => ({ ...s, loading })),
+    setUser: (user) => state.set({ ...state.value, user }),
+    addItem: (item) => state.set({
+      ...state.value,
+      items: [...state.value.items, item]
+    }),
+    setLoading: (loading) => state.set({ ...state.value, loading }),
   };
 
   // Provide both state and actions
