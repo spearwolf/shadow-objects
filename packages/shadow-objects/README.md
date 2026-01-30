@@ -1,6 +1,6 @@
 # Shadow Objects Framework
 
-This package contains the core library for the **Shadow Objects Framework**.
+This package contains the core library for the **Shadow Objects Framework** — a reactive library that decouples business logic from UI rendering using a full Entity Component System (ECS) architecture.
 
 **👉 [Read the Documentation](./docs/README.md)**
 

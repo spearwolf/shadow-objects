@@ -21,13 +21,15 @@ Forcing this heavy, domain-specific state into the UI component tree—and const
 
 Shadow Objects solves this by decoupling the **Behavior/Logic** from the **UI/Representation**.
 
+While many frameworks separate logic and view (like MVVM or Presenter patterns), Shadow Objects goes a step further by implementing a full **Entity Component System (ECS)** architecture.
+
 *   **View Components** act as a bridge. They sit in the DOM and handle user interaction.
 *   **Entities & Shadow Objects** live in the "Shadow World" (often a Web Worker). They manage the state and logic completely independently of the UI.
 
 This architecture enables:
 
 *   **Concurrency:** Heavy application logic runs in parallel, distributed across Workers, keeping the Main Thread responsive.
-*   **ECS-like Reusability:** Similar to an **Entity Component System (ECS)**, behavior is modular. A "Shadow Object" is a reusable component of logic that can be attached to any Entity simply by configuring it without having to customize any code.
+*   **ECS Architecture:** Unlike traditional component inheritance, behavior is composed via an Entity Component System. Entities are containers, and Shadow Objects are the Components that define behavior.
 *   **Interchangeability:** Because logic is isolated, you can swap implementations without affecting the UI. You could replace a JavaScript-based physics simulation with a high-performance **WebAssembly (WASM)** module transparently. The UI simply syncs the minimal input data (like player controls), while the WASM Shadow Object handles the heavy lifting.
 
 ## Analogy: The Shadow Theater
@@ -51,19 +53,19 @@ This analogy maps to two distinct realms in your application, as shown in the ar
 
 ![Shadow Objects Architecture](../architecture@2x.png)
 
-### 1. Browser Window (your Components)
+### 1. Browser Window / Main Thread (&rarr; your Components)
 This is what the user sees and interacts with. It consists of the DOM, Web Components, and the rendering layer.
 *   **Role:** Pure projection and user input.
 *   **State:** Minimal / Transient. Ideally, the view should not hold business logic state.
 *   **Environment:** The Main Thread.
 *   **Context:** Can be partitioned into multiple **Namespaces** (e.g. `main-game`, `ui-overlay`) to run isolated simulations side-by-side.
 
-### 2. Web Worker (your Entities)
+### 2. Web Worker _or_ Main Thread (&rarr; your Entities)
 This is where your application actually "lives". It contains the business logic, state management, and side effects.
 *   **Role:** Processing logic, managing state, handling data.
 *   **State:** The source of truth.
-*   **Environment:** Typically a **Web Worker** (the "Dark"), but can also run on the Main Thread (Local Context) for simple setups.
-*   **Isolation:** Each Context has its own Kernel and Entity Tree.
+*   **Environment:** Typically a **Web Worker** (the "Dark"), but it is completely valid to run one or more environments on the **Main Thread** (Local Context).
+*   **Isolation:** Each Context has its own Kernel and Entity Tree. The framework makes it easy to spawn **multiple parallel environments** independent of where they run (Worker or Main Thread).
 
 ## Core Concepts
 
@@ -75,8 +77,8 @@ An **Entity** is the abstract representation of a component. It exists in the Sh
 *   Holds **Properties** (data syncing from View).
 *   Participates in the **Context** system.
 
-### 2. Shadow Object (The Brain)
-A **Shadow Object** is a functional unit of logic attached to an Entity. This design encourages **Composition over Inheritance**.
+### 2. Shadow Object (The Brain / Behavior)
+A **Shadow Object** is a functional unit of logic attached to an Entity. This is analogous to a **Component** in an ECS architecture.
 *   **Reusable:** Designed to be domain-specific and reusable across different parts of the UI.
 *   **Reactive:** It listens to property changes and triggers effects.
 *   **Interchangeable:** Can be implemented in JavaScript or even **WASM**.

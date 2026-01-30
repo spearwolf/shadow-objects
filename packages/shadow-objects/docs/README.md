@@ -2,6 +2,10 @@
 
 Welcome to the official developer documentation for **Shadow Objects**.
 
+Shadow Objects is more than just a state management library; it implements a full **Entity Component System (ECS)** that runs your application logic in an independent environment (typically a Web Worker, but can be the Main Thread), completely decoupled from the UI.
+
+It is designed to be flexible: you can run your logic in a background **Web Worker** for maximum performance and concurrency, or run it directly on the **Main Thread** for simplicity. You can even run **multiple parallel environments** side-by-side, mixing Main Thread and Worker instances as needed.
+
 > [!TIP]
 > **New here?** Start with the [Mental Model](./01-concepts/01-mental-model.md) to understand the core concepts in 5 minutes.
 

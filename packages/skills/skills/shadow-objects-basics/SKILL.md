@@ -5,7 +5,9 @@ description: Learn the fundamentals of the Shadow Objects Framework - a reactive
 
 # Shadow Objects Basics
 
-The Shadow Objects Framework separates your application logic from UI rendering. Think of it like a shadow theater: the audience sees the screen (UI), but the real action happens behind the scenes with the puppeteer (your logic).
+The Shadow Objects Framework separates your application logic from UI rendering, but it goes further than most UI libraries by introducing a full **Entity Component System (ECS)** architecture.
+
+Think of it like a shadow theater: the audience sees the screen (UI), but the real action happens behind the scenes with the puppeteer (your logic).
 
 ## When to Use This Skill
 
@@ -64,7 +66,7 @@ The abstract representation of a component in the Shadow World. Entities:
 
 ### Shadow Object
 
-A functional unit of logic attached to an Entity. Shadow Objects are:
+A functional unit of logic attached to an Entity. This is analogous to a **Component** in an ECS architecture. Shadow Objects are:
 
 - **Reusable**: Domain-specific, works across different UI components
 - **Reactive**: Responds to property and context changes automatically
