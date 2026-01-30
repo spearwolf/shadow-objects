@@ -42,15 +42,27 @@ export type Theme = {
   mode: 'light' | 'dark';
 };
 
-export function ThemeProvider({ provideContext }: ShadowObjectCreationAPI) {
-  const theme: Theme = {
-    primary: '#007bff',
-    secondary: '#6c757d',
-    mode: 'light',
-  );
+const DefaultTheme: Theme = {
+  primary: '#007bff',
+  secondary: '#6c757d',
+  mode: 'light',
+}
 
+export function ThemeProvider({ provideContext }: ShadowObjectCreationAPI) {
   // Make theme available to entity and their descendants
-  provideContext('theme', theme);
+  const theme = provideContext('theme', DefaultTheme);
+
+  // Optionally react to custom entity events
+  return {
+    useDarkMode() {
+      // theme is a Signal<Theme|undefined> you can update or read the value as needed
+      theme.set({
+        primary: '#fff',
+        secondary: '#000',
+        mode: 'dark',
+      });
+    }
+  };
 }
 ```
 
@@ -63,7 +75,7 @@ export function ThemedButton({
   dispatchMessageToView,
 }: ShadowObjectCreationAPI) {
   // Read context provided by ancestor
-  const theme = useContext<Theme>('theme');
+  const theme = useContext<Theme>('theme');  // returns a SignalReader<Theme | undefined>
 
   createEffect(() => {
     const currentTheme = theme();
@@ -117,10 +129,10 @@ export const ThreeRendererContext = (useContext: ContextReaders) =>
 // Consumer.ts
 import { ThreeSceneContext, ThreeCameraContext } from './three.context';
 
-export function MyMesh({ createEffect, useContext }: ShadowObjectCreationAPI) {
+export function MyMesh({ createEffect, useContext, useParentContext }: ShadowObjectCreationAPI) {
   // Type-safe! IDE knows getScene returns a SignalReader<Scene | undefined>
   const getScene = ThreeSceneContext(useContext);
-  const getCamera = ThreeCameraContext(useContext);
+  const getCamera = ThreeCameraContext(useParentContext);
 
   createEffect(() => {
     // Use with confidence
@@ -160,16 +172,11 @@ export function LoggingWrapper({
   const parentTheme = useParentContext<Theme>('theme');
 
   // Wrap and re-provide with logging
-  const loggedTheme: Theme = {
-    get primary(): string {
-      console.log('Theme accessed:', theme);
-      return parentTheme.primary;
+  const loggedTheme: Theme = new Proxy(parentTheme, {
+    get(target, prop) {
+      console.log('Theme accessed:', parentTheme);
+      return parentTheme[prop];
     }
-    set primary(val: string) {
-      console.log('Theme accessed:', theme);
-      parentTheme.primary = val;
-    }
-    // ...
   };
 
   provideContext('theme', loggedTheme);
@@ -182,14 +189,12 @@ For application-wide state accessible to ALL Entities (not just descendants):
 
 ```typescript
 export function AppBootstrap({ provideGlobalContext }: ShadowObjectCreationAPI) {
-  const appSettings = {
+  // Available to ALL Entities, regardless of tree position
+  provideGlobalContext('app-settings', {
     apiUrl: 'https://api.example.com',
     locale: 'en-US',
     featureFlags: { newUI: true },
-  };
-
-  // Available to ALL Entities, regardless of tree position
-  provideGlobalContext('app-settings', appSettings);
+  });
 }
 ```
 
@@ -220,8 +225,16 @@ export function GameState({ provideContext }: ShadowObjectCreationAPI) {
   };
 }
 
+export function PlayerController({ emit }: ShadowObjectCreationAPI) {
+  // At some point, we may want to
+  emit("nextLevel");
+
+  // Or if the player is doing a good job
+  emit("addScore", 100);
+}
+
 // Consumer - effect re-runs when level changes
-export function LevelDisplay({ useContext, createEffect }) {
+export function LevelDisplay({ useContext, createEffect }: ShadowObjectCreationAPI) {
   const level = useContext<number>('game-level');
 
   createEffect(() => {
