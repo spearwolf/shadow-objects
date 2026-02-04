@@ -50,6 +50,7 @@ This repository is a monorepo managed with [nx](https://nx.dev/) and [pnpm](http
 | :--- | :--- |
 | **[`shadow-objects`](packages/shadow-objects/)** | The heart. The core library of the framework. |
 | **[`shae-offscreen-canvas`](packages/shae-offscreen-canvas/)** | A Custom Element implementing an **Offscreen Canvas** – demonstrates the power of `shadow-objects` for graphics applications. |
+| **[`skills`](packages/skills/)** | **Agent Skills** for AI assistants to help with `shadow-objects` development. |
 
 ### Testing & Quality Assurance
 

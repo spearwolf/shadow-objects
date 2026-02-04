@@ -127,17 +127,16 @@ Communication isn't just data syncing; it's also about events.
 
 ### Listening to View Events
 
-When the View Component dispatches an event (e.g., via `component.dispatchShadowObjectsEvent('submit', { secret: '999' })`), you receive it on the entity.
+When the View Component dispatches an event (e.g., via `component.dispatchShadowObjectsEvent('submit', { secret: '999' })`), you receive it via the `onViewEvent` callback.
 
 ```typescript
-import { onViewEvent } from '@spearwolf/shadow-objects/shadow-objects.js';
-
-// entity is used as event source by default
-on(onViewEvent, (type, data) => {
-  if (type === 'submit') {
-    submitForm(data);
-  }
-});
+export function FormLogic({ onViewEvent }: ShadowObjectCreationAPI) {
+  onViewEvent((type, data) => {
+    if (type === 'submit') {
+      submitForm(data);
+    }
+  });
+}
 ```
 
 ### Emitting Events to the View

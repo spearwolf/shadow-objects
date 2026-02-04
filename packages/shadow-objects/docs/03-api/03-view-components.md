@@ -136,11 +136,80 @@ const env = new ShadowEnv();
 - **`view`**: The `ComponentContext` instance to observe.
 - **`envProxy`**: The environment proxy that connects to the Shadow World implementation (e.g., Local or Worker).
 
+### Static Methods
+
+#### `ShadowEnv.get(namespace)`
+
+Retrieves an existing `ShadowEnv` instance by namespace.
+
+```typescript
+const env = ShadowEnv.get('my-game');
+```
+
+Returns `undefined` if no environment exists for the namespace.
+
+### Properties
+
+- **`view`**: The `ComponentContext` instance to observe.
+- **`envProxy`**: The environment proxy that connects to the Shadow World implementation (e.g., Local or Worker).
+- **`isReady`**: `boolean` (read-only). Returns `true` when both the view and proxy are ready and the environment is not destroyed.
+- **`isDestroyed`**: `boolean` (read-only). Returns `true` if the environment has been destroyed.
+
+### Events
+
+The `ShadowEnv` emits events using the [@spearwolf/eventize](https://github.com/spearwolf/eventize) library.
+
+| Event | Description |
+| :--- | :--- |
+| `ShadowEnv.ContextCreated` | Fired when the environment becomes ready (both view and proxy are connected). |
+| `ShadowEnv.ContextLost` | Fired when the environment loses its connection (e.g., proxy disconnected). |
+| `ShadowEnv.AfterSync` | Fired after each synchronization cycle completes. Receives the `ChangeTrailType` data. |
+
+```typescript
+import {on} from '@spearwolf/eventize';
+
+on(env, ShadowEnv.ContextCreated, (shadowEnv) => {
+  console.log('Shadow environment is ready!');
+});
+
+on(env, ShadowEnv.AfterSync, (changeTrail) => {
+  console.log('Sync complete, changes:', changeTrail.length);
+});
+```
+
 ### Methods
 
 #### `sync()`
 
 Triggers synchronization of pending changes from the `ComponentContext` to the Shadow World. This should typically be called in your main render loop (e.g., inside `requestAnimationFrame`).
+
+If the environment is not ready yet, the sync is deferred until `ContextCreated` fires.
+
+#### `syncWait()`
+
+Like `sync()`, but returns a Promise that resolves after the synchronization completes.
+
+```typescript
+const changeTrail = await env.syncWait();
+console.log('Synced changes:', changeTrail);
+```
+
+Useful when you need to ensure the Shadow World has processed changes before continuing.
+
+#### `ready()`
+
+Returns a Promise that resolves when the environment is ready.
+
+```typescript
+await env.ready();
+console.log('Environment is ready, isReady:', env.isReady);
+```
+
+If the environment is already ready, resolves immediately.
+
+#### `destroy()`
+
+Destroys the environment, cleaning up all resources and disconnecting from the Shadow World.
 
 ### Examples
 
@@ -188,6 +257,75 @@ function animate() {
   requestAnimationFrame(animate);
 }
 animate();
+```
+
+---
+
+## Environment Proxies
+
+The `envProxy` property accepts implementations of `IShadowObjectEnvProxy`. The framework provides two implementations out of the box.
+
+### `LocalShadowObjectEnv`
+
+Runs the Shadow World in the **same thread** as the View. Useful for:
+- Simple applications where worker overhead isn't needed
+- Debugging (easier to inspect state)
+- Environments where Web Workers aren't available
+
+```typescript
+import {LocalShadowObjectEnv} from '@spearwolf/shadow-objects';
+
+const localEnv = new LocalShadowObjectEnv();
+```
+
+**Properties:**
+- `kernel`: Direct access to the `Kernel` instance
+- `registry`: Direct access to the `Registry` instance
+- `isLocalEnv`: Always `true`
+- `disableStructuredClone`: Set to `true` to skip cloning data (performance optimization for local use)
+
+**Methods:**
+- `importScript(url)`: Import a shadow objects module from a URL
+- `importModule(module)`: Import a shadow objects module directly
+
+### `RemoteWorkerEnv`
+
+Runs the Shadow World in a **Web Worker**. Recommended for:
+- Complex applications with heavy logic
+- Keeping the UI thread responsive
+- Production applications
+
+```typescript
+import {RemoteWorkerEnv} from '@spearwolf/shadow-objects';
+
+const remoteEnv = new RemoteWorkerEnv();
+```
+
+**Properties:**
+- `isDestroyed`: `boolean` (read-only)
+- `workerLoaded`: Promise that resolves when the worker is loaded
+
+**Methods:**
+- `importScript(url)`: Import a shadow objects module in the worker
+
+### Worker Timeout Constants
+
+When using `RemoteWorkerEnv`, these timeout constants control how long the framework waits for worker responses:
+
+| Constant | Default | Description |
+| :--- | :--- | :--- |
+| `WorkerLoadTimeout` | 60000ms | Time to wait for the worker to load |
+| `WorkerConfigureTimeout` | 60000ms | Time to wait for module imports |
+| `WorkerChangeTrailTimeout` | 5000ms | Time to wait for change trail confirmation |
+| `WorkerDestroyTimeout` | 5000ms | Time to wait for worker destruction |
+
+```typescript
+import {
+  WorkerLoadTimeout,
+  WorkerConfigureTimeout,
+  WorkerChangeTrailTimeout,
+  WorkerDestroyTimeout
+} from '@spearwolf/shadow-objects';
 ```
 
 ---

@@ -97,8 +97,6 @@ Events dispatched by the View Component are automatically forwarded to the corre
 Shadow Objects attached to the same Entity can communicate via events.
 
 ```typescript
-import {emit} from '@spearwolf/eventize';
-
 // Feature A
 export function FeatureA({on}: ShadowObjectCreationAPI) {
   // Listen for event from Feature B
@@ -108,9 +106,9 @@ export function FeatureA({on}: ShadowObjectCreationAPI) {
 }
 
 // Feature B
-export function FeatureB({entity}: ShadowObjectCreationAPI) {
+export function FeatureB({emit}: ShadowObjectCreationAPI) {
   // Emit event via the entity
-  emit(entity, 'data-loaded', {id: 123});
+  emit('data-loaded', {id: 123});
 }
 ```
 
@@ -119,9 +117,7 @@ export function FeatureB({entity}: ShadowObjectCreationAPI) {
 You can broadcast events to all descendant Entities using the `traverse` helper. This is useful for "global" updates like a frame tick or a resize event.
 
 ```typescript
-import {emit} from '@spearwolf/eventize';
-
-export function StageController({entity, on}: ShadowObjectCreationAPI) {
+export function StageController({emit, entity, on}: ShadowObjectCreationAPI) {
   // Example: Broadcast a 'frame-update' event to the entire subtree
   on('tick', (deltaTime) => {
     entity.traverse((e) => {

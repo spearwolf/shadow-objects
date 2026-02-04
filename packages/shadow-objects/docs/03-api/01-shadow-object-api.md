@@ -189,18 +189,51 @@ Same as `on`, but the listener is automatically removed after the first trigger.
 
 ### `emit(eventNames, ...eventArgs)`
 
-Emits an event on the *entity* associated with the current shadow object.
+Emits an event on the *entity* associated with the current shadow object. This is the preferred way to communicate with other Shadow Objects attached to the same Entity or to signal state changes.
 
--   **`eventNames`** (`string` | `string[]`): The name(s) of the event(s) to emit.
--   **`...eventArgs`** (`any[]`): Arguments to pass to the event listeners.
+*   **Signature:** `emit(eventNames: string | symbol | (string|symbol)[], ...eventArgs: any[]): void`
+
+**Parameters:**
+*   `eventNames`: The name(s) of the event(s) to emit. Can be a string, symbol, or array.
+*   `...eventArgs`: Arguments to pass to the event listeners.
+
+```typescript
+export function PlayerLogic({ emit, on }: ShadowObjectCreationAPI) {
+    // Emit an event that other Shadow Objects on this entity can listen to
+    emit('player-ready', { health: 100 });
+
+    // Emit multiple events at once
+    emit(['score-changed', 'ui-update'], { score: 500 });
+}
+
+export function GameUI({ on }: ShadowObjectCreationAPI) {
+    // Listen to events from the same entity
+    on('player-ready', (data) => {
+        console.log('Player health:', data.health);
+    });
+}
+```
 
 ### `emit(target, eventNames, ...eventArgs)`
 
-Emits an event on a specific *target* object.
+Emits an event on a specific *target* object instead of the current entity.
 
--   **`target`** (`Object`): The object to emit the event on. Must be compatible with the event system.
--   **`eventNames`** (`string` | `string[]`): The name(s) of the event(s) to emit.
--   **`...eventArgs`** (`any[]`): Arguments to pass to the event listeners.
+*   **Signature:** `emit(target: object, eventNames: string | symbol | (string|symbol)[], ...eventArgs: any[]): void`
+
+**Parameters:**
+*   `target`: The object to emit the event on. Must be an eventized object.
+*   `eventNames`: The name(s) of the event(s) to emit.
+*   `...eventArgs`: Arguments to pass to the event listeners.
+
+```typescript
+export function ParentController({ entity, emit }: ShadowObjectCreationAPI) {
+    // Emit event on a specific child entity
+    const child = entity.children[0];
+    if (child) {
+        emit(child, 'parent-command', { action: 'move' });
+    }
+}
+```
 
 #### Best Practices
 
@@ -254,9 +287,87 @@ onDestroy(() => clearInterval(interval));
 
 ## 7. The `entity` Instance
 
-The API provides direct access to the underlying `EntityApi` instance via the `entity` property. This gives access to entity metadata like `uuid`, `order`, hierarchy info (`parent`, `children`), and property inspection (`propKeys`, `propEntries`).
-
-The `order` property reflects the sort order defined in the View Layer. This is useful for systems that need to process entities in a specific sequence (e.g. rendering layers), even though the Shadow World itself doesn't enforce a DOM-like structure.
+The API provides direct access to the underlying `EntityApi` instance via the `entity` property. This gives access to entity metadata, hierarchy information, and property inspection.
 
 > [!NOTE]
 > `dispatchMessageToView` is now a top-level method on the API object and is no longer available on the `entity` instance.
+
+### Properties
+
+#### `entity.uuid`
+
+The unique identifier of the Entity. This matches the `uuid` of the corresponding `ViewComponent`.
+
+*   **Type:** `string` (readonly)
+
+#### `entity.order`
+
+The sort order defined in the View Layer. Useful for systems that need to process entities in a specific sequence (e.g., rendering layers).
+
+*   **Type:** `number` (readonly)
+
+#### `entity.hasParent`
+
+Indicates whether this Entity has a parent in the Entity tree.
+
+*   **Type:** `boolean` (readonly)
+
+#### `entity.parent`
+
+Reference to the parent Entity, if any.
+
+*   **Type:** `EntityApi | undefined` (readonly)
+
+#### `entity.children`
+
+Array of child Entities.
+
+*   **Type:** `readonly EntityApi[]` (readonly)
+
+#### `entity.propKeys`
+
+Array of all property keys currently set on this Entity.
+
+*   **Type:** `string[]` (readonly)
+
+```typescript
+createEffect(() => {
+    console.log('Available properties:', entity.propKeys);
+});
+```
+
+#### `entity.propEntries`
+
+Array of key-value pairs for all properties on this Entity.
+
+*   **Type:** `[string, unknown][]` (readonly)
+
+```typescript
+createEffect(() => {
+    for (const [key, value] of entity.propEntries) {
+        console.log(`${key} = ${value}`);
+    }
+});
+```
+
+### Methods
+
+#### `entity.traverse(callback)`
+
+Traverses the Entity and all its descendants, calling the callback for each.
+
+*   **Signature:** `traverse(callback: (entity: EntityApi) => unknown): void`
+
+The traversal visits the current entity first, then recursively visits all descendants.
+
+```typescript
+import { emit } from '@spearwolf/eventize';
+
+// Broadcast an event to all children
+entity.traverse((e) => {
+    emit(e, 'frame-update', { deltaTime: 0.016 });
+});
+```
+
+> [!TIP]
+> `traverse()` is useful for implementing broadcast patterns where a parent needs to notify all descendants of an event (like a frame tick or configuration change).

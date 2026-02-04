@@ -75,7 +75,7 @@ export function MyLogic({
 
   createEffect(() => {
     // RUNTIME: Runs whenever 'title' or 'count' changes
-    console.log(`Title: ${title()}, Count: ${count()}`);
+    console.log(`Title: ${title()}, Count: ${count.get()}`);
   });
 
   // SETUP: Listen for View events

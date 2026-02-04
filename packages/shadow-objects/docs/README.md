@@ -60,6 +60,11 @@ Detailed technical documentation for the framework's interfaces.
 *   [**Web Components (HTML)**](./03-api/04-web-components.md)
     *   `<shae-worker>`, `<shae-ent>`, `<shae-prop>`.
     *   Attributes and configuration.
+*   [**Advanced API**](./03-api/05-advanced-api.md)
+    *   Programmatic registration with `shadowObjects.define()`.
+    *   The `@ShadowObject` decorator.
+    *   Low-level `Registry` and `Kernel` classes.
+    *   Lifecycle event symbols.
 
 ### 4. Patterns & Best Practices
 
