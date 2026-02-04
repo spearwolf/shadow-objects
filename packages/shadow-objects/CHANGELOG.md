@@ -5,6 +5,11 @@ All notable changes to [@spearwolf/shadow-objects](https://github.com/spearwolf/
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.1] - 2026-02-04
+
+- update dependencies
+  - `@spearwolf/signalize` to 0.27.2
+
 ## [0.30.0] - 2026-01-21
 
 - **New Feature:** Added `emit()` helper to `ShadowObjectCreationAPI`.

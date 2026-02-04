@@ -1,7 +1,7 @@
 {
   "name": "@spearwolf/shadow-objects",
   "description": "a reactive entity-component framework that feels at home in the shadows",
-  "version": "0.30.0",
+  "version": "0.30.1",
   "author": {
     "name": "Wolfger Schramm",
     "email": "wolfger@spearwolf.de",
@@ -89,6 +89,6 @@
   },
   "dependencies": {
     "@spearwolf/eventize": "^4.0.2",
-    "@spearwolf/signalize": "^0.25.0"
+    "@spearwolf/signalize": "^0.27.2"
   }
 }
