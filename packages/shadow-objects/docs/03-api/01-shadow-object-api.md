@@ -87,7 +87,7 @@ Makes a value available to **all** Entities in the entire application, regardles
 
 ## 3. Reactivity Primitives
 
-The framework re-exports reactivity primitives (via `@spearwolf/signalize`). These are the building blocks of your logic.
+The framework re-exports reactivity primitives (via [@spearwolf/signalize](https://github.com/spearwolf/signalize)). These are the building blocks of your logic.
 
 ### `createSignal(initialValue)`
 
