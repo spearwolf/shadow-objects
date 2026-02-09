@@ -33,7 +33,6 @@ The **Shadow Objects Framework** is a reactive library designed to decouple busi
 - **`packages/shadow-objects/`**: The main framework library. Deployment package: `@spearwolf/shadow-objects`.
 - **`packages/shadow-objects/docs/`**: **The authoritative source of documentation.** Contains Fundamentals, Guides, and API references.
 - **`packages/shae-offscreen-canvas/`**: An offscreen canvas as custom HTML element based on shadow-objects.
-- **`packages/skills/`**: Agent Skills for AI assistants to help with shadow-objects development.
 - **`packages/shadow-objects-testing/`**: Functional tests.
 - **`packages/shadow-objects-e2e/`**: Blackbox / E2E tests.
 
