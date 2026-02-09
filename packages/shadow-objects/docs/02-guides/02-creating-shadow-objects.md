@@ -116,7 +116,7 @@ export function CounterLogic({ createSignal, createEffect, dispatchMessageToView
 
   // Notify View of changes
   createEffect(() => {
-    dispatchMessageToView('count-changed', { value: count() });
+    dispatchMessageToView('count-changed', { value: count.get() });
   });
 }
 ```
