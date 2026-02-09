@@ -6,6 +6,10 @@ on:
     types: [completed]
     branches: [main]
 
+permissions:
+  id-token: write  # Required for OIDC
+  contents: read
+
 jobs:
   deploy:
     name: Publish all NPM Packages
@@ -16,7 +20,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           always-auth: true
           registry-url: https://registry.npmjs.org
           scope: '@spearwolf'
@@ -24,12 +28,6 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           run_install: true
-        env:
-          NPM_TOKEN: xxx
 
       - run: pnpm run publishNpmPkg
         name: Publish packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
