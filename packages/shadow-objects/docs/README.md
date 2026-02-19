@@ -1,84 +1,53 @@
-# Shadow Objects Framework Documentation 🧛
+# Shadow Objects
 
-Welcome to the official developer documentation for **Shadow Objects**.
+**Your UI is the renderer. Shadow Objects is the game world.**
 
-Shadow Objects is more than just a state management library; it implements a full **Entity Component System (ECS)** that runs your application logic in an independent environment (typically a Web Worker, but can be the Main Thread), completely decoupled from the UI.
+Shadow Objects is an Entity Component System (ECS) for web applications. Entities are lightweight game objects. Shadow Objects are ECS components that attach behavior to them. The Kernel is the system runner that orchestrates it all. Your framework -- React, Vue, Svelte, plain DOM -- just renders what the game world says.
 
-It is designed to be flexible: you can run your logic in a background **Web Worker** for maximum performance and concurrency, or run it directly on the **Main Thread** for simplicity. You can even run **multiple parallel environments** side-by-side, mixing Main Thread and Worker instances as needed.
+Shadow Objects doesn't replace React, Vue, or Svelte. It's the logic layer those frameworks render. Think of your UI as a real-time renderer for a running simulation. The components on screen are displays of state that lives somewhere else -- in a Shadow Environment, on a dedicated thread, running at its own pace.
 
-> [!TIP]
-> **New here?** Start with the [Mental Model](./01-concepts/01-mental-model.md) to understand the core concepts in 5 minutes.
+If Redux or Zustand is global state on one thread, Shadow Objects is reactive ECS state across any number of threads. Shadow environments can run on the main thread (local) or in a web worker (remote). Both are first-class citizens. You can run multiple parallel environments side-by-side, mix local and worker instances, and namespace them so they never step on each other.
 
-## 📚 Table of Contents
+## Documentation
 
-### 1. Concepts
+| File | What's in it |
+| :--- | :--- |
+| [README.md](./README.md) | This file -- overview and navigation. |
+| [getting-started.md](./getting-started.md) | Installation and first working example. |
+| [concepts.md](./concepts.md) | Core mental model: entities, components, environments, and how they connect. |
+| [guides.md](./guides.md) | Step-by-step recipes for common tasks. |
+| [api-reference.md](./api-reference.md) | Complete API reference for every class, method, and web component. |
+| [cheat-sheet.md](./cheat-sheet.md) | One-page quick reference. Print it out. |
+| [best-practices.md](./best-practices.md) | Patterns from real-world projects: signals vs context, resource management, and more. |
 
-Core concepts, architecture, and the theory behind the framework.
+## Quick Example
 
-*   [**Mental Model**](./01-concepts/01-mental-model.md)
-    *   The "Shadow Theater" analogy.
-    *   Separation of View (Light World) and Logic (Shadow World).
-*   [**Architecture**](./01-concepts/02-architecture.md)
-    *   The Kernel, Registry, and Message Router.
-    *   How the View and Shadow World communicate.
-*   [**Lifecycle**](./01-concepts/03-lifecycle.md)
-    *   Entity creation, updates, and destruction.
-    *   Shadow Object setup and teardown phases.
-*   [**Entity Tree, Context & Events**](./01-concepts/04-entity-tree-context-events.md)
-    *   Hierarchy and scope of Shadow Objects.
-    *   How `provideContext` works across the tree.
-    *   Event bubbling and communication.
+```html
+<!-- Declare your Shadow Environment -->
+<shae-worker src="./game-logic.js"></shae-worker>
 
-### 2. Guides
+<!-- Declare entities (game objects) -->
+<shae-ent token="player">
+  <shae-prop name="speed" value="5.0" type="float"></shae-prop>
+</shae-ent>
+```
 
-Step-by-step instructions for building applications.
+```javascript
+// game-logic.js -- runs in a Web Worker
+export default {
+  define: {
+    'player': function PlayerLogic({ useProperty, createEffect, dispatchMessageToView }) {
+      const speed = useProperty('speed');
 
-*   [**Getting Started**](./02-guides/01-getting-started.md)
-    *   Installation and "Hello World" setup.
-*   [**Creating Shadow Objects**](./02-guides/02-creating-shadow-objects.md)
-    *   Writing logic using the functional API (Recommended).
-    *   Using Reactivity (`createSignal`, `createEffect`).
-*   [**View Integration**](./02-guides/03-view-integration.md)
-    *   Connecting the DOM to Shadow Objects.
-    *   Syncing properties and events.
-*   [**Class-Based Shadow Objects**](./02-guides/04-class-based-shadow-objects.md)
-    *   Using the alternative Class-based syntax.
-    *   Automatic event registration.
+      createEffect(() => {
+        // Reactive: re-runs whenever speed changes
+        dispatchMessageToView('speed-changed', { speed: speed() });
+      });
+    }
+  }
+};
+```
 
-### 3. API Reference
+## Related Packages
 
-Detailed technical documentation for the framework's interfaces.
-
-*   [**Shadow Object API**](./03-api/01-shadow-object-api.md)
-    *   The `ShadowObjectCreationAPI`.
-    *   Inputs (`useProperty`), Context (`useContext`, `provideContext`), and Events.
-*   [**Registry & Modules**](./03-api/02-registry-and-modules.md)
-    *   Defining modules and routing rules.
-*   [**View Components (JS API)**](./03-api/03-view-components.md)
-    *   The underlying `ViewComponent` and `ComponentContext` classes.
-    *   Manual integration for custom renderers (Canvas, WebGL).
-*   [**Web Components (HTML)**](./03-api/04-web-components.md)
-    *   `<shae-worker>`, `<shae-ent>`, `<shae-prop>`.
-    *   Attributes and configuration.
-*   [**Advanced API**](./03-api/05-advanced-api.md)
-    *   Programmatic registration with `shadowObjects.define()`.
-    *   The `@ShadowObject` decorator.
-    *   Low-level `Registry` and `Kernel` classes.
-    *   Lifecycle event symbols.
-
-### 4. Patterns & Best Practices
-
-Idiomatic usage and design patterns distilled from real-world projects.
-
-*   [**Best Practices**](./04-patterns/best-practices.md)
-    *   State Management (Signals vs Context).
-    *   The "Context Reader" pattern for type safety.
-    *   Resource Management with `createResource`.
-    *   Shadow Object functional patterns.
-
----
-
-### Related Packages
-
-*   [**@spearwolf/shae-offscreen-canvas**](../../shae-offscreen-canvas/README.md)
-    *   Documentation for the offscreen canvas integration.
+- [**@spearwolf/shae-offscreen-canvas**](../../shae-offscreen-canvas/README.md) -- Offscreen canvas integration for rendering in a worker alongside your Shadow Objects logic.

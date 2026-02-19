@@ -1,66 +1,65 @@
 # shadow-objects
 
-A reactive Entity&larr;Component Framework that feels at home in the shadows 🧛
+A reactive Entity-Component Framework for running app logic in a shadow environment.
+
+> [!WARNING]
+> This is a highly experimental framework that is slowly maturing. Use at your own risk.
+
+---
+
+## The Mental Model: ECS for Web Apps
+
+Think of shadow-objects like a **game engine for your application state**:
+
+- **Your UI (React, Vue, Svelte, Canvas)** is the renderer — it just draws what it's told.
+- **Entities** are lightweight game objects in the shadow environment. No logic, just identity.
+- **Shadow Objects** are ECS components that attach behavior to entities — signals, effects, event handlers.
+- **The Kernel** runs the show: it manages entity lifecycle and schedules updates.
+
+Your UI is the renderer. Shadow Objects is the game world.
+
+The shadow environment can run on the **main thread** (local mode, zero overhead) or in a **web worker** (remote mode, parallel execution). Both are first-class citizens.
+
+**Shadow Objects doesn't replace React, Vue, or Svelte.** It's the logic layer those frameworks render. When your app state gets complex enough that you're fighting your UI framework's reactivity, shadow-objects gives you a clean separation: business logic over here, rendering over there.
+
+If Redux and Zustand are global state on one thread, shadow-objects is reactive ECS state across any number of threads.
+
+---
 
 > [!WARNING]
 > 🚀 This is a highly experimental framework that is slowly maturing. Use at your own risk. 🔥
 
 ---
 
-## 🎭 The Mental Model: The Shadow Theater
+## Documentation
 
-Imagine a **web application** like a classic **Shadow Theater**:
+**The complete and authoritative documentation is in [`packages/shadow-objects/docs/`](packages/shadow-objects/docs/).**
 
-*   **The Screen (View):** What the user sees – the DOM elements and UI components.
-*   **The Puppets (Entities):** The abstract objects in the background representing the actual scene.
-*   **The Puppeteer (Shadow Object):** The logic pulling the strings. The puppeteer decides how the puppets move but remains invisible to the audience.
-
-**The Problem with Traditional Frameworks:**
-Logic (puppeteer) and presentation (screen) are often mixed in the same thread (Main Thread). This works well for document-centric applications, but friction arises in complex, rich interactions like 3D configurators, game engines, or data-intensive tools and leads to complexity bottlenecks because UI rendering blocks business logic – and vice versa.
-
-**The Solution by `shadow-objects`:**
-We separate the worlds strictly.
-
-![The Shadow Theater Model](packages/shadow-objects/docs/shadow-theater.svg)
-
-1.  **In the Light (Main Thread):** The dumb View. It only displays and forwards events.
-2.  **In the Shadow (Web Worker _or_ Main Thread):** The smart Logic. This is where **Entities** and **Shadow Objects** live. They process data, calculate states, and "project" the result back onto the screen.
-
-Through this architecture, your application logic runs parallel to the UI, decoupled and reactive.
+| File | What's inside |
+| :--- | :--- |
+| [**getting-started.md**](packages/shadow-objects/docs/getting-started.md) | Hello World, your first shadow object |
+| [**concepts.md**](packages/shadow-objects/docs/concepts.md) | ECS mental model, architecture, lifecycle, entity tree |
+| [**guides.md**](packages/shadow-objects/docs/guides.md) | Writing shadow objects, view integration, multi-env setup |
+| [**api-reference.md**](packages/shadow-objects/docs/api-reference.md) | Full API reference |
+| [**cheat-sheet.md**](packages/shadow-objects/docs/cheat-sheet.md) | At-a-glance tables and snippets |
+| [**best-practices.md**](packages/shadow-objects/docs/best-practices.md) | Patterns, composition, cleanup, testing |
 
 ---
 
-## 📚 Documentation
-
-**The complete and authoritative documentation is located in the [`packages/shadow-objects/docs/`](packages/shadow-objects/docs/) directory.**
-
-*   [**Fundamentals**](packages/shadow-objects/docs/01-concepts/): Understand the mental model, architecture, and lifecycle in detail.
-*   [**Guides**](packages/shadow-objects/docs/02-guides/): Step-by-step instructions for getting started.
-*   [**API Reference**](packages/shadow-objects/docs/03-api/): Detailed description of the interfaces.
-
----
-
-## 🏗️ Project Structure (Monorepo)
+## Project Structure (Monorepo)
 
 This repository is a monorepo managed with [nx](https://nx.dev/) and [pnpm](https://pnpm.io/).
 
-### Core Packages
-
-| Package | Description |
-| :--- | :--- |
-| **[`shadow-objects`](packages/shadow-objects/)** | The heart. The core library of the framework. |
-| **[`shae-offscreen-canvas`](packages/shae-offscreen-canvas/)** | A Custom Element implementing an **Offscreen Canvas** – demonstrates the power of `shadow-objects` for graphics applications. |
-
-### Testing & Quality Assurance
-
-| Package | Description |
-| :--- | :--- |
-| **[`shadow-objects-testing`](packages/shadow-objects-testing/)** | Functional and integration tests. |
-| **[`shadow-objects-e2e`](packages/shadow-objects-e2e/)** | End-to-End tests using [Playwright](https://playwright.dev/). |
+| Package | npm name | Description |
+| :--- | :--- | :--- |
+| [**`shadow-objects`**](packages/shadow-objects/) | `@spearwolf/shadow-objects` | The core framework library |
+| [**`shae-offscreen-canvas`**](packages/shae-offscreen-canvas/) | `@spearwolf/shae-offscreen-canvas` | Custom element for offscreen canvas rendering — demonstrates shadow-objects for graphics |
+| [**`shadow-objects-testing`**](packages/shadow-objects-testing/) | — (not published) | Functional and integration tests |
+| [**`shadow-objects-e2e`**](packages/shadow-objects-e2e/) | — (not published) | End-to-end tests using [Playwright](https://playwright.dev/) |
 
 ---
 
-## ⚡ Available Scripts
+## Available Scripts
 
 Run these commands from the root directory:
 
@@ -76,14 +75,14 @@ Run these commands from the root directory:
 
 ---
 
-## ⚙️ Development Setup
+## Development Setup
 
-1.  **Prerequisites:** Node.js >=20.12.2, pnpm >=9.1.2
-2.  **Install Dependencies:**
+1. **Prerequisites:** Node.js >=20.12.2, pnpm >=9.1.2
+2. **Install Dependencies:**
     ```sh
     pnpm install
     ```
-3.  **Install Playwright Browsers (for E2E Tests):**
+3. **Install Playwright Browsers (for E2E Tests):**
     ```sh
     cd packages/shadow-objects-e2e
     pnpm exec playwright install chromium firefox
