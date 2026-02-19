@@ -47,3 +47,6 @@ tsconfig.*.tsbuildinfo
 
 .nx/cache
 .nx/workspace-data
+
+# git worktrees
+.worktrees
