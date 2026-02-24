@@ -5,8 +5,8 @@
 - Entities are lightweight game objects. Shadow Objects are ECS components that attach behavior to them.
 - The setup function runs once per entity. Everything reactive goes inside it.
 - `useProperty` reads from the view. `dispatchMessageToView` writes back. Events connect them.
-- Local = main thread (great for debugging). Remote = web worker (great for production).
-- Shadow Objects is the logic layer. React/Vue/Svelte is the render layer. They work together.
+- Local = main thread (great for webgl, webgpu based apps or debugging). Remote = web worker (great for production).
+- Shadow Objects is the logic layer. React/Vue/Svelte/Html is the render layer. They work together.
 
 ---
 
@@ -69,17 +69,17 @@ export default {
 ```typescript
 // Signal: read/write reactive state
 const count = createSignal(0);
-count()           // read
-count.set(5)      // write
-count.set(n => n + 1) // update
+count.get() // read
+count.set(5) // write
+count.set(count.value + 1) // update
 
 // Memo: derived value
-const doubled = createMemo(() => count() * 2);
+const doubled = createMemo(() => count.get() * 2);
 doubled() // read
 
 // Effect: runs immediately, re-runs when deps change
 createEffect(() => {
-  console.log('count is', count());
+  console.log('count is', count.get());
 });
 
 // Resource: manage external objects that need cleanup
@@ -123,13 +123,13 @@ export function GameRoot({ provideContext, createSignal }) {
 // Consumer: read from nearest ancestor
 export function Enemy({ useContext }) {
   const currentLevel = useContext('currentLevel');
-  // if currentLevel is a signal: currentLevel() to read
+  // currentLevel is a signal reader: currentLevel() to read
 }
 
 // Skip self, start from parent
-export function Middleware({ useParentContext, provideContext }) {
+export function Middleware({ createMemo, useParentContext, provideContext }) {
   const upstream = useParentContext('theme');
-  provideContext('theme', { ...upstream, accent: 'red' });
+  provideContext('theme', createMemo(() => ({ ...upstream(), accent: 'red' })));
 }
 
 // Global (available everywhere, regardless of hierarchy)

@@ -165,7 +165,7 @@ export function MyLogic({
 
   onViewEvent((type, data) => {
     if (type === 'click') {
-      count.set(c => c + 1);
+      count.set(count.value + 1);
     }
   });
 
