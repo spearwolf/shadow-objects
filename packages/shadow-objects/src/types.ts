@@ -1,4 +1,4 @@
-import type {AnyEventNames, EventArgs, EventizedObject, SubscribeArgs, on, once} from '@spearwolf/eventize';
+import type {AnyEventNames, EventArgs, EventizedObject, on, once, SubscribeArgs} from '@spearwolf/eventize';
 import type {CompareFunc, createEffect, createMemo, createSignal, Signal, SignalReader} from '@spearwolf/signalize';
 import type {AppliedChangeTrail, ComponentChangeType, ImportedModule} from './constants.js';
 import type {Entity} from './in-the-dark/Entity.js';
@@ -86,7 +86,7 @@ export interface AppliedChangeTrailEvent {
 }
 
 export type EntityApi = Readonly<
-  Pick<Entity, 'uuid' | 'order' | 'hasParent' | 'propKeys' | 'propEntries'> & {
+  Pick<Entity, 'uuid' | 'order' | 'hasParent' | 'propKeys' | 'propEntries' | 'kernel'> & {
     parent?: EntityApi;
     children: readonly EntityApi[];
     traverse(callback: (entity: EntityApi) => unknown): void;

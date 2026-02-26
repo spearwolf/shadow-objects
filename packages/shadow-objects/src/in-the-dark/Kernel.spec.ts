@@ -1,5 +1,5 @@
 import {emit, on} from '@spearwolf/eventize';
-import {createSignal, type Signal, type SignalReader, value} from '@spearwolf/signalize';
+import {createSignal, value, type Signal, type SignalReader} from '@spearwolf/signalize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {MessageToView} from '../constants.js';
 import type {ShadowObjectCreationAPI} from '../types.js';
@@ -1046,6 +1046,35 @@ describe('Kernel', () => {
       expect(onDestroyFn).toHaveBeenCalledWith(entity);
 
       kernel.destroy();
+    });
+  });
+
+  describe('Entity destruction', () => {
+    it('Entity destruction should destroy children', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const destroyCallback = vi.fn();
+
+      @ShadowObject({registry, token: 'testOnDestroy'})
+      class TestOnDestroy {
+        constructor({onDestroy, entity}: ShadowObjectCreationAPI) {
+          onDestroy(() => destroyCallback(entity.uuid));
+        }
+      }
+      expect(TestOnDestroy).toBeDefined();
+
+      const [parentUuid, childUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(parentUuid, 'testOnDestroy');
+      kernel.createEntity(childUuid, 'testOnDestroy', parentUuid, 0, undefined, true);
+
+      expect(destroyCallback).not.toHaveBeenCalled();
+
+      kernel.destroyEntity(parentUuid);
+
+      expect(destroyCallback).toHaveBeenNthCalledWith(1, childUuid);
+      expect(destroyCallback).toHaveBeenNthCalledWith(2, parentUuid);
     });
   });
 });

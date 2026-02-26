@@ -5,6 +5,12 @@ All notable changes to [@spearwolf/shadow-objects](https://github.com/spearwolf/
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.2] - 2026-02-26
+
+- **API Update:** When calling the `kernel.createEntity()` function, there is now a new parameter `autoDestructionOnParentRemoval`. This makes it easier to create entities yourself from inside a shadow-object.
+  - These entities created _internally_ or _in the dark_ are then cleaned up when the original entity is deleted from the view.
+  - Allow access to `entity.kernel` from inside a shadow-object.
+
 ## [0.30.1] - 2026-02-04
 
 - update dependencies

@@ -143,6 +143,8 @@ export class Entity {
     this.#props.clear();
     off(this);
 
+    this.#autoDestructionSubscription?.();
+
     for (const rootCtx of this.#rootContexts.values()) {
       rootCtx.cleanup();
       rootCtx.signal.destroy();
@@ -221,6 +223,25 @@ export class Entity {
       }
 
       // this.emit(onRemoveFromParent, this, prevParent);
+    }
+  }
+
+  #autoDestructionSubscription?: () => void;
+
+  get autoDestructionOnParentRemoval(): boolean {
+    return !!this.#autoDestructionSubscription;
+  }
+
+  set autoDestructionOnParentRemoval(autoDestruct: boolean) {
+    if (autoDestruct) {
+      if (!this.#autoDestructionSubscription && this.parentUuid) {
+        this.#autoDestructionSubscription = once(this.parent, onDestroy, Priority.Max, () => {
+          this.kernel.destroyEntity(this.uuid);
+        });
+      }
+    } else if (this.#autoDestructionSubscription) {
+      this.#autoDestructionSubscription();
+      this.#autoDestructionSubscription = undefined;
     }
   }
 

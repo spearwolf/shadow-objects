@@ -215,7 +215,14 @@ export class Kernel {
     }
   }
 
-  createEntity(uuid: string, token: string, parentUuid?: string, order = 0, properties?: [string, unknown][]): void {
+  createEntity(
+    uuid: string,
+    token: string,
+    parentUuid?: string,
+    order = 0,
+    properties?: [string, unknown][],
+    autoDestructionOnParentRemoval = false,
+  ): void {
     const e = new Entity(this, uuid);
 
     e.order = order;
@@ -227,6 +234,8 @@ export class Kernel {
     if (parentUuid) {
       e.parentUuid = parentUuid;
     }
+
+    e.autoDestructionOnParentRemoval = autoDestructionOnParentRemoval;
 
     if (!e.hasParent) {
       this.#rootEntities.add(uuid);
