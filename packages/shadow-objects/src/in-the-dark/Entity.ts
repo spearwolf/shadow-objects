@@ -129,7 +129,7 @@ export class Entity {
   constructor(kernel: Kernel, uuid: string) {
     this.#kernel = kernel;
     this.#uuid = uuid;
-    once(this, onDestroy, Priority.Min, this);
+    once(this as Entity, onDestroy, Priority.Min, this);
   }
 
   traverse(callback: (entity: Entity) => void) {
@@ -257,7 +257,7 @@ export class Entity {
 
   dispatchViewEvents(events: IComponentEvent[]) {
     for (const {type, data} of events) {
-      emit(this, onViewEvent, type, data);
+      emit(this as Entity, onViewEvent, type, data);
     }
   }
 

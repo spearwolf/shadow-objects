@@ -23,10 +23,10 @@ export class SignalsPath {
   readonly value$: Signal<any>;
 
   constructor(signals?: SignalLike<any>[]) {
-    retain(this, VALUE);
+    retain(this as SignalsPath, VALUE);
 
     this.value$ = findObjectSignalByName(this, VALUE);
-    this.value$.onChange((val) => emit(this, VALUE, val));
+    this.value$.onChange((val) => emit(this as SignalsPath, VALUE, val));
 
     if (signals) {
       this.add(...signals);
@@ -60,7 +60,7 @@ export class SignalsPath {
     this.#effect?.destroy();
     this.#effect = undefined;
 
-    retainClear(this, VALUE);
+    retainClear(this as SignalsPath, VALUE);
     off(this);
 
     this.value$.destroy();

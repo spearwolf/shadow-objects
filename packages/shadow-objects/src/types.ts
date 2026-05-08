@@ -143,10 +143,10 @@ export interface ShadowObjectCreationAPI {
   createMemo<T = unknown>(...args: Parameters<typeof createMemo<T>>): SignalReader<T>;
 
   on(...args: SubscribeArgs): ReturnType<typeof on>;
-  on(...args: Parameters<typeof on>): ReturnType<typeof on>;
+  on(...args: [object, ...SubscribeArgs]): ReturnType<typeof on>;
 
   once(...args: SubscribeArgs): ReturnType<typeof once>;
-  once(...args: Parameters<typeof once>): ReturnType<typeof once>;
+  once(...args: [object, ...SubscribeArgs]): ReturnType<typeof once>;
 
   onViewEvent(callback: (type: string, data: unknown) => any): void;
 

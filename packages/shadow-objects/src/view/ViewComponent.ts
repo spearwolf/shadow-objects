@@ -142,7 +142,7 @@ export class ViewComponent {
   }
 
   dispatchEvent(type: string, data: unknown, traverseChildren: boolean) {
-    emit(this, type, data);
+    emit(this as ViewComponent, type, data);
 
     if (traverseChildren) {
       for (const child of this.#context!.getChildren(this)) {

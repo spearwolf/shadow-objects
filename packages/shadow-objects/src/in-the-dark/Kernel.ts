@@ -315,7 +315,7 @@ export class Kernel {
 
   dispatchMessageToView(message: MessageToViewEvent): void {
     queueMicrotask(() => {
-      emit(this, MessageToView, message);
+      emit(this as Kernel, MessageToView, message);
     });
   }
 

@@ -21,7 +21,7 @@ export class FrameLoop {
       this.#requestAnimationFrame();
     }
 
-    on(this, FrameLoop.OnFrame, target);
+    on(this as FrameLoop, FrameLoop.OnFrame, target);
 
     this.#subscriptionCount++;
 
@@ -39,7 +39,7 @@ export class FrameLoop {
   }
 
   #onFrame = (now: number) => {
-    emit(this, FrameLoop.OnFrame, now);
+    emit(this as FrameLoop, FrameLoop.OnFrame, now);
     this.#requestAnimationFrame();
   };
 

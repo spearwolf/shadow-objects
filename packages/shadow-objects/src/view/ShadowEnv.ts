@@ -43,22 +43,23 @@ export class ShadowEnv {
   }
 
   constructor() {
-    retain(this, ShadowEnv.ContextCreated);
+    const self = this as ShadowEnv;
+    retain(self, ShadowEnv.ContextCreated);
 
-    on(this, ShadowEnv.ContextLost, Priority.AAA, () => {
-      retainClear(this, ShadowEnv.ContextCreated);
+    on(self, ShadowEnv.ContextLost, Priority.AAA, () => {
+      retainClear(self, ShadowEnv.ContextCreated);
     });
 
     createEffect(() => {
       if (this.viewReady && this.proxyReady) {
         this.view!.reCreateChanges();
-        emit(this, ShadowEnv.ContextCreated, this);
+        emit(self, ShadowEnv.ContextCreated, self);
         if (this.#syncAfterContextCreated) {
           this.#syncAfterContextCreated = false;
           this.#syncNow();
         }
         return () => {
-          emit(this, ShadowEnv.ContextLost, this);
+          emit(self, ShadowEnv.ContextLost, self);
         };
       }
     }, [findObjectSignalByName(this, 'viewReady'), findObjectSignalByName(this, 'proxyReady')]);
@@ -130,7 +131,7 @@ export class ShadowEnv {
   }
 
   readonly ready = async (): Promise<ShadowEnv> => {
-    return this.isReady ? this : onceAsync(this, ShadowEnv.ContextCreated);
+    return this.isReady ? this : onceAsync(this as ShadowEnv, ShadowEnv.ContextCreated);
   };
 
   sync(): void {
@@ -147,7 +148,7 @@ export class ShadowEnv {
     this.#syncWaitForConfirmation = true;
     this.sync();
     if (this.#afterNextSync) return this.#afterNextSync;
-    this.#afterNextSync = onceAsync<ChangeTrailType>(this, ShadowEnv.AfterSync).then((changeTrail) => {
+    this.#afterNextSync = onceAsync<ChangeTrailType>(this as ShadowEnv, ShadowEnv.AfterSync).then((changeTrail) => {
       this.#afterNextSync = undefined;
       return changeTrail;
     });
@@ -194,7 +195,7 @@ export class ShadowEnv {
         } catch (error) {
           this.logger.error('failed to apply change trail', error);
         } finally {
-          emit(this, ShadowEnv.AfterSync, data);
+          emit(this as ShadowEnv, ShadowEnv.AfterSync, data);
         }
       }
     }

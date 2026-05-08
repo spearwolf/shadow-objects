@@ -53,11 +53,11 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   }
 
   get workerLoaded(): Promise<RemoteWorkerEnv> {
-    return onceAsync<RemoteWorkerEnv>(this, RemoteWorkerEnv.WorkerLoaded);
+    return onceAsync<RemoteWorkerEnv>(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerLoaded);
   }
 
   constructor() {
-    retain(this, RemoteWorkerEnv.WorkerLoaded);
+    retain(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerLoaded);
   }
 
   async start(): Promise<void> {
@@ -88,7 +88,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
       worker.addEventListener('message', this.onMessageFromWorker.bind(this));
 
       queueMicrotask(() => {
-        emit(this, RemoteWorkerEnv.WorkerLoaded, this);
+        emit(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerLoaded, this);
       });
     } catch (error) {
       this.logger.error('failed to start', error);
