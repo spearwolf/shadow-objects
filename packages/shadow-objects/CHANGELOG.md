@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-05-09
+
 - **Bugfix (entity lifecycle, KERN-3):** `kernel.destroyEntity()` now handles its children explicitly instead of leaving them as orphaned entries inside the kernel. Children with `autoDestructionOnParentRemoval` cascade-destroy together with the parent; all other children are promoted to root entities and remain reachable. This fixes a real leak where children without the auto-destruct flag were left in `kernel.#entities` after the parent was destroyed.
 - **Bugfix (entity lifecycle, KERN-2):** `autoDestructionOnParentRemoval` now survives re-parenting. The subscription is rebound to the new parent on every parent change (`Entity.parentUuid` setter / `Kernel.setParent()`), so a re-parented child is no longer destroyed when its *original* parent dies, and is correctly destroyed with its *current* parent.
 - **Bugfix (change trail, KERN-1):** the `autoDestructionOnParentRemoval` flag is now carried end-to-end through the change-trail pipeline. `ICreateEntitiesChange` exposes a new optional `autoDestructionOnParentRemoval?: boolean` field, `ComponentChanges.create()` accepts it as a 4th parameter, and `Kernel.run()`/`parse()` forwards it to `createEntity()`. Previously the kernel parameter existed but the trail-based path (worker and local env) never set it, so the feature was unreachable in production.
