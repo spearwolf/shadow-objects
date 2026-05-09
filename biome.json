@@ -36,7 +36,8 @@
     "indentWidth": 2,
     "lineWidth": 130,
     "lineEnding": "lf",
-    "formatWithErrors": false
+    "formatWithErrors": false,
+    "trailingNewline": true
   },
   "javascript": {
     "formatter": {
