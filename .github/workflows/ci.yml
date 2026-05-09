@@ -20,9 +20,8 @@ jobs:
         with:
           run_install: true
 
-      - uses: browser-actions/setup-chrome@v1
-        with:
-          chrome-version: stable
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Run all tests
-        run: xvfb-run pnpm run ci
+        run: pnpm run ci
