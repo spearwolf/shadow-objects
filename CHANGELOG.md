@@ -6,6 +6,10 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ## 2026-05-09 — CI action versions bumped
 
+- **GitHub Actions:** integrate playwright based e2e tests to ci workflow
+
+## 2026-05-09 — CI action versions bumped
+
 - **GitHub Actions:** upgraded `actions/checkout` v4 → v6, `actions/setup-node` v4 → v6, and `pnpm/action-setup` v4 → v6 in both `.github/workflows/ci.yml` and `.github/workflows/deploy.yml`. Node version pinned at `24` (latest).
 
 ## 2026-05-09 — Build-system renewal
