@@ -50,18 +50,20 @@ export class ComponentChanges {
   #token: string = VoidToken;
   #parentUuid?: string;
   #order: number = 0;
+  #autoDestructionOnParentRemoval = false;
 
   #nextToken?: string;
   #nextParentUuid?: string;
   #nextOrder?: number;
 
-  create(token: string = VoidToken, parentUuid?: string, order: number = 0) {
+  create(token: string = VoidToken, parentUuid?: string, order: number = 0, autoDestructionOnParentRemoval = false) {
     this.#serial++;
     this.#createCount++;
 
     this.#nextToken = token;
     this.#nextParentUuid = parentUuid ?? ROOT;
     this.#nextOrder = !order ? undefined : order;
+    this.#autoDestructionOnParentRemoval = autoDestructionOnParentRemoval;
   }
 
   destroy() {
@@ -237,6 +239,10 @@ export class ComponentChanges {
 
     if (this.#nextOrder !== undefined && this.#nextOrder !== this.#order) {
       entry.order = this.#order = this.#nextOrder;
+    }
+
+    if (this.#autoDestructionOnParentRemoval) {
+      entry.autoDestructionOnParentRemoval = true;
     }
 
     return entry;

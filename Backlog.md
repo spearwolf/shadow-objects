@@ -36,8 +36,8 @@
 
 **Hauptrisiken:**
 1. **Worker-Fehlerpfade unter-implementiert** — keine `error`/`messageerror`-Handler, keine Reconnect-Logik, ausstehende Promises hängen nach Worker-Tod ewig (oder bis 5–60 s Timeout).
-2. **Neues Feature „auto destruction on parent removal" (Commit 89c59c2) ist im Datenpfad nicht erreichbar** und behandelt Re-Parenting nicht.
-3. **`destroyEntity` rekursiert nicht über Kinder** — bei Eltern-Destruktion bleiben Nicht-Auto-Kinder als verwaiste Einträge im Kernel.
+2. ~~**Neues Feature „auto destruction on parent removal" (Commit 89c59c2) ist im Datenpfad nicht erreichbar** und behandelt Re-Parenting nicht.~~ **Behoben (KERN-1, KERN-2)** — Flag fließt jetzt durch `ICreateEntitiesChange` → `ComponentChanges.create()` → `parse()`; Subscription wird bei Re-Parent neu verdrahtet.
+3. ~~**`destroyEntity` rekursiert nicht über Kinder** — bei Eltern-Destruktion bleiben Nicht-Auto-Kinder als verwaiste Einträge im Kernel.~~ **Behoben (KERN-3)** — Variante C: Flagged-Kinder kaskadieren, ungeflaggte werden zu Roots befördert.
 4. **DOM-In-Place-Re-Parenting wird nicht beobachtet** (`<shae-prop>` und `<shae-ent>` resolvieren ihren Eltern-Knoten nur in `connectedCallback`).
 5. **CI lässt das gesamte E2E-Paket aus** — der Worker-Roundtrip wird damit faktisch nicht von CI verifiziert.
 6. **`MessageRouter` schluckt Fehler** durch doppeltes `AppliedChangeTrail` im Catch-Pfad — Konsumenten sehen Erfolg trotz interner Exception.
@@ -112,23 +112,13 @@ ComponentContext│  ─ Destroy
 
 ### 3.1 HIGH — Kern (in-the-dark)
 
-**[KERN-1]** `autoDestructionOnParentRemoval` ist im Change-Trail-Datenpfad nicht erreichbar.
-*Ort:* `Kernel.ts:218–249`, `types.ts:24–30`.
-`createEntity` akzeptiert den 6. Parameter, aber `parse()` (Zeile 185) gibt ihn nie weiter, und `ICreateEntitiesChange` enthält das Feld gar nicht. Nur der Unit-Test erreicht den Pfad — in Produktion ist das Feature ein No-Op.
-*Empfehlung:* Feld zu `ICreateEntitiesChange` ergänzen, in `ComponentChanges.create()` einreihen, `parse()` weiterreichen, E2E-Test mit echtem Worker ergänzen.
+**[KERN-1]** ~~`autoDestructionOnParentRemoval` ist im Change-Trail-Datenpfad nicht erreichbar.~~ **✅ Behoben** — Feld in `ICreateEntitiesChange` ergänzt, durch `ComponentChanges.create()` (4. Parameter) und `Kernel.parse()` an `createEntity()` weitergereicht. `ViewComponent` bekommt eine neue Konstruktoroption `autoDestructionOnParentRemoval`. Abgedeckt von vitest-Specs (Kernel + ViewComponent) sowie Playwright-E2E-Test `auto-destruct.spec.ts` mit echtem `RemoteWorkerEnv` (Chromium + Firefox).
 
-**[KERN-2]** Re-Parenting bricht die Auto-Destruktions-Subscription.
-*Ort:* `Entity.ts:209–227, 235–246`, `Kernel.ts:265–289`.
-`removeFromParent()` löscht `#parent`, lässt aber `#autoDestructionSubscription` auf den alten Eltern-Knoten zeigen. Wird der alte Vater später zerstört, stirbt das längst woanders einsortierte Kind mit. Umgekehrt wird der neue Vater nicht „verheiratet".
+**[KERN-2]** ~~Re-Parenting bricht die Auto-Destruktions-Subscription.~~ **✅ Behoben** — `Entity` trennt jetzt User-Intent (`#autoDestructionEnabled`) von der konkreten Subscription. `set parentUuid` und `removeFromParent()` rufen `#updateAutoDestructionSubscription()`, das die Subscription gegen den jeweils aktuellen Vater neu herstellt.
 
-**[KERN-3]** `destroyEntity` rekursiert nicht über Kinder.
-*Ort:* `Kernel.ts:251–263`, `Entity.ts:142–169, 167–168`.
-Eltern-`destroyEntity` löscht nur die explizite UUID. Kinder ohne `autoDestructionOnParentRemoval` bleiben als verwaiste Einträge in `kernel.#entities`/`#rootEntities` zurück → echter Leak. Die `#children`-Liste des Vaters wird via `length = 0` geleert, aber die Kinder selbst nicht abgeräumt.
-*Empfehlung:* `destroyEntity` muss Kinder rekursiv abräumen (oder `removeFromParent` sie zu Root befördern), ggf. Policy einbauen.
+**[KERN-3]** ~~`destroyEntity` rekursiert nicht über Kinder.~~ **✅ Behoben (Variante C)** — `Kernel.destroyEntity()` snapshottet die Kinderliste; flagged Kinder werden rekursiv abgeräumt, ungeflaggte via `removeFromParent()` zu Root befördert (und in `#rootEntities` aufgenommen). Damit ist der Leak in `kernel.#entities` geschlossen.
 
-**[KERN-4]** Cache-Invalidierung in `traverseLevelOrderBFS` greift bei programmatischer Destruktion nicht.
-*Ort:* `Kernel.ts:84, 191/197/202`, sowie der Auto-Destroy-Pfad `Entity.ts:239`.
-`#allEntitiesNeedUpdate` wird nur in `parse()` gesetzt, nicht wenn Kinder direkt via Auto-Destroy-Listener `kernel.destroyEntity` aufrufen. Folge: nachfolgende Traversal-Aufrufe können stale UUIDs zurückgeben.
+**[KERN-4]** ~~Cache-Invalidierung in `traverseLevelOrderBFS` greift bei programmatischer Destruktion nicht.~~ **✅ Behoben** — `#allEntitiesNeedUpdate` wird jetzt direkt in `destroyEntity()` gesetzt, sodass auch Auto-Destroy-Listener-Pfade den BFS-Cache invalidieren.
 
 ### 3.2 HIGH — View / Worker
 
@@ -160,9 +150,9 @@ Wenn ein `<shae-ent>`-Vater aus dem DOM entfernt wird, das Kind aber selbst noch
 | **VIEW-9** | `removeTransferables` mutiert die Caller-Trail-Einträge per `delete`. | `RemoteWorkerEnv.ts:23–40` |
 | **VIEW-10** | `LocalShadowObjectEnv` ignoriert `waitForConfirmation`; `MessageToView` läuft via `queueMicrotask`, sodass der `AfterSync`-Event vor den Worker-Nachrichten feuert. **Verhaltensasymmetrie zu `RemoteWorkerEnv`.** | `LocalShadowObjectEnv.ts:40`, `Kernel.ts:316–319` |
 | **VIEW-11** | `ShaePropElement.isShaeEntElement = true` ist offenbar Copy-Paste — nutzt aber `findEntNode` zur Eltern-Suche, was potenziell falsche Treffer ergibt. | `ShaePropElement.ts:68` |
-| **KERN-5** | `Entity.parentUuid`-Setter ruft `removeFromParent()` *vor* dem Resolven des neuen Vaters; wirft `getEntity` einen Fehler, ist die Entity verwaist. | `Entity.ts:97–108` |
-| **KERN-6** | `Registry.clear()` löscht `#truthyPropRoutes` nicht — Test-Pollution + Akkumulation in langlebigen Registries. | `Registry.ts:139–142` |
-| **KERN-7** | `useContext`/`useParentContext`/`useProperty` ignorieren `options` bei Cache-Hit (z. B. `compare`). Der erste Aufrufer „gewinnt", was leise zu falschen Equality-Vergleichen führen kann. | `Kernel.ts:387–396, 495–504, 517–525` |
+| ~~**KERN-5**~~ | ~~`Entity.parentUuid`-Setter ruft `removeFromParent()` *vor* dem Resolven des neuen Vaters; wirft `getEntity` einen Fehler, ist die Entity verwaist.~~ **✅ Behoben** — `getEntity` wird *vor* dem Detach aufgerufen; `Kernel.setParent` validiert die neue UUID vorab. | `Entity.ts`, `Kernel.ts` |
+| ~~**KERN-6**~~ | ~~`Registry.clear()` löscht `#truthyPropRoutes` nicht — Test-Pollution + Akkumulation in langlebigen Registries.~~ **✅ Behoben** — `clear()` räumt auch die Prop-basierten Routen ab. | `Registry.ts` |
+| ~~**KERN-7**~~ | ~~`useContext`/`useParentContext`/`useProperty` ignorieren `options` bei Cache-Hit (z. B. `compare`). Der erste Aufrufer „gewinnt", was leise zu falschen Equality-Vergleichen führen kann.~~ **✅ Behoben** — bei Cache-Hit mit abweichender `compare`-Funktion wird ein `console.warn` emittiert; das alte Reader-Objekt bleibt aus Kompatibilitätsgründen erhalten. | `Kernel.ts` |
 | **VIEW-12** | `ShaePropElement` parst numerische Attribute ohne Warnung — `Number("foo")` → `NaN` propagiert. | `ShaePropElement.ts:177–205` |
 | **VIEW-13** | `ShaeEntElement.#dispatchRequestParent`-Microtask prüft `isConnected` nicht; nach Disconnect bubbelt ein Streu-Event. | `ShaeEntElement.ts:343–346` |
 
@@ -321,12 +311,12 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 
 ### 7.1 Muss vor 1.0
 
-1. **Auto-Destroy-Feature komplett verdrahten** — Feld in `ICreateEntitiesChange`, durchreichen in `parse()`, Re-Parenting-Subscription pflegen, E2E-Test mit Worker. *(KERN-1, KERN-2)*
-2. **`destroyEntity` rekursiv über Kinder** — Politik definieren (kaskadieren oder zu Root befördern). *(KERN-3)*
+1. ~~**Auto-Destroy-Feature komplett verdrahten** — Feld in `ICreateEntitiesChange`, durchreichen in `parse()`, Re-Parenting-Subscription pflegen, E2E-Test mit Worker. *(KERN-1, KERN-2)*~~ ✅ Erledigt (Kernel- und ViewComponent-Specs sowie Playwright-E2E `auto-destruct.spec.ts` mit echtem `RemoteWorkerEnv`).
+2. ~~**`destroyEntity` rekursiv über Kinder** — Politik definieren (kaskadieren oder zu Root befördern). *(KERN-3)*~~ ✅ Erledigt (Variante C).
 3. **`MessageRouter`-Doppel-Confirm im Catch-Pfad fixen.** *(VIEW-3)*
 4. **Worker-Fehlerpfade härten:** `error`/`messageerror`-Handler, ausstehende Promises bei `destroy()` rejecten, expliziter `terminated`-Status. *(VIEW-1, VIEW-2)*
 5. **CI lässt E2E nicht aus** — Playwright-Browser im CI-Image installieren, `test:ci` umstellen oder zweiten Job ergänzen. *(CI-Gap)*
-6. **Cache-Invalidierung von `traverseLevelOrderBFS` bei programmatischer Destruktion.** *(KERN-4)*
+6. ~~**Cache-Invalidierung von `traverseLevelOrderBFS` bei programmatischer Destruktion.** *(KERN-4)*~~ ✅ Erledigt.
 
 ### 7.2 Sollte zeitnah
 

@@ -27,6 +27,7 @@ export interface ICreateEntitiesChange extends IComponentChange {
   parentUuid?: string;
   order?: number;
   properties?: ComponentPropertiesType;
+  autoDestructionOnParentRemoval?: boolean;
 }
 
 export interface IChangeToken extends IComponentChange {

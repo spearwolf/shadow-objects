@@ -1,5 +1,6 @@
 import {on} from '@spearwolf/eventize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
+import {ComponentChangeType} from '../constants.js';
 import {ComponentContext} from './ComponentContext.js';
 import {ViewComponent} from './ViewComponent.js';
 
@@ -50,6 +51,47 @@ describe('ViewComponent', () => {
     const child = new ViewComponent('test', {context});
     expect(child.context).toBe(context);
     context.clear();
+  });
+
+  describe('autoDestructionOnParentRemoval', () => {
+    it('defaults to false', () => {
+      const c = new ViewComponent('test');
+      expect(c.autoDestructionOnParentRemoval).toBe(false);
+    });
+
+    it('is exposed via constructor option', () => {
+      const c = new ViewComponent('test', {autoDestructionOnParentRemoval: true});
+      expect(c.autoDestructionOnParentRemoval).toBe(true);
+    });
+
+    it('flows into the change-trail entry produced for the component', () => {
+      const ctxLocal = ComponentContext.get('autoDestructTrailCtx');
+      const c = new ViewComponent('test', {context: ctxLocal, autoDestructionOnParentRemoval: true});
+
+      const trail = ctxLocal.buildChangeTrails();
+
+      const createEntry = trail.find((e) => e.type === ComponentChangeType.CreateEntities && e.uuid === c.uuid) as
+        | {autoDestructionOnParentRemoval?: boolean}
+        | undefined;
+
+      expect(createEntry).toBeDefined();
+      expect(createEntry!.autoDestructionOnParentRemoval).toBe(true);
+
+      ctxLocal.clear();
+    });
+
+    it('omits the flag from the trail entry when false', () => {
+      const ctxLocal = ComponentContext.get('autoDestructFalseCtx');
+      const c = new ViewComponent('test', {context: ctxLocal});
+
+      const trail = ctxLocal.buildChangeTrails();
+
+      const createEntry = trail.find((e) => e.type === ComponentChangeType.CreateEntities && e.uuid === c.uuid);
+      expect(createEntry).toBeDefined();
+      expect(createEntry).not.toHaveProperty('autoDestructionOnParentRemoval');
+
+      ctxLocal.clear();
+    });
   });
 
   it('should destroy after changeTrail', () => {

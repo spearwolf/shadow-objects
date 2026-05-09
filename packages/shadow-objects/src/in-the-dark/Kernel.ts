@@ -182,7 +182,14 @@ export class Kernel {
   private parse(entry: IComponentChangeType): void {
     switch (entry.type) {
       case ComponentChangeType.CreateEntities:
-        this.createEntity(entry.uuid, entry.token, entry.parentUuid, entry.order, entry.properties);
+        this.createEntity(
+          entry.uuid,
+          entry.token,
+          entry.parentUuid,
+          entry.order,
+          entry.properties,
+          entry.autoDestructionOnParentRemoval,
+        );
         this.#allEntitiesNeedUpdate = true;
         break;
 
@@ -253,6 +260,19 @@ export class Kernel {
 
     const {entity, usedConstructors} = this.#entities.get(uuid);
 
+    // Children with autoDestructionOnParentRemoval cascade; the rest are promoted
+    // to root so they remain reachable instead of leaking inside the kernel.
+    // Snapshot first because both branches mutate the children list.
+    const childrenSnapshot = [...entity.children];
+    for (const child of childrenSnapshot) {
+      if (child.autoDestructionOnParentRemoval) {
+        this.destroyEntity(child.uuid);
+      } else {
+        child.removeFromParent();
+        this.#rootEntities.add(child.uuid);
+      }
+    }
+
     entity.removeFromParent();
     emit(entity, onDestroy, entity);
 
@@ -260,12 +280,19 @@ export class Kernel {
 
     this.#entities.delete(entity.uuid);
     this.#rootEntities.delete(entity.uuid);
+    this.#allEntitiesNeedUpdate = true;
   }
 
   setParent(uuid: string, parentUuid?: string, order = 0): void {
     const e = this.getEntity(uuid);
 
     if (e.parentUuid === parentUuid && e.order === order) return;
+
+    // Validate the new parent before detaching the current one, so a bad UUID
+    // never leaves the entity orphaned (KERN-5).
+    if (parentUuid && !this.#entities.has(parentUuid)) {
+      throw new Error(`entity with uuid "${parentUuid}" not found!`);
+    }
 
     e.removeFromParent();
 
@@ -365,11 +392,14 @@ export class Kernel {
     const unsubscribeSecondary = new Set<() => any>();
 
     const contextReaders = new Map<string | symbol, SignalReader<any>>();
+    const contextReaderCompares = new Map<string | symbol, CompareFunc<any> | undefined>();
     const contextParentReaders = new Map<string | symbol, SignalReader<any>>();
+    const contextParentReaderCompares = new Map<string | symbol, CompareFunc<any> | undefined>();
     const contextProviders = new Map<string | symbol, Signal<any>>();
     const contextRootProviders = new Map<string | symbol, Signal<any>>();
 
     const propertyReaders = new Map<string, SignalReader<any>>();
+    const propertyCompares = new Map<string, CompareFunc<any> | undefined>();
 
     const getUseProperty = <T = any>(
       name: string,
@@ -389,8 +419,13 @@ export class Kernel {
       if (propReader === undefined) {
         propReader = createSignal<any>(undefined, opts).get;
         propertyReaders.set(name, propReader);
+        propertyCompares.set(name, opts?.compare);
         const con = link(entry.entity.getPropertyReader(name), propReader);
         unsubscribeSecondary.add(con.destroy.bind(con));
+      } else if (opts?.compare != null && propertyCompares.get(name) !== opts.compare) {
+        console.warn(
+          `[shadow-objects] useProperty("${name}"): the cached signal already exists with a different (or no) {compare} function — the new options are ignored. Pass options only on the first call per property.`,
+        );
       }
 
       return propReader;
@@ -497,8 +532,13 @@ export class Kernel {
           if (ctxReader === undefined) {
             ctxReader = createSignal<any>(undefined, opts).get;
             contextReaders.set(name, ctxReader);
+            contextReaderCompares.set(name, opts?.compare);
             const ln = link(entry.entity.useContext(name), ctxReader);
             unsubscribeSecondary.add(ln.destroy.bind(ln));
+          } else if (opts?.compare != null && contextReaderCompares.get(name) !== opts.compare) {
+            console.warn(
+              `[shadow-objects] useContext("${String(name)}"): the cached signal already exists with a different (or no) {compare} function — the new options are ignored. Pass options only on the first call per context.`,
+            );
           }
 
           return ctxReader;
@@ -519,8 +559,13 @@ export class Kernel {
           if (ctxReader === undefined) {
             ctxReader = createSignal<any>(undefined, opts).get;
             contextParentReaders.set(name, ctxReader);
+            contextParentReaderCompares.set(name, opts?.compare);
             const ln = link(entry.entity.useParentContext(name), ctxReader);
             unsubscribeSecondary.add(ln.destroy.bind(ln));
+          } else if (opts?.compare != null && contextParentReaderCompares.get(name) !== opts.compare) {
+            console.warn(
+              `[shadow-objects] useParentContext("${String(name)}"): the cached signal already exists with a different (or no) {compare} function — the new options are ignored. Pass options only on the first call per parent context.`,
+            );
           }
 
           return ctxReader;

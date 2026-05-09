@@ -96,14 +96,19 @@ export class Entity {
 
   set parentUuid(parentUuid: string | undefined) {
     if (this.#parentUuid !== parentUuid) {
+      // Resolve the new parent FIRST so an unknown-uuid throw doesn't orphan us mid-mutation.
+      const nextParent = parentUuid ? this.#kernel.getEntity(parentUuid) : undefined;
+
       this.removeFromParent();
 
       this.#parentUuid = parentUuid || undefined;
-      this.#parent = parentUuid ? this.#kernel.getEntity(parentUuid) : undefined;
+      this.#parent = nextParent;
 
       if (this.#parent) {
         this.#parent.addChild(this);
       }
+
+      this.#updateAutoDestructionSubscription();
     }
   }
 
@@ -222,26 +227,39 @@ export class Entity {
         }
       }
 
+      this.#unsubscribeAutoDestruction();
+
       // this.emit(onRemoveFromParent, this, prevParent);
     }
   }
 
+  #autoDestructionEnabled = false;
   #autoDestructionSubscription?: () => void;
 
   get autoDestructionOnParentRemoval(): boolean {
-    return !!this.#autoDestructionSubscription;
+    return this.#autoDestructionEnabled;
   }
 
   set autoDestructionOnParentRemoval(autoDestruct: boolean) {
-    if (autoDestruct) {
-      if (!this.#autoDestructionSubscription && this.parentUuid) {
-        this.#autoDestructionSubscription = once(this.parent, onDestroy, Priority.Max, () => {
-          this.kernel.destroyEntity(this.uuid);
-        });
-      }
-    } else if (this.#autoDestructionSubscription) {
+    if (this.#autoDestructionEnabled === autoDestruct) return;
+    this.#autoDestructionEnabled = autoDestruct;
+    this.#updateAutoDestructionSubscription();
+  }
+
+  #unsubscribeAutoDestruction() {
+    if (this.#autoDestructionSubscription) {
       this.#autoDestructionSubscription();
       this.#autoDestructionSubscription = undefined;
+    }
+  }
+
+  #updateAutoDestructionSubscription() {
+    this.#unsubscribeAutoDestruction();
+    if (this.#autoDestructionEnabled && this.#parent) {
+      this.#autoDestructionSubscription = once(this.#parent, onDestroy, Priority.Max, () => {
+        this.#autoDestructionSubscription = undefined;
+        this.#kernel.destroyEntity(this.#uuid);
+      });
     }
   }
 

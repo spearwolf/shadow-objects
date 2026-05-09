@@ -19,6 +19,7 @@ export class ViewComponent {
 
   #parent?: ViewComponent;
   #order = 0;
+  readonly #autoDestructionOnParentRemoval: boolean;
 
   get uuid() {
     return this.#uuid;
@@ -83,7 +84,27 @@ export class ViewComponent {
     }
   }
 
-  constructor(token: string, options?: {parent?: ViewComponent; order?: number; context?: ComponentContext; uuid?: string}) {
+  /**
+   * Whether the corresponding entity should be destroyed when its parent entity is destroyed.
+   *
+   * Set via the constructor option of the same name; immutable after creation.
+   * Children that opt out (the default) are promoted to root entities when their
+   * parent is destroyed, so they remain reachable.
+   */
+  get autoDestructionOnParentRemoval(): boolean {
+    return this.#autoDestructionOnParentRemoval;
+  }
+
+  constructor(
+    token: string,
+    options?: {
+      parent?: ViewComponent;
+      order?: number;
+      context?: ComponentContext;
+      uuid?: string;
+      autoDestructionOnParentRemoval?: boolean;
+    },
+  ) {
     eventize(this);
 
     if (options instanceof ViewComponent) {
@@ -95,6 +116,7 @@ export class ViewComponent {
     this.#token = token;
     this.#order = options?.order ?? 0;
     this.#parent = options?.parent;
+    this.#autoDestructionOnParentRemoval = options?.autoDestructionOnParentRemoval ?? false;
 
     const ctx = options?.context ?? ComponentContext.get();
 

@@ -16,6 +16,7 @@ export interface ComponentState {
   parentUuid?: string;
   order?: number;
   properties?: ComponentPropertiesType;
+  autoDestructionOnParentRemoval?: boolean;
 }
 
 /**
@@ -100,12 +101,13 @@ export class ComponentMemory {
     this.#components.delete(uuid);
   }
 
-  private createEntity({uuid, token, parentUuid, order, properties}: ICreateEntitiesChange) {
+  private createEntity({uuid, token, parentUuid, order, properties, autoDestructionOnParentRemoval}: ICreateEntitiesChange) {
     this.#components.set(uuid, {
       token: token || VoidToken,
       parentUuid,
       order: order ?? 0,
       properties: applyPropsChanges(undefined, properties),
+      ...(autoDestructionOnParentRemoval ? {autoDestructionOnParentRemoval: true} : {}),
     });
   }
 }

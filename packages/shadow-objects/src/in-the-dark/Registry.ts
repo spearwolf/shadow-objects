@@ -139,6 +139,7 @@ export class Registry {
   clear() {
     this.#registry.clear();
     this.#routes.clear();
+    this.#truthyPropRoutes.clear();
   }
 }
 

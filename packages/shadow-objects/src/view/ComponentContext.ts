@@ -89,7 +89,12 @@ export class ComponentContext {
       this.#components.set(component.uuid, viewInstance);
     }
 
-    viewInstance.changes.create(component.token, component.parent?.uuid, component.order);
+    viewInstance.changes.create(
+      component.token,
+      component.parent?.uuid,
+      component.order,
+      component.autoDestructionOnParentRemoval,
+    );
 
     if (component.parent) {
       this.addToChildren(component.parent, component);
@@ -308,7 +313,7 @@ export class ComponentContext {
       const c = this.#components.get(uuid);
       if (c) {
         const changes = new ComponentChanges(uuid);
-        changes.create(cMem.token, cMem.parentUuid, cMem.order);
+        changes.create(cMem.token, cMem.parentUuid, cMem.order, cMem.autoDestructionOnParentRemoval);
 
         if (cMem.properties) {
           for (const [key, value] of cMem.properties) {

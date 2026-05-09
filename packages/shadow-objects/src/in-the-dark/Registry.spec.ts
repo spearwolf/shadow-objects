@@ -46,4 +46,28 @@ describe('Registry', () => {
       'xyz',
     ]);
   });
+
+  describe('KERN-6: clear()', () => {
+    it('clears prop-based (truthy) routes too, not only plain routes', () => {
+      const registry = new Registry();
+
+      registry.appendRoute('foo', ['bar', 'plah']);
+      registry.appendRoute('@x', ['xyz']);
+      registry.appendRoute('foo@y', ['abc']);
+
+      // sanity: prop routes are active before clear
+      expect(Array.from(registry.findTokensByRoute('foo', new Set(['x', 'y']))).sort()).toEqual([
+        'abc',
+        'bar',
+        'foo',
+        'plah',
+        'xyz',
+      ]);
+
+      registry.clear();
+
+      // After clear, even with truthy props, only the input token should come back.
+      expect(Array.from(registry.findTokensByRoute('foo', new Set(['x', 'y'])))).toEqual(['foo']);
+    });
+  });
 });
