@@ -4,30 +4,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `AGENTS.md` is the authoritative agent guide for architecture, mental model, and contribution rules — read it first. This file only adds Claude-Code-specific operational notes.
 
+## Toolchain at a glance
+
+| Concern | Tool |
+|---|---|
+| Package manager | `pnpm` (workspaces + `catalog:` for version SSOT) |
+| Monorepo orchestrator | `turborepo` (`turbo.json` defines the pipeline) |
+| TypeScript | `tsc` 6.x — only used to emit `.d.ts` |
+| Bundler / transpiler | `esbuild` 0.28 (lib transpile + single-file bundle) |
+| Unit / integration tests | `vitest` 4 (happy-dom for unit, `@vitest/browser` + Playwright provider for DOM-integration) |
+| E2E | `@playwright/test` 1.59 |
+| Lint + format | `biome` 2.4 (replaces eslint + prettier) |
+| Dev server | `vite` (only `shae-offscreen-canvas` demo and `shadow-objects-e2e`) |
+
+Versions live exclusively in `pnpm-workspace.yaml` (`catalog:` block). Reference them from each package as `"<dep>": "catalog:"` — never write a plain version range in a per-package `package.json`.
+
 ## Commands
 
-Run from the repo root (nx coordinates per-package scripts):
+Run from the repo root (turbo coordinates per-package scripts):
 
 | Command | Purpose |
 |---|---|
 | `pnpm cbt` | Clean + build + test the whole workspace (full local cycle) |
-| `pnpm build` / `pnpm lint` / `pnpm test` | nx `run-many` over all packages |
+| `pnpm build` / `pnpm test` / `pnpm typecheck` | `turbo run …` over all packages |
 | `pnpm test:ci` | All tests except `shadow-objects-e2e` (Playwright) |
-| `pnpm test:affected` | nx `affected -t test` against `main` |
-| `pnpm start` | Dev server for the `shae-offscreen-canvas` demo |
-| `pnpm clear-cache` | `nx reset` + clean (use when nx cache acts up) |
+| `pnpm lint` / `pnpm lint:fix` / `pnpm format` | Biome `check` / `check --write` / `format --write` |
+| `pnpm dev` (alias `pnpm start`) | Dev server for the `shae-offscreen-canvas` demo |
+| `pnpm clean` | `turbo run clean` + remove `dist/`, turbo cache |
 | `pnpm make:todo` | Regenerate `TODO.md` from TODO comments — required if you add/change/remove a `TODO` |
+| `pnpm publishNpmPkg` | Publish all packages with a `publishNpmPkg` script |
 
-Per-package commands (from inside the package dir, or via `pnpm nx run <project>:<target>`):
+Per-package commands (`pnpm -F <pkg-name> <script>` or `cd` and `pnpm <script>`):
 
-- **`packages/shadow-objects`** (core lib, `vitest`):
-  - `pnpm test` runs `compile:tests` (tsc → `tests/`) then `vitest tests/src --run`. Specs live as `*.spec.ts` next to source in `src/`; vitest never sees the `.ts` directly — it runs the compiled `.js` under `tests/src/`. **A single test:** `pnpm compile:tests && pnpm exec vitest tests/src/path/to/File.spec.js --run`. Watch mode: drop `--run`.
-  - Build pipeline (`pnpm build`) is multi-step: `compile:lib` (lib tsconfig) → `compile:bundle` (bundle tsconfig) → `bundle` (esbuild via `bundle.mjs`) → `makePackageJson` (writes `dist/package.json` via `scripts/makePackageJson.mjs`). Editing build behavior usually means touching one of those, not the package script.
-- **`packages/shadow-objects-testing`** (functional/integration, `@web/test-runner`): `pnpm test`, watch via `pnpm watch`. Specs are `test/**/*.test.js`.
-- **`packages/shae-offscreen-canvas`** (`@web/test-runner` on port 8001): `pnpm test`, dev server `pnpm dev`.
-- **`packages/shadow-objects-e2e`** (Playwright): `pnpm test`, UI mode `pnpm test:ui`. **First-time setup requires** `pnpm exec playwright install chromium firefox` from inside this package — browsers are not installed by `pnpm install`.
+- **`packages/shadow-objects`** (core lib, TS):
+  - `pnpm build` — runs `node build.mjs`. One script: esbuild transpile (`src/**` → `dist/src/**`) + tsc emit-only declarations (`tsconfig.lib.json`) + esbuild bundle with inline-worker (`dist/src/bundle.js` → `dist/bundle.js`) + `scripts/makePackageJson.mjs` (writes `dist/package.json`).
+  - `pnpm test` — `vitest --run`. Specs are `*.spec.ts` next to source in `src/`; vitest reads them directly via vite/esbuild — **no precompile step**. Single test: `pnpm exec vitest src/path/to/File.spec.ts --run`. Watch: `pnpm watch`.
+  - `pnpm typecheck` — `tsc -p tsconfig.json --noEmit` (whole tree, including specs).
+- **`packages/shadow-objects-testing`** (functional/integration, vitest browser mode + Playwright provider): `pnpm test`, watch `pnpm watch`. Specs are `test/**/*.test.js` and run in real Chromium for accurate Custom Elements semantics. Chai assertion style is preserved (`@esm-bundle/chai`); `describe`/`it`/`beforeEach`/`afterEach` come from vitest globals (with `after`/`before` shimmed for legacy mocha specs).
+- **`packages/shae-offscreen-canvas`** (vitest happy-dom): `pnpm test`. Dev server: `pnpm dev`. Build (publish bundle): `pnpm build`.
+- **`packages/shadow-objects-e2e`** (Playwright + Vite): `pnpm test`, UI mode `pnpm test:ui`. **First-time setup requires** `pnpm exec playwright install chromium firefox` — browsers are not installed by `pnpm install`.
 
-Three different test runners coexist by design: vitest (core lib), web-test-runner (browser-side functional + canvas), Playwright (E2E). Don't try to unify them.
+Vitest shares a single `setupFiles` between core, integration, and offscreen-canvas: `packages/shadow-objects/vitest.setup.ts`. It (a) replaces Node's inert `localStorage`/`sessionStorage` globals (Node 24+ ships these as no-op stubs that shadow happy-dom's working Storage), and (b) shims mocha's `after`/`before` to vitest's `afterAll`/`beforeAll` for migrated specs.
 
 ## Architecture pointers
 
@@ -44,15 +61,48 @@ Code layout inside `packages/shadow-objects/src/` worth knowing up front:
 
 Reactivity is `@spearwolf/signalize` (signals/effects) and `@spearwolf/eventize` (event emitters). Both are first-party deps from the same author — prefer them over hand-rolled equivalents.
 
+## Build pipeline notes (`packages/shadow-objects/build.mjs`)
+
+Three stages, all in one Node script:
+
+1. **Lib transpile** — esbuild with `bundle: false`, glob `src/**/*.{ts,js}` (specs excluded), `outdir: dist/src`. Preserves the source layout so deep imports like `@spearwolf/shadow-objects/shae-ent.js` resolve to `dist/src/shae-ent.js`.
+2. **Types** — `tsc -p tsconfig.lib.json` with `emitDeclarationOnly: true`. Same outdir.
+3. **Bundle** — esbuild with `bundle: true` on `dist/src/bundle.js` (the *transpiled* entry, not `src/bundle.ts`, so the package.json `sideEffects` array — which references `dist/src/*.js` paths — keeps the side-effect imports from being tree-shaken). Two custom resolvers swap `create-worker.js` → `create-worker.bundle.js` (the inlined-blob variant) and route the virtual `./bundle.worker.js` import to `dist/src/shadow-objects.worker.js`. The `esbuild-plugin-inline-worker` then bundles + base64-inlines that worker.
+4. `scripts/makePackageJson.mjs` writes `dist/package.json` (resolves `workspace:*` and `catalog:` refs, applies `package.override.json`, strips the `dist/` prefix from `exports`/`main`/`module`/`types`).
+
+The published `dist/` layout is part of the public API contract — its file list and `dist/package.json` shape must stay stable. Snapshots used for verification: `docs/superpowers/specs/dist-snapshot.txt` and `docs/superpowers/specs/dist-package.json.snapshot`.
+
+## Changelogs and Backlog — keep them in sync
+
+Two changelogs live in this repo and must be kept current as part of every change that touches them:
+
+- **`CHANGELOG.md` (repo root)** — *monorepo-level* changes: build system, monorepo orchestrator, lint/format, dev workflow, CI, devDependencies that aren't shipped. Entries are dated (no version numbers — this isn't a published package).
+- **`packages/shadow-objects/CHANGELOG.md`** — *package-level* changes: runtime API, runtime dependencies, behavior changes, output/contract changes for `@spearwolf/shadow-objects`. New work goes under `## [Unreleased]` until a release. Each released version gets a `## [X.Y.Z] - YYYY-MM-DD` section.
+
+When you make a change, decide where it belongs:
+
+| Change touches… | Goes in… |
+|---|---|
+| `src/`, runtime deps, `dist/` shape, public exports, behavior visible to consumers of `@spearwolf/shadow-objects` | `packages/shadow-objects/CHANGELOG.md` (Unreleased) |
+| Build pipeline, test runner, lint config, turbo/pnpm setup, devDeps, monorepo scripts | root `CHANGELOG.md` (new dated section, or append to today's) |
+| Both | both files — describe each side from its own perspective, don't duplicate |
+
+Other affected packages (`shae-offscreen-canvas`, etc.) don't currently maintain their own changelog. If they start to be published independently, add one and follow the same split.
+
+**Keep entries short and precise.** One bullet per change, name the symbol/file/feature, link to a commit if non-obvious. Don't restate the diff.
+
+After updating the changelogs, **sync `Backlog.md`**: cross off or remove items the change resolved, update sections that became stale (e.g. dependency-version snapshots, tooling lists). The Backlog is a living working document, not an audit log — outdated items should leave, not just be marked "done".
+
 ## Conventions that bite
 
-- **Documentation is part of the public API contract.** Public API changes must update `packages/shadow-objects/docs/`, the package `README.md`, **and** `CHANGELOG.md` in the same change. `AGENTS.md` §4 lists this; it is enforced.
+- **Documentation is part of the public API contract.** Public API changes must update `packages/shadow-objects/docs/`, the package `README.md`, **and** `packages/shadow-objects/CHANGELOG.md` in the same change. `AGENTS.md` §4 lists this; it is enforced.
 - **Banned analogies**: "shadow theater", "puppet", "puppeteer", "light world", "screen". Use ECS terminology (Entity, Component, Kernel, View, Token).
 - All docs and code comments in English, Markdown for docs.
-- ESLint is configured at the repo root (`.eslintrc.json` + `.eslintignore`). nx `lint` honors both — don't add per-package ESLint configs.
+- Lint + format are Biome only — config lives at repo root (`biome.json`). No per-package overrides.
+- Dependency versions live in `pnpm-workspace.yaml` `catalog:`. Reference as `"<dep>": "catalog:"` from package.json. Don't pin versions per package.
 - `.worktrees/` is gitignored and used for parallel work; don't clean it up casually.
 
 ## When unsure
 
-- For nx workspace questions, prefer `nx`/`nx_workspace`/`nx_project_details` over guessing config.
 - After modifying source or docs, re-check `AGENTS.md` for staleness — it's expected to be updated alongside the code, not retrofitted later.
+- Turbo's task graph and caching is defined in `turbo.json`. If a build/test task seems to be reading stale artifacts, run with `--force` to bypass cache or `pnpm clean` to nuke.

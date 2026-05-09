@@ -9,7 +9,7 @@ export interface ShadowObjectDecoratorOptions {
 
 /** The `@ShadowObject` decorator */
 export function ShadowObject(options: ShadowObjectDecoratorOptions) {
-  return function <C extends ShadowObjectConstructor>(target: C, _context?: any) {
+  return <C extends ShadowObjectConstructor>(target: C, _context?: any) => {
     // @ts-ignore
     const __ShadowObject = class extends target {
       constructor(...args: any[]) {

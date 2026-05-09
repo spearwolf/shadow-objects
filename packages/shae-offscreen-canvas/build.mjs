@@ -1,21 +1,12 @@
-import {cp} from 'fs/promises';
-import path from 'path';
-//import {fileURLToPath} from 'url';
+// Copy source-distribution assets into the publish-ready package root.
+// shae-offscreen-canvas is shipped as a source distribution (no bundling) — its
+// `package.json#exports` point directly at the `.js` files under `src/`.
+import {cp} from 'node:fs/promises';
+import path from 'node:path';
 
 const targetSubDir = process.argv[2] || '.npm-pkg';
-
-// const workspaceRoot = path.resolve(fileURLToPath(import.meta.url), '../../');
 const projectRoot = path.resolve(process.cwd());
-const packageRoot = path.resolve(process.cwd(), targetSubDir);
+const packageRoot = path.resolve(projectRoot, targetSubDir);
 
-// console.log('workspaceRoot:', workspaceRoot);
-// console.log('projectRoot:', projectRoot);
-// console.log('packageRoot:', packageRoot);
-// console.log('- - -');
-
-try {
-  await cp(`${projectRoot}/README.md`, `${packageRoot}/README.md`);
-  await cp(`${projectRoot}/src`, `${packageRoot}/src`, {recursive: true});
-} catch (err) {
-  console.error('Error:', err.message);
-}
+await cp(`${projectRoot}/README.md`, `${packageRoot}/README.md`);
+await cp(`${projectRoot}/src`, `${packageRoot}/src`, {recursive: true});

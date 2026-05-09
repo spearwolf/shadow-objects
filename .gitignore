@@ -45,8 +45,11 @@ tsconfig.*.tsbuildinfo
 /blob-report/
 /playwright/.cache/
 
-.nx/cache
-.nx/workspace-data
+# turborepo
+.turbo
+
+# packaged-for-publish output
+.npm-pkg
 
 # git worktrees
 .worktrees

@@ -1,12 +1,12 @@
 import {on} from '@spearwolf/eventize';
 import {MessageToView, ShadowObjectsExport} from '../constants.js';
+import {importModule} from '../in-the-dark/importModule.js';
 import {Kernel, type MessageToViewEvent} from '../in-the-dark/Kernel.js';
 import type {Registry} from '../in-the-dark/Registry.js';
-import {importModule} from '../in-the-dark/importModule.js';
 import type {ChangeTrailType, ShadowObjectsModule, SyncEvent} from '../types.js';
 import {toUrlString} from '../utils/toUrlString.js';
-import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 import {cloneChangeTrail} from './cloneChangeTrail.js';
+import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
 export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
   #importedModules: Set<ShadowObjectsModule> = new Set();

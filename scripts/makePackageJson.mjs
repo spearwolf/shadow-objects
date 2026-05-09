@@ -1,10 +1,13 @@
-import fs from 'fs';
-import path from 'path';
-import {fileURLToPath} from 'url';
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 
 const targetSubDir = process.argv[2] || '.npm-pkg';
 
 const workspaceRoot = path.resolve(fileURLToPath(import.meta.url), '../../');
+
+// --- pnpm catalog (single source of truth for dependency versions) ---
+const CATALOG = loadPnpmCatalog();
 const projectRoot = path.resolve(process.cwd());
 const packageRoot = path.resolve(process.cwd(), targetSubDir);
 
@@ -45,16 +48,45 @@ fs.writeFileSync(releasePackageJsonPath, JSON.stringify(outPackageJson, null, 2)
 // --------------------------------------------------------------------------------------------
 
 function resolveDependencies(dependenciesSection) {
-  if (dependenciesSection) {
-    Object.entries(dependenciesSection).forEach(([depName, version]) => {
-      if (version.startsWith('workspace:') || version === '*') {
-        const pkgVersion = resolvePackageVersion(depName);
-        if (pkgVersion) {
-          dependenciesSection[depName] = pkgVersion;
-        }
+  if (!dependenciesSection) return;
+  for (const [depName, version] of Object.entries(dependenciesSection)) {
+    if (version.startsWith('workspace:') || version === '*') {
+      const pkgVersion = resolvePackageVersion(depName);
+      if (pkgVersion) dependenciesSection[depName] = pkgVersion;
+    } else if (version.startsWith('catalog:')) {
+      const catalogVersion = CATALOG[depName];
+      if (catalogVersion) {
+        dependenciesSection[depName] = catalogVersion;
+      } else {
+        console.warn('Catalog entry not found for', depName, '- leaving as-is');
       }
-    });
+    }
   }
+}
+
+function loadPnpmCatalog() {
+  const ymlPath = path.resolve(workspaceRoot, 'pnpm-workspace.yaml');
+  if (!fs.existsSync(ymlPath)) return {};
+  const text = fs.readFileSync(ymlPath, 'utf8');
+  const lines = text.split(/\r?\n/);
+  const catalog = {};
+  let inCatalog = false;
+  for (const raw of lines) {
+    if (/^catalog:\s*$/.test(raw)) {
+      inCatalog = true;
+      continue;
+    }
+    if (inCatalog) {
+      if (/^\S/.test(raw)) {
+        // top-level key encountered (other than comments) → end of catalog
+        if (raw.trim() && !raw.trim().startsWith('#')) break;
+        continue;
+      }
+      const m = raw.match(/^\s+['"]?([^'":]+?)['"]?\s*:\s*(.+?)\s*(?:#.*)?$/);
+      if (m) catalog[m[1]] = m[2].replace(/^['"]|['"]$/g, '');
+    }
+  }
+  return catalog;
 }
 
 function resolvePackageVersion(pkgName) {

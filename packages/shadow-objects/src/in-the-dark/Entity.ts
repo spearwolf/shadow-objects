@@ -5,14 +5,14 @@ import {
   link,
   Signal,
   SignalAutoMap,
-  value,
   type SignalReader,
   type SignalWriter,
+  value,
 } from '@spearwolf/signalize';
 import type {IComponentEvent} from '../types.js';
+import {onDestroy, onViewEvent} from './events.js';
 import {Kernel} from './Kernel.js';
 import {SignalsPath} from './SignalsPath.js';
-import {onDestroy, onViewEvent} from './events.js';
 
 type ContextNameType = string | symbol;
 

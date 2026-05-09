@@ -1,4 +1,4 @@
-import {Priority, emit, off, on, onceAsync, retain, retainClear} from '@spearwolf/eventize';
+import {emit, off, on, onceAsync, Priority, retain, retainClear} from '@spearwolf/eventize';
 import {createEffect, createSignal, destroyObjectSignals, findObjectSignalByName} from '@spearwolf/signalize';
 import {signal} from '@spearwolf/signalize/decorators';
 import type {MessageToViewEvent} from '../shadow-objects.js';

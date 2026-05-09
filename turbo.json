@@ -1,0 +1,47 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "stream",
+  "globalDependencies": ["tsconfig.json", "biome.json", "pnpm-workspace.yaml", "pnpm-lock.yaml", "scripts/**"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "tsconfig*.json", "build.mjs", "package.json", "package.override.json"],
+      "outputs": ["dist/**", "build/**", ".npm-pkg/**"]
+    },
+    "test": {
+      "dependsOn": ["^build", "build"],
+      "inputs": [
+        "src/**",
+        "test/**",
+        "tests/**",
+        "vitest.config.ts",
+        "vitest.setup.ts",
+        "../shadow-objects/vitest.setup.ts",
+        "package.json"
+      ],
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "tsconfig*.json"],
+      "outputs": []
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["^build"]
+    },
+    "watch": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["^build"]
+    },
+    "clean": {
+      "cache": false
+    },
+    "publishNpmPkg": {
+      "dependsOn": ["^build", "build"],
+      "cache": false
+    }
+  }
+}

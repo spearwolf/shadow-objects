@@ -77,19 +77,22 @@ Uses Signals and Effects (via `@spearwolf/signalize`).
     - Check `packages/shadow-objects-e2e/` for end-to-end tests.
     - Public API changes must be tested in E2E if possible.
 
-<!-- nx configuration start-->
-<!-- Leave the start & end comments to automatically receive updates. -->
+# Toolchain (post-2026-renewal)
 
-# General Guidelines for working with Nx
+| Concern | Tool |
+|---|---|
+| Package manager | `pnpm` (workspaces + `catalog:` for dependency-version SSOT) |
+| Monorepo orchestrator | `turborepo` — pipeline in `turbo.json` |
+| TypeScript | `tsc` 6 — only emits `.d.ts` (declaration-only) |
+| Bundler / transpiler | `esbuild` 0.28 (lib transpile + single-file inline-worker bundle) |
+| Unit / integration tests | `vitest` 4 (happy-dom for unit, `@vitest/browser` + Playwright provider for DOM-integration) |
+| E2E | `@playwright/test` 1.59 |
+| Lint + format | `biome` 2.4 (replaces eslint + prettier) |
+| Dev server | `vite` (only `shae-offscreen-canvas` demo and `shadow-objects-e2e`) |
 
-- When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
-- You have access to the Nx MCP server and its tools, use them to help the user
-- When answering questions about the repository, use the `nx_workspace` tool first to gain an understanding of the workspace architecture where applicable.
-- When working in individual projects, use the `nx_project_details` mcp tool to analyze and understand the specific project structure and dependencies
-- For questions around nx configuration, best practices or if you're unsure, use the `nx_docs` tool to get relevant, up-to-date docs. Always use this instead of assuming things about nx configuration
-- If the user needs help with an Nx configuration or project graph error, use the `nx_workspace` tool to get any errors
+**Dependency versions:** never write a plain version range in a per-package `package.json`. Add the version to the `catalog:` block of `pnpm-workspace.yaml` and reference it from each package as `"<dep>": "catalog:"`.
 
-<!-- nx configuration end-->
+**Run tasks via turbo (`pnpm build`, `pnpm test`, …) instead of invoking the underlying tools directly** — the cache and the cross-package dependency graph are defined there. See `CLAUDE.md` for the full command reference.
 
 # General Context Information for the AI assistant
 

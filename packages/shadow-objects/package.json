@@ -2,7 +2,7 @@
   "name": "@spearwolf/shadow-objects",
   "description": "a reactive entity-component framework that feels at home in the shadows",
   "homepage": "https://github.com/spearwolf/shadow-objects/",
-  "version": "0.30.2",
+  "version": "0.31.0-dev",
   "author": {
     "name": "Wolfger Schramm",
     "email": "wolfger@spearwolf.de",
@@ -77,26 +77,19 @@
     "dist/bundle.js"
   ],
   "scripts": {
-    "tsc": "pnpm exec tsc",
-    "run-s": "pnpm exec run-s -s",
-    "build": "pnpm run-s clean:build compile:lib compile:bundle bundle makePackageJson",
-    "compile:lib": "pnpm tsc -b tsconfig.lib.json",
-    "compile:bundle": "pnpm tsc -b tsconfig.bundle.json",
-    "compile:tests": "pnpm rimraf tests && pnpm tsc -b tsconfig.tests.json",
-    "bundle": "pnpm exec node bundle.mjs",
-    "vitest:run": "pnpm exec vitest tests/src --run",
-    "test": "pnpm compile:tests && pnpm vitest:run",
-    "update": "pnpm dlx npm-check --update",
-    "clean": "pnpm exec rimraf build types dist lib tests",
-    "clean:build": "pnpm exec rimraf build dist",
-    "makePackageJson": "pnpm node ../../scripts/makePackageJson.mjs dist",
-    "publishNpmPkg": "pnpm node ../../scripts/publishNpmPkg.mjs dist"
+    "build": "node build.mjs",
+    "test": "vitest --run",
+    "watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rimraf build dist",
+    "publishNpmPkg": "node ../../scripts/publishNpmPkg.mjs dist",
+    "update": "pnpm dlx npm-check --update"
   },
   "devDependencies": {
-    "esbuild-plugin-inline-worker": "^0.1.1"
+    "esbuild-plugin-inline-worker": "catalog:"
   },
   "dependencies": {
-    "@spearwolf/eventize": "^4.3.1",
-    "@spearwolf/signalize": "^0.28.0"
+    "@spearwolf/eventize": "catalog:",
+    "@spearwolf/signalize": "catalog:"
   }
 }

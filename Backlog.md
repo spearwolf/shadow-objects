@@ -87,12 +87,12 @@ ComponentContext│  ─ Destroy
 
 ### 2.3 Verwendete Technologien
 
-- **TypeScript** (strict, aber **`strictNullChecks: false`** — Achtung: das ist eine bewusste Lockerung, die Typen-Sicherheit signifikant einschränkt).
+- **TypeScript 6** (strict, aber **`strictNullChecks: false`** — Achtung: das ist eine bewusste Lockerung, die Typen-Sicherheit signifikant einschränkt).
 - **`@spearwolf/signalize` 0.28.0** — Signals/Effects.
 - **`@spearwolf/eventize` 4.3.1** — Event-Emitter.
-- **esbuild 0.27.3** — Bundling, mit `esbuild-plugin-inline-worker` für den Worker-Inline.
-- **vitest 1.6.1** für Unit-Tests, **`@web/test-runner`** für browser-basierte Funktionstests, **Playwright** für E2E.
-- **nx 19.8.14** als Monorepo-Orchestrator, **pnpm 9.1.2**, Node ≥ 24.13.0.
+- **esbuild 0.28** — Bundling, mit `esbuild-plugin-inline-worker` für den Worker-Inline.
+- **vitest 4** für Unit-Tests (happy-dom) und Integrationstests (browser-mode + Playwright-Provider). **Playwright** für E2E.
+- **turborepo 2.9** als Monorepo-Orchestrator, **biome 2.4** für Lint/Format, **pnpm 9.15** mit `catalog:`-SSOT, Node ≥ 24.13.0.
 
 ### 2.4 Lebenszyklus einer Entity (vereinfacht)
 
@@ -262,38 +262,39 @@ Wenn ein `<shae-ent>`-Vater aus dem DOM entfernt wird, das Kind aber selbst noch
 
 ## 5. Build & Tooling
 
+> **2026-05-09 — Build-System wurde grundlegend erneuert.** Details: [`CHANGELOG.md`](CHANGELOG.md) (Top-Level), Design-Doku: [`docs/superpowers/specs/2026-05-09-build-system-renewal-design.md`](docs/superpowers/specs/2026-05-09-build-system-renewal-design.md). Die folgenden Abschnitte spiegeln den neuen Stand und nur noch die offenen Punkte.
+
 ### 5.1 Pipeline (`packages/shadow-objects`)
 
-Vier Stufen: `compile:lib` (TS → `dist/`) → `compile:bundle` (TS → `build/`, JS für esbuild) → `bundle.mjs` (Worker zuerst inline-bundeln, dann Hauptbundle mit `esbuild-plugin-inline-worker`) → `makePackageJson.mjs` (überschreibt Pfade, resolvt `workspace:*`, wendet `package.override.json` an).
+Ein Skript: `node build.mjs`. Drei Stages — esbuild-Transpile (`src/**` → `dist/src/**`, preserved layout) + tsc emit-only Declarations (`tsconfig.lib.json`) + esbuild Inline-Worker-Bundle (`dist/src/bundle.js` → `dist/bundle.js`). Anschließend `scripts/makePackageJson.mjs` für `dist/package.json` (resolvt `workspace:*` + `catalog:`, wendet `package.override.json` an).
 
 Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements.js`, `./shae-ent.js`, `./shae-prop.js`, `./shae-worker.js`, `./shadow-objects.js`, `./shadow-objects.worker.js`, `./bundle.js`).
 
-**Auffälligkeiten:**
-- Zwei parallele TS-Outputs (`dist/` und `build/`) für gleiche Quellen.
-- `package.override.json` mit doppelter `sideEffects`-Liste — zwei Wahrheitsquellen, Wartungs-Stolperstein.
+**Verbleibende Auffälligkeiten:**
+- `package.override.json` und `package.json#sideEffects` enthalten noch tote `build/src/...`-Pfade aus der alten Pipeline. Folgenlos (doppelte Wahrheit), sollte aber konsolidiert werden.
 - `exports`-Konditionen: Reihenfolge `import` vor `types`. Unter strikter Node-ESM-Resolution (`moduleResolution: node16/nodenext`) sollte `types` zuerst stehen. Aktuell unter `bundler` toleriert, aber latentes Risiko für Konsumenten.
 
 ### 5.2 Dependency-Hygiene
 
-- `@spearwolf/eventize@4.3.1`, `@spearwolf/signalize@0.28.0` konsistent über alle Pakete. ✅
-- **Drift bei Tooling:** `sinon` 17/18/19 nebeneinander, `@web/test-runner` 0.18 vs 0.20, `vite` 5 vs 6, Playwright 1.58.1 vs 1.58.2.
-- `vitest@1.6.1` (aktuell v3.x), `eslint@8.57.1` (EOL), `@typescript-eslint/*@7` (eines hinten), `nx@19` (mehrere Major hinten).
+- Versionen leben jetzt zentral in `pnpm-workspace.yaml#catalog:` — keine Drift mehr möglich. ✅
+- Tooling auf modernen Major-Versionen: vitest 4, biome 2.4, turbo 2.9, esbuild 0.28, Playwright 1.59, TypeScript 6, happy-dom 20. ✅
 - Kern-Lib hat **keine `peerDependencies`** — `@spearwolf/eventize`/`signalize` sind harte Deps; bei Mehrfach-Resolutionen drohen Duplikate.
 
 ### 5.3 Lint / TS
 
 - `strict: true` **mit `strictNullChecks: false`** — die größte Typensicherheits-Lücke.
-- ESLint-Root deaktiviert global `no-explicit-any`, `ban-ts-comment`, `ban-types`, `no-non-null-assertion`. Bewusste Lockerung, aber in Kombination mit `strictNullChecks: false` riskant.
+- Biome-Root deaktiviert (analog zur alten ESLint-Config) `noExplicitAny`, `noTsIgnore`, `noNonNullAssertion`, `noImplicitAnyLet`. Bewusste Lockerung, aber in Kombination mit `strictNullChecks: false` riskant.
 - `any`-Hotspots (heuristisch): `ConsoleLogger.ts` (~20), `Kernel.ts` (~11), `ShadowObject.ts` (~4).
+- Biome meldet aktuell ~30 Warnings im Source (z. B. `useIterableCallbackReturn`, `noShadowRestrictedNames`, `useNodejsImportProtocol`). Schrittweise abarbeiten oder bewusst weiter unterdrücken.
 
 ### 5.4 CI-Gap
 
-Die GitHub-Action ruft `pnpm run ci` = `build + lint + test:ci`. **`test:ci` schließt `shadow-objects-e2e` aus.** Damit wird der gesamte Worker-Roundtrip nicht von CI verifiziert. Da `RemoteWorkerEnv` ohnehin keine Unit-Tests hat, ist das ein doppelt-blinder Punkt.
+Die GitHub-Action ruft `pnpm run ci` = `turbo run build typecheck test --filter=!shadow-objects-e2e && pnpm lint`. **`test:ci` schließt `shadow-objects-e2e` weiterhin aus.** Damit wird der gesamte Worker-Roundtrip nicht von CI verifiziert. Da `RemoteWorkerEnv` ohnehin keine Unit-Tests hat, ist das ein doppelt-blinder Punkt.
 
 ### 5.5 Sonstige Stolperfallen auf frischer Maschine
 
 - `pnpm install` installiert keine Playwright-Browser — manuelles `pnpm exec playwright install chromium firefox` nötig (wird in CLAUDE.md erwähnt).
-- `engines.node: ">=24.13.0"` blockiert Mitwirkende auf Node 22.x.
+- `engines.node: ">=24.13.0"` blockiert Mitwirkende auf Node 22.x. Hinweis: Node 24+ ships eine inerte `localStorage`-Stub auf `globalThis`; für Tests gefixt durch `packages/shadow-objects/vitest.setup.ts`.
 - `make:todo` ist Honor-System (kein Pre-Commit-Hook, kein CI-Check).
 - Manuelles `CHANGELOG.md`-Pflegen ohne Changesets/release-please.
 
@@ -340,12 +341,12 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 ### 7.3 Mittelfristig
 
 14. **`strictNullChecks: true`** schrittweise einschalten — größter Hebel für Typensicherheit.
-15. **Tooling-Drift bereinigen:** vitest, ESLint, nx, sinon, vite auf einheitliche Major-Versionen ziehen.
-16. **`exports`-Konditionen umsortieren** (`types` vor `import`) für strikte Node-ESM-Konsumenten.
-17. **`peerDependencies` für `@spearwolf/eventize`/`signalize`** dokumentiert beschließen.
-18. **API-Aufräumen:** `appendRoute` aufteilen, `onDestroy`-Tripel-Bedeutung dokumentieren oder trennen, `IShadowObjectEnvProxy.isDestroyed`/`error`-Surface ergänzen, Worker-Timeouts konfigurierbar machen.
-19. **Performance-Knopf:** `disableStructuredClone` als Default für `LocalShadowObjectEnv`; optionales RAF-Coalescing bei hoher Update-Frequenz.
-20. **`package.override.json`-Mechanik** in `AGENTS.md`/`CLAUDE.md` dokumentieren, Doppel-`sideEffects` zu einer Wahrheit konsolidieren.
+15. **`exports`-Konditionen umsortieren** (`types` vor `import`) für strikte Node-ESM-Konsumenten.
+16. **`peerDependencies` für `@spearwolf/eventize`/`signalize`** dokumentiert beschließen.
+17. **API-Aufräumen:** `appendRoute` aufteilen, `onDestroy`-Tripel-Bedeutung dokumentieren oder trennen, `IShadowObjectEnvProxy.isDestroyed`/`error`-Surface ergänzen, Worker-Timeouts konfigurierbar machen.
+18. **Performance-Knopf:** `disableStructuredClone` als Default für `LocalShadowObjectEnv`; optionales RAF-Coalescing bei hoher Update-Frequenz.
+19. **`sideEffects`-Listen konsolidieren:** `package.json` und `package.override.json` haben noch tote `build/src/...`-Einträge aus der alten Build-Pipeline — auf `dist/src/...` reduzieren.
+20. **Biome-Warnings abarbeiten** (~30 Stück): `useIterableCallbackReturn`, `noShadowRestrictedNames` etc. — entweder fixen oder Regel bewusst abschalten.
 
 ### 7.4 Beispiel-App / Dokumentation
 

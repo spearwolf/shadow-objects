@@ -3,8 +3,8 @@ import {beQuiet, createEffect, createSignal} from '@spearwolf/signalize';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
 import {ViewComponent} from '../view/ViewComponent.js';
-import {ShaeElement} from './ShaeElement.js';
 import {ATTR_FORWARD_CUSTOM_EVENTS, ATTR_TOKEN, RequestEntParentEventName, ReRequestEntParentEventName} from './constants.js';
+import {ShaeElement} from './ShaeElement.js';
 
 export class ShaeEntElement extends ShaeElement {
   static override observedAttributes = [...ShaeElement.observedAttributes, ATTR_TOKEN, ATTR_FORWARD_CUSTOM_EVENTS];

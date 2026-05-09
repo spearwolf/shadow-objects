@@ -1,6 +1,6 @@
 import {on, once} from '@spearwolf/eventize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {onCreate, onDestroy, type OnCreate, type OnDestroy} from '../in-the-dark/events.js';
+import {type OnCreate, type OnDestroy, onCreate, onDestroy} from '../in-the-dark/events.js';
 import {Registry} from '../in-the-dark/Registry.js';
 import {ShadowObject} from '../in-the-dark/ShadowObject.js';
 import type {ShadowObjectCreationAPI} from '../types.js';

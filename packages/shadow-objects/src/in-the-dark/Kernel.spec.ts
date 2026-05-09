@@ -1,10 +1,10 @@
 import {emit, on} from '@spearwolf/eventize';
-import {createSignal, value, type Signal, type SignalReader} from '@spearwolf/signalize';
+import {createSignal, type Signal, type SignalReader, value} from '@spearwolf/signalize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {MessageToView} from '../constants.js';
 import type {ShadowObjectCreationAPI} from '../types.js';
 import {generateUUID} from '../utils/generateUUID.js';
-import {onCreate, onDestroy, type OnCreate, type OnDestroy} from './events.js';
+import {type OnCreate, type OnDestroy, onCreate, onDestroy} from './events.js';
 import {Kernel, type MessageToViewEvent} from './Kernel.js';
 import {Registry} from './Registry.js';
 import {ShadowObject} from './ShadowObject.js';

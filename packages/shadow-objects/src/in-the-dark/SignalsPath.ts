@@ -4,9 +4,9 @@ import {
   destroyObjectSignals,
   Effect,
   findObjectSignalByName,
-  value,
   type Signal,
   type SignalLike,
+  value,
 } from '@spearwolf/signalize';
 import {signal} from '@spearwolf/signalize/decorators';
 
@@ -86,7 +86,7 @@ export class SignalsPath {
       this.value = undefined;
     } else {
       this.#effect = createEffect(() => {
-        let valueFromSignals: any = undefined;
+        let valueFromSignals: any;
         for (const sig of this.#signals) {
           const val = value(sig);
           if (val != null) {

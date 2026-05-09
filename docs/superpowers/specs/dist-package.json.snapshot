@@ -1,0 +1,75 @@
+{
+  "name": "@spearwolf/shadow-objects",
+  "description": "a reactive entity-component framework that feels at home in the shadows",
+  "homepage": "https://github.com/spearwolf/shadow-objects/",
+  "version": "0.30.2",
+  "author": {
+    "name": "Wolfger Schramm",
+    "email": "wolfger@spearwolf.de",
+    "url": "https://www.spearwolf.de"
+  },
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spearwolf/shadow-objects.git"
+  },
+  "type": "module",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.js",
+      "types": "./src/index.d.ts"
+    },
+    "./elements.js": {
+      "default": "./src/elements.js"
+    },
+    "./bundle.js": {
+      "default": "./bundle.js"
+    },
+    "./shadow-objects.worker.js": {
+      "import": "./src/shadow-objects.worker.js",
+      "types": "./src/shadow-objects.worker.d.ts"
+    },
+    "./shadow-objects.js": {
+      "import": "./src/shadow-objects.js",
+      "types": "./src/shadow-objects.d.ts"
+    },
+    "./shae-ent.js": {
+      "import": "./src/shae-ent.js",
+      "types": "./src/shae-ent.d.ts"
+    },
+    "./shae-prop.js": {
+      "import": "./src/shae-prop.js",
+      "types": "./src/shae-prop.d.ts"
+    },
+    "./shae-worker.js": {
+      "import": "./src/shae-worker.js",
+      "types": "./src/shae-worker.d.ts"
+    },
+    "./ConsoleLogger.js": {
+      "import": "./src/utils/ConsoleLogger.js",
+      "types": "./src/utils/ConsoleLogger.d.ts"
+    }
+  },
+  "sideEffects": [
+    "bundle.js",
+    "src/bundle.js",
+    "src/elements.js",
+    "src/index.js",
+    "src/view/ComponentContext.js",
+    "src/view/ShadowEnv.js",
+    "src/utils/ConsoleLogger.js",
+    "src/shae-ent.js",
+    "src/shae-prop.js",
+    "src/shae-worker.js"
+  ],
+  "dependencies": {
+    "@spearwolf/eventize": "^4.3.1",
+    "@spearwolf/signalize": "^0.28.0"
+  }
+}

@@ -12,9 +12,5 @@
     "src/shae-worker.js"
   ],
   "scripts": null,
-  "devDependencies": null,
-  "rollup": null,
-  "nx": null,
-  "prettier": null,
-  "jest": null
+  "devDependencies": null
 }

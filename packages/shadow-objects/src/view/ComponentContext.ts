@@ -431,8 +431,7 @@ export class ComponentContext {
 
     this.#viewInstances = Array.from(lvl.entries())
       .sort((a, b) => a[0] - b[0])
-      .map(([, vi]) => vi)
-      .flat();
+      .flatMap(([, vi]) => vi);
 
     return this.#viewInstances;
   }

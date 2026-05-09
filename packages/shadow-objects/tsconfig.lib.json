@@ -1,10 +1,18 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"],
+  "include": ["src/**/*.ts", "src/**/*.js"],
+  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts", "src/**/*.specs.ts"],
   "compilerOptions": {
-    "outDir": "./dist",
-    "declarationDir": "./dist",
+    "rootDir": "./src",
+    "outDir": "./dist/src",
+    "declarationDir": "./dist/src",
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "declarationMap": true,
     "removeComments": false,
-    "importHelpers": false
+    "importHelpers": false,
+    "noEmit": false,
+    "incremental": false,
+    "composite": false
   }
 }

@@ -222,7 +222,7 @@ export class ShaeWorkerElement extends ShaeElement {
     this.#autoSync = createEffect(() => {
       if (this.isConnected$.get()) {
         const autoSync = (this.autoSync$.get() || ShaeWorkerElement.DefaultAutoSync).trim().toLowerCase();
-        let delay = undefined;
+        let delay;
 
         if (['true', 'yes', 'on', 'frame', 'auto-sync'].includes(autoSync)) {
           if (this.logger.isDebug) {

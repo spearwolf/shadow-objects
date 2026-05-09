@@ -11,7 +11,6 @@
     "emitDecoratorMetadata": false,
     "useDefineForClassFields": false,
     "importHelpers": true,
-    "baseUrl": ".",
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
     "alwaysStrict": true,
@@ -30,7 +29,6 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "resolveJsonModule": true,
-    "downlevelIteration": false,
     "removeComments": true,
     "stripInternal": true,
     "allowJs": true,
@@ -41,7 +39,6 @@
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "noErrorTruncation": true,
-    "skipDefaultLibCheck": true,
     "skipLibCheck": true
   }
 }

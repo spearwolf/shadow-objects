@@ -1,2 +1,47 @@
 packages:
   - 'packages/*'
+
+# Single source of truth for dependency versions.
+# Reference from package.json with `"<dep>": "catalog:"`.
+catalog:
+  # --- runtime deps (shipped) ---
+  '@spearwolf/eventize': ^4.3.1
+  '@spearwolf/signalize': ^0.28.0
+  three: ^0.179.1
+
+  # --- typescript ---
+  typescript: ^6.0.3
+  tslib: ^2.8.1
+
+  # --- build ---
+  esbuild: ^0.28.0
+  esbuild-plugin-inline-worker: ^0.1.1
+
+  # --- test ---
+  vitest: ^4.1.5
+  '@vitest/browser': ^4.1.5
+  '@vitest/browser-playwright': ^4.1.5
+  happy-dom: ^20.9.0
+  jsdom: ^29.1.1
+  sinon: ^19.0.2
+  '@types/sinon': ^17.0.4
+  lit-html: ^3.3.2
+
+  # --- e2e ---
+  '@playwright/test': ^1.59.1
+  playwright: ^1.59.1
+  vite: ^6.2.2
+
+  # --- lint/format ---
+  '@biomejs/biome': ^2.4.14
+
+  # --- types ---
+  '@types/node': ^24.10.12
+  '@types/react': ^18.3.28
+
+  # --- monorepo orchestrator ---
+  turbo: ^2.9.12
+
+  # --- misc ---
+  rimraf: ^6.1.2
+  leasot: ^14.4.0

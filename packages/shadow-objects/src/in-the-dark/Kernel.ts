@@ -25,7 +25,7 @@ import type {
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {toMaybe} from '../utils/toMaybe.js';
 import {Entity} from './Entity.js';
-import {type OnCreate, onCreate, type OnDestroy, onDestroy, onParentChanged, onViewEvent} from './events.js';
+import {type OnCreate, type OnDestroy, onCreate, onDestroy, onParentChanged, onViewEvent} from './events.js';
 import {Registry} from './Registry.js';
 import {SignalsPath} from './SignalsPath.js';
 
@@ -532,7 +532,9 @@ export class Kernel {
 
         useProperty: getUseProperty,
 
-        useProperties<T extends Record<string, unknown> = Record<string, unknown>>(props: {[K in keyof T]: string}): {
+        useProperties<T extends Record<string, unknown> = Record<string, unknown>>(
+          props: {[K in keyof T]: string},
+        ): {
           [K in keyof T]: SignalReader<Maybe<T[K]>>;
         } {
           const result = {} as {[K in keyof T]: SignalReader<Maybe<T[K]>>};

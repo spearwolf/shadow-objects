@@ -5,6 +5,14 @@ All notable changes to [@spearwolf/shadow-objects](https://github.com/spearwolf/
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+> Build-system, monorepo, lint/format, and dev-workflow changes that don't affect the shipped package are tracked in the top-level [`CHANGELOG.md`](../../CHANGELOG.md).
+
+## [Unreleased]
+
+- **Bugfix (`./bundle.js` export):** the published `dist/bundle.js` now actually contains the inlined worker and the shae-element registrations. Previous releases shipped a 790-byte stub that only set `globalThis.SHADOW_ENTS_BUNDLE_LOADED = true` because the source-side `package.json#sideEffects` array referenced the (no-longer-emitted) intermediate `build/src/*` paths and the bundle entry was tree-shaken. Consumers using `import '@spearwolf/shadow-objects/bundle.js'` now get the full bundle (~130 KB).
+- **Cleanup:** the published `dist/` no longer contains the leftover `tsconfig.lib.tsbuildinfo` build artifact.
+- No source, runtime-API, or runtime-dependency changes. `@spearwolf/eventize@^4.3.1` and `@spearwolf/signalize@^0.28.0` unchanged.
+
 ## [0.30.2] - 2026-02-26
 
 - **API Update:** When calling the `kernel.createEntity()` function, there is now a new parameter `autoDestructionOnParentRemoval`. This makes it easier to create entities yourself from inside a shadow-object.

@@ -1,5 +1,5 @@
-import type {ShaeEntElement} from './ShaeEntElement.js';
 import type {RequestEntParentEventName, ReRequestEntParentEventName} from './constants.js';
+import type {ShaeEntElement} from './ShaeEntElement.js';
 
 export interface RequestEntParentEvent extends CustomEvent {
   detail: {

@@ -1,0 +1,106 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.14/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/build",
+      "!**/build-tmp",
+      "!**/coverage",
+      "!**/playwright-report",
+      "!**/test-results",
+      "!**/.npm-pkg",
+      "!packages/shadow-objects/tests",
+      "!packages/shadow-objects-e2e/dist",
+      "!packages/shadow-objects-e2e/playwright-report",
+      "!packages/shadow-objects-e2e/test-results",
+      "!**/*.glsl",
+      "!**/*.vert",
+      "!**/*.frag",
+      "!**/*.svg",
+      "!**/pnpm-lock.yaml",
+      "!**/CHANGELOG.md",
+      "!docs/superpowers/specs/dist-snapshot.txt",
+      "!docs/superpowers/specs/dist-package.json.snapshot"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 130,
+    "lineEnding": "lf",
+    "formatWithErrors": false
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "jsxQuoteStyle": "double",
+      "trailingCommas": "all",
+      "bracketSpacing": false,
+      "semicolons": "always",
+      "arrowParentheses": "always"
+    }
+  },
+  "json": {
+    "formatter": {
+      "trailingCommas": "none"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noEmptyBlockStatements": "off",
+        "noEmptyInterface": "off",
+        "noAssignInExpressions": "off",
+        "noConfusingVoidType": "off",
+        "noTsIgnore": "off",
+        "noImplicitAnyLet": "off",
+        "noShadowRestrictedNames": "warn",
+        "noGlobalIsNan": "off",
+        "noDoubleEquals": "off",
+        "useIterableCallbackReturn": "warn",
+        "noDuplicateProperties": "warn"
+      },
+      "style": {
+        "noNonNullAssertion": "off",
+        "useImportType": "off",
+        "useNodejsImportProtocol": "warn",
+        "noParameterAssign": "off",
+        "useConst": "warn"
+      },
+      "correctness": {
+        "noUnusedVariables": "warn",
+        "noUnusedImports": "warn",
+        "noUnusedFunctionParameters": "off",
+        "noUnusedPrivateClassMembers": "warn",
+        "noConstructorReturn": "off",
+        "noVoidTypeReturn": "warn",
+        "useParseIntRadix": "warn"
+      },
+      "complexity": {
+        "noForEach": "off",
+        "noBannedTypes": "off",
+        "noUselessConstructor": "off",
+        "noThisInStatic": "off",
+        "useOptionalChain": "warn",
+        "useLiteralKeys": "warn",
+        "useArrowFunction": "warn",
+        "useFlatMap": "warn",
+        "noUselessUndefinedInitialization": "warn"
+      },
+      "performance": {
+        "noDelete": "off"
+      }
+    }
+  }
+}

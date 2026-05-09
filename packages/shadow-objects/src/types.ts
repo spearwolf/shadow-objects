@@ -132,7 +132,9 @@ export interface ShadowObjectCreationAPI {
 
   useProperty<T = unknown>(name: string, options?: SignalValueOptions<T> | CompareFunc<T | undefined>): SignalReader<Maybe<T>>;
 
-  useProperties<T extends Record<string, unknown> = Record<string, unknown>>(props: {[K in keyof T]: string}): {
+  useProperties<T extends Record<string, unknown> = Record<string, unknown>>(
+    props: {[K in keyof T]: string},
+  ): {
     [K in keyof T]: SignalReader<Maybe<T[K]>>;
   };
 

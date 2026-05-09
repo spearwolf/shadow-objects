@@ -1,7 +1,7 @@
-import {shadowObjects as ShaeOffscreenCanvas} from './shadow-objects.js';
 import {CubeScene} from './shadow-objects/sample/CubeScene.js';
 import {TestImage2OnCanvas2D} from './shadow-objects/sample/TestImage2OnCanvas2D.js';
 import {TestImageOnCanvas2D} from './shadow-objects/sample/TestImageOnCanvas2D.js';
+import {shadowObjects as ShaeOffscreenCanvas} from './shadow-objects.js';
 
 export const shadowObjects = {
   extends: [ShaeOffscreenCanvas],

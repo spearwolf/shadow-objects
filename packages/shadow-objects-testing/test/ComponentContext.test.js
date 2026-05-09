@@ -152,7 +152,7 @@ describe('ComponentContext', () => {
 
     a.destroy();
 
-    let changes = cc.buildChangeTrails();
+    const changes = cc.buildChangeTrails();
 
     expect(changes).to.deep.equal([]);
   });

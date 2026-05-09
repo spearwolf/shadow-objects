@@ -1,14 +1,8 @@
 {
-    "cSpell.words": [
-        "ents",
-        "plah",
-        "Shae",
-        "testresult",
-        "transferables"
-    ],
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-        "source.organizeImports": "always",
-        "source.formatDocument": "always"
-    }
+  "cSpell.words": ["ents", "plah", "Shae", "testresult", "transferables"],
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "always",
+    "source.formatDocument": "always"
+  }
 }

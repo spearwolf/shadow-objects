@@ -27,28 +27,30 @@
     "src/shae-offscreen-canvas.js"
   ],
   "scripts": {
-    "update": "pnpm dlx npm-check --update",
     "dev": "vite --host",
-    "test": "web-test-runner \"src/**/*.specs.js\" --node-resolve --port 8001",
-    "watch": "web-test-runner \"src/**/*.specs.js\" --node-resolve --watch --port 8001",
-    "build:copyFiles": "pnpm node ./build.mjs",
-    "build:packageJson": "pnpm node ../../scripts/makePackageJson.mjs",
-    "build": "pnpm exec run-s clean build:copyFiles build:packageJson",
-    "clean": "pnpm exec rimraf .npm-pkg",
-    "publishNpmPkg": "pnpm node ../../scripts/publishNpmPkg.mjs .npm-pkg"
+    "test": "vitest --run",
+    "watch": "vitest",
+    "build:copyFiles": "node ./build.mjs",
+    "build:packageJson": "node ../../scripts/makePackageJson.mjs",
+    "build": "pnpm clean && pnpm build:copyFiles && pnpm build:packageJson",
+    "clean": "rimraf .npm-pkg",
+    "publishNpmPkg": "node ../../scripts/publishNpmPkg.mjs .npm-pkg",
+    "update": "pnpm dlx npm-check --update"
   },
   "devDependencies": {
     "@esm-bundle/chai": "4.3.4-fix.0",
-    "@web/test-runner": "^0.20.2",
-    "esbuild-plugin-inline-worker": "^0.1.1",
-    "lit-html": "^3.3.1",
-    "sinon": "^19.0.2",
-    "vite": "^6.2.2"
+    "esbuild-plugin-inline-worker": "catalog:",
+    "happy-dom": "catalog:",
+    "lil-gui": "^0.21.0",
+    "lit-html": "catalog:",
+    "sinon": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
   },
   "dependencies": {
-    "@spearwolf/eventize": "^4.3.1",
+    "@spearwolf/eventize": "catalog:",
     "@spearwolf/shadow-objects": "workspace:*",
-    "@spearwolf/signalize": "^0.28.0",
-    "three": "^0.179.1"
+    "@spearwolf/signalize": "catalog:",
+    "three": "catalog:"
   }
 }
