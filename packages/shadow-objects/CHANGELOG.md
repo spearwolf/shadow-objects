@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Runtime dependencies bumped: `@spearwolf/eventize` `^4.3.1` → `^5.0.0`, `@spearwolf/signalize` `^0.28.0` → `^0.29.0`. The eventize 5.0.0 major bump only changes `emit()`/`emitAsync()` on *non-eventized* targets (they now duck-type into the target's matching method or `.emit()` instead of throwing); all internal `emit()` call-sites in shadow-objects target eventized objects, so the change is transparent. signalize 0.29.0 itself bundles the same eventize bump plus a docs rewrite — no runtime-behavior change for shadow-objects. Verified with `pnpm cbt` (7 turbo tasks, 191 unit/integration + 44 e2e tests).
+
 ## [0.31.0] - 2026-05-09
 
 - **Bugfix (entity lifecycle, KERN-3):** `kernel.destroyEntity()` now handles its children explicitly instead of leaving them as orphaned entries inside the kernel. Children with `autoDestructionOnParentRemoval` cascade-destroy together with the parent; all other children are promoted to root entities and remain reachable. This fixes a real leak where children without the auto-destruct flag were left in `kernel.#entities` after the parent was destroyed.

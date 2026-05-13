@@ -88,8 +88,8 @@ ComponentContext│  ─ Destroy
 ### 2.3 Verwendete Technologien
 
 - **TypeScript 6** (strict, aber **`strictNullChecks: false`** — Achtung: das ist eine bewusste Lockerung, die Typen-Sicherheit signifikant einschränkt).
-- **`@spearwolf/signalize` 0.28.0** — Signals/Effects.
-- **`@spearwolf/eventize` 4.3.1** — Event-Emitter.
+- **`@spearwolf/signalize` 0.29.0** — Signals/Effects.
+- **`@spearwolf/eventize` 5.0.0** — Event-Emitter.
 - **esbuild 0.28** — Bundling, mit `esbuild-plugin-inline-worker` für den Worker-Inline.
 - **vitest 4** für Unit-Tests (happy-dom) und Integrationstests (browser-mode + Playwright-Provider). **Playwright** für E2E.
 - **turborepo 2.9** als Monorepo-Orchestrator, **biome 2.4** für Lint/Format, **pnpm 9.15** mit `catalog:`-SSOT, Node ≥ 24.13.0.

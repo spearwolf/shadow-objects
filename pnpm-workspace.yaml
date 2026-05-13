@@ -5,8 +5,8 @@ packages:
 # Reference from package.json with `"<dep>": "catalog:"`.
 catalog:
   # --- runtime deps (shipped) ---
-  '@spearwolf/eventize': ^4.3.1
-  '@spearwolf/signalize': ^0.28.0
+  '@spearwolf/eventize': ^5.0.0
+  '@spearwolf/signalize': ^0.29.0
   three: ^0.179.1
 
   # --- typescript ---
