@@ -334,8 +334,8 @@ describe('Kernel', () => {
         ]);
 
         expect(capturedProps).toBeDefined();
-        expect(value(capturedProps!['foo'])).toBe('valueA');
-        expect(value(capturedProps!['bar'])).toBe('valueB');
+        expect(value(capturedProps!.foo)).toBe('valueA');
+        expect(value(capturedProps!.bar)).toBe('valueB');
 
         kernel.destroy();
       });

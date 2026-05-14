@@ -1,6 +1,6 @@
-import {readdirSync} from 'fs';
-import {basename, dirname, resolve} from 'path';
-import {fileURLToPath} from 'url';
+import {readdirSync} from 'node:fs';
+import {basename, dirname, resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {defineConfig} from 'vite';
 
 const projectRoot = dirname(fileURLToPath(import.meta.url));

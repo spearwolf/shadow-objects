@@ -27,7 +27,8 @@
       "!**/pnpm-lock.yaml",
       "!**/CHANGELOG.md",
       "!docs/superpowers/specs/dist-snapshot.txt",
-      "!docs/superpowers/specs/dist-package.json.snapshot"
+      "!docs/superpowers/specs/dist-package.json.snapshot",
+      "!audit.html"
     ]
   },
   "formatter": {

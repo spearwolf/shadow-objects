@@ -71,13 +71,13 @@ export class ShadowEnv {
 
   set view(ctx: ComponentContext | null | undefined) {
     if (ctx !== this.#comCtx) {
-      if (this.#comCtx && this.#comCtx.ns && globalThis.__shadowEnvs) {
+      if (this.#comCtx?.ns && globalThis.__shadowEnvs) {
         globalThis.__shadowEnvs.delete(this.#comCtx.ns);
       }
 
       this.#comCtx = ctx ?? undefined;
 
-      if (this.#comCtx && this.#comCtx.ns) {
+      if (this.#comCtx?.ns) {
         globalThis.__shadowEnvs ??= new Map();
         if (globalThis.__shadowEnvs.has(this.#comCtx.ns) && globalThis.__shadowEnvs.get(this.#comCtx.ns) !== this) {
           if (this.logger.isWarn) {

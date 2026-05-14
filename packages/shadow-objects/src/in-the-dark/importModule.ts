@@ -21,8 +21,8 @@ export async function importModule(
   const {registry} = kernel;
 
   if (module.define) {
-    for (const [token, constructor] of Object.entries(module.define)) {
-      registry.define(token, constructor as ShadowObjectConstructor);
+    for (const [token, constructa] of Object.entries(module.define)) {
+      registry.define(token, constructa as ShadowObjectConstructor);
     }
   }
 
@@ -33,7 +33,7 @@ export async function importModule(
   }
 
   await (module.initialize?.({
-    define: (token, constructor) => registry.define(token, constructor as ShadowObjectConstructor),
+    define: (token, constructa) => registry.define(token, constructa as ShadowObjectConstructor),
     kernel,
     registry,
   }) ?? Promise.resolve());

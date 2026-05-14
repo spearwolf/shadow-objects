@@ -6,7 +6,6 @@ export class FrameLoop {
   static OnFrame = Symbol('onFrame');
 
   #rafID = 0;
-  #subscriptionCount = 0;
 
   constructor() {
     if (gUniqInstance) return gUniqInstance;
@@ -22,8 +21,6 @@ export class FrameLoop {
     }
 
     on(this as FrameLoop, FrameLoop.OnFrame, target);
-
-    this.#subscriptionCount++;
 
     return () => {
       this.stop(target);

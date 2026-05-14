@@ -23,8 +23,8 @@ const addRoutes = (set: Set<string>, routes: string[] | Set<string>) => {
 
 const addConstructors = (entry: RegistryEntry | null | undefined, constructors: Set<ShadowObjectConstructor>) => {
   if (entry != null) {
-    for (const constructor of entry.constructors) {
-      constructors.add(constructor);
+    for (const c of entry.constructors) {
+      constructors.add(c);
     }
   }
 };
@@ -40,11 +40,11 @@ export class Registry {
   readonly #routes = new Map<string, Set<string>>();
   readonly #truthyPropRoutes = new Map<string, {routes: Set<string>; token?: string}>();
 
-  define(token: string, constructor: ShadowObjectConstructor) {
+  define(token: string, constructa: ShadowObjectConstructor) {
     if (this.#registry.has(token)) {
-      appendTo(this.#registry.get(token)!.constructors, constructor);
+      appendTo(this.#registry.get(token)!.constructors, constructa);
     } else {
-      this.#registry.set(token, {token, constructors: [constructor]});
+      this.#registry.set(token, {token, constructors: [constructa]});
     }
   }
 

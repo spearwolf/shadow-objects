@@ -226,7 +226,7 @@ export class ShaePropElement extends HTMLElement {
 
           case 'int[]':
           case 'integer[]':
-            value = value.split(/\s+/).map((v) => parseInt(v));
+            value = value.split(/\s+/).map((v) => parseInt(v, 10));
             break;
 
           case 'hex[]':

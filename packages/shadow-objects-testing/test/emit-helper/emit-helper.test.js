@@ -22,7 +22,7 @@ describe('ShadowObjectCreationAPI.emit helper', () => {
   afterEach(() => {
     ComponentContext.get().clear();
     const localEnv = document.getElementById('localEnv');
-    if (localEnv && localEnv.shadowEnv) {
+    if (localEnv?.shadowEnv) {
       localEnv.shadowEnv.destroy();
     }
   });

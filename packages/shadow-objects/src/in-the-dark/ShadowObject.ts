@@ -29,7 +29,7 @@ export function ShadowObject(options: ShadowObjectDecoratorOptions) {
  * If you don't want to use the decorator, you can simply call this method instead.
  */
 export const shadowObjects = {
-  define(token: string, constructor: ShadowObjectConstructor, registry?: Registry) {
-    Registry.get(registry).define(token, constructor);
+  define(token: string, constructa: ShadowObjectConstructor, registry?: Registry) {
+    Registry.get(registry).define(token, constructa);
   },
 };

@@ -187,7 +187,7 @@ export type ShadowObjectType = EventizedObject;
 export type NamespaceType = string | symbol;
 
 export type ShadowObjectsModuleInitializer = (shadowObjects: {
-  define: (token: string, constructor: ShadowObjectConstructor | ShadowObjectConstructorFunc) => void;
+  define: (token: string, constructa: ShadowObjectConstructor | ShadowObjectConstructorFunc) => void;
   kernel: Kernel;
   registry: Registry;
 }) => Promise<void>;
