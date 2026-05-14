@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Audit · @spearwolf/shadow-objects · 2026-05-14</title>
+<style>
+  :root {
+    --bg: #fafaf7;
+    --panel: #ffffff;
+    --panel-2: #f3f3ee;
+    --ink: #1c1c1a;
+    --muted: #6a6a63;
+    --rule: #e3e3dc;
+    --accent: #5b6f99;
+    --accent-2: #2f4a78;
+    --code-bg: #f4f0e6;
+    --critical: #c1272d;
+    --high: #e85d04;
+    --medium: #d4a017;
+    --low: #2a4d8f;
+    --info: #6a6a63;
+    --green: #2f7a45;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16161a;
+      --panel: #1f1f22;
+      --panel-2: #26262a;
+      --ink: #e8e6e0;
+      --muted: #9a9a93;
+      --rule: #34343a;
+      --accent: #9bb1d9;
+      --accent-2: #c4d2f0;
+      --code-bg: #25252b;
+      --critical: #ff6b6b;
+      --high: #ffa45c;
+      --medium: #f1d068;
+      --low: #7da1d8;
+      --info: #9a9a93;
+      --green: #6ec98a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
+  body {
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    max-width: 1100px; margin: 0 auto; padding: 28px 32px 80px;
+  }
+  h1, h2, h3, h4 { line-height: 1.25; margin: 1.6em 0 0.5em; }
+  h1 { font-size: 28px; letter-spacing: -0.01em; margin-top: 0; }
+  h2 { font-size: 21px; padding-top: 0.6em; border-top: 1px solid var(--rule); }
+  h3 { font-size: 16px; }
+  p { margin: 0.4em 0 0.9em; }
+  code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--code-bg); padding: 12px 14px; border-radius: 6px; overflow-x: auto; }
+  a { color: var(--accent); }
+
+  .header {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 28px;
+    padding-bottom: 18px; border-bottom: 1px solid var(--rule);
+  }
+  .header-left { flex: 1 1 auto; }
+  .header-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .header-name { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+  .header-meta { color: var(--muted); margin-top: 6px; font-size: 13px; }
+  .stack-badges { margin-top: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge { background: var(--panel-2); border: 1px solid var(--rule); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--ink); }
+
+  .score-box {
+    flex: 0 0 auto; text-align: right; padding: 12px 18px; background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; min-width: 220px;
+  }
+  .score-value { font-size: 40px; font-weight: 700; line-height: 1; color: var(--accent); }
+  .score-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+  .score-delta { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .score-delta .neg { color: var(--high); }
+  .score-delta .pos { color: var(--green); }
+
+  .diffline {
+    background: var(--panel-2); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+    padding: 10px 14px; border-radius: 6px; margin: 14px 0; font-size: 14px; color: var(--ink);
+  }
+  .diffline strong { color: var(--accent-2); }
+
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 18px 0 8px; }
+  .stat { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; }
+  .stat-num { font-size: 22px; font-weight: 700; line-height: 1; }
+  .stat-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+  .sev-critical .stat-num, .sev-pill.critical { color: var(--critical); }
+  .sev-high     .stat-num, .sev-pill.high     { color: var(--high); }
+  .sev-medium   .stat-num, .sev-pill.medium   { color: var(--medium); }
+  .sev-low      .stat-num, .sev-pill.low      { color: var(--low); }
+  .sev-info     .stat-num, .sev-pill.info     { color: var(--info); }
+
+  .domain-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 12px 0; }
+  .domain { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; }
+  .domain h4 { margin: 0 0 4px; font-size: 14px; }
+  .domain p { margin: 0; font-size: 13px; color: var(--muted); }
+  .domain .paths { margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap; }
+  .domain .paths code { font-size: 11px; }
+
+  .diagram { background: var(--code-bg); padding: 14px; border-radius: 6px; overflow-x: auto; font-size: 12px; line-height: 1.3; }
+
+  .filterbar { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin: 12px 0 18px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; }
+  .filtergroup { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+  .filtergroup .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 4px; }
+  .pill { background: transparent; border: 1px solid var(--rule); color: var(--ink); border-radius: 999px; padding: 3px 10px; font-size: 12px; cursor: pointer; user-select: none; }
+  .pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .pill[data-sev="critical"].active { background: var(--critical); border-color: var(--critical); }
+  .pill[data-sev="high"].active     { background: var(--high);     border-color: var(--high); }
+  .pill[data-sev="medium"].active   { background: var(--medium);   border-color: var(--medium); color: #1c1c1a; }
+  .pill[data-sev="low"].active      { background: var(--low);      border-color: var(--low); }
+  .pill[data-sev="info"].active     { background: var(--info);     border-color: var(--info); }
+
+  .findings { display: flex; flex-direction: column; gap: 8px; }
+  .finding { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+  .finding summary { list-style: none; cursor: pointer; padding: 12px 14px; display: grid; grid-template-columns: 90px 100px 1fr 170px; gap: 12px; align-items: center; }
+  .finding summary::-webkit-details-marker { display: none; }
+  .finding[open] summary { border-bottom: 1px solid var(--rule); }
+  .sev-tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+  .sev-tag.critical { background: var(--critical); color: #fff; }
+  .sev-tag.high { background: var(--high); color: #fff; }
+  .sev-tag.medium { background: var(--medium); color: #1c1c1a; }
+  .sev-tag.low { background: var(--low); color: #fff; }
+  .sev-tag.info { background: var(--info); color: #fff; }
+  .finding-id { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); }
+  .finding-title { font-size: 14px; font-weight: 600; }
+  .finding-meta { color: var(--muted); font-size: 12px; margin-top: 2px; word-break: break-word; }
+  .status-tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+  .status-tag.new { background: var(--accent); color: #fff; }
+  .status-tag.unchanged { background: var(--panel-2); color: var(--muted); border: 1px solid var(--rule); }
+  .status-tag.improved { background: var(--green); color: #fff; }
+  .status-tag.carried-over { background: var(--panel-2); color: var(--muted); border: 1px dashed var(--rule); }
+
+  .finding-body { padding: 4px 14px 14px; }
+  .finding-body h4 { margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+
+  .table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+  .table th, .table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--rule); font-size: 13px; }
+  .table th { background: var(--panel-2); color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  .ul-tight li { margin: 3px 0; }
+  .muted { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-title">Project Audit</div>
+    <div class="header-name">@spearwolf/shadow-objects-monorepo</div>
+    <div class="header-meta">JS/TS monorepo health check &middot; Audit-Datum: 2026-05-14 (Re-Audit) &middot; Paket-Version <code>@spearwolf/shadow-objects@0.32.0</code></div>
+    <div class="stack-badges">
+      <span class="badge">pnpm 9.15 + catalog:</span>
+      <span class="badge">turborepo 2.9</span>
+      <span class="badge">TypeScript 6 (strict, strictNullChecks: false)</span>
+      <span class="badge">esbuild 0.28</span>
+      <span class="badge">vitest 4</span>
+      <span class="badge">Playwright 1.59</span>
+      <span class="badge">biome 2.4</span>
+      <span class="badge">Node &ge; 24.13</span>
+    </div>
+  </div>
+  <div class="score-box">
+    <div class="score-value">51.5</div>
+    <div class="score-label">Health-Score / 100</div>
+    <div class="score-delta">vorher (2026-05-14, gleicher Tag): 65 &nbsp;<span class="neg">(&minus;13.5)</span></div>
+  </div>
+</div>
+
+<div class="diffline">
+  <strong>Diff zum vorherigen Audit (2026-05-14, frühere Iteration):</strong>
+  19 Findings übernommen (alle weiterhin im Code belegbar, <em>kein</em> Finding behoben seit der vorherigen Iteration wenige Stunden zuvor),
+  12 neue Findings ergänzt (vor allem View/Worker-Lebenszyklus, Performance-Defaults, Typensicherheit). Score sinkt nicht wegen Regression,
+  sondern wegen vertiefter Code-Inspektion &mdash; siehe Methodik unten.
+</div>
+
+<h2>Projektportrait</h2>
+
+<p>
+<strong>shadow-objects</strong> ist ein experimentelles, reaktives Entity-Component-Framework (ECS) für Web-UI-State-Verwaltung. Die zentrale Idee:
+Anwendungslogik in einen <em>Shadow Environment</em> auslagern, der wahlweise im Hauptthread (<code>LocalShadowObjectEnv</code>) oder
+in einem Web Worker (<code>RemoteWorkerEnv</code>) läuft. Custom Elements (<code>&lt;shae-ent&gt;</code>, <code>&lt;shae-prop&gt;</code>, <code>&lt;shae-worker&gt;</code>)
+verknüpfen das DOM mit Entities und Shadow Objects (Komponenten) über String-Tokens. Reaktivität liegt bei
+<code>@spearwolf/signalize</code> (Signals/Effects) und <code>@spearwolf/eventize</code> (Event-Emitter), beide aus der Hand desselben Autors.
+Aktuell ist das Framework als &bdquo;highly experimental&ldquo; markiert; das Build-System wurde im Mai 2026 grundlegend erneuert (esbuild + turbo + biome).
+</p>
+
+<h3>Domänen</h3>
+<div class="domain-grid">
+  <div class="domain">
+    <h4>Schatten-Laufzeit (in-the-dark)</h4>
+    <p>Kernel, Entity, Registry, Token-Routing, SignalsPath, ShadowObject-Creation-API. Das ECS-Herz.</p>
+    <div class="paths"><code>packages/shadow-objects/src/in-the-dark/</code></div>
+  </div>
+  <div class="domain">
+    <h4>View-Brücke (Hauptthread)</h4>
+    <p>ShadowEnv-Fassade, LocalShadowObjectEnv, RemoteWorkerEnv, ComponentContext/Memory/Changes, ViewComponent.</p>
+    <div class="paths"><code>packages/shadow-objects/src/view/</code></div>
+  </div>
+  <div class="domain">
+    <h4>Worker-Laufzeit</h4>
+    <p>MessageRouter + WorkerRuntime &mdash; Worker-Seite der View&harr;Worker-Spiegelung über das <code>IShadowObjectEnvProxy</code>-Protokoll.</p>
+    <div class="paths"><code>packages/shadow-objects/src/worker/</code></div>
+  </div>
+  <div class="domain">
+    <h4>Custom Elements</h4>
+    <p>ShaeElement (Basis), ShaeEntElement, ShaePropElement, ShaeWorkerElement &mdash; DOM-Integration.</p>
+    <div class="paths"><code>packages/shadow-objects/src/elements/</code></div>
+  </div>
+  <div class="domain">
+    <h4>Beispiel-Anwendung</h4>
+    <p>shae-offscreen-canvas: Custom Element für OffscreenCanvas in einem Worker. Demonstriert Transferables und Namespaces.</p>
+    <div class="paths"><code>packages/shae-offscreen-canvas/</code></div>
+  </div>
+  <div class="domain">
+    <h4>Test-Suites</h4>
+    <p>Drei Layer: vitest-Specs am Source (8 Dateien), DOM-Integration via vitest-browser (9), Playwright-E2E (4).</p>
+    <div class="paths"><code>packages/shadow-objects-testing/</code> <code>packages/shadow-objects-e2e/</code></div>
+  </div>
+</div>
+
+<h3>Architektur-Skizze</h3>
+<pre class="diagram">
+   View-Layer (Hauptthread, DOM)                Shadow-Env (Hauptthread oder Worker)
+   ─────────────────────────────                ────────────────────────────────────
+   &lt;shae-ent&gt;     ┐                                       ┌──────────────────┐
+   &lt;shae-prop&gt;    │  ComponentChanges                     │     Kernel       │
+   &lt;shae-worker&gt;  │  ─ Create / SetParent / UpdateOrder   │  ─ Entities      │
+                  │  ─ ChangeProperties                    │  ─ Registry      │
+   ViewComponent ─┤  ─ SendEvents                          │  ─ SignalsPath   │
+                  │  ─ Destroy                             │  ─ ShadowObjects │
+   ComponentCtx   │                                        └─────┬────────────┘
+                  ▼                                              │
+            ChangeTrail (Array)                                  │
+                  │                                              │
+                  │ ── postMessage ──▶  MessageRouter ──▶ kernel.run(SyncEvent)
+                  │                          │
+                  │                          ▼
+                  ◀────────────────── postMessage (MessageToView, AppliedChangeTrail)
+
+   Datenfluss
+   ──────────
+   Downstream (Props):  View → Kernel → Entity → Shadow-Object-Signal
+   Upstream  (Events):  Shadow-Object → Entity → Kernel → View
+   Lateral   (Context): Eltern → Kind via SignalsPath  (Provider/Consumer)
+</pre>
+<p class="muted" style="font-size:12px;margin-top:4px">View- und Worker-Seite sind Spiegelbilder, verbunden durch das asynchrone <code>IShadowObjectEnvProxy</code>-Protokoll. Im lokalen Modus läuft der Kernel im Hauptthread; der gesamte <code>postMessage</code>-Pfad entfällt, der ChangeTrail wird per <code>structuredClone</code> kopiert.</p>
+
+<h2>Executive Summary</h2>
+<p>
+Das Framework ist konzeptionell sauber und kompakt: Eine schmale öffentliche API, klare Schichtung (View &harr; Worker als Spiegel über ein 4-Methoden-Proxy),
+gute Testabdeckung des ECS-Herzens (Kernel, Entity, Registry, ShadowObjectCreationAPI). Reaktivität ist konsequent auf eigene Libraries gestützt;
+Build-System und Tooling sind nach dem Mai-2026-Renewal modern und in sich konsistent.
+</p>
+<p>
+Die Risiken liegen <em>außerhalb</em> des ECS-Kerns &mdash; auf der View-/Worker-Brücke und in den Element-Lifecycle-Pfaden:
+<strong>Drei high-Severity-Probleme</strong> (kaputtes Quick-Start-Beispiel im publizierten README, fehlende E2E-Verifikation in CI, kein
+<code>error</code>/<code>messageerror</code>-Handling im Worker) sollten <em>vor</em> 1.0 adressiert sein. Hinzu kommen 14 medium-Befunde,
+davon mehrere zur asynchronen Symmetrie zwischen <code>LocalShadowObjectEnv</code> und <code>RemoteWorkerEnv</code>: das <code>waitForConfirmation</code>-Flag
+wird lokal ignoriert, die <code>envProxy</code>-Reassign-Race ist offen, <code>syncWait()</code> hängt nach <code>destroy()</code> für immer. <code>strictNullChecks: false</code>
+und Default-strukturierter-Clone im Local-Env sind ebenfalls echte Engagements für die Zukunft.
+</p>
+<p>
+Dieser Re-Audit fügt der vorherigen Iteration (gleichentags) zwölf vertiefte Code-Findings hinzu; keines davon ist Regression &mdash; alle waren schon im Code,
+wurden aber im flacheren Erst-Scan nicht ausgewiesen.
+</p>
+
+<div class="stats">
+  <div class="stat sev-critical"><div class="stat-num">0</div><div class="stat-label">Critical</div></div>
+  <div class="stat sev-high"><div class="stat-num">3</div><div class="stat-label">High</div></div>
+  <div class="stat sev-medium"><div class="stat-num">14</div><div class="stat-label">Medium</div></div>
+  <div class="stat sev-low"><div class="stat-num">11</div><div class="stat-label">Low</div></div>
+  <div class="stat sev-info"><div class="stat-num">3</div><div class="stat-label">Info</div></div>
+</div>
+
+<h3>Findings pro Kategorie</h3>
+<table class="table">
+  <thead><tr><th>Kategorie</th><th>Anzahl</th></tr></thead>
+  <tbody id="catTable"></tbody>
+</table>
+
+<h2>Backlog</h2>
+<div class="filterbar">
+  <div class="filtergroup">
+    <span class="label">Severity</span>
+    <span class="pill" data-sev="critical">critical</span>
+    <span class="pill" data-sev="high">high</span>
+    <span class="pill" data-sev="medium">medium</span>
+    <span class="pill" data-sev="low">low</span>
+    <span class="pill" data-sev="info">info</span>
+  </div>
+  <div class="filtergroup">
+    <span class="label">Status</span>
+    <span class="pill" data-status="new">new</span>
+    <span class="pill" data-status="unchanged">unchanged</span>
+    <span class="pill" data-status="improved">improved</span>
+    <span class="pill" data-status="carried-over">carried-over</span>
+  </div>
+  <div class="filtergroup">
+    <span class="label">Kategorie</span>
+    <span id="catFilter"></span>
+  </div>
+  <div class="filtergroup">
+    <button class="pill" id="resetBtn">reset</button>
+  </div>
+</div>
+
+<div class="findings" id="findings"></div>
+
+<h2>Offene Fragen / Unklarheiten</h2>
+<ul class="ul-tight">
+  <li><strong>Auto-Destruction-Re-Parenting unter Worker-Race-Bedingungen</strong> &mdash; Die 2026-05-09-Backlog-Auflösung (KERN-1/2/3) ist im
+  Local-Pfad und im Playwright-E2E geprüft. Was passiert in einem <code>RemoteWorkerEnv</code>, wenn ein Property-Update und ein SetParent im
+  selben ChangeTrail unterschiedlich von <code>autoDestructionOnParentRemoval</code> abhängen? Aktuell kein direkter Test.</li>
+  <li><strong>Migrationsstand der Top-Level <code>sideEffects</code>-Liste</strong> &mdash; Die Liste enthält noch <code>build/src/...</code>-Pfade aus der alten
+  Build-Pipeline. War das Absicht (Übergangsfenster) oder vergessen? Wenn vergessen &rarr; SIDE-EFFECTS-001 direkt fixen.</li>
+  <li><strong>Worker-Reload-Pfad</strong> &mdash; WORKER-001 empfiehlt einen <code>WorkerFailed</code>-Event. Wer übernimmt die Recovery: ShadowEnv-Consumer
+  (App-Layer) oder die Lib selbst (Auto-Reconnect)? Eine Entwurfsentscheidung, die das öffentliche API formt.</li>
+  <li><strong>Verbleib der <code>compare</code>-Cache-Hit-Semantik</strong> &mdash; KERN-7 im 2026-05-09-Backlog wurde mit Warn-Verhalten gefixt: bei Cache-Hit mit
+  abweichendem <code>compare</code> wird <code>console.warn</code> emittiert, aber der alte Reader bleibt. Ist das langfristig die richtige Semantik oder
+  nur ein Kompatibilitäts-Übergang?</li>
+  <li><strong>Performance-Default für Local-Env</strong> &mdash; siehe PERF-CLONE: ist <code>structuredClone</code> bewusst der Default, um Local und Remote
+  semantisch identisch zu halten (kein versehentliches Sharen), oder ist das ein historischer Default, der gekippt werden sollte?</li>
+</ul>
+
+<h2>Optimierungspotenzial</h2>
+<p class="muted">Bewusst getrennt von Bugs/Findings: Verbesserungen, die kein Defekt sind.</p>
+<ul class="ul-tight">
+  <li><strong>API-Aufräumen vor 1.0</strong>: <code>onDestroy</code>-Tripel-Bedeutung (Symbol / Event / Callback) dokumentieren oder trennen;
+  <code>appendRoute</code> aufteilen (Alias vs. <code>@</code>-Prop-Routen); <code>IShadowObjectEnvProxy.isDestroyed</code> ist da, aber ein
+  <code>ready</code>-Promise und ein <code>error</code>-Event fehlen weiterhin.</li>
+  <li><strong>RAF-Coalescing</strong> als optionaler Modus: bei High-Frequency-Properties (Animationen, Pointer-Move) sind heute n Updates =
+  n <code>postMessage</code>. Eine optionale Sammelflanke pro Frame würde Worker-Roundtrips drastisch reduzieren.</li>
+  <li><strong>Transferable-API auch für ChangeProperties</strong>: aktuell werden <code>ArrayBuffer</code>-Properties strukturell kopiert, nur <code>SendEvents</code>
+  unterstützt <code>transferables</code>.</li>
+  <li><strong>SignalsPath inkrementelles Subscribe</strong>: heute wird der Effekt bei jedem Add/Remove zerstört + neu erzeugt &mdash; bei dynamischen
+  Provider/Consumer-Hierarchien teuer.</li>
+  <li><strong>Entity.addChild Sort-Strategie</strong>: einmal pro Batch sortieren statt pro Insert würde Batch-Inserts O(n²) &rarr; O(n log n) reduzieren
+  (siehe ENT-SORT).</li>
+  <li><strong><code>peerDependencies</code> für <code>@spearwolf/eventize</code>/<code>signalize</code> deklarieren</strong> &mdash; beide sind Identitätsempfindlich
+  (Symbols, Module-Singletons). Bei Mehrfach-Resolutionen entstehen Duplikate, die Reaktivität lautlos brechen.</li>
+  <li><strong>Doctest-Smoketest für README-Snippets</strong> &mdash; würde DOC-001 langfristig verhindern.</li>
+  <li><strong>Vendor-doc für globalThis-Singletons</strong> &mdash; siehe GLOBAL-SINGLETON; SSR- und Multi-Tenant-Fragen sind heute nur im Code spürbar.</li>
+</ul>
+
+<h2>Methodik</h2>
+<ul class="ul-tight">
+  <li><strong>Gelesen</strong>: <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>README.md</code>, <code>Backlog.md</code> (2026-05-09 Tiefen-Analyse),
+  vorheriges <code>audit.html</code> (gleicher Tag, frühere Iteration), <code>package.json</code> (Root + alle Packages), <code>pnpm-workspace.yaml</code>,
+  <code>tsconfig.json</code>, <code>turbo.json</code>, <code>biome.json</code>, <code>.github/workflows/{ci,deploy}.yml</code>,
+  <code>CHANGELOG.md</code>, <code>TODO.md</code>, <code>packages/shadow-objects/package.override.json</code>.</li>
+  <li><strong>Code-Stichprobe</strong> (vollständig): <code>view/RemoteWorkerEnv.ts</code>, <code>view/LocalShadowObjectEnv.ts</code>, <code>view/ShadowEnv.ts</code>,
+  <code>worker/MessageRouter.ts</code>, <code>utils/waitForMessageOfType.ts</code>, <code>packages/shadow-objects/src/index.ts</code>.</li>
+  <li><strong>Code-Stichprobe</strong> (verifiziert über Explore-Agenten): <code>in-the-dark/Kernel.ts</code> (27 KB), <code>in-the-dark/Entity.ts</code>,
+  <code>in-the-dark/Registry.ts</code>, <code>in-the-dark/SignalsPath.ts</code>, <code>view/ComponentChanges.ts</code>, <code>view/ComponentContext.ts</code>,
+  <code>view/ViewComponent.ts</code>, <code>elements/ShaeEntElement.ts</code>, <code>elements/ShaePropElement.ts</code>, <code>elements/ShaeWorkerElement.ts</code>,
+  <code>constants.ts</code>. Jeder Vorbefund wurde mit aktuellen <code>file:line</code>-Referenzen abgeglichen.</li>
+  <li><strong>Nicht gelesen</strong>: <code>tests/</code>-Bäume im Detail (Stichproben), <code>shae-offscreen-canvas/src/shadow-objects/*</code> (Beispiel-Logik), Lockfile.</li>
+  <li><strong>Diff gegen vorheriges Audit</strong>: <code>audit.html</code> vom gleichen Tag (frühere Iteration, Score 65, 19 Findings). Match per Kategorie + Location.
+  Alle 19 Vorbefunde im Code re-verifiziert und mit <code>status: "unchanged"</code> übernommen. Keine Findings wurden seit der Vor-Iteration behoben (keine
+  Source-Änderungen zwischen den Läufen). 12 neue Findings ergänzt &mdash; primär Lebenszyklus- und Symmetrie-Befunde der View/Worker-Brücke, die im Backlog-Dokument
+  vom 2026-05-09 bereits enthalten waren, im vorherigen Audit-HTML aber nicht mehr abgebildet wurden.</li>
+  <li><strong>Score-Berechnung</strong>: Start 100; critical &times; &minus;10, high &times; &minus;5, medium &times; &minus;2, low &times; &minus;0.5, info &times; 0.</li>
+  <li><strong>Score-Delta-Kontext</strong>: Der Abfall 65 &rarr; 51.5 ist <em>keine</em> Regression &mdash; alle 12 neuen Findings sind Code-Stellen,
+  die schon zur Vor-Iteration existierten. Der Re-Audit ist tiefer; das spiegelt sich in der Heuristik wider.</li>
+  <li><strong>Carried-Over-Re-Check</strong>: nicht angewendet, weil alle Vorbefunde im neuen Lauf als Findings aufgetaucht sind (<code>status: "unchanged"</code>).</li>
+  <li><strong>Behoben seit Vor-Audit (gezählt, nicht gelistet)</strong>: 0.</li>
+</ul>
+<pre>0 &times; &minus;10  =   0   critical
+3 &times; &minus;5   = &minus;15   high   (DOC-001, CI-001, WORKER-001)
+14 &times; &minus;2  = &minus;28   medium
+11 &times; &minus;0.5 = &minus;5.5 low
+3 &times; 0    =   0   info
+                ────
+                &minus;48.5   &rarr;  Score 51.5 / 100</pre>
+
+<script>
+  const findings = [
+    {
+      id: "DOC-001", severity: "high", category: "Documentation", effort: "S", status: "unchanged",
+      title: "README Quick-Start-Beispiel ruft nicht-existente API auf",
+      location: "packages/shadow-objects/README.md (Quick Example)",
+      description: "Das Quick-Start-Snippet im veröffentlichten Paket-README benutzt zwei Identifier, die in der echten API nicht existieren: <code>useSignals('count', 0)</code> mit Tupel-Destructuring (real: <code>useProperty(name)</code> und <code>createSignal(initialValue)</code>) und <code>Registry.define(...)</code> als statische Methode (real: Instanzmethode auf <code>defaultRegistry</code>). Ein Erstkontakt scheitert sofort.",
+      recommendation: "Snippet durch ein lauffähiges Minimalbeispiel ersetzen, idealerweise direkt aus <code>docs/getting-started.md</code> übernommen. Mittelfristig: README-Snippets im CI per Doctest oder einfacher extract-and-typecheck-Routine prüfen, damit sie nicht erneut driften."
+    },
+    {
+      id: "CI-001", severity: "high", category: "DX / CI", effort: "S", status: "unchanged",
+      title: "CI führt das E2E-Paket nicht aus — Worker-Roundtrip wird nicht verifiziert",
+      location: ".github/workflows/ci.yml + package.json#scripts.ci",
+      description: "Der CI-Job läuft <code>pnpm run ci</code>, das explizit <code>--filter=!shadow-objects-e2e</code> setzt. Die Playwright-E2E-Tests sind aber der einzige Ort, an dem der echte Worker-Roundtrip (<code>RemoteWorkerEnv</code> + <code>WorkerRuntime</code> + <code>MessageRouter</code>) getestet wird. Im Unit-Layer existieren dafür keine Tests — Regressions auf der Worker-Seite würden erst beim Release auffallen. Der Workflow installiert Playwright bereits, der Filter excluded das E2E-Paket trotzdem.",
+      recommendation: "Entweder das <code>--filter=!shadow-objects-e2e</code> in <code>pnpm run ci</code> entfernen oder einen separaten e2e-Job mit eigener Matrix anlegen. Falls Laufzeit-Sorge: nur main + PRs gegen main mit E2E, Feature-Branches ohne."
+    },
+    {
+      id: "WORKER-001", severity: "high", category: "Async / Concurrency", effort: "M", status: "unchanged",
+      title: "RemoteWorkerEnv hat keine error/messageerror-Handler",
+      location: "packages/shadow-objects/src/view/RemoteWorkerEnv.ts:88",
+      description: "Es wird nur <code>worker.addEventListener('message', ...)</code> registriert. Ein Worker, der durch einen unhandled error stirbt oder eine nicht-clonebare Message sendet, kann nicht beobachtet werden — ausstehende Promises (<code>applyChangeTrail</code> mit <code>waitForConfirmation</code>) hängen bis zum Konstanten-Timeout (WorkerChangeTrailTimeout 5 s, WorkerConfigureTimeout/WorkerLoadTimeout 60 s).",
+      recommendation: "<code>worker.addEventListener('error', ...)</code> und <code>worker.addEventListener('messageerror', ...)</code> hinzufügen, beide auf einen gemeinsamen <code>#onWorkerFatal()</code> routen, der (a) den Worker als tot markiert, (b) alle pending <code>waitForMessageOfType</code>-Promises ablehnt, (c) den ShadowEnv über ein neues Event (<code>RemoteWorkerEnv.WorkerFailed</code>) informiert. Optional: Reconnect/Restart-Pfad parallel zu <code>ShadowEnv.ContextLost</code>."
+    },
+    {
+      id: "ROUTER-001", severity: "medium", category: "Bugs & Korrektheit", effort: "S", status: "unchanged",
+      title: "MessageRouter postet AppliedChangeTrail doppelt im Fehlerfall",
+      location: "packages/shadow-objects/src/worker/MessageRouter.ts:84-96",
+      description: "Im catch-Block wird <code>{type: AppliedChangeTrail, serial, error}</code> gepostet. Direkt danach prüft die Funktion <code>if (data.serial)</code> und postet erneut <code>{type: AppliedChangeTrail, serial}</code> — diesmal ohne error. Der Konsument (<code>waitForMessageOfType</code> mit Guard in <code>RemoteWorkerEnv.applyChangeTrail:112-115</code>) löst sich beim ersten Match auf und sieht den Fehler. Sobald jemand direkt auf onmessage lauscht oder die Postreihenfolge sich ändert, sieht der Konsument einen False-Positive.",
+      recommendation: "Nach dem catch-Post ein <code>return</code> setzen. Den unbedingten zweiten Post-Pfad in einen success-Zweig (<code>else if (data.serial) { ... }</code>) verlegen."
+    },
+    {
+      id: "KERN-LEN", severity: "medium", category: "Lesbarkeit / Architektur", effort: "L", status: "unchanged",
+      title: "Kernel.constructShadowObject ist eine ~380-LOC-Closure",
+      location: "packages/shadow-objects/src/in-the-dark/Kernel.ts (constructShadowObject)",
+      description: "Die Funktion baut sechs Maps für die Creation-API-Caches an, definiert sieben Closure-Funktionen (provideContext, provideGlobalContext, useContext, useParentContext, useProperty, useProperties, createResource), verwaltet zwei Unsubscribe-Sets und registriert einen onDestroy-Listener, der zusätzlich sechs Maps explizit aufräumt. Kernel.ts ist 27 KB / ~840 LOC — mehr als 80 % davon stecken in dieser Funktion. Folgen: schwer testbar, schwer reviewbar, hohe kognitive Last bei Änderungen.",
+      recommendation: "<code>ShadowObjectCreationContext</code>-Klasse extrahieren, die alle Maps und Unsubscribe-Sets als Felder hält und je eine Methode pro Creation-API-Aufruf exponiert. <code>constructShadowObject</code> instanziiert nur noch diese Klasse und ruft <code>ctx.cleanup()</code> im onDestroy."
+    },
+    {
+      id: "TYPE-001", severity: "medium", category: "Typsicherheit", effort: "M", status: "unchanged",
+      title: "ConsoleLogger.ts hält ~16 @ts-ignore-Suppressions",
+      location: "packages/shadow-objects/src/utils/ConsoleLogger.ts",
+      description: "Die Datei liest und schreibt Logger-Konfiguration auf <code>globalThis[CONSOLE_LOGGER]</code> / <code>globalThis[CONSOLE_LOGGER_STORAGE]</code>. Jede dieser dynamischen Zugriffe ist mit <code>// @ts-ignore</code> davorgeschaltet. In Kernel.ts kommen ~8 hinzu (on/once/emit-Overload-Pfade), 1 in WorkerRuntime, 2 in ShadowObject.ts.",
+      recommendation: "<code>interface ConsoleLoggerGlobalShape</code> definieren und einmal als Augmentation auf <code>globalThis</code> registrieren (analog zu <code>__shadowEntsContexts</code> in ComponentContext.ts). Damit fallen die @ts-ignores weg und Felder sind autocompletbar."
+    },
+    {
+      id: "WORKER-002", severity: "medium", category: "Bugs & Korrektheit", effort: "S", status: "unchanged",
+      title: "JSON.parse auf localStorage ohne try/catch im Worker-Setup",
+      location: "packages/shadow-objects/src/view/RemoteWorkerEnv.ts:155",
+      description: "<code>JSON.parse(localStorage.getItem(workerConfigKey) ?? '{}')</code> ohne Fehlerbehandlung. Ein kaputter Eintrag wirft <code>SyntaxError</code> und bricht den Worker-Bootstrap ab. Die Logger-Config ist nicht kritisch — die Fehlermeldung wäre für den Anwender aber kryptisch.",
+      recommendation: "In try/catch wrappen, bei Fehler <code>logger.warn</code> mit dem rohen String + Empty-Object-Default."
+    },
+    {
+      id: "REG-DEPR-001", severity: "medium", category: "Konsistenz", effort: "S", status: "unchanged",
+      title: "Deprecation-Flags sind Modul-Singletons statt Instance-State",
+      location: "packages/shadow-objects/src/in-the-dark/Kernel.ts:61-65",
+      description: "Fünf file-level <code>let</code>-Variablen (<code>provideContextOptionsDeprecatedShown</code> etc.) merken sich pro Prozess, dass eine Deprecation-Warnung gezeigt wurde. Nach dem ersten Trigger — egal in welcher Kernel-Instanz, egal in welchem Test — fällt jede weitere Deprecation-Warnung weg. Bei langlebigen Bundles (SSR, parallelen Tests) maskiert ein einzelner Aufruf alle folgenden.",
+      recommendation: "Auf <code>Kernel</code>-Instanzfelder umstellen — oder besser ein <code>WeakSet&lt;Function&gt;</code> der bereits gewarnten Creation-APIs. Im Test kann dann jede Beschreibung ihren eigenen Kernel haben."
+    },
+    {
+      id: "TYPO-001", severity: "medium", category: "Lesbarkeit / Clean Code", effort: "S", status: "unchanged",
+      title: "Tippfehler in privatem Member: #reReuestParentRoot",
+      location: "packages/shadow-objects/src/elements/ShaeEntElement.ts (3 Stellen)",
+      description: "Der Methodenname <code>#reReuestParentRoot</code> (es fehlt das q) wird dreimal benutzt. Da privat, kein Public-API-Effekt — aber jede künftige Suche nach <code>reRequest</code> findet die Stelle nicht. Im selben File: <code>const unsubcribe = on(vc, ...)</code> (es fehlt das s).",
+      recommendation: "Umbenennen in <code>#reRequestParentRoot</code> bzw. <code>unsubscribe</code>. Da privat / file-lokal: kein semver-Effekt."
+    },
+    {
+      id: "TEST-001", severity: "medium", category: "Testabdeckung", effort: "M", status: "unchanged",
+      title: "Worker-Brücke nur per E2E getestet — und E2E läuft nicht im CI",
+      location: "packages/shadow-objects/src/{view/RemoteWorkerEnv.ts, worker/WorkerRuntime.ts, worker/MessageRouter.ts}",
+      description: "Die drei Module der Worker-Brücke haben keine Unit-Tests. LocalShadowObjectEnv und ShadowEnv sind teilweise getestet, der Worker-Pfad ist im Unit-Layer komplett blind. Kombiniert mit CI-001: ein Bug in <code>MessageRouter.#configure</code> oder in der Serialisierung wird erst bei einem manuellen <code>pnpm test</code> in <code>shadow-objects-e2e</code> bemerkt.",
+      recommendation: "Protokoll-Level-Tests für MessageRouter mit einem Stub-Worker — jede der vier route()-Pfade einzeln. Für RemoteWorkerEnv dasselbe Muster auf View-Seite. Damit fallen ROUTER-001 und WORKER-001 sofort als Regression auf."
+    },
+    {
+      id: "CTX-LEAK", severity: "medium", category: "Memory Leaks & Ressourcen", effort: "S", status: "unchanged",
+      title: "RemoteWorkerEnv addEventListener mit nicht-haltbarem bind()",
+      location: "packages/shadow-objects/src/view/RemoteWorkerEnv.ts:88",
+      description: "<code>worker.addEventListener('message', this.onMessageFromWorker.bind(this))</code>: die gebundene Funktion wird nirgendwo gespeichert, ein späterer <code>removeEventListener</code> ist daher unmöglich. Heute kein realer Leak, weil destroy() den Worker terminiert. Aber: jeder zukünftige Re-Bind/Restart-Pfad (siehe WORKER-001) wird daran scheitern.",
+      recommendation: "<code>this.#onMessage = this.onMessageFromWorker.bind(this);</code> als privates Feld setzen, addEventListener/removeEventListener mit derselben Referenz aufrufen. Gleicher Ansatz wie in ShaeEntElement."
+    },
+    {
+      id: "DOM-OBS", severity: "medium", category: "Bugs & Korrektheit", effort: "M", status: "unchanged",
+      title: "<shae-prop> beobachtet kein In-Place-Re-Parenting",
+      location: "packages/shadow-objects/src/elements/ShaePropElement.ts:323-330",
+      description: "<code>findEntNode</code> wird nur in <code>connectedCallback</code> aufgerufen. Wenn ein <code>&lt;shae-prop&gt;</code> per DOM-API zwischen zwei <code>&lt;shae-ent&gt;</code>-Eltern verschoben wird, ohne dass disconnected/connectedCallback feuert (innerhalb desselben Subbaums), bleibt die Verknüpfung am alten entNode$. <code>&lt;shae-ent&gt;</code> hat einen MutationObserver; <code>&lt;shae-prop&gt;</code> nicht.",
+      recommendation: "Entweder dieselbe MutationObserver-Strategie wie in ShaeEntElement nachziehen, oder das Verhalten in den Docs als nicht-unterstützt markieren."
+    },
+    {
+      id: "ENV-RACE", severity: "medium", category: "Async / Concurrency", effort: "M", status: "new",
+      title: "ShadowEnv.envProxy-Setter feuert start() fire-and-forget — Reassign-Race",
+      location: "packages/shadow-objects/src/view/ShadowEnv.ts:102-126",
+      description: "Der envProxy-Setter ruft <code>proxy?.start().then(() => { this.proxyReady = true })</code>. Wird der Proxy reassigned, bevor start() aufgelöst hat, dann setzt das alte then den proxyReady-Flag — möglicherweise nachdem der neue Proxy schon seine eigene Init begonnen hat. Folge: false-positive readiness oder doppelte ContextCreated-Emissionen.",
+      recommendation: "Identitäts-Check im then: <code>if (this.#shaObjEnvProxy === proxy) this.proxyReady = true</code>. Zusätzlich Re-Assignment während laufender Initialisierung explizit ablehnen oder den neuen start() queueing-fähig machen."
+    },
+    {
+      id: "ENV-DESTROY-WAIT", severity: "medium", category: "Bugs & Korrektheit", effort: "S", status: "new",
+      title: "ShadowEnv.destroy() lässt syncWait()-Aufrufer für immer hängen",
+      location: "packages/shadow-objects/src/view/ShadowEnv.ts:158-178",
+      description: "<code>destroy()</code> ruft <code>off(this)</code> und löscht damit alle Listener. <code>syncWait()</code> nutzt <code>onceAsync(...AfterSync)</code>. Wird destroy() nach syncWait() aber vor dem nächsten AfterSync-Emit aufgerufen, wartet der Caller auf eine Emission, die nie kommt — keine Rejection, keine Cleanup-Möglichkeit.",
+      recommendation: "Vor <code>off(this)</code> einmalig AfterSync mit einem Sentinel emitten oder alle pending syncWait-Promises explizit per reject auflösen."
+    },
+    {
+      id: "ENV-ASYMM", severity: "medium", category: "Konsistenz", effort: "M", status: "new",
+      title: "LocalShadowObjectEnv ignoriert waitForConfirmation — Asymmetrie zur Remote-Variante",
+      location: "packages/shadow-objects/src/view/LocalShadowObjectEnv.ts:40-50",
+      description: "<code>applyChangeTrail(data, _waitForConfirmation)</code> ignoriert den zweiten Parameter. Im Remote-Modus schaltet das Flag ein zusätzliches Round-Trip-Acknowledge ein. MessageToView-Nachrichten kommen im Local-Env synchron während kernel.run (über on() ohne Microtask-Detach), im Remote-Env asynchron nach dem nächsten postMessage-Tick. Anwender sehen unterschiedliche Event-Ordnungen — der gleiche Code kann lokal funktionieren und remote race-bedingt brechen.",
+      recommendation: "Entweder Local-Env so anpassen, dass MessageToView-Dispatch via queueMicrotask erfolgt und applyChangeTrail sich erst nach Drain auflöst, oder die Semantik im API-Vertrag explizit dokumentieren und einen Modus-Switch <code>strictAsync</code> anbieten."
+    },
+    {
+      id: "STRICT-NULL", severity: "medium", category: "Typsicherheit", effort: "L", status: "new",
+      title: "tsconfig.json hat strict:true, aber strictNullChecks:false",
+      location: "tsconfig.json (Root)",
+      description: "Die größte einzelne Lücke in der TypeScript-Konfiguration. <code>strict: true</code> wäre allinclusive — wird aber durch <code>strictNullChecks: false</code> auf der nächsten Zeile aktiv gedämpft. Resultat: undefined/null-Bugs werden vom Compiler nicht gefangen, und viele <code>!.</code>-Asserts (verstreut über ShadowEnv, Kernel, Entity) sind heute kosmetisch.",
+      recommendation: "Mittelfristig auf <code>strictNullChecks: true</code> schalten. Schrittweise: erst <code>// @ts-expect-error</code>-Bursts in den Hotspots, dann Datei für Datei. Pre-Refactor: <code>noUncheckedIndexedAccess</code> und <code>exactOptionalPropertyTypes</code> evaluieren — beide für 1.0 wert."
+    },
+    {
+      id: "PERF-CLONE", severity: "medium", category: "Performance", effort: "S", status: "new",
+      title: "LocalShadowObjectEnv strukturiert-cloned jeden ChangeTrail per Default",
+      location: "packages/shadow-objects/src/view/LocalShadowObjectEnv.ts:22, 41",
+      description: "<code>disableStructuredClone = false</code> ist der Default. <code>applyChangeTrail</code> ruft daher für jeden Trail <code>cloneChangeTrail(data)</code>, was <code>structuredClone</code> auf jedem Eintrag macht. Im In-Process-Env (kein Worker, kein postMessage) ist das reine CPU-Last — die einzige Begründung wäre semantische Symmetrie zur Remote-Variante, aber das passt nicht zum Local-Use-Case (Animations-Loops, viele Property-Updates pro Frame).",
+      recommendation: "Default umkehren — <code>disableStructuredClone: true</code> im Local-Env. Wer Worker-äquivalente Isolation will, kann explizit auf false switchen. Alternativ in Docs prominent erwähnen, dass Local-Env aliassen kann."
+    },
+    {
+      id: "CHANGES-FE", severity: "low", category: "Lesbarkeit / Clean Code", effort: "S", status: "unchanged",
+      title: "ComponentChanges: implizite Trail-then-Clear-Invariante undokumentiert",
+      location: "packages/shadow-objects/src/view/ComponentChanges.ts",
+      description: "Die Funktionen <code>makeCreateEntityChange</code> / <code>makeChangePropertyChange</code> mutieren <code>#properties</code> und <code>#token</code> in-place und gehen davon aus, dass <code>clear()</code> direkt im Anschluss aufgerufen wird. Die Reihenfolge ist korrekt verdrahtet, aber nirgendwo dokumentiert.",
+      recommendation: "Klassen-JSDoc um drei Zeilen ergänzen: Jeder make*-Aufruf erwartet einen direkt folgenden clear() nach Abschluss der Trail-Phase."
+    },
+    {
+      id: "BIOME", severity: "low", category: "DX / Lint", effort: "S", status: "unchanged",
+      title: "~25 biome-Warnungen über das Workspace verteilt",
+      location: "pnpm lint:ci-Output",
+      description: "Hauptkategorien: <code>noShadowRestrictedNames</code> (6x), <code>useIterableCallbackReturn</code> (6x), <code>useOptionalChain</code> (4x), <code>useNodejsImportProtocol</code> (3x), <code>useLiteralKeys</code> (2x), je 1x noUnusedPrivateClassMembers, noVoidTypeReturn, useParseIntRadix, noDuplicateProperties.",
+      recommendation: "Single-PR-Cleanup: <code>pnpm lint:fix</code> übernimmt die meisten, der Rest ist mechanisch. Danach in biome.json die betroffenen Regeln von warn auf error heben."
+    },
+    {
+      id: "DEPS-001", severity: "low", category: "Dependencies", effort: "S", status: "unchanged",
+      title: "Mehrere Minor-Patch-Drifts + zwei Major-Drifts im DevDep-Bereich",
+      location: "pnpm-workspace.yaml (catalog:)",
+      description: "Patch-Drifts: @biomejs/biome 2.4.14→2.4.15, vitest 4.1.5→4.1.6, @vitest/browser(-playwright) 4.1.5→4.1.6, lit-html 3.3.2→3.3.3, rimraf 6.1.2→6.1.3, @playwright/test 1.59.1→1.60.0. Major-Drifts (DevDep): @types/node 24→25, @types/sinon 17→21, sinon 19→22, vite 6→8, three 0.179→0.184 (Beispielpaket).",
+      recommendation: "Patch-Drifts gemeinsam in einem PR (Versionen im catalog:-Block). Für die Majors einen separaten PR pro Tool — sinon und vite haben Breaking Changes."
+    },
+    {
+      id: "NS-NORM", severity: "low", category: "Konsistenz", effort: "S", status: "unchanged",
+      title: "RemoteWorkerEnv inkrementiert serial auch bei waitForConfirmation=false",
+      location: "packages/shadow-objects/src/view/RemoteWorkerEnv.ts:104",
+      description: "<code>const serial = ++this.#changeTrailSerial;</code> läuft unabhängig vom waitForConfirmation-Flag. Wenn ein Caller nie mit Bestätigung syncen möchte, wächst der Zähler trotzdem — kosmetisch, weil number, aber Debug-Logs werden schwer interpretierbar.",
+      recommendation: "Den Inkrement nur ausführen, wenn waitForConfirmation true ist. Falls bewusst monoton, dann als Kommentar dokumentieren."
+    },
+    {
+      id: "PROP-FLAG", severity: "low", category: "Bugs & Korrektheit", effort: "S", status: "new",
+      title: "ShaePropElement.isShaeEntElement = true — Copy-Paste-Bug",
+      location: "packages/shadow-objects/src/elements/ShaePropElement.ts:68",
+      description: "<code>readonly isShaeEntElement = true</code> in ShaePropElement — sollte false sein. Die Flag wird beim Eltern-Lookup (findEntNode) als Marker für Ent-Knoten verwendet. Solange ein shae-prop nicht selbst als Lookup-Ziel auftaucht, ist der Bug latent — bei verschachtelten Props kann findEntNode aber einen shae-prop als angeblichen Ent zurückgeben.",
+      recommendation: "Auf false setzen. Test: zwei verschachtelte shae-prop-Elemente mit gleicher Eltern-Ent, prüfen dass die Eltern-Auflösung den richtigen Ent findet."
+    },
+    {
+      id: "PROP-NAN", severity: "low", category: "Bugs & Korrektheit", effort: "S", status: "new",
+      title: "ShaePropElement parst numerische Attribute ohne NaN-Check",
+      location: "packages/shadow-objects/src/elements/ShaePropElement.ts:170-310",
+      description: "Numerische type=\"number\"/\"int\"-Properties werden mit Number/parseInt/parseFloat ohne Validierung verarbeitet. <code>Number(\"foo\")</code> = NaN, das propagiert in valueOut$. Konsumenten-Shadow-Object sieht plötzlich NaN ohne Warnung.",
+      recommendation: "Nach dem Parse <code>Number.isFinite(parsed)</code> prüfen. Bei NaN entweder console.warn mit Element-Pfad + Attributnamen + Roh-Wert oder Default-Value-Fallback emittieren. Mindestanforderung: NaN nicht stumm propagieren."
+    },
+    {
+      id: "TRAIL-MUT", severity: "low", category: "Bugs & Korrektheit", effort: "S", status: "new",
+      title: "removeTransferables mutiert den ChangeTrail des Callers per delete",
+      location: "packages/shadow-objects/src/view/RemoteWorkerEnv.ts:23-40",
+      description: "<code>removeTransferables</code> iteriert über den Trail und macht <code>delete changeItem.transferables</code>. Der Trail ist ein vom Aufrufer übergebenes Objekt — die Mutation ist nicht dokumentiert. Aktuell folgt unmittelbar ein postMessage; danach ist der Trail aus Caller-Sicht eh konsumiert. Aber: ein zukünftiger Retry-/Replay-Pfad würde die Transferables verlieren, ohne dass jemand das bemerkt.",
+      recommendation: "Entweder eine flache Copy machen oder die Mutation explizit dokumentieren (<code>// note: caller trail is mutated</code>) und sicherstellen, dass nirgendwo ein Retry den ursprünglichen Trail wiederverwendet."
+    },
+    {
+      id: "SIDE-EFFECTS-001", severity: "low", category: "Build / Konsistenz", effort: "S", status: "new",
+      title: "Top-Level package.json#sideEffects enthält tote build/src/...-Pfade",
+      location: "packages/shadow-objects/package.json:59-78",
+      description: "Die sideEffects-Liste enthält sowohl <code>build/src/...</code>-Pfade als auch <code>dist/src/...</code>-Pfade. Die build/-Variante stammt aus der alten Build-Pipeline vor dem Mai-2026-Renewal. Funktionsfolgenlos — Konsumenten resolveen nach dist/. Aber: doppelte Wahrheit + verwirrend bei zukünftigem Refactor. package.override.json macht es richtig, nur das Top-Level wurde nicht migriert.",
+      recommendation: "Die build/src/...-Einträge aus packages/shadow-objects/package.json#sideEffects entfernen. pnpm cbt verifiziert, dass das publizierte dist/package.json unverändert ist."
+    },
+    {
+      id: "DEMO-LOG", severity: "low", category: "Lesbarkeit / Clean Code", effort: "S", status: "new",
+      title: "Demo-Bundle gibt einhorn-console.debug aus",
+      location: "packages/shae-offscreen-canvas/src/bundle.js:6",
+      description: "<code>console.debug('hello @spearwolf/shae-offscreen-canvas/bundle.js 🦄');</code> wird beim Importieren des veröffentlichten Bundles ungefiltert auf jeder Konsumenten-Konsole ausgegeben. Für ein Beispielpaket, das auch als Reference-Implementation eingebaut werden könnte, ist das Log-Rauschen.",
+      recommendation: "Entfernen oder hinter eine Debug-Flag (z. B. ConsoleLogger-Pattern wie in der Core-Lib)."
+    },
+    {
+      id: "TIMEOUT-CFG", severity: "low", category: "API-Design", effort: "S", status: "new",
+      title: "Worker-Timeouts sind hartkodiert (5 s / 60 s) und nicht konfigurierbar",
+      location: "packages/shadow-objects/src/constants.ts:43-46",
+      description: "WorkerLoadTimeout = 60000, WorkerChangeTrailTimeout = 5000, WorkerConfigureTimeout, WorkerDestroyTimeout = 5000 sind Konstanten. Tests, die einen kaputten Worker provozieren, warten potenziell eine Minute auf das Timeout. Im Produkt-Code können langsamere Worker (große Module, kalte Init) das 60-s-Limit reißen.",
+      recommendation: "Optionale Konstruktor-Options für RemoteWorkerEnv: <code>{loadTimeoutMs, changeTrailTimeoutMs, configureTimeoutMs, destroyTimeoutMs}</code>. Defaults bleiben die heutigen Konstanten. Tests dürfen alle drei drastisch reduzieren."
+    },
+    {
+      id: "ENT-SORT", severity: "low", category: "Performance", effort: "S", status: "new",
+      title: "Entity.addChild sortiert die Kinderliste bei jedem Insert",
+      location: "packages/shadow-objects/src/in-the-dark/Entity.ts (addChild → resortChildren)",
+      description: "<code>addChild</code> ruft nach jedem Insert <code>resortChildren()</code>, das die gesamte Kinderliste sortiert. Bei Batch-Inserts (N Kinder nacheinander) ist das O(N² log N) statt O(N log N). Für typische Hierarchien heute irrelevant, aber bei programmatischer Mass-Creation messbar.",
+      recommendation: "Insert-Sorted (Binary-Insert) statt Sort-Always, oder Batch-Flag <code>deferSort</code> mit explizitem resortChildren() nach dem Batch. Der ChangeTrail-Builder weiß heute, wann ein Batch endet — dort den Sort einmal triggern."
+    },
+    {
+      id: "GLOBAL-SINGLETON", severity: "info", category: "Architektur & Struktur", effort: "S", status: "unchanged",
+      title: "Singletons über globalThis.__shadowEntsContexts / __shadowEnvs",
+      location: "packages/shadow-objects/src/view/{ComponentContext.ts, ShadowEnv.ts}",
+      description: "Beide Klassen registrieren sich pro Namespace auf globalThis. Stellt sicher, dass mehrere im Bundle co-existierende shadow-objects-Versionen denselben ContextMap teilen, kann aber im Multi-Tenant- oder SSR-Kontext überraschen. Kein Defekt, sondern Design-Entscheid, der dokumentationsbedürftig ist.",
+      recommendation: "Eigenen Abschnitt in docs/concepts.md oder docs/best-practices.md über die Globalstate-Eigenschaft. Insbesondere für Anwender, die isolierte Test-Instanzen wünschen."
+    },
+    {
+      id: "UUID-RND", severity: "info", category: "Sicherheit", effort: "S", status: "unchanged",
+      title: "generateUUID fällt auf Math.random zurück, wenn crypto.randomUUID fehlt",
+      location: "packages/shadow-objects/src/utils/generateUUID.ts",
+      description: "<code>globalThis?.crypto?.randomUUID?.() ?? _generateUUID()</code>. Der Fallback nutzt Math.random — für UI-Identität ausreichend, nicht aber wenn die UUIDs als Sicherheitsgrenze (Session-ID, Capability-Token) verwendet werden sollten.",
+      recommendation: "Im JSDoc kennzeichnen: Identity-only UUID, nicht für Security-relevante Tokens nutzen. Sicherheits-relevante Token-Erzeugung sollte explizit eine crypto.randomUUID-Pflicht-Variante exponieren."
+    },
+    {
+      id: "VITEST-SETUP", severity: "info", category: "DX / Build", effort: "S", status: "unchanged",
+      title: "Globaler localStorage-Patch in vitest.setup.ts",
+      location: "packages/shadow-objects/vitest.setup.ts",
+      description: "Node 24+ liefert localStorage/sessionStorage als inerten Stub mit, der die Storage-Implementation von happy-dom überschattet. Das Setup-File patcht das per delete + Re-Inject. Funktioniert, ist aber ein nicht-offensichtlicher Eingriff in das Test-Environment.",
+      recommendation: "Beim nächsten happy-dom-/Node-Major nachprüfen, ob der Patch noch nötig ist. Wenn weg, das Setup-File entfernen (nur noch der after/before-Mocha-Shim bleibt)."
+    }
+  ];
+
+  const sevOrder = {critical: 0, high: 1, medium: 2, low: 3, info: 4};
+  findings.sort((a, b) => sevOrder[a.severity] - sevOrder[b.severity] || a.id.localeCompare(b.id));
+
+  const findingsEl = document.getElementById('findings');
+  const catSet = new Set(findings.map(f => f.category));
+  const catCounts = {};
+  findings.forEach(f => { catCounts[f.category] = (catCounts[f.category] || 0) + 1; });
+  const catTable = document.getElementById('catTable');
+  Array.from(catSet).sort().forEach(cat => {
+    const tr = document.createElement('tr');
+    const td1 = document.createElement('td'); td1.textContent = cat;
+    const td2 = document.createElement('td'); td2.innerHTML = '<strong>' + catCounts[cat] + '</strong>';
+    tr.appendChild(td1); tr.appendChild(td2);
+    catTable.appendChild(tr);
+  });
+  const catFilterEl = document.getElementById('catFilter');
+  Array.from(catSet).sort().forEach(cat => {
+    const pill = document.createElement('span');
+    pill.className = 'pill';
+    pill.dataset.cat = cat;
+    pill.textContent = cat;
+    catFilterEl.appendChild(pill);
+  });
+
+  function statusLabel(f) {
+    const prev = f.previousSeverity ? '<span class="muted">(' + f.previousSeverity + ' → ' + f.severity + ')</span>' : '';
+    return '<span class="status-tag ' + f.status + '">' + f.status + '</span> ' + prev;
+  }
+
+  findings.forEach(f => {
+    const det = document.createElement('details');
+    det.className = 'finding';
+    det.dataset.sev = f.severity;
+    det.dataset.status = f.status;
+    det.dataset.cat = f.category;
+    det.innerHTML =
+      '<summary>' +
+        '<span><span class="sev-tag ' + f.severity + '">' + f.severity + '</span></span>' +
+        '<span class="finding-id">' + f.id + '</span>' +
+        '<span>' +
+          '<div class="finding-title">' + f.title + '</div>' +
+          '<div class="finding-meta">' + f.category + ' · <code>' + f.location + '</code></div>' +
+        '</span>' +
+        '<span style="text-align:right">' + statusLabel(f) + ' <span class="muted" style="font-size:11px"> · Aufwand ' + f.effort + '</span></span>' +
+      '</summary>' +
+      '<div class="finding-body">' +
+        '<h4>Beschreibung</h4><p>' + f.description + '</p>' +
+        '<h4>Empfehlung</h4><p>' + f.recommendation + '</p>' +
+      '</div>';
+    findingsEl.appendChild(det);
+  });
+
+  const activeFilters = { severity: new Set(), status: new Set(), cat: new Set() };
+  function applyFilters() {
+    findingsEl.querySelectorAll('details.finding').forEach(d => {
+      const sev = d.dataset.sev, st = d.dataset.status, ct = d.dataset.cat;
+      const sevOK = activeFilters.severity.size === 0 || activeFilters.severity.has(sev);
+      const stOK = activeFilters.status.size === 0 || activeFilters.status.has(st);
+      const ctOK = activeFilters.cat.size === 0 || activeFilters.cat.has(ct);
+      d.style.display = (sevOK && stOK && ctOK) ? '' : 'none';
+    });
+  }
+  document.querySelectorAll('.pill[data-sev]').forEach(p => {
+    p.addEventListener('click', () => {
+      const v = p.dataset.sev;
+      if (activeFilters.severity.has(v)) { activeFilters.severity.delete(v); p.classList.remove('active'); }
+      else { activeFilters.severity.add(v); p.classList.add('active'); }
+      applyFilters();
+    });
+  });
+  document.querySelectorAll('.pill[data-status]').forEach(p => {
+    p.addEventListener('click', () => {
+      const v = p.dataset.status;
+      if (activeFilters.status.has(v)) { activeFilters.status.delete(v); p.classList.remove('active'); }
+      else { activeFilters.status.add(v); p.classList.add('active'); }
+      applyFilters();
+    });
+  });
+  document.querySelectorAll('.pill[data-cat]').forEach(p => {
+    p.addEventListener('click', () => {
+      const v = p.dataset.cat;
+      if (activeFilters.cat.has(v)) { activeFilters.cat.delete(v); p.classList.remove('active'); }
+      else { activeFilters.cat.add(v); p.classList.add('active'); }
+      applyFilters();
+    });
+  });
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    activeFilters.severity.clear(); activeFilters.status.clear(); activeFilters.cat.clear();
+    document.querySelectorAll('.pill.active').forEach(p => p.classList.remove('active'));
+    applyFilters();
+  });
+</script>
+</body>
+</html>
