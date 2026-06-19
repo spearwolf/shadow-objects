@@ -1,5 +1,5 @@
 {
-  "$schema": "https://turbo.build/schema.json",
+  "$schema": "https://v2-9-18.turborepo.dev/schema.json",
   "ui": "stream",
   "globalDependencies": ["tsconfig.json", "biome.json", "pnpm-workspace.yaml", "pnpm-lock.yaml", "scripts/**"],
   "tasks": {

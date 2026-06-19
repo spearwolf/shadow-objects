@@ -6,7 +6,7 @@ packages:
 catalog:
   # --- runtime deps (shipped) ---
   '@spearwolf/eventize': ^5.0.0
-  '@spearwolf/signalize': ^0.29.0
+  '@spearwolf/signalize': ^0.30.0
   three: ^0.179.1
 
   # --- typescript ---
@@ -40,7 +40,7 @@ catalog:
   '@types/react': ^18.3.28
 
   # --- monorepo orchestrator ---
-  turbo: ^2.9.12
+  turbo: ^2.9.18
 
   # --- misc ---
   rimraf: ^6.1.2
