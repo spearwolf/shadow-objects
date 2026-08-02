@@ -70,7 +70,6 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
         if (this.isDestroyed) {
           throw 'worker was destroyed';
         }
-        return undefined;
       });
     }
 

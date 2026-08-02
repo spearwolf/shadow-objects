@@ -150,7 +150,9 @@ export class ComponentChanges {
 
   createEvent(type: string, data: unknown, transferables?: Transferable[]) {
     this.#events.push({type, data});
-    transferables?.forEach((transferable) => this.#transferables.add(transferable));
+    for (const transferable of transferables ?? []) {
+      this.#transferables.add(transferable);
+    }
     this.#serial++;
   }
 
@@ -234,7 +236,9 @@ export class ComponentChanges {
 
     if (this.#nextProperties.size > 0) {
       entry.properties = Array.from(this.#nextProperties.entries()).filter(([, value]) => value !== undefined);
-      entry.properties.forEach(([key, value]) => this.#properties.set(key, value));
+      for (const [key, value] of entry.properties) {
+        this.#properties.set(key, value);
+      }
     }
 
     if (this.#nextOrder !== undefined && this.#nextOrder !== this.#order) {

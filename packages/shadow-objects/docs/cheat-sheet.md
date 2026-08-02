@@ -61,13 +61,13 @@ export default {
 |---|---|---|
 | `useProperty` | `(name) => SignalReader` | Reactive read of a view-layer property |
 | `useProperties` | `(map) => { [key]: SignalReader }` | Batch property readers |
-| `useContext` | `(name) => value` | Read context from nearest ancestor entity |
-| `useParentContext` | `(name) => value` | Read context starting from parent (skip self) |
-| `provideContext` | `(name, value) => void` | Provide value to all descendant entities |
-| `provideGlobalContext` | `(name, value) => void` | Provide value to all entities everywhere |
-| `createSignal` | `(initial) => Signal` | Create local reactive state |
+| `useContext` | `(name) => SignalReader` | Read context from nearest ancestor entity |
+| `useParentContext` | `(name) => SignalReader` | Read context starting from parent (skip self) |
+| `provideContext` | `(name, value?) => Signal` | Provide value to all descendant entities |
+| `provideGlobalContext` | `(name, value?) => Signal` | Provide value to all entities everywhere |
+| `createSignal` | `(initial?) => Signal` | Create local reactive state |
 | `createMemo` | `(fn) => SignalReader` | Derived/computed value, re-evaluates when deps change |
-| `createEffect` | `(fn) => void` | Run side effect, re-runs when deps change |
+| `createEffect` | `(fn, options?) => Effect` | Run side effect, re-runs when deps change |
 | `createResource` | `(factory, cleanup?) => Signal` | Manage external resources with auto teardown |
 | `on` | `(source?, event, cb) => void` | Subscribe to an event (auto-cleaned on destroy) |
 | `once` | `(source?, event, cb) => void` | Subscribe once, auto-removed after first fire |

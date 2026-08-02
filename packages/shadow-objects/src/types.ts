@@ -141,7 +141,9 @@ export interface ShadowObjectCreationAPI {
 
   createResource<T = unknown>(factory: () => T | undefined, cleanup?: (resource: NonNullable<T>) => unknown): Signal<Maybe<T>>;
 
-  createEffect(...args: Parameters<typeof createEffect>): ReturnType<typeof createEffect>;
+  // `typeof` keeps all four createEffect() overloads intact — `Parameters<>` would collapse them
+  // onto the last one and make the common `createEffect(callback)` call a type error.
+  createEffect: typeof createEffect;
   createSignal<T = unknown>(...args: Parameters<typeof createSignal<T>>): ReturnType<typeof createSignal<T>>;
   createMemo<T = unknown>(...args: Parameters<typeof createMemo<T>>): SignalReader<T>;
 

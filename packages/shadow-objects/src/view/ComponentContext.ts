@@ -121,7 +121,9 @@ export class ComponentContext {
   destroyComponent(component: ViewComponent) {
     if (this.hasComponent(component)) {
       const entry = this.#components.get(component.uuid)!;
-      entry.children.slice(0).forEach((childUuid) => this.#components.get(childUuid)?.component.removeFromParent());
+      for (const childUuid of entry.children.slice(0)) {
+        this.#components.get(childUuid)?.component.removeFromParent();
+      }
       entry.changes.destroy();
       this.#viewInstances = undefined;
     }
@@ -181,7 +183,9 @@ export class ComponentContext {
   removeSubTree(uuid: string) {
     const entry = this.#components.get(uuid);
     if (entry) {
-      entry.children.slice(0).forEach((childUuid) => this.removeSubTree(childUuid));
+      for (const childUuid of entry.children.slice(0)) {
+        this.removeSubTree(childUuid);
+      }
       this.destroyComponent(entry.component);
       this.#deleteComponent(uuid);
     }
@@ -337,7 +341,9 @@ export class ComponentContext {
     this.#viewInstances = undefined;
     this.#componentMemory.clear();
 
-    this.#rootComponents.slice(0).forEach((uuid) => this.removeSubTree(uuid));
+    for (const uuid of this.#rootComponents.slice(0)) {
+      this.removeSubTree(uuid);
+    }
 
     if (this.#rootComponents.length !== 0) {
       throw new Error('component-context panic: #rootComponents is not empty!');
@@ -432,7 +438,9 @@ export class ComponentContext {
       }
     };
 
-    this.#rootComponents.forEach((uuid) => traverse(uuid, 0));
+    for (const uuid of this.#rootComponents) {
+      traverse(uuid, 0);
+    }
 
     this.#viewInstances = Array.from(lvl.entries())
       .sort((a, b) => a[0] - b[0])

@@ -622,7 +622,8 @@ export class Kernel {
           return resourceSignal;
         },
 
-        createEffect(...args: Parameters<typeof createEffect>): ReturnType<typeof createEffect> {
+        createEffect(...args: any[]): ReturnType<typeof createEffect> {
+          // @ts-ignore
           const effect = createEffect(...args);
           unsubscribeSecondary.add(effect.destroy);
           return effect;

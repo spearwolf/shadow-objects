@@ -54,10 +54,13 @@ Create reactive state with `createSignal`:
 ```typescript
 const count = createSignal(0);
 
-count();           // read
-count.set(1);      // write
-count.set(c => c + 1); // update based on previous value
+count.get();                // read -- subscribes the surrounding effect
+count.value;                // read without subscribing
+count.set(1);               // write
+count.set(count.value + 1); // update based on the previous value
 ```
+
+> **`set()` takes a value, never an updater.** `count.set(c => c + 1)` does not call your function — it stores it as the signal's value. Read the previous value yourself, via `count.value` so the write does not subscribe the surrounding effect to its own signal.
 
 Derive values from state with `createMemo`:
 
@@ -90,7 +93,7 @@ export function CounterLogic({ createSignal, createEffect, dispatchMessageToView
   const count = createSignal(0);
 
   createEffect(() => {
-    dispatchMessageToView('count-changed', { value: count() });
+    dispatchMessageToView('count-changed', { value: count.get() });
   });
 }
 ```

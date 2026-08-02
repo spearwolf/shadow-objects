@@ -96,13 +96,13 @@ function CounterLogic({ useProperty, createEffect, createSignal, onViewEvent }) 
 
     // 3. React to state changes
     createEffect(() => {
-        console.log("Current count in Shadow Environment:", count());
+        console.log("Current count in Shadow Environment:", count.get());
     });
 
     // 4. Handle events dispatched from the View Layer
     onViewEvent((type, data) => {
         if (type === 'increment') {
-            count.set(c => c + data.value);
+            count.set(count.value + data.value);
         }
     });
 }

@@ -224,8 +224,8 @@ export function HealthLogic({ createSignal, emit, onViewEvent }: ShadowObjectCre
 
   onViewEvent((type, data) => {
     if (type === 'damage') {
-      health.set(h => h - data.amount);
-      if (health() <= 0) {
+      health.set(health.value - data.amount);
+      if (health.value <= 0) {
         emit('player-died');
       }
     }
@@ -304,6 +304,7 @@ Test the logic in isolation by constructing a minimal API mock:
 
 ```typescript
 // player-logic.test.ts
+import { expect, test, vi } from 'vitest';
 import { PlayerLogic } from './PlayerLogic';
 
 function makeMockApi(overrides = {}) {
@@ -316,19 +317,22 @@ function makeMockApi(overrides = {}) {
       signals[name] = signals[name] ?? { value: undefined };
       return () => signals[name].value;
     },
+    // Mirror the real Signal: an object, not callable, and set() stores
+    // whatever it is given -- it never treats a function as an updater.
     createSignal: (initial) => {
       let val = initial;
-      const sig = () => val;
-      sig.set = (next) => { val = typeof next === 'function' ? next(val) : next; };
-      sig.get = () => val;
-      return sig;
+      return {
+        get: () => val,
+        get value() { return val; },
+        set: (next) => { val = next; },
+      };
     },
     createEffect: (fn) => { effects.push(fn); fn(); },
     onDestroy: (fn) => destroyCallbacks.push(fn),
-    dispatchMessageToView: jest.fn(),
-    onViewEvent: jest.fn(),
-    emit: jest.fn(),
-    on: jest.fn(),
+    dispatchMessageToView: vi.fn(),
+    onViewEvent: vi.fn(),
+    emit: vi.fn(),
+    on: vi.fn(),
     // helpers exposed for assertions
     _signals: signals,
     _effects: effects,

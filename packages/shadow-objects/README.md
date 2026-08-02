@@ -38,8 +38,8 @@ function MyComponent({useProperty, createSignal, onViewEvent, dispatchMessageToV
 
   onViewEvent((type) => {
     if (type === 'increment') {
-      count.set(count() + (step() ?? 1));
-      dispatchMessageToView('count-changed', {value: count()});
+      count.set(count.value + (step() ?? 1));
+      dispatchMessageToView('count-changed', {value: count.value});
     }
   });
 }

@@ -137,24 +137,45 @@ The framework re-exports reactivity primitives via [@spearwolf/signalize](https:
 
 Creates a local reactive state value.
 
-- **Signature:** `createSignal<T>(initial: T): Signal<T>`
-- **Returns:** A signal object `{ value, set(val), ... }`. Since `Signal` is also a function, calling it directly returns the current value.
+- **Signature:** `createSignal<T>(initial?: T, params?): Signal<T>`
+- **Returns:** A `Signal` object. It is *not* callable — read it via `count.get()` or `count.value`, write it via `count.set(val)`.
 
 ```typescript
 const count = createSignal(0);
-count.set(c => c + 1);
+
+count.get();                // read -- subscribes the surrounding effect
+count.value;                // read without subscribing
+count.set(count.value + 1); // write
 ```
+
+> **`set()` takes a value, never an updater.** `count.set(c => c + 1)` does not call your function — it stores it as the signal's value. Read the previous value yourself, via `count.value` so the write does not subscribe the surrounding effect to its own signal.
+
+The callable form belongs to `SignalReader`, which is what `useProperty()` and `useContext()` return: `const title = useProperty('title'); title();`
 
 #### `createEffect(callback)`
 
 Runs a side effect immediately, then re-runs it whenever any signal accessed inside it changes.
 
-- **Signature:** `createEffect(fn: () => void): void`
+- **Signature:** `createEffect(fn: EffectCallback, options?): Effect`
+- **Returns:** The `Effect` handle. You rarely need it — the effect is destroyed automatically with the shadow object.
+
+The callback may return a cleanup function, which runs before every re-run and on destruction:
 
 ```typescript
 createEffect(() => {
-    console.log('count is', count());
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
 });
+```
+
+Passing an explicit dependency list switches the effect to manual mode: it does *not* run on creation, and signals read inside the callback are no longer tracked — only the listed ones trigger a re-run.
+
+```typescript
+const effect = createEffect(() => {
+    console.log('count is', count.get());
+}, [count]);
+
+effect.run(); // opt in to an initial pass
 ```
 
 #### `createMemo(factory)`

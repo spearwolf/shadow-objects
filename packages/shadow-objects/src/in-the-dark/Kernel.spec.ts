@@ -317,7 +317,7 @@ describe('Kernel', () => {
         const registry = new Registry();
         const kernel = new Kernel(registry);
 
-        let capturedProps: Record<string, ReturnType<ShadowObjectCreationAPI['useProperty']>> | undefined;
+        let capturedProps: Record<'foo' | 'bar', ReturnType<ShadowObjectCreationAPI['useProperty']>> | undefined;
 
         @ShadowObject({registry, token: 'testUseProperties'})
         class TestUseProperties {
@@ -334,8 +334,8 @@ describe('Kernel', () => {
         ]);
 
         expect(capturedProps).toBeDefined();
-        expect(value(capturedProps!['foo'])).toBe('valueA');
-        expect(value(capturedProps!['bar'])).toBe('valueB');
+        expect(value(capturedProps!.foo)).toBe('valueA');
+        expect(value(capturedProps!.bar)).toBe('valueB');
 
         kernel.destroy();
       });
