@@ -144,6 +144,44 @@ export default {
 };
 ```
 
+### Composing Behavior with Routes
+
+`define` is only half the story. The module is also where you decide *which* Shadow Objects end up on an entity, and that decision lives nowhere else. The View Layer never makes it: it only supplies a token.
+
+Say profile entities should also get logging and analytics, and anything carrying a `debug` property should get a debug overlay on top:
+
+```javascript
+// my-module.js
+export default {
+  define: {
+    'user-profile': UserProfileLogic,
+    'logging': LoggingLogic,
+    'analytics': AnalyticsLogic,
+    'debug-overlay': DebugOverlayLogic,
+  },
+  routes: {
+    // A 'user-profile' entity now gets three shadow objects, not one.
+    // The token itself is always included, so you only list the additions.
+    'user-profile': ['logging', 'analytics'],
+
+    // Property-based route: any entity with a truthy 'debug' property
+    // gets the overlay, no matter which token it carries.
+    '@debug': ['debug-overlay'],
+  },
+};
+```
+
+Nothing in your HTML changed. No `<shae-ent>` learned a new token. You added cross-cutting behavior by editing one configuration object, and you can remove it the same way.
+
+This is the second decoupling of the framework: the first separates the View Layer from the logic, this one separates the *composition* of logic from the place it is used. Routing decides about existence, not about behavior -- what those three Shadow Objects do with each other afterwards is written inside them, and they talk over the shared entity event bus.
+
+Two more keys round it out:
+
+- `extends: [CoreModule]` pulls in another module, so you can ship reusable bundles of definitions and routes.
+- `initialize` runs asynchronously at load time and may add definitions later, for example after a feature flag request resolves.
+
+Full syntax in the [Registry reference](./api-reference.md#registry-component-manifest).
+
 ---
 
 ## 2. Class-Based Shadow Objects (OO Style)

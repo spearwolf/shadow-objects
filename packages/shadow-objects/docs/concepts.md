@@ -24,9 +24,12 @@ Traditional UI frameworks run everything on the main thread and tie your logic t
 
 When you force domain-specific state (a physics simulation, a 3D scene graph, thousands of game entities) into a UI component tree constrained to a single thread, you get performance bottlenecks and architectural complexity.
 
-Shadow Objects solves this cleanly:
+There is a second, quieter problem. The DOM tree that React, Angular, Vue, or plain JavaScript produces rarely matches the structure of your application logic. It is shaped by layout, by routing, by whatever component library you picked. Your logic wants a different shape, and you end up threading state through nodes that only exist for visual reasons.
+
+Shadow Objects solves both cleanly:
 
 - **Entities are lightweight game objects.** Shadow Objects are ECS components that attach behavior to them.
+- **Logic gets its own hierarchy.** The entity tree is spanned, driven, and queried by the View Layer, but it is not the DOM tree. It can be flatter, deeper, or shaped completely differently.
 - **Logic runs where it belongs.** Shadow environments can run on the main thread (local) or in a web worker (remote). Both are first-class.
 - **The View Layer stays thin.** It syncs minimal input data down and reacts to output events coming up.
 - **Behavior is composable.** A single entity can have multiple Shadow Objects. You build complex behavior by combining small, reusable components -- not by subclassing.
@@ -63,6 +66,32 @@ Shadow Environment [main thread OR web worker]
               |-- Shadow Object(s)
 ```
 
+### The Five Domains
+
+Two layers is the right first picture, but it puts several distinct jobs into the same box. Look closer and the framework splits into five domains, each with a clear owner:
+
+| # | Domain | Responsibility | Where it lives |
+|---|---|---|---|
+| 1 | **View** | Structure, properties, input | always the main thread |
+| 2 | **Environment** | Place of execution, transport | main thread or worker |
+| 3 | **Kernel** | Lifecycle, entity tree | inside the environment |
+| 4 | **Composition** | Registry, token, routing | inside the environment |
+| 5 | **Shadow Object** | Application logic, reactivity, communication | inside the environment |
+
+The seam between domain 4 and domain 5 is the one worth remembering. *Composition* decides which Shadow Objects come into being on an entity. The *Shadow Object* decides what happens then. Keeping those apart is what lets you attach cross-cutting behavior -- logging, analytics, a debug overlay -- without touching a single line of View code.
+
+The [project README](https://github.com/spearwolf/shadow-objects#the-five-domains) walks through each domain with its building blocks, what it owns, and what it must not touch.
+
+### The View Owns Structure, Not Behavior
+
+This is the single most useful sentence about the architecture.
+
+The View decides **what exists**: which entities there are, how they hang in the tree, which properties they carry, and when they are created and destroyed. It is the only part of the system allowed to make that call.
+
+The View does **not** decide which Shadow Objects run on an entity. It knows tokens, never constructors. It says "here is a `player`", not "here runs `PlayerLogic`". The mapping from token to logic belongs to the Registry, and the Kernel asks the Registry, never the View.
+
+That split is why you can rewire behavior entirely from the logic module while the markup stays untouched, and why the same View code works over the DOM, a GLTF scene graph, or a canvas renderer.
+
 ### Multi-Environment Setup
 
 One of the more powerful features is that you can run multiple Shadow Environments simultaneously. They do not talk to each other directly -- they communicate through the View Layer. The main thread is the message bus.
@@ -87,11 +116,20 @@ The Kernel is the engine inside each Shadow Environment.
 
 ### The Registry (Component Manifest)
 
-The Registry is the configuration lookup table for a Shadow Environment.
+The Registry is the configuration lookup table for a Shadow Environment. It owns the mapping from tokens to constructors and the rules by which one token turns into several. It holds no application state: it is configuration, not a runtime object.
 
-- It maps **Tokens (Component Tags)** to **Shadow Object constructors**.
-- A single Token can map to multiple Shadow Objects (composition via routing).
-- Routes can be conditional -- loading logic only when certain properties are present on the entity.
+The module object that `<shae-worker src>` points at knows four keys:
+
+| Key | What it does |
+|---|---|
+| `define` | Maps tokens to Shadow Object constructors. |
+| `routes` | Composes. One token pulls in further tokens, recursively, and conditionally via `'@propName'` so a property on the entity can decide about additional logic. |
+| `extends` | Pulls in other modules. |
+| `initialize` | Runs asynchronously at load time and may add definitions later, for example after a feature flag request. |
+
+This is the second decoupling in the framework, and the underrated one. The first separates the View Layer from the logic. This one separates the *composition* of logic from the place it is used. Cross-cutting behavior such as logging, analytics, or a debug overlay gets attached to entities without a single line of View code changing.
+
+Routing decides about existence, not about behavior. What the Shadow Objects do with each other afterwards is written inside them. See [`routes`](./api-reference.md#routes) for the full syntax.
 
 ### The View Layer
 
@@ -108,18 +146,43 @@ The Web Components simply call the ViewComponent API internally and mirror the D
 
 ### Communication Patterns
 
-**Properties flow downstream (View -> Shadow Environment):**
+There are exactly three directions, and they never cross.
+
+**Downstream: properties (View -> Shadow Environment)**
 
 1. A property is set on a `<shae-prop>` element (or via direct API call).
-2. The ViewComponent API sends a message to the Kernel.
-3. The Kernel updates the entity's properties.
-4. Any Shadow Object that called `useProperty(name)` sees its signal update and reactive effects re-run.
+2. `ComponentChanges` books the change. Nothing is sent yet.
+3. The next `sync()` collects everything that changed into one batch and ships it to the Kernel.
+4. The Kernel writes the values onto the entity.
+5. Any Shadow Object that called `useProperty(name)` sees its signal update and reactive effects re-run.
 
-**Events flow upstream and laterally (Shadow Environment -> View):**
+The View pushes data. It never calls logic.
 
-- Shadow Objects emit events back to the View Layer using `dispatchMessageToView`.
-- The View Layer listens and reacts (updates DOM, triggers animations, navigates, etc.).
-- Entities also communicate laterally with each other through the entity tree event system.
+**Upstream: messages (Shadow Environment -> View)**
+
+- A Shadow Object calls `dispatchMessageToView`.
+- The Kernel emits `MessageToView`, and the environment proxy carries it across the thread boundary.
+- The `ViewComponent` fires it as an [eventize](https://github.com/spearwolf/eventize) event. With the `forward-custom-events` attribute it additionally becomes a DOM `CustomEvent` on the `<shae-ent>` element.
+
+The logic knows no DOM. It only knows message types.
+
+**Lateral: context and the entity bus**
+
+- Contexts travel from ancestor entities to descendants, and they are signals, so consumers update themselves.
+- Events emitted on an entity reach every Shadow Object attached to that node.
+- `entity.traverse()` reaches the whole subtree. Frame ticks, resize events, and global state changes go this way.
+
+### The Change Trail and the Sync Tempo
+
+The transport between View Layer and Shadow Environment is a **change trail**: a batch of everything that changed since the last run.
+
+`ShadowEnv.sync()` builds that batch and ships it. The `<shae-worker auto-sync>` attribute decides how often that happens: once per animation frame (the default), at a fixed rate, or never, in which case you call `sync()` yourself.
+
+> **The change trail is batched and clocked, not immediate.** Setting a property does not run the dependent effect on the next line. If you expect a synchronous pass-through, you are building race conditions.
+
+When you do need a guarantee, use `syncWait()`, which resolves after the Shadow Environment has processed the batch. See [`ShadowEnv`](./api-reference.md#shadowenv) for both methods.
+
+For local environments you can additionally switch off structured cloning, and then references travel instead of copies. That is more than a performance knob: it is the only way to hand a non-cloneable object such as a DOM node or a canvas context straight to a Shadow Object.
 
 ---
 
@@ -346,3 +409,22 @@ on(viewComponent, {
 ```
 
 If you are using `<shae-ent>`, you can automatically forward these events to the DOM element using the `forward-custom-events` attribute. See the [`<shae-ent>` reference](./api-reference.md#shae-ent) for details.
+
+### What Does Not Exist
+
+There is no channel between two Shadow Environments. View Components in different namespaces are fully isolated: each namespace gets its own Kernel, its own Registry, its own entity tree. If two environments need to know about each other, the View Layer mediates. That is by design, not an omission.
+
+---
+
+## 5. Invariants
+
+The domains hold as long as these sentences hold. If you ever find yourself fighting the framework, check this list first -- chances are you are pushing against one of them.
+
+1. **Structure flows from the View Layer into the environment only, never back.** The Kernel executes what the View tells it. It never invents entities.
+2. **A Shadow Object never creates or destroys an entity.** It owns behavior, not existence. If logic needs to spawn something, it tells the View Layer, and the View Layer decides.
+3. **An Entity does not know its Shadow Objects by name.** It holds properties, contexts, and an event bus. Everything reacting to that state is a Shadow Object, and they find each other over the bus, not over imports.
+4. **The View Layer knows no constructors, only tokens.** Which logic a token resolves to is the Registry's business.
+5. **Environments communicate exclusively through the View Layer.** The main thread is the bus.
+6. **What the framework did not set up, the framework does not tear down.** Signals, effects, memos, and listeners registered through the creation API are disposed automatically on destroy. Intervals, sockets, and foreign listeners belong in `onDestroy` or in a `createResource`.
+
+Three pillars hold up a roof. Five domains hold up a framework.

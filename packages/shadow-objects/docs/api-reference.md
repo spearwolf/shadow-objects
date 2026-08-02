@@ -421,12 +421,13 @@ This lets you attach reusable behaviors (logging, analytics, layout management) 
 
 #### 2. Conditional Routing
 
-Routes can activate based on Entity properties. Syntax: `'@propertyName'`
+Routes can activate based on Entity properties. There are two forms.
+
+**Global property route:** `'@propertyName'` -- applies to *every* entity that has a truthy property of that name, regardless of its token.
 
 ```javascript
 routes: {
-    // If the entity has a truthy "debug" property, add debug-overlay behavior
-    'game-canvas': ['@debug'],
+    // Any entity with a truthy "debug" property gets debug-overlay behavior
     '@debug': ['debug-overlay'],
 }
 ```
@@ -440,6 +441,18 @@ routes: {
 <!-- Loads only GameCanvas -->
 <shae-ent token="game-canvas"></shae-ent>
 ```
+
+**Token-scoped property route:** `'token@propertyName'` -- applies only when the resolved token set contains `token` *and* the entity has a truthy `propertyName`.
+
+```javascript
+routes: {
+    // Only a game-canvas with a truthy "debug" property gets the overlay.
+    // A <shae-ent token="user-profile" debug> does not.
+    'game-canvas@debug': ['debug-overlay'],
+}
+```
+
+Both forms take part in recursive resolution, so a token pulled in by a property route can itself have routes.
 
 #### 3. Nested Routing
 

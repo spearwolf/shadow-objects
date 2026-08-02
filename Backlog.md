@@ -300,7 +300,7 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 - Drei gestapelte Canvas-Instanzen mit unterschiedlichen `pixel-zoom`/`fps`/`ns`-Attributen.
 
 **Ergonomie-Feedback an die Kern-Lib:**
-- Das Beispiel zeigt, dass `vc.syncShadowObjects()` nach Property-Batches **explizit** aufgerufen werden muss. Im README/Getting-Started ist das nicht ausreichend hervorgehoben — ein Naiv-Konsument bekommt Latenz, ohne zu verstehen, warum.
+- ~~Das Beispiel zeigt, dass `vc.syncShadowObjects()` nach Property-Batches **explizit** aufgerufen werden muss. Im README/Getting-Started ist das nicht ausreichend hervorgehoben — ein Naiv-Konsument bekommt Latenz, ohne zu verstehen, warum.~~ ✅ Der Sync-Takt ist jetzt in README, `getting-started.md`, `concepts.md`, `cheat-sheet.md` und `best-practices.md` als eigener Punkt inklusive Race-Condition-Warnung erklärt.
 - Der Transferable-Parameter (`[offscreen]`) bei `dispatchShadowObjectsEvent` ist ein **mächtiges, aber kaum dokumentiertes** Feature.
 - `console.debug('hello … 🦄')` in `src/bundle.js` ist eine Log-Rauschen-Falle für Konsumenten.
 - `three@^0.179.1` als harte Demo-Dep zieht beim `pnpm install` viel Volumen.
@@ -340,7 +340,7 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 
 ### 7.4 Beispiel-App / Dokumentation
 
-21. **`vc.syncShadowObjects()` und Transferable-API** im `getting-started.md` und `guides.md` deutlicher hervorheben.
+21. **Transferable-API** (`dispatchShadowObjectsEvent(type, payload, [transferable])`) in `guides.md` an einem echten Beispiel zeigen — `OffscreenCanvas` aus der Demo. Der Sync-Takt-Teil dieses Punktes ist erledigt (2026-08-02).
 22. **Demo-`console.debug`-Statement** entfernen.
 
 ---

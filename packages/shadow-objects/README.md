@@ -2,7 +2,11 @@
 
 [![npm](https://img.shields.io/npm/v/@spearwolf/shadow-objects)](https://www.npmjs.com/package/@spearwolf/shadow-objects)
 
-Shadow Objects is a reactive ECS (Entity Component System) library that decouples business logic from UI rendering. Entities are lightweight game objects; Shadow Objects are ECS components that attach behavior to them. Shadow environments can run on the main thread (local) or in a web worker (remote) -- both are first-class.
+*a reactive entity-component framework that feels at home in the shadows*
+
+Shadow Objects is an Entity Component System (ECS) for the browser platform. It separates application logic from its presentation, and not just logically: the logic runs in a Shadow Environment, which lives either on the main thread (`LocalShadowObjectEnv`) or inside a web worker (`RemoteWorkerEnv`). Your Shadow Object code is identical in both cases. Only the proxy gets swapped.
+
+Entities are lightweight nodes in a tree. Shadow Objects are ECS components that attach behavior to them. The View is authoritative for structure, not for behavior: it decides which entities exist and which properties they carry, while the Registry decides which Shadow Objects land on them.
 
 ## Installation
 
@@ -50,6 +54,18 @@ export default {
 ```
 
 Need to register a shadow object at runtime instead? Use `shadowObjects.define(token, constructor)` from `@spearwolf/shadow-objects/shadow-objects.js`.
+
+## The Five Domains
+
+| # | Domain | Responsibility | Where it lives |
+|---|---|---|---|
+| 1 | **View** | Structure, properties, input | always the main thread |
+| 2 | **Environment** | Place of execution, transport | main thread or worker |
+| 3 | **Kernel** | Lifecycle, entity tree | inside the environment |
+| 4 | **Composition** | Registry, token, routing | inside the environment |
+| 5 | **Shadow Object** | Application logic, reactivity, communication | inside the environment |
+
+Each domain, what it owns, what it must not touch, and the invariants that hold the whole thing together are written up in the [project README](https://github.com/spearwolf/shadow-objects#the-five-domains) and in [Concepts](./docs/concepts.md).
 
 ## Documentation
 

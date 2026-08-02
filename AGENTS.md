@@ -70,6 +70,20 @@ Uses Signals and Effects (via `@spearwolf/signalize`).
 - **Format:** Use **Markdown**.
 - **Terminology:** Use ECS terms. Never use: "shadow theater", "puppet", "puppeteer", "light world", "screen" (as analogy).
 
+#### Binding Terms
+
+Documentation that invents plausible-sounding names is the most dangerous kind. The left column is binding:
+
+| Use this | Not this | Why |
+|---|---|---|
+| `RemoteWorkerEnv` | `RemoteShadowObjectEnv` | The class is not called that. |
+| Entity | Shadow Entity | ECS term, and "Shadow" is already in "Shadow Environment". |
+| Entity Tree | Shadow Entity Graph | It is a tree, every node has exactly one parent. `getEntityGraph()` stays as a method name. |
+| Namespace / `ComponentContext` | Shadow Context | See the context note below. |
+| Token | Component Tag | "Component Tag" appears in the docs as a gloss, nowhere in the code. |
+
+**The word "context" means two unrelated things.** `ComponentContext` is the View-side registry of a namespace, i.e. the connection to an environment. `provideContext` / `useContext` are dependency injection along the entity tree. They never interact. Keep them apart at every occurrence: write `ComponentContext` in full, and say "Entity Context" for the other one.
+
 ### Development Workflow
 - **TODOs:** If you add, modify, or delete a TODO comment, run `pnpm make:todo` to update `TODO.md`.
 - **Testing:**

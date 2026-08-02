@@ -156,24 +156,41 @@ Consistency in file layout makes it easy to navigate a large Shadow Objects code
 
 ## 6. When to Use Local vs. Remote Environments
 
-Shadow environments can run on the main thread (local) or in a web worker (remote). Both are first-class. Neither is a workaround.
+Shadow environments can run on the main thread (local) or in a web worker (remote). Both are first-class. **Local is not a debugging crutch, and remote is not an optimization trick.** They answer different requirements, and plenty of production apps ship local.
 
 ### Use a local environment when:
 
-- You are in development and want to debug with browser devtools (no worker boundary to cross)
-- The application is simple and the logic overhead is low
-- You need to pass non-transferable objects (DOM references, Canvas contexts) directly to the Shadow Object
+- You need to pass non-cloneable objects (DOM references, Canvas contexts, WebGL/WebGPU handles) directly to the Shadow Object. This is the decisive one: no worker can do it, at any price.
+- Your logic is coordination-heavy rather than compute-heavy, so a worker would only add latency
 - Web Workers are unavailable in the target environment
+- You want to step through logic with browser devtools without crossing a worker boundary
 - You add `no-structured-clone` for extra performance when you own the data
 
 ### Use a remote environment (web worker) when:
 
-- You are shipping to production
 - Your Shadow Object logic is CPU-intensive (physics, pathfinding, game AI, simulations)
 - You want to keep the UI thread free so animations and input handling stay smooth
 - You have a lot of entities running complex effects
+- The data crossing the boundary is small compared to the work done behind it
 
-The rule of thumb: start local during development, switch to remote before shipping. The API is identical either way -- just swap `LocalShadowObjectEnv` for `RemoteWorkerEnv`, or remove the `local` attribute from `<shae-worker>`.
+The Shadow Object code is identical either way. Only the proxy changes: swap `LocalShadowObjectEnv` for `RemoteWorkerEnv`, or add/remove the `local` attribute on `<shae-worker>`. Pick by what your logic needs to touch, not by whether you are in development or production.
+
+### Mind the Sync Tempo, in Both Modes
+
+The change trail is batched and clocked, not immediate. Setting a property does not run the dependent effect on the next line -- not even locally, where no thread boundary is involved. Code that assumes a synchronous pass-through will work by accident until timing shifts, and then it will not.
+
+```javascript
+// Wrong: the shadow object has not seen the new value yet
+viewComponent.setProperty('level', 5);
+assertSomethingAboutTheShadowObject();
+
+// Right: wait for the batch to be processed
+viewComponent.setProperty('level', 5);
+await env.syncWait();
+assertSomethingAboutTheShadowObject();
+```
+
+This matters most in tests and in imperative glue code. Inside Shadow Objects you rarely notice it, because everything there reacts anyway.
 
 ---
 

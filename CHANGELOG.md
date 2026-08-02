@@ -7,7 +7,8 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 ## 2026-08-02 — Documentation corrections
 
 - **Root `README.md`:** the "Project Structure" section still credited `nx` as the monorepo orchestrator. Corrected to `turborepo` + pnpm workspaces (the switch happened in the 2026-05-09 build-system renewal).
-- **Concept notes:** added `docs/die-säulen-der-shadow-objects.md` — the framework's domain model (View, Environment, Kernel, Composition, Shadow Object), its data-flow directions, invariants, and binding terminology. Working document, German, not part of the published docs.
+- **Root `README.md`:** now carries the full introduction — what the framework is, the five domains (View, Environment, Kernel, Composition, Shadow Object) with what each owns and must not touch, the three data-flow directions, and the six invariants. Worked out in a German scratch document (`docs/die-säulen-der-shadow-objects.md`, added and removed the same day) whose content now lives in the README, `packages/shadow-objects/docs/` and `AGENTS.md`. Replaces the old "The Mental Model" section; removed the duplicated experimental-warning callout. The three entry points no longer repeat each other: the root README is the long form, `packages/shadow-objects/README.md` is the npm landing (description, install, quick example, domain table), and `docs/README.md` is navigation with a "where to start" table.
+- **`AGENTS.md`:** §4 Documentation gained a binding-terms table (`RemoteWorkerEnv` not `RemoteShadowObjectEnv`, Entity not Shadow Entity, Entity Tree not Shadow Entity Graph, Token not Component Tag) and the note that "context" denotes two unrelated concepts.
 
 ## 2026-05-09 — CI action versions bumped
 

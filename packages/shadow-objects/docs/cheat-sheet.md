@@ -5,8 +5,22 @@
 - Entities are lightweight game objects. Shadow Objects are ECS components that attach behavior to them.
 - The setup function runs once per entity. Everything reactive goes inside it.
 - `useProperty` reads from the view. `dispatchMessageToView` writes back. Events connect them.
-- Local = main thread (great for webgl, webgpu based apps or debugging). Remote = web worker (great for production).
+- Local = main thread (webgl/webgpu apps, non-cloneable data, debugging). Remote = web worker (parallel execution). Both are first-class.
+- The change trail is batched and clocked, not immediate. Expecting a synchronous pass-through builds race conditions.
 - Shadow Objects is the logic layer. React/Vue/Svelte/Html is the render layer. They work together.
+
+---
+
+## The six invariants
+
+1. Structure flows from the view into the environment only, never back.
+2. A shadow object never creates or destroys an entity.
+3. An entity does not know its shadow objects by name.
+4. The view knows no constructors, only tokens.
+5. Environments communicate exclusively through the view.
+6. What the framework did not set up, the framework does not tear down.
+
+Details in [concepts.md](./concepts.md#5-invariants).
 
 ---
 

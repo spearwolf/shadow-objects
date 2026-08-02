@@ -136,6 +136,19 @@ Here is what happens from page load to interaction:
 
 The View Layer never holds business logic. The Shadow Environment never touches the DOM directly. That separation is the whole point.
 
+### One Thing to Know Up Front
+
+Changes do not travel immediately. Setting a property books it into a change trail, and the next sync ships the whole batch across. By default `<shae-worker>` syncs once per animation frame; you can change that with the `auto-sync` attribute or turn it off and call `sync()` yourself.
+
+So this does **not** work:
+
+```javascript
+ent.viewComponent.setProperty('count', 42);
+// The shadow object has not seen 42 yet. Not even in a local environment.
+```
+
+If you need to wait for it, use `await env.syncWait()`. Inside Shadow Objects you rarely have to think about this, because everything there reacts anyway. In imperative glue code and in tests, it bites. See [the change trail and the sync tempo](./concepts.md#the-change-trail-and-the-sync-tempo).
+
 ## Local vs. Remote Environments
 
 This example uses `<shae-worker>` to run logic in a web worker (remote). If you want to run the Shadow Environment on the main thread instead, you use a local environment setup. The Shadow Object code you write is identical in both cases -- only the bootstrap element changes. Both modes are first-class citizens of the framework.
@@ -143,5 +156,6 @@ This example uses `<shae-worker>` to run logic in a web worker (remote). If you 
 ## Next Steps
 
 - Learn how to structure complex logic in [Writing Shadow Objects](./guides.md#1-writing-shadow-objects-functional-style).
+- Attach behavior without touching your markup: [Composing Behavior with Routes](./guides.md#composing-behavior-with-routes).
 - Understand how to build robust UIs in [View Integration](./guides.md#3-view-integration).
-- Read [Concepts](./concepts.md) for a deeper understanding of entities, context, and the architecture.
+- Read [Concepts](./concepts.md) for a deeper understanding of entities, context, and the architecture. If you read one section, read [the invariants](./concepts.md#5-invariants).
