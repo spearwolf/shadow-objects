@@ -31,7 +31,7 @@
 
 **Stärken:**
 - Klare Architektur, kleines öffentliches API, gut dokumentiert (`docs/`).
-- Sauber getrennte Test-Runner (vitest, web-test-runner, Playwright).
+- Sauber getrennte Test-Runner (vitest happy-dom, vitest browser-mode, Playwright).
 - Sehr gute Abdeckung des wichtigsten Anwender-Kontrakts (`ShadowObjectCreationAPI`, Kontext-Vererbung, Lifecycle).
 
 **Hauptrisiken:**
@@ -139,6 +139,42 @@ Im Catch-Block wird zuerst `{type: AppliedChangeTrail, serial, error}` gepostet,
 *Ort:* `ShaeEntElement.ts:213–214, 285–288, 327`.
 Wenn ein `<shae-ent>`-Vater aus dem DOM entfernt wird, das Kind aber selbst noch verbunden bleibt (z. B. weil ein Zwischen-Container reparented wurde), bleibt der `entParentNode`-Listener am orphan-Vater hängen → Memory-Pressure.
 
+**[VIEW-14]** ~~`ComponentContext.#appendToOrdered` verliert Komponenten stillschweigend.~~ **✅ Behoben**
+*Ort:* `ComponentContext.ts`.
+Die handoptimierte Einfügung hatte keinen Fallback, wenn ihre Rückwärtsschleife vorne herauslief. Bei drei oder mehr Geschwistern und `children[0].order <= order < children[1].order` wurde die Komponente aus `#rootComponents` entfernt, aber nie in die Kinderliste eingefügt: unerreichbar per BFS, nie im Change Trail, und der nächste `clear()` warf `component-context panic`. Ersetzt durch eine lineare Einfügung, die uuids ohne View-Instanz überspringt statt zu dereferenzieren. Abgedeckt von `ComponentContext.spec.ts` (Kinder, Wurzeln, `order`-Setter, gleiche und negative Order-Werte).
+
+**[VIEW-15]** ~~`ViewComponent.addChild()` akzeptiert Zyklen.~~ **✅ Behoben**
+*Ort:* `ViewComponent.ts`, `ComponentContext.ts`.
+`a.addChild(b); b.addChild(a)` leerte `#rootComponents` und machte den gesamten Teilbaum für jeden Change Trail unsichtbar; `a.addChild(a)` schickte `removeSubTree()` in unbegrenzte Rekursion. `addChild()` weist jetzt die Komponente selbst und jeden ihrer Vorfahren mit einem `ViewComponentError` ab, der Baum bleibt dabei unverändert. `removeSubTree()` führt zusätzlich ein Visited-Set.
+
+**[VIEW-16]** ~~`#deleteComponent()` lässt verwaiste uuids in der Kinderliste zurück.~~ **✅ Behoben**
+*Ort:* `ComponentContext.ts`.
+`removeSubTree()` auf einem Nicht-Wurzelknoten korrumpierte die Kinderliste des Vaters; jedes spätere `getChildren()` und jede Einfügung darauf warf einen `TypeError`. Die uuid wird jetzt auch vom Vater gelöst.
+
+**[VIEW-17]** ~~UUID-Wiederverwendung verwaist die Kinder der Vorgänger-Instanz.~~ **✅ Behoben**
+*Ort:* `ComponentContext.addComponent()`.
+Die Kinderliste wurde zurückgesetzt, ohne die Kinder zu benachrichtigen: sie zeigten weiter auf die alte Instanz, waren keine Wurzeln mehr und fielen aus dem Baum. Sie werden jetzt zu Wurzelkomponenten befördert.
+
+**[VIEW-18]** ~~`ComponentMemory.setParent()` vergisst die Order beim Reparenting.~~ **✅ Behoben**
+*Ort:* `ComponentMemory.ts`.
+`order` wurde auf `0` zurückgesetzt, wenn ein `SetParent`-Change keine Order trug — was `ComponentChanges` nur dann tut, wenn sie sich nicht geändert hat. Nach einem `ContextLost` kam die Entity mit der falschen Order zurück. Die Order wird jetzt nur noch überschrieben, wenn der Change sie mitführt.
+
+**[VIEW-19]** ~~`ShadowEnv.syncWait()` löst bei leerem Change Trail nie auf.~~ **✅ Behoben**
+*Ort:* `ShadowEnv.ts`.
+`AfterSync` wurde nur innerhalb von `if (data.length > 0)` emittiert; da das Promise gecacht wird, gaben alle folgenden `syncWait()`-Aufrufe dasselbe tote Promise zurück. `AfterSync` feuert jetzt in jedem Sync-Zyklus mit dem (ggf. leeren) Trail — so, wie die Doku es ohnehin versprach. Siehe **VIEW-8** für den davon unabhängigen `destroy()`-Pfad, der weiterhin offen ist.
+
+**[VIEW-20]** ~~Der zerstörte Zustand von `ViewComponent` ist undefiniert.~~ **✅ Behoben**
+*Ort:* `ViewComponent.ts`.
+Je nachdem, ob eine Aufrufstelle `?.` benutzte, warf dieselbe Situation einen `TypeError`, war ein stiller No-op oder meldete einen falschen fremden Kontext. Jetzt gilt: Mutationen, die nur die Komponente selbst betreffen, werden ignoriert; `dispatchEvent` benachrichtigt weiterhin die eigenen Listener ohne Kinder-Traversierung; `addChild` und der `parent`-Setter werfen einen `ViewComponentError`, der die Zerstörung benennt. Neu: `ViewComponent.isDestroyed`.
+
+**[VIEW-21]** ~~Token-Normalisierung fehlt in Konstruktor und `changeToken()`.~~ **✅ Behoben**
+*Ort:* `ViewComponent.ts`, `ComponentChanges.ts`.
+`new ViewComponent(undefined)` ließ `token` auf `undefined` stehen, während der Trail korrekt `#void` meldete; `changeToken(undefined)` markierte die Komponente als dirty, emittierte aber nichts. Beide normalisieren jetzt auf `VoidToken`.
+
+**[VIEW-22]** ~~`setProperty(key, undefined)` und `removeProperty(key)` divergieren intern.~~ **✅ Behoben**
+*Ort:* `ComponentChanges.makeChangePropertyChange()`.
+Beide erzeugten denselben Wire-Eintrag, aber `setProperty` behielt den Key im committeten Property-Map — ein anschließendes `removeProperty()` sendete dieselbe Änderung ein zweites Mal. Ein explizites `undefined` gilt jetzt auch intern als Entfernung.
+
 ### 3.3 MEDIUM — bemerkenswerte Auswahl
 
 | ID | Beschreibung | Ort |
@@ -193,10 +229,10 @@ Wenn ein `<shae-ent>`-Vater aus dem DOM entfernt wird, das Kind aber selbst noch
 
 ### 4.1 Inventar
 
-**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 8 Dateien):
-`Kernel.spec.ts` (1080 LoC), `Registry.spec.ts`, `ShadowObject.spec.ts`, `SignalsPath.spec.ts`, `ShadowEnv.spec.ts`, `LocalShadowObjectEnv.spec.ts`, `ViewComponent.spec.ts`, `props-utils.spec.ts`.
+**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 11 Dateien):
+`Kernel.spec.ts` (1080 LoC), `Registry.spec.ts`, `ShadowObject.spec.ts`, `SignalsPath.spec.ts`, `ShadowEnv.spec.ts`, `LocalShadowObjectEnv.spec.ts`, `ViewComponent.spec.ts`, `ComponentContext.spec.ts`, `ComponentChanges.spec.ts`, `ComponentMemory.spec.ts`, `props-utils.spec.ts`.
 
-**`shadow-objects-testing/`** (web-test-runner, browser-DOM): 9 Dateien — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `forward-custom-events`, `local-env-entities`, `remove-and-append-e`, `send-events`, `emit-helper/emit-helper`.
+**`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 9 Dateien — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `forward-custom-events`, `local-env-entities`, `remove-and-append-e`, `send-events`, `emit-helper/emit-helper`.
 
 **`shadow-objects-e2e/`** (Playwright, Chromium + Firefox): 3 Dateien — `bundle.spec.ts`, `remote-worker-env.spec.ts`, `shae-worker.spec.ts`. Assertions liegen meist in den Test-Pages, der Spec-Code prüft nur `data-testresult`.
 
@@ -210,13 +246,16 @@ Wenn ein `<shae-ent>`-Vater aus dem DOM entfernt wird, das Kind aber selbst noch
 | `SignalsPath`-Vorrang | ✅ Happy Path; ❌ keine Cleanup-/Error-Tests |
 | `ChangeTrail`-Korrektheit (drei Phasen) | ✅ **gründlich** über drei Ebenen (Modell, DOM, E2E) |
 | `ViewComponent` ↔ Entity | ✅ gründlich |
-| `ShadowEnv` Setup/Teardown | 🟡 **partiell** — `envProxy`-Swap zur Laufzeit nicht getestet |
+| `ViewComponent`-Zerstörungs-Kontrakt, Zyklen-Abweisung, Token-Normalisierung | ✅ **gründlich** |
+| `ComponentContext`-Sortierordnung + Baum-Invarianten | ✅ **gründlich** |
+| `ComponentChanges` / `ComponentMemory` (Unit) | ✅ **gründlich** — eigene Specs, vorher nur indirekt über Trail-Vergleiche |
+| `ShadowEnv` Setup/Teardown | 🟡 **partiell** — `envProxy`-Swap zur Laufzeit nicht getestet; `syncWait()`/`AfterSync` abgedeckt |
 | `LocalShadowObjectEnv` | 🟡 nur Smoke + 1 Sync |
 | `RemoteWorkerEnv` | 🟡 nur Happy-Path-E2E. **Keine vitest-Spec.** Init-Failure, Termination, Race-Recovery: ❌ |
 | `MessageRouter` | ❌ keine direkten Tests |
 | `WorkerRuntime` | ❌ keine direkten Tests |
 | Custom Elements (`<shae-prop>`!) | 🟡 `ShaePropElement` hat **keine direkten Tests** |
-| Utils | ❌ nur `props-utils.spec.ts` — `FrameLoop`, `waitForMessageOfType`, `cloneChangeTrail`, `attr-utils`, `array-utils`, `generateUUID`, `ConsoleLogger`, `toNamespace`, `toUrlString`, `importModule` haben keine Tests |
+| Utils | ❌ nur `props-utils.spec.ts` — `FrameLoop`, `waitForMessageOfType`, `cloneChangeTrail`, `attr-utils`, `array-utils`, `generateUUID`, `ConsoleLogger`, `toNamespace`, `toUrlString`, `importModule` haben keine Tests. `array-utils` wird inzwischen indirekt über `ComponentContext.spec.ts` und `ComponentChanges.spec.ts` mitgeprüft |
 | Worker-Init-Failure / Terminate / Message-Race | ❌ |
 
 ### 4.3 Qualität
@@ -224,7 +263,7 @@ Wenn ein `<shae-ent>`-Vater aus dem DOM entfernt wird, das Kind aber selbst noch
 - Generell sehr lesbar, deklarative Assertions mit Kontext-Labels.
 - Konsequentes `Registry.get().clear()` / `ComponentContext.get().clear()` in `afterEach`.
 - Keine `.only` oder skipped Tests; Playwright-Konfig setzt `forbidOnly: true` für CI.
-- **Flake-Risiko:** `ShadowEnv.spec.ts:136` und `:190` enthalten `await new Promise(r => setTimeout(r, 50))` — magische 50 ms statt deterministischer Microtask-Drains.
+- **Flake-Risiko:** `ShadowEnv.spec.ts` enthält an zwei Stellen `await new Promise(r => setTimeout(r, 50))` — magische 50 ms statt deterministischer Microtask-Drains. Die neuen `syncWait`-Fälle warten stattdessen auf `AfterSync` und benutzen ein Timeout nur als Fehlerabbruch.
 - E2E-Pattern (Page schreibt `data-testresult`) ist konzise, erschwert aber Debugging — Assertions liegen außerhalb des Spec-Files.
 
 ### 4.4 Konkrete Test-Lücken (ticket-fertig)

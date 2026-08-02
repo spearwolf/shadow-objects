@@ -94,7 +94,11 @@ export class ComponentMemory {
   private setParent({uuid, parentUuid, order}: ISetParentChange) {
     const c = this.getComponentState(uuid)!;
     c.parentUuid = parentUuid;
-    c.order = order ?? 0;
+    // a set-parent change only carries an order when it actually changed,
+    // so an absent order must keep the current one instead of resetting it
+    if (order !== undefined) {
+      c.order = order;
+    }
   }
 
   private destroyEntity({uuid}: IDestroyEntitiesChange) {

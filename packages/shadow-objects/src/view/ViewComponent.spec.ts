@@ -1,6 +1,6 @@
 import {on} from '@spearwolf/eventize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {ComponentChangeType} from '../constants.js';
+import {ComponentChangeType, VoidToken} from '../constants.js';
 import {ComponentContext} from './ComponentContext.js';
 import {ViewComponent} from './ViewComponent.js';
 
@@ -243,6 +243,219 @@ describe('ViewComponent', () => {
 
     expect(grandChild2Spy).toHaveBeenCalledTimes(1);
     expect(grandChild2Spy).toHaveBeenCalledWith({data: 123});
+  });
+
+  describe('cycle protection', () => {
+    it('rejects a component as its own child', () => {
+      const a = new ViewComponent('a');
+
+      expect(() => a.addChild(a)).toThrow(/cycle/);
+      expect(a.parent).toBeUndefined();
+      expect(ctx.isRootComponent(a)).toBe(true);
+    });
+
+    it('rejects a component as its own parent', () => {
+      const a = new ViewComponent('a');
+
+      expect(() => {
+        a.parent = a;
+      }).toThrow(/cycle/);
+    });
+
+    it('rejects the direct parent as a child', () => {
+      const a = new ViewComponent('a');
+      const b = new ViewComponent('b', a);
+
+      expect(() => b.addChild(a)).toThrow(/cycle/);
+    });
+
+    it('rejects a distant ancestor as a child', () => {
+      const a = new ViewComponent('a');
+      const b = new ViewComponent('b', a);
+      const c = new ViewComponent('c', b);
+
+      expect(() => c.addChild(a)).toThrow(/cycle/);
+    });
+
+    it('leaves the tree untouched when a cycle is rejected', () => {
+      const a = new ViewComponent('a');
+      const b = new ViewComponent('b', a);
+      const c = new ViewComponent('c', b);
+
+      expect(() => c.addChild(a)).toThrow();
+
+      expect(a.parent).toBeUndefined();
+      expect(b.parent).toBe(a);
+      expect(c.parent).toBe(b);
+      expect(ctx.isRootComponent(a)).toBe(true);
+      expect(ctx.getChildren(a).map((x) => x.token)).toEqual(['b']);
+      expect(ctx.getChildren(b).map((x) => x.token)).toEqual(['c']);
+      expect(ctx.getChildren(c)).toEqual([]);
+    });
+
+    it('still allows moving a subtree to an unrelated parent', () => {
+      const a = new ViewComponent('a');
+      const b = new ViewComponent('b', a);
+      const other = new ViewComponent('other');
+
+      expect(() => other.addChild(b)).not.toThrow();
+
+      expect(b.parent).toBe(other);
+      expect(ctx.getChildren(a)).toEqual([]);
+    });
+
+    it('still allows re-adding a child to its current parent', () => {
+      const a = new ViewComponent('a');
+      const b = new ViewComponent('b', a);
+
+      expect(() => a.addChild(b)).not.toThrow();
+      expect(ctx.getChildren(a).map((x) => x.token)).toEqual(['b']);
+    });
+
+    it('still allows moving a child up to its grandparent', () => {
+      const a = new ViewComponent('a');
+      const b = new ViewComponent('b', a);
+      const c = new ViewComponent('c', b);
+
+      expect(() => a.addChild(c)).not.toThrow();
+      expect(c.parent).toBe(a);
+    });
+  });
+
+  describe('setProperty return value', () => {
+    it('reports true when the value differs from the last change trail', () => {
+      const c = new ViewComponent('test');
+      expect(c.setProperty('foo', 'bar')).toBe(true);
+    });
+
+    it('reports false when the value is unchanged since the last change trail', () => {
+      const c = new ViewComponent('test');
+      c.setProperty('foo', 'bar');
+      ctx.buildChangeTrails();
+
+      expect(c.setProperty('foo', 'bar')).toBe(false);
+    });
+
+    it('honours a custom isEqual comparator', () => {
+      const c = new ViewComponent('test');
+      c.setProperty('pos', {x: 1}, (a, b) => a?.x === b?.x);
+      ctx.buildChangeTrails();
+
+      expect(c.setProperty('pos', {x: 1}, (a, b) => a?.x === b?.x)).toBe(false);
+      expect(c.setProperty('pos', {x: 2}, (a, b) => a?.x === b?.x)).toBe(true);
+    });
+  });
+
+  describe('the token', () => {
+    it('falls back to the void token when the constructor is given no token', () => {
+      const c = new ViewComponent(undefined as unknown as string);
+      expect(c.token).toBe(VoidToken);
+    });
+
+    it('falls back to the void token when the setter is given no token', () => {
+      const c = new ViewComponent('test');
+      c.token = undefined;
+      expect(c.token).toBe(VoidToken);
+    });
+  });
+
+  describe('the destroyed state', () => {
+    const makeDestroyed = () => {
+      const c = new ViewComponent('test');
+      ctx.buildChangeTrails();
+      c.destroy();
+      return c;
+    };
+
+    it('reports isDestroyed after destroy()', () => {
+      const c = new ViewComponent('test');
+      expect(c.isDestroyed).toBe(false);
+      c.destroy();
+      expect(c.isDestroyed).toBe(true);
+    });
+
+    it('reports isDestroyed as false again after being attached to a context', () => {
+      const c = makeDestroyed();
+      c.context = ctx;
+      expect(c.isDestroyed).toBe(false);
+    });
+
+    it('ignores a token change', () => {
+      const c = makeDestroyed();
+      expect(() => {
+        c.token = 'other';
+      }).not.toThrow();
+      expect(c.token).toBe('other');
+    });
+
+    it('ignores an order change', () => {
+      const c = makeDestroyed();
+      expect(() => {
+        c.order = 5;
+      }).not.toThrow();
+      expect(c.order).toBe(5);
+    });
+
+    it('ignores setProperty and reports that nothing was written', () => {
+      const c = makeDestroyed();
+      expect(c.setProperty('foo', 'bar')).toBe(false);
+    });
+
+    it('ignores removeProperty', () => {
+      const c = makeDestroyed();
+      expect(() => c.removeProperty('foo')).not.toThrow();
+    });
+
+    it('ignores dispatchShadowObjectsEvent', () => {
+      const c = makeDestroyed();
+      expect(() => c.dispatchShadowObjectsEvent('foo', 123)).not.toThrow();
+    });
+
+    it('ignores removeFromParent', () => {
+      const c = makeDestroyed();
+      expect(() => c.removeFromParent()).not.toThrow();
+    });
+
+    it('ignores a second destroy()', () => {
+      const c = makeDestroyed();
+      expect(() => c.destroy()).not.toThrow();
+      expect(c.isDestroyed).toBe(true);
+    });
+
+    it('still notifies its own listeners on dispatchEvent, without traversing children', () => {
+      const c = makeDestroyed();
+      const spy = vi.fn();
+      on(c, 'testEvent', spy);
+
+      expect(() => c.dispatchEvent('testEvent', 42, true)).not.toThrow();
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledWith(42);
+    });
+
+    it('rejects addChild with an explicit error instead of silently dropping the child', () => {
+      const destroyed = makeDestroyed();
+      const child = new ViewComponent('child');
+
+      expect(() => destroyed.addChild(child)).toThrow(/destroyed/);
+      expect(child.parent).toBeUndefined();
+      expect(ctx.isRootComponent(child)).toBe(true);
+    });
+
+    it('rejects being re-parented with an explicit error', () => {
+      const destroyed = makeDestroyed();
+      const parent = new ViewComponent('parent');
+
+      expect(() => {
+        destroyed.parent = parent;
+      }).toThrow(/destroyed/);
+    });
+
+    it('rejects being used as a parent via the constructor', () => {
+      const destroyed = makeDestroyed();
+
+      expect(() => new ViewComponent('child', {parent: destroyed})).toThrow(/destroyed/);
+    });
   });
 
   it('should dispatch event from child with traverseChildren=true without affecting parent', () => {

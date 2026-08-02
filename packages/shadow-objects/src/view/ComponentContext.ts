@@ -77,6 +77,15 @@ export class ComponentContext {
 
     if (this.#components.has(component.uuid)) {
       viewInstance = this.#components.get(component.uuid);
+
+      if (viewInstance.component !== component) {
+        // another component claims this uuid: promote the children of the previous one to
+        // root components, otherwise they would stay in the map but drop out of the tree
+        for (const childUuid of viewInstance.children.slice(0)) {
+          this.#components.get(childUuid)?.component.removeFromParent();
+        }
+      }
+
       viewInstance.component = component;
       viewInstance.children = [];
     } else {
@@ -180,18 +189,33 @@ export class ComponentContext {
     }
   }
 
+  /**
+   * Destroy a component and all its descendants without writing anything to a change trail.
+   *
+   * @see {@link ComponentContext.clear}
+   */
   removeSubTree(uuid: string) {
+    this.#removeSubTree(uuid, new Set());
+  }
+
+  #removeSubTree(uuid: string, visited: Set<string>) {
+    if (visited.has(uuid)) return;
+    visited.add(uuid);
+
     const entry = this.#components.get(uuid);
     if (entry) {
       for (const childUuid of entry.children.slice(0)) {
-        this.removeSubTree(childUuid);
+        this.#removeSubTree(childUuid, visited);
       }
       this.destroyComponent(entry.component);
       this.#deleteComponent(uuid);
     }
   }
 
-  setProperty<T = unknown>(component: ViewComponent, propKey: string, value: T, isEqual?: (a: T, b: T) => boolean) {
+  /**
+   * @returns `true` if the value differs from the last value written to a change trail
+   */
+  setProperty<T = unknown>(component: ViewComponent, propKey: string, value: T, isEqual?: (a: T, b: T) => boolean): boolean {
     const vi = this.#components.get(component.uuid);
     if (vi != null) {
       if (isEqual != null) {
@@ -355,12 +379,22 @@ export class ComponentContext {
   }
 
   #deleteComponent(uuid: string) {
-    // console.log('deleteComponent:', uuid, this.#components.has(uuid) ? 'x' : '');
-    if (this.#components.has(uuid)) {
-      this.#components.delete(uuid);
-      removeFrom(this.#rootComponents, uuid);
-      this.#viewInstances = undefined;
+    const entry = this.#components.get(uuid);
+    if (entry === undefined) return;
+
+    // a uuid must never survive in a children list, otherwise every later lookup
+    // on that list dereferences a component that no longer exists
+    const parentUuid = entry.component.parent?.uuid;
+    if (parentUuid !== undefined) {
+      const parentEntry = this.#components.get(parentUuid);
+      if (parentEntry !== undefined) {
+        removeFrom(parentEntry.children, uuid);
+      }
     }
+
+    this.#components.delete(uuid);
+    removeFrom(this.#rootComponents, uuid);
+    this.#viewInstances = undefined;
   }
 
   #buildPathOfChanges(): ComponentChanges[] {
@@ -369,51 +403,32 @@ export class ComponentContext {
       .map((vi) => vi.changes);
   }
 
+  /**
+   * Insert a component into an ordered list of uuids.
+   *
+   * The list is kept sorted by ascending {@link ViewComponent#order}. Components sharing
+   * the same order value keep their insertion order, so the new component is placed after
+   * all components with an equal order.
+   *
+   * Uuids without a matching view instance are skipped instead of dereferenced, so a
+   * partially torn down list can never turn a reordering into an exception.
+   */
   #appendToOrdered(component: ViewComponent, childUuids: string[]) {
-    if (childUuids.length === 0) {
-      childUuids.push(component.uuid);
-      return;
-    }
-
     if (childUuids.includes(component.uuid)) {
       return;
     }
 
-    const len = childUuids.length;
-    const childComponents = new Array<ViewComponent>(len);
+    const {order} = component;
 
-    childComponents[0] = this.#components.get(childUuids[0])!.component;
-
-    if (component.order < childComponents[0].order) {
-      childUuids.unshift(component.uuid);
-      return;
-    }
-
-    if (len === 1) {
-      childUuids.push(component.uuid);
-      return;
-    }
-
-    const lastIdx = len - 1;
-    childComponents[lastIdx] = this.#components.get(childUuids[lastIdx])!.component;
-
-    if (component.order >= childComponents[lastIdx].order) {
-      childUuids.push(component.uuid);
-      return;
-    }
-
-    if (len === 2) {
-      childUuids.splice(1, 0, component.uuid);
-      return;
-    }
-
-    for (let i = lastIdx - 1; i >= 1; i--) {
-      childComponents[i] = this.#components.get(childUuids[i])!.component;
-      if (component.order >= childComponents[i].order) {
-        childUuids.splice(i + 1, 0, component.uuid);
+    for (let i = 0; i < childUuids.length; i++) {
+      const other = this.#components.get(childUuids[i])?.component;
+      if (other !== undefined && order < other.order) {
+        childUuids.splice(i, 0, component.uuid);
         return;
       }
     }
+
+    childUuids.push(component.uuid);
   }
 
   #viewInstances?: ViewInstance[];

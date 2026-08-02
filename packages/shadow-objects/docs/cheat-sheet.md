@@ -282,12 +282,28 @@ import { ViewComponent, ComponentContext } from '@spearwolf/shadow-objects';
 const ctx = ComponentContext.get('my-namespace'); // or .get() for default
 const vc = new ViewComponent('my-token', { context: ctx, order: 0 });
 
-vc.setProperty('score', 1000);
+vc.setProperty('score', 1000);            // returns true when the value changed
 vc.setProperty('pos', newPos, (a, b) => a.equals(b)); // custom equality
+vc.setProperty('score', undefined);       // same as removeProperty('score')
 vc.removeProperty('score');
 vc.dispatchShadowObjectsEvent('jump', { force: 5.0 });
+
+vc.addChild(other);        // throws on a cycle or a foreign ComponentContext
+vc.removeFromParent();     // promotes to a root component
+
 vc.destroy();
+vc.isDestroyed;            // true
+vc.setProperty('x', 1);    // ignored, returns false
+vc.context = ctx;          // revives the component under the same uuid
 ```
+
+| After `destroy()` | Behaviour |
+|---|---|
+| `token`, `order`, `setProperty`, `removeProperty`, `dispatchShadowObjectsEvent`, `removeFromParent`, `destroy` | Ignored |
+| `dispatchEvent` | Own listeners still fire, children are not traversed |
+| `addChild`, `parent = …` | Throws `ViewComponentError` |
+
+Siblings sort by ascending `order`; equal values keep their insertion order.
 
 ---
 
@@ -318,4 +334,4 @@ loop();
 |---|---|
 | `ShadowEnv.ContextCreated` | Environment is ready (view + proxy both connected) |
 | `ShadowEnv.ContextLost` | Environment lost connection |
-| `ShadowEnv.AfterSync` | After each sync cycle completes |
+| `ShadowEnv.AfterSync` | After each sync cycle completes, also when the change trail was empty |

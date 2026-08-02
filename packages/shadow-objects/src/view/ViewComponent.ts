@@ -10,6 +10,19 @@ class ViewComponentError extends Error {
   }
 }
 
+/**
+ * Guards every path that attaches a child to a parent: the constructor, {@link ViewComponent#addChild}
+ * and the `parent` setter all funnel through here so that they fail with the same message.
+ */
+function assertUsableAsParent(parent: ViewComponent, childContext: ComponentContext | undefined) {
+  if (parent.context == null) {
+    throw new ViewComponentError('cannot add a child to a destroyed view component');
+  }
+  if (parent.context !== childContext) {
+    throw new ViewComponentError('cannot add a child from another context');
+  }
+}
+
 export class ViewComponent {
   readonly #uuid: string;
 
@@ -42,9 +55,6 @@ export class ViewComponent {
 
   set parent(parent: ViewComponent | null | undefined) {
     if (parent) {
-      if (parent.#context !== this.#context) {
-        throw new ViewComponentError('cannot set parent from different context');
-      }
       parent.addChild(this);
     } else {
       this.removeFromParent();
@@ -56,15 +66,30 @@ export class ViewComponent {
   }
 
   set context(context: ComponentContext | null | undefined) {
-    if (this.#context != context) {
-      if (this.#context) {
-        this.destroy();
-      }
-      this.#context = context;
-      if (context) {
-        context.addComponent(this);
-      }
+    const next = context ?? undefined;
+    if (this.#context === next) return;
+
+    if (this.#context) {
+      this.destroy();
     }
+
+    this.#context = next;
+    next?.addComponent(this);
+  }
+
+  /**
+   * A destroyed component is detached from its {@link ComponentContext}: it no longer appears
+   * in any change trail and no longer has a corresponding entity.
+   *
+   * Every mutation that only concerns the component itself (`token`, `order`, properties, events,
+   * `removeFromParent`, `destroy`) is silently ignored while destroyed. Operations that would tie
+   * a second, live component to it (`addChild`, the `parent` setter) throw instead, because
+   * ignoring them would leave the caller with a wrong picture of the entity tree.
+   *
+   * Assigning a {@link ViewComponent#context} revives the component under the same uuid.
+   */
+  get isDestroyed(): boolean {
+    return this.#context == null;
   }
 
   /**
@@ -80,7 +105,7 @@ export class ViewComponent {
     const prevOrder = this.#order;
     this.#order = order ?? 0;
     if (prevOrder !== this.#order) {
-      this.#context.changeOrder(this);
+      this.#context?.changeOrder(this);
     }
   }
 
@@ -113,15 +138,15 @@ export class ViewComponent {
 
     this.#uuid = options?.uuid ?? generateUUID();
 
-    this.#token = token;
+    this.#token = token ?? VoidToken;
     this.#order = options?.order ?? 0;
     this.#parent = options?.parent;
     this.#autoDestructionOnParentRemoval = options?.autoDestructionOnParentRemoval ?? false;
 
     const ctx = options?.context ?? ComponentContext.get();
 
-    if (this.#parent && this.#parent.#context !== ctx) {
-      throw new ViewComponentError('cannot set parent from different context');
+    if (this.#parent) {
+      assertUsableAsParent(this.#parent, ctx);
     }
 
     this.context = ctx;
@@ -141,33 +166,49 @@ export class ViewComponent {
   }
 
   addChild(child: ViewComponent) {
-    if (child.#context !== this.#context) {
-      throw new ViewComponentError('cannot add a child from another context');
+    if (child.#context == null) {
+      throw new ViewComponentError('cannot add a destroyed view component as a child');
     }
+
+    assertUsableAsParent(this, child.#context);
+
+    // walking up via #parent is safe: the entity tree is kept acyclic by exactly this guard
+    for (let ancestor: ViewComponent | undefined = this; ancestor != null; ancestor = ancestor.#parent) {
+      if (ancestor === child) {
+        throw new ViewComponentError(
+          'cannot add the component itself or one of its ancestors as a child: this would create a cycle',
+        );
+      }
+    }
+
     if (!child.isChildOf(this)) {
       child.removeFromParent();
       child.#parent = this;
-      this.#context.addToChildren(this, child);
+      this.#context!.addToChildren(this, child);
     }
   }
 
-  setProperty<T = unknown>(name: string, value: T, isEqual?: (a: T, b: T) => boolean) {
-    this.#context.setProperty(this, name, value, isEqual);
+  /**
+   * @returns `true` if the value differs from the last one written to the change trail.
+   *   A destroyed component always returns `false`.
+   */
+  setProperty<T = unknown>(name: string, value: T, isEqual?: (a: T, b: T) => boolean): boolean {
+    return this.#context?.setProperty(this, name, value, isEqual) ?? false;
   }
 
   removeProperty(name: string) {
-    this.#context.removeProperty(this, name);
+    this.#context?.removeProperty(this, name);
   }
 
   dispatchShadowObjectsEvent(type: string, data: unknown, transferables?: Transferable[]) {
-    this.#context.dispatchShadowObjectsEvent(this, type, data, transferables);
+    this.#context?.dispatchShadowObjectsEvent(this, type, data, transferables);
   }
 
   dispatchEvent(type: string, data: unknown, traverseChildren: boolean) {
     emit(this as ViewComponent, type, data);
 
     if (traverseChildren) {
-      for (const child of this.#context!.getChildren(this)) {
+      for (const child of this.#context?.getChildren(this) ?? []) {
         child.dispatchEvent(type, data, traverseChildren);
       }
     }

@@ -185,19 +185,28 @@ export class ShadowEnv {
 
   async #syncNow() {
     this.#syncScheduled = false;
-    if (this.isReady) {
-      const data = this.view!.buildChangeTrails();
+
+    if (!this.isReady) {
+      // the environment went away between scheduling and running this sync:
+      // re-arm instead of dropping it, otherwise a pending syncWait() would never settle
+      this.#syncAfterContextCreated = true;
+      return;
+    }
+
+    const data = this.view!.buildChangeTrails();
+
+    const waitForConfirmation = this.#syncWaitForConfirmation;
+    this.#syncWaitForConfirmation = false;
+
+    try {
       if (data.length > 0) {
-        try {
-          const waitForConfirmation = this.#syncWaitForConfirmation;
-          this.#syncWaitForConfirmation = false;
-          await this.envProxy!.applyChangeTrail(data, waitForConfirmation);
-        } catch (error) {
-          this.logger.error('failed to apply change trail', error);
-        } finally {
-          emit(this as ShadowEnv, ShadowEnv.AfterSync, data);
-        }
+        await this.envProxy!.applyChangeTrail(data, waitForConfirmation);
       }
+    } catch (error) {
+      this.logger.error('failed to apply change trail', error);
+    } finally {
+      // always emitted, even for an empty change trail, so that syncWait() settles on every cycle
+      emit(this as ShadowEnv, ShadowEnv.AfterSync, data);
     }
   }
 

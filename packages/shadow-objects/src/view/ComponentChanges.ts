@@ -88,6 +88,10 @@ export class ComponentChanges {
   }
 
   changeToken(token: string | undefined) {
+    // an absent token means the void token everywhere else, so normalize here too;
+    // otherwise `undefined` would mark the component dirty without ever emitting a change
+    token ??= VoidToken;
+
     if (token === this.#token) {
       this.#nextToken = undefined;
     } else {
@@ -118,7 +122,10 @@ export class ComponentChanges {
   #nextProperties: Map<string, unknown> = new Map();
   #propsChangeOrder: string[] = []; // we use an Array here and not a Set, because we want to keep the change order
 
-  changeProperty<T = unknown>(key: string, value: T, isEqual?: (a: T, b: T) => boolean) {
+  /**
+   * @returns `true` if the value differs from the last value written to a change trail
+   */
+  changeProperty<T = unknown>(key: string, value: T, isEqual?: (a: T, b: T) => boolean): boolean {
     const prevValue = this.#properties.get(key) as T;
     const valueChanged = (isEqual == null && value !== prevValue) || (isEqual != null && !isEqual(value, prevValue));
 
@@ -130,6 +137,8 @@ export class ComponentChanges {
       this.#nextProperties.delete(key);
       removeFrom(this.#propsChangeOrder, key);
     }
+
+    return valueChanged;
   }
 
   removeProperty(key: string) {
@@ -298,9 +307,13 @@ export class ComponentChanges {
   makeChangePropertyChange(): IPropertiesChange {
     const properties = this.#propsChangeOrder.map((key) => {
       if (this.#nextProperties.has(key)) {
-        // set prop
+        // set prop — an explicit `undefined` is a removal, exactly like removeProperty()
         const nextValue = this.#nextProperties.get(key);
-        this.#properties.set(key, nextValue);
+        if (nextValue === undefined) {
+          this.#properties.delete(key);
+        } else {
+          this.#properties.set(key, nextValue);
+        }
         return [key, nextValue] as [string, unknown];
       } else {
         // remove prop

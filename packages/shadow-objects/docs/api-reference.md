@@ -550,27 +550,41 @@ new ViewComponent(token: string, options?: ViewComponentOptions)
 
 | Option | Description |
 | :--- | :--- |
-| `token` | The identifier string matching a Registry entry. |
+| `token` | The identifier string matching a Registry entry. Falls back to `#void` when omitted. |
 | `context` | (Optional) The `ComponentContext` instance this component belongs to. |
-| `parent` | (Optional) The parent `ViewComponent`. |
-| `order` | (Optional) Initial sort order (number). Default is `0`. Items are sorted ascending, then by insertion order. |
+| `parent` | (Optional) The parent `ViewComponent`. Must belong to the same context and must not be destroyed. |
+| `order` | (Optional) Initial sort order (number). Default is `0`. |
 | `uuid` | (Optional) Explicit unique identifier. If omitted, one is generated automatically. |
+| `autoDestructionOnParentRemoval` | (Optional) Whether the corresponding Entity is destroyed together with its parent. Default is `false`, which promotes the Entity to a root Entity instead. Immutable after creation. |
 
 ### Properties
 
 | Property | Description |
 | :--- | :--- |
-| `token` | The token string. |
+| `token` | The token string. Assigning `undefined` resets it to `#void`. |
 | `uuid` | Unique identifier (read-only). Matches `entity.uuid` in the Shadow Environment. |
-| `parent` | Reference to the parent component. |
+| `parent` | Reference to the parent component. Assigning `undefined` detaches the component to the root level. |
 | `context` | Reference to the managing context. |
 | `order` | Numeric sort order within the parent's children list. Useful for controlling execution order or canvas layers. |
+| `isDestroyed` | (read-only) Whether the component has been detached from its context. See [The destroyed state](#the-destroyed-state). |
+| `autoDestructionOnParentRemoval` | (read-only) The constructor option of the same name. |
+
+#### Sort order
+
+Siblings are sorted by ascending `order`. Components with an equal `order` keep their insertion order, so a newly added component is placed after all siblings sharing its `order`. Negative values are allowed and sort before the default `0`. Assigning `null` or `undefined` resets `order` to `0`.
+
+```typescript
+new ViewComponent('a', { parent, order: 10 });
+new ViewComponent('b', { parent, order: 10 }); // after 'a'
+new ViewComponent('c', { parent, order: 5 });  // before both
+// children: c, a, b
+```
 
 ### Methods
 
-#### `setProperty(name, value, isEqual?)`
+#### `setProperty(name, value, isEqual?): boolean`
 
-Updates a property value. The change is batched and sent to the Shadow Environment.
+Updates a property value. The change is batched and sent to the Shadow Environment. Returns `true` if the value differs from the last one written to a change trail, `false` if the write was a no-op.
 
 ```typescript
 component.setProperty('score', 1000);
@@ -579,6 +593,8 @@ component.setProperty('score', 1000);
 component.setProperty('position', newPos, (a, b) => a.equals(b));
 ```
 
+Setting a property to `undefined` is equivalent to `removeProperty(name)`.
+
 #### `removeProperty(name)`
 
 Removes a property. The change is batched and sent to the Shadow Environment.
@@ -586,6 +602,27 @@ Removes a property. The change is batched and sent to the Shadow Environment.
 ```typescript
 component.removeProperty('score');
 ```
+
+#### `addChild(child)`
+
+Attaches `child` to this component, detaching it from its previous parent. Equivalent to `child.parent = component`.
+
+Throws a `ViewComponentError` when:
+
+- the child belongs to a different `ComponentContext`
+- either component is destroyed
+- the child is the component itself or one of its ancestors -- the entity tree is a tree, and a cycle would silently drop the whole branch out of every change trail
+
+```typescript
+parent.addChild(child);
+
+parent.addChild(parent);      // throws: would create a cycle
+child.addChild(parent);       // throws: parent is an ancestor of child
+```
+
+#### `removeFromParent()`
+
+Detaches the component from its parent and promotes it to a root component. Does nothing when the component has no parent or is destroyed.
 
 #### `dispatchShadowObjectsEvent(type, data, transferables?)`
 
@@ -609,7 +646,32 @@ on(component, 'msg-from-shadow', (data) => {
 
 #### `destroy()`
 
-Removes the component from the hierarchy and signals destruction to the Shadow Environment.
+Removes the component from the hierarchy and signals destruction to the Shadow Environment. Calling it more than once is safe.
+
+### The destroyed state
+
+After `destroy()` the component is detached from its `ComponentContext`: it no longer appears in any change trail and no longer has a corresponding Entity. `isDestroyed` reports `true`. Holding on to a destroyed component is safe, and its behaviour is uniform:
+
+| Operation | Behaviour while destroyed |
+| :--- | :--- |
+| `token`, `order` | Assignment updates the local value, nothing is sent |
+| `setProperty`, `removeProperty` | Ignored. `setProperty` returns `false` |
+| `dispatchShadowObjectsEvent` | Ignored |
+| `dispatchEvent` | Still notifies the component's own listeners, children are not traversed |
+| `removeFromParent`, `destroy` | Ignored |
+| `addChild`, `parent = …` | Throws a `ViewComponentError` |
+
+The split is deliberate: operations that only concern the component itself are absorbed, because a renderer may still be flushing state at teardown. Operations that would tie a second, live component to a dead one throw, because silently ignoring them would leave the caller with a wrong picture of the entity tree.
+
+Assigning a `context` revives the component under the same uuid:
+
+```typescript
+component.destroy();
+component.isDestroyed; // true
+
+component.context = ComponentContext.get();
+component.isDestroyed; // false -- a new Entity is created with the same uuid
+```
 
 ### Custom Integration Example
 
@@ -720,7 +782,7 @@ const env = ShadowEnv.get('my-game');
 | :--- | :--- |
 | `ShadowEnv.ContextCreated` | Fired when the environment becomes ready (view and proxy both connected). |
 | `ShadowEnv.ContextLost` | Fired when the environment loses its connection. |
-| `ShadowEnv.AfterSync` | Fired after each synchronization cycle. Receives the `ChangeTrailType` data. |
+| `ShadowEnv.AfterSync` | Fired after each synchronization cycle, including cycles with nothing to send. Receives the `ChangeTrailType` data, which is an empty array when nothing changed. |
 
 ```typescript
 import { on } from '@spearwolf/eventize';
@@ -743,6 +805,8 @@ Triggers synchronization of pending changes from the `ComponentContext` to the S
 #### `syncWait()`
 
 Like `sync()`, but returns a Promise that resolves after synchronization completes. Useful when you need to guarantee the Shadow Environment has processed changes before continuing.
+
+The Promise resolves on every cycle, including one with nothing to send -- then the change trail is an empty array. It stays pending only while the environment is not ready; it resolves once `ContextCreated` fires.
 
 ```typescript
 const changeTrail = await env.syncWait();

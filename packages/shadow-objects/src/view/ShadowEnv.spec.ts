@@ -3,7 +3,7 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 import {type OnCreate, type OnDestroy, onCreate, onDestroy} from '../in-the-dark/events.js';
 import {Registry} from '../in-the-dark/Registry.js';
 import {ShadowObject} from '../in-the-dark/ShadowObject.js';
-import type {ShadowObjectCreationAPI} from '../types.js';
+import type {ChangeTrailType, ShadowObjectCreationAPI} from '../types.js';
 import {ComponentContext} from './ComponentContext.js';
 import {LocalShadowObjectEnv} from './LocalShadowObjectEnv.js';
 import {ShadowEnv} from './ShadowEnv.js';
@@ -88,6 +88,90 @@ describe('ShadowEnv', () => {
     expect(localObjEnv.kernel.findShadowObjects(vc.uuid)).toHaveLength(0);
 
     env.destroy();
+  });
+
+  describe('syncWait', () => {
+    const withTimeout = <T>(promise: Promise<T>, ms = 250) =>
+      Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('syncWait timed out')), ms))]);
+
+    const makeEnv = () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get();
+      env.envProxy = new LocalShadowObjectEnv();
+      return env;
+    };
+
+    it('resolves with an empty change trail when nothing has changed', async () => {
+      const env = makeEnv();
+      await env.ready();
+
+      await expect(withTimeout(env.syncWait())).resolves.toEqual([]);
+
+      env.destroy();
+    });
+
+    it('resolves again on a second sync without changes', async () => {
+      const env = makeEnv();
+      await env.ready();
+
+      new ViewComponent('test', {context: env.view});
+      await withTimeout(env.syncWait());
+
+      await expect(withTimeout(env.syncWait())).resolves.toEqual([]);
+      await expect(withTimeout(env.syncWait())).resolves.toEqual([]);
+
+      env.destroy();
+    });
+
+    it('emits AfterSync on every sync cycle, including empty ones', async () => {
+      const env = makeEnv();
+      await env.ready();
+
+      const afterSyncSpy = vi.fn();
+      on(env, ShadowEnv.AfterSync, afterSyncSpy);
+
+      await withTimeout(env.syncWait());
+
+      expect(afterSyncSpy).toHaveBeenCalledTimes(1);
+      expect(afterSyncSpy).toHaveBeenCalledWith([]);
+
+      env.destroy();
+    });
+
+    it('does not carry waitForConfirmation over from an empty sync into the next one', async () => {
+      const env = makeEnv();
+      await env.ready();
+
+      const applySpy = vi.spyOn(env.envProxy!, 'applyChangeTrail');
+
+      // an empty syncWait must consume the confirmation flag
+      await withTimeout(env.syncWait());
+      expect(applySpy).not.toHaveBeenCalled();
+
+      // a plain sync() afterwards must not ask for confirmation
+      new ViewComponent('test', {context: env.view});
+      env.sync();
+      await withTimeout(new Promise<void>((resolve) => once(env, ShadowEnv.AfterSync, () => resolve())));
+
+      expect(applySpy).toHaveBeenCalledTimes(1);
+      expect(applySpy.mock.calls[0][1]).toBe(false);
+
+      env.destroy();
+    });
+
+    it('still resolves with the change trail when there are changes', async () => {
+      const env = makeEnv();
+      await env.ready();
+
+      const vc = new ViewComponent('test', {context: env.view});
+
+      const trail = await withTimeout(env.syncWait());
+
+      expect(trail).toHaveLength(1);
+      expect((trail as ChangeTrailType)[0].uuid).toBe(vc.uuid);
+
+      env.destroy();
+    });
   });
 
   it('should dispatch MessageToView with traverseChildren=true through the entire stack', async () => {
