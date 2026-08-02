@@ -197,7 +197,7 @@ Beide erzeugten denselben Wire-Eintrag, aber `setProperty` behielt den Key im co
 - **LOW-1** `Kernel.destroy()` ruft `traverseLevelOrderBFS().reverse()` — mutiert ggf. den internen Cache an Ort und Stelle (`Kernel.ts:781`).
 - **LOW-2** `provideContext({clearOnDestroy: true})` registriert bei wiederholten Aufrufen jedes Mal eine neue Cleanup-Closure (`Kernel.ts:435–439, 476–480`).
 - **LOW-3** `SignalsPath.dispose()` emittiert beim Teardown noch ein finales `'value' = undefined`, was Listener verwirren kann.
-- **LOW-4** Globale Singletons (`__shadowEntsContexts`, `__shadowEnvs`, `FrameLoop.gUniqInstance`) erschweren Test-Isolation und Multi-Instance-Szenarien.
+- **LOW-4** Globale Singletons (`__shadowEntsContexts`, `__shadowEnvs`, `FrameLoop.gUniqInstance`) erschweren Test-Isolation und Multi-Instance-Szenarien. **Teilweise entschärft** — `ComponentContext.dispose()` gibt den Namespace wieder frei (vorher blieb jeder je erzeugte Kontext für die Lebensdauer der Seite in `__shadowEntsContexts` stehen); `ShadowEnv.destroy()` räumt `__shadowEnvs` bereits ab. `FrameLoop.gUniqInstance` ist unverändert offen.
 - **LOW-5** Konstruktor von `ComponentContext` gibt eine vorhandene Instanz via `return` zurück — funktioniert, ist aber überraschend.
 
 ### 3.5 Performance
@@ -248,6 +248,7 @@ Beide erzeugten denselben Wire-Eintrag, aber `setProperty` behielt den Key im co
 | `ViewComponent` ↔ Entity | ✅ gründlich |
 | `ViewComponent`-Zerstörungs-Kontrakt, Zyklen-Abweisung, Token-Normalisierung | ✅ **gründlich** |
 | `ComponentContext`-Sortierordnung + Baum-Invarianten | ✅ **gründlich** |
+| `ComponentContext.dispose()`-Kontrakt (Namespace-Freigabe, Inertheit, Abweisung) | ✅ **gründlich** |
 | `ComponentChanges` / `ComponentMemory` (Unit) | ✅ **gründlich** — eigene Specs, vorher nur indirekt über Trail-Vergleiche |
 | `ShadowEnv` Setup/Teardown | 🟡 **partiell** — `envProxy`-Swap zur Laufzeit nicht getestet; `syncWait()`/`AfterSync` und der `destroy()`-Kontrakt abgedeckt |
 | `LocalShadowObjectEnv` | 🟡 nur Smoke + 1 Sync |

@@ -728,6 +728,46 @@ const defaultCtx = ComponentContext.get();
 const level1Ctx = ComponentContext.get('level-1');
 ```
 
+### Properties
+
+| Property | Description |
+| :--- | :--- |
+| `ns` | The namespace this context is registered under. |
+| `isDisposed` | (read-only) Whether the context has been torn down by `dispose()`. |
+
+### Methods
+
+#### `clear()`
+
+Removes all components without writing anything to a change trail. The context stays registered under its namespace and can be used again afterwards. This is the reset you want between tests or when swapping a whole scene.
+
+#### `dispose()`
+
+The final teardown. Every `ViewComponent` the context holds is destroyed (so each one reports `isDestroyed === true`), the component memory is dropped, and the namespace is released, so `ComponentContext.get(ns)` hands out a fresh context afterwards. Calling it more than once is a no-op.
+
+A disposed context stays inert: it holds no components, `buildChangeTrails()` returns an empty array, and any `ViewComponent` that tries to join it -- through the constructor or by assigning `context` -- is rejected with a `ComponentContextDisposedError`. It cannot be revived.
+
+```typescript
+import { ComponentContext, ComponentContextDisposedError } from '@spearwolf/shadow-objects';
+
+const ctx = ComponentContext.get('level-1');
+// …
+ctx.dispose();
+
+ctx.isDisposed;                              // true
+ComponentContext.get('level-1') === ctx;     // false -- a fresh context
+new ViewComponent('a', { context: ctx });    // throws ComponentContextDisposedError
+```
+
+Rejecting is deliberate, for the same reason `destroy()` rejects pending promises: a component silently attached to a dead context would look alive while never reaching an Entity.
+
+A `ShadowEnv` bound to this context keeps its reference and will simply sync empty change trails. Destroy the environment first if you want the namespace released on both sides:
+
+```typescript
+env.destroy();
+ctx.dispose();
+```
+
 ### Namespacing
 
 A Context represents an isolated instance of a Shadow Environment (Kernel + Entities).

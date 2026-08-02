@@ -36,6 +36,17 @@ declare global {
  * If no namespace is specified when creating a {@link ComponentContext}, the global namespace is used.
  * There is only one {@link ComponentContext} (a singleton) for each namespace.
  */
+/**
+ * Thrown when a {@link ViewComponent} tries to join a {@link ComponentContext} that has
+ * already been disposed.
+ */
+export class ComponentContextDisposedError extends Error {
+  constructor(message = 'the component context has been disposed') {
+    super(message);
+    this.name = 'ComponentContextDisposedError';
+  }
+}
+
 export class ComponentContext {
   static readonly ReRequestParentRoots = 're-request-parent-roots';
 
@@ -59,6 +70,7 @@ export class ComponentContext {
 
   #components: Map<string, ViewInstance> = new Map();
   #rootComponents: string[] = []; // we use an Array here and not a Set, because we want to keep the insertion order
+  #isDisposed = false;
 
   readonly #componentMemory = new ComponentMemory();
 
@@ -72,7 +84,24 @@ export class ComponentContext {
     ctxMap.set(ns, this);
   }
 
+  /**
+   * Whether this context has been torn down by {@link ComponentContext.dispose}.
+   *
+   * A disposed context holds no components, produces empty change trails and no longer
+   * occupies its namespace. It cannot be revived; use {@link ComponentContext.get} to
+   * obtain a fresh context for the same namespace.
+   */
+  get isDisposed(): boolean {
+    return this.#isDisposed;
+  }
+
   addComponent(component: ViewComponent) {
+    if (this.#isDisposed) {
+      throw new ComponentContextDisposedError(
+        `the view component ${component.uuid} cannot join the component context because it has been disposed`,
+      );
+    }
+
     let viewInstance: ViewInstance | undefined;
 
     if (this.#components.has(component.uuid)) {
@@ -234,6 +263,9 @@ export class ComponentContext {
   }
 
   changeOrder(component: ViewComponent) {
+    // without this guard the root branch below would insert the uuid back into a disposed context
+    if (this.#isDisposed) return;
+
     if (component.parent) {
       const parentEntry = this.#components.get(component.parent.uuid)!;
       removeFrom(parentEntry.children, component.uuid);
@@ -361,6 +393,12 @@ export class ComponentContext {
     this.broadcastEvent(ContextLost);
   }
 
+  /**
+   * Remove all components without writing anything to a change trail. The context stays
+   * registered under its namespace and can be used again afterwards.
+   *
+   * @see {@link ComponentContext.dispose} for the final teardown
+   */
   clear() {
     this.#viewInstances = undefined;
     this.#componentMemory.clear();
@@ -375,6 +413,37 @@ export class ComponentContext {
 
     if (this.#components.size !== 0) {
       throw new Error('component-context panic: #components is not empty!');
+    }
+  }
+
+  /**
+   * Tear the context down for good: every {@link ViewComponent} it holds is destroyed, the
+   * component memory is dropped, and the namespace is released so that
+   * {@link ComponentContext.get} creates a fresh context for it.
+   *
+   * Unlike {@link ComponentContext.clear} this is final. The context holds no components,
+   * produces empty change trails, and rejects any component that tries to join it. Calling
+   * it more than once is a no-op.
+   *
+   * A {@link ShadowEnv} bound to this context keeps its reference; destroy the environment
+   * first if you want the namespace released on both sides.
+   */
+  dispose() {
+    if (this.#isDisposed) return;
+
+    // destroy first, while the context is still live: a component whose context is gone
+    // would otherwise keep reporting itself as alive
+    for (const {component} of Array.from(this.#components.values())) {
+      component.destroy();
+    }
+
+    this.clear();
+
+    this.#isDisposed = true;
+
+    const ctxMap = ComponentContext.getContextsMap();
+    if (this.ns != null && ctxMap.get(this.ns) === this) {
+      ctxMap.delete(this.ns);
     }
   }
 

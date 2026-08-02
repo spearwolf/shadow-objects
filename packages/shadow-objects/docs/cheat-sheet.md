@@ -344,3 +344,12 @@ await env.ready();      // rejects with ShadowEnvDestroyedError
 ```
 
 `destroy()` rejects every `ready()` and `syncWait()` that is still pending instead of leaving it hanging.
+
+```typescript
+ctx.clear();     // empty, but reusable under the same namespace
+ctx.dispose();   // final: components destroyed, namespace released, ctx.isDisposed === true
+ComponentContext.get(ns);                  // a fresh context
+new ViewComponent('a', {context: ctx});    // throws ComponentContextDisposedError
+```
+
+Tear down in this order: `env.destroy()`, then `ctx.dispose()`.

@@ -195,6 +195,134 @@ describe('ComponentContext', () => {
     });
   });
 
+  describe('dispose', () => {
+    it('reports isDisposed', () => {
+      ctx = makeContext();
+
+      expect(ctx.isDisposed).toBe(false);
+      ctx.dispose();
+      expect(ctx.isDisposed).toBe(true);
+    });
+
+    it('releases the namespace, so get() hands out a fresh context', () => {
+      const ns = 'ComponentContext.spec-dispose-ns';
+      const first = ComponentContext.get(ns);
+
+      first.dispose();
+
+      const second = ComponentContext.get(ns);
+
+      expect(second).not.toBe(first);
+      expect(second.isDisposed).toBe(false);
+
+      second.dispose();
+    });
+
+    it('does not hand out the disposed context via the constructor either', () => {
+      const ns = 'ComponentContext.spec-dispose-ctor-ns';
+      const first = new ComponentContext(ns);
+
+      first.dispose();
+
+      const second = new ComponentContext(ns);
+
+      expect(second).not.toBe(first);
+
+      second.dispose();
+    });
+
+    it('destroys every view component it holds', () => {
+      ctx = makeContext();
+      const parent = new ViewComponent('parent', {context: ctx});
+      const child = new ViewComponent('child', {context: ctx, parent});
+      const grandChild = new ViewComponent('grandChild', {context: ctx, parent: child});
+
+      ctx.dispose();
+
+      expect(parent.isDestroyed).toBe(true);
+      expect(child.isDestroyed).toBe(true);
+      expect(grandChild.isDestroyed).toBe(true);
+    });
+
+    it('holds no components afterwards', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx});
+      new ViewComponent('b', {context: ctx, parent: a});
+
+      ctx.dispose();
+
+      expect(ctx.hasComponents()).toBe(false);
+      expect(ctx.traverseLevelOrderBFS()).toEqual([]);
+      expect(ctx.buildChangeTrails()).toEqual([]);
+    });
+
+    it('can be disposed twice', () => {
+      ctx = makeContext();
+      new ViewComponent('a', {context: ctx});
+
+      ctx.dispose();
+
+      expect(() => ctx.dispose()).not.toThrow();
+      expect(ctx.isDisposed).toBe(true);
+    });
+
+    it('tolerates clear() afterwards', () => {
+      ctx = makeContext();
+      new ViewComponent('a', {context: ctx});
+      ctx.dispose();
+
+      expect(() => ctx.clear()).not.toThrow();
+    });
+
+    it('rejects a view component that tries to join it', () => {
+      ctx = makeContext();
+      ctx.dispose();
+
+      expect(() => new ViewComponent('a', {context: ctx})).toThrow(/disposed/);
+    });
+
+    it('rejects a view component that is re-assigned to it', () => {
+      ctx = makeContext();
+      const other = makeContext();
+      const c = new ViewComponent('a', {context: other});
+
+      ctx.dispose();
+
+      expect(() => {
+        c.context = ctx;
+      }).toThrow(/disposed/);
+
+      other.clear();
+    });
+
+    it('does not resurrect a root entry through changeOrder', () => {
+      ctx = makeContext();
+      const c = new ViewComponent('a', {context: ctx});
+
+      ctx.dispose();
+      ctx.changeOrder(c);
+
+      expect(ctx.hasComponents()).toBe(false);
+      expect(ctx.traverseLevelOrderBFS()).toEqual([]);
+    });
+
+    it('leaves a fresh context for the same namespace untouched', () => {
+      const ns = 'ComponentContext.spec-dispose-isolation-ns';
+      const first = ComponentContext.get(ns);
+      new ViewComponent('old', {context: first});
+
+      first.dispose();
+
+      const second = ComponentContext.get(ns);
+      const fresh = new ViewComponent('fresh', {context: second});
+
+      expect(second.hasComponent(fresh)).toBe(true);
+      expect(second.buildChangeTrails()).toHaveLength(1);
+
+      second.dispose();
+    });
+  });
+
   describe('reCreateChanges', () => {
     it('restores the order of a component that was re-parented without an order change', () => {
       ctx = makeContext();
