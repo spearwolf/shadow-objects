@@ -6,7 +6,7 @@ import {ShadowObject} from '../in-the-dark/ShadowObject.js';
 import type {ChangeTrailType, ShadowObjectCreationAPI} from '../types.js';
 import {ComponentContext} from './ComponentContext.js';
 import {LocalShadowObjectEnv} from './LocalShadowObjectEnv.js';
-import {ShadowEnv} from './ShadowEnv.js';
+import {ShadowEnv, ShadowEnvDestroyedError} from './ShadowEnv.js';
 import {ViewComponent} from './ViewComponent.js';
 
 describe('ShadowEnv', () => {
@@ -171,6 +171,136 @@ describe('ShadowEnv', () => {
       expect((trail as ChangeTrailType)[0].uuid).toBe(vc.uuid);
 
       env.destroy();
+    });
+  });
+
+  describe('destroy', () => {
+    const withTimeout = <T>(promise: Promise<T>, ms = 250) =>
+      Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('timed out')), ms))]);
+
+    /**
+     * Asserts that the promise rejects because the environment was destroyed.
+     * A plain `rejects.toThrow(SomeClass)` would also swallow the timeout rejection,
+     * which is exactly the hanging-promise bug this guards against.
+     */
+    const expectDestroyedRejection = async (promise: Promise<unknown>) => {
+      const reason = await withTimeout(promise).then(
+        () => {
+          throw new Error('expected the promise to reject, but it resolved');
+        },
+        (error) => error,
+      );
+
+      expect((reason as Error).name).toBe('ShadowEnvDestroyedError');
+      expect(reason).toBeInstanceOf(ShadowEnvDestroyedError);
+    };
+
+    const makeEnv = () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get();
+      env.envProxy = new LocalShadowObjectEnv();
+      return env;
+    };
+
+    it('rejects a syncWait() that is still pending', async () => {
+      const env = makeEnv();
+      const pending = env.syncWait();
+
+      env.destroy();
+
+      await expectDestroyedRejection(pending);
+    });
+
+    it('rejects a syncWait() that was waiting for the environment to become ready', async () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get();
+      const pending = env.syncWait();
+
+      env.destroy();
+
+      await expectDestroyedRejection(pending);
+    });
+
+    it('rejects a ready() that is still pending', async () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get();
+      const pending = env.ready();
+
+      env.destroy();
+
+      await expectDestroyedRejection(pending);
+    });
+
+    it('rejects every pending caller, not just the first', async () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get();
+      const a = env.ready();
+      const b = env.ready();
+      const c = env.syncWait();
+
+      env.destroy();
+
+      await expectDestroyedRejection(a);
+      await expectDestroyedRejection(b);
+      await expectDestroyedRejection(c);
+    });
+
+    it('rejects a syncWait() issued after destroy', async () => {
+      const env = makeEnv();
+      env.destroy();
+
+      await expectDestroyedRejection(env.syncWait());
+    });
+
+    it('rejects a ready() issued after destroy', async () => {
+      const env = makeEnv();
+      env.destroy();
+
+      await expectDestroyedRejection(env.ready());
+    });
+
+    it('ignores sync() after destroy', async () => {
+      const env = makeEnv();
+      await env.ready();
+      env.destroy();
+
+      expect(() => env.sync()).not.toThrow();
+    });
+
+    it('can be destroyed twice', async () => {
+      const env = makeEnv();
+      await env.ready();
+
+      env.destroy();
+
+      expect(() => env.destroy()).not.toThrow();
+      expect(env.isDestroyed).toBe(true);
+    });
+
+    it('destroys the envProxy exactly once', async () => {
+      const env = makeEnv();
+      await env.ready();
+
+      const proxyDestroySpy = vi.spyOn(env.envProxy!, 'destroy');
+
+      env.destroy();
+
+      expect(proxyDestroySpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not run a sync that was scheduled before the destroy', async () => {
+      const env = makeEnv();
+      await env.ready();
+
+      const applySpy = vi.spyOn(env.envProxy!, 'applyChangeTrail');
+      new ViewComponent('test', {context: env.view});
+      env.sync();
+
+      env.destroy();
+
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      expect(applySpy).not.toHaveBeenCalled();
     });
   });
 

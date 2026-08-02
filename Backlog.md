@@ -161,7 +161,7 @@ Die Kinderliste wurde zurückgesetzt, ohne die Kinder zu benachrichtigen: sie ze
 
 **[VIEW-19]** ~~`ShadowEnv.syncWait()` löst bei leerem Change Trail nie auf.~~ **✅ Behoben**
 *Ort:* `ShadowEnv.ts`.
-`AfterSync` wurde nur innerhalb von `if (data.length > 0)` emittiert; da das Promise gecacht wird, gaben alle folgenden `syncWait()`-Aufrufe dasselbe tote Promise zurück. `AfterSync` feuert jetzt in jedem Sync-Zyklus mit dem (ggf. leeren) Trail — so, wie die Doku es ohnehin versprach. Siehe **VIEW-8** für den davon unabhängigen `destroy()`-Pfad, der weiterhin offen ist.
+`AfterSync` wurde nur innerhalb von `if (data.length > 0)` emittiert; da das Promise gecacht wird, gaben alle folgenden `syncWait()`-Aufrufe dasselbe tote Promise zurück. `AfterSync` feuert jetzt in jedem Sync-Zyklus mit dem (ggf. leeren) Trail — so, wie die Doku es ohnehin versprach. Der davon unabhängige `destroy()`-Pfad ist unter **VIEW-8** behoben.
 
 **[VIEW-20]** ~~Der zerstörte Zustand von `ViewComponent` ist undefiniert.~~ **✅ Behoben**
 *Ort:* `ViewComponent.ts`.
@@ -182,7 +182,7 @@ Beide erzeugten denselben Wire-Eintrag, aber `setProperty` behielt den Key im co
 | **VIEW-5** | `<shae-prop>` löst seinen Eltern-`<shae-ent>` nur in `connectedCallback` auf — DOM-Verschiebungen ohne Disconnect lassen den Prop am alten Ent kleben. | `ShaePropElement.ts:9–18, 323` |
 | **VIEW-6** | `MutationObserver` in `ShaeEntElement` setzt `subtree: false` — In-Tree-Reparenting via Zwischen-Container wird nicht gesehen. | `ShaeEntElement.ts:257` |
 | **VIEW-7** | `ShadowEnv.envProxy`-Setter feuert `start()` fire-and-forget; ein nachfolgender Reassign kann durch das *alte* `start().then()` das `proxyReady`-Flag des neuen Proxys verfälschen. | `ShadowEnv.ts:117–125` |
-| **VIEW-8** | `ShadowEnv.destroy()` löscht alle Listener — `syncWait()`-Aufrufer hängen für immer. | `ShadowEnv.ts:174` |
+| ~~**VIEW-8**~~ | ~~`ShadowEnv.destroy()` löscht alle Listener — `syncWait()`-Aufrufer hängen für immer.~~ **✅ Behoben** — jedes ausstehende `ready()` und `syncWait()` wird mit einem neuen `ShadowEnvDestroyedError` abgelehnt statt hängen gelassen; Aufrufe nach `destroy()` lehnen sofort ab, `sync()` wird zum No-op, ein bereits eingeplanter Sync läuft nicht mehr. `destroy()` ist idempotent und zerstört den `envProxy` nur noch einmal. | `ShadowEnv.ts` |
 | **VIEW-9** | `removeTransferables` mutiert die Caller-Trail-Einträge per `delete`. | `RemoteWorkerEnv.ts:23–40` |
 | **VIEW-10** | `LocalShadowObjectEnv` ignoriert `waitForConfirmation`; `MessageToView` läuft via `queueMicrotask`, sodass der `AfterSync`-Event vor den Worker-Nachrichten feuert. **Verhaltensasymmetrie zu `RemoteWorkerEnv`.** | `LocalShadowObjectEnv.ts:40`, `Kernel.ts:316–319` |
 | **VIEW-11** | `ShaePropElement.isShaeEntElement = true` ist offenbar Copy-Paste — nutzt aber `findEntNode` zur Eltern-Suche, was potenziell falsche Treffer ergibt. | `ShaePropElement.ts:68` |
@@ -249,7 +249,7 @@ Beide erzeugten denselben Wire-Eintrag, aber `setProperty` behielt den Key im co
 | `ViewComponent`-Zerstörungs-Kontrakt, Zyklen-Abweisung, Token-Normalisierung | ✅ **gründlich** |
 | `ComponentContext`-Sortierordnung + Baum-Invarianten | ✅ **gründlich** |
 | `ComponentChanges` / `ComponentMemory` (Unit) | ✅ **gründlich** — eigene Specs, vorher nur indirekt über Trail-Vergleiche |
-| `ShadowEnv` Setup/Teardown | 🟡 **partiell** — `envProxy`-Swap zur Laufzeit nicht getestet; `syncWait()`/`AfterSync` abgedeckt |
+| `ShadowEnv` Setup/Teardown | 🟡 **partiell** — `envProxy`-Swap zur Laufzeit nicht getestet; `syncWait()`/`AfterSync` und der `destroy()`-Kontrakt abgedeckt |
 | `LocalShadowObjectEnv` | 🟡 nur Smoke + 1 Sync |
 | `RemoteWorkerEnv` | 🟡 nur Happy-Path-E2E. **Keine vitest-Spec.** Init-Failure, Termination, Race-Recovery: ❌ |
 | `MessageRouter` | ❌ keine direkten Tests |

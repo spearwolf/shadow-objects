@@ -335,3 +335,12 @@ loop();
 | `ShadowEnv.ContextCreated` | Environment is ready (view + proxy both connected) |
 | `ShadowEnv.ContextLost` | Environment lost connection |
 | `ShadowEnv.AfterSync` | After each sync cycle completes, also when the change trail was empty |
+
+```typescript
+env.destroy();          // idempotent; env.isDestroyed === true
+env.sync();             // no-op
+await env.syncWait();   // rejects with ShadowEnvDestroyedError
+await env.ready();      // rejects with ShadowEnvDestroyedError
+```
+
+`destroy()` rejects every `ready()` and `syncWait()` that is still pending instead of leaving it hanging.

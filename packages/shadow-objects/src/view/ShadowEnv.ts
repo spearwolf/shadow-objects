@@ -12,6 +12,17 @@ declare global {
   var __shadowEnvs: Map<NamespaceType, ShadowEnv> | undefined;
 }
 
+/**
+ * The reason every pending {@link ShadowEnv.ready} and {@link ShadowEnv.syncWait} promise
+ * is rejected with when the environment is destroyed.
+ */
+export class ShadowEnvDestroyedError extends Error {
+  constructor(message = 'the shadow environment has been destroyed') {
+    super(message);
+    this.name = 'ShadowEnvDestroyedError';
+  }
+}
+
 export class ShadowEnv {
   static AfterSync = 'afterSync';
   static ContextLost = 'contextLost';
@@ -130,11 +141,40 @@ export class ShadowEnv {
     return Boolean(this.#comCtx && this.#shaObjEnvProxy && this.proxyReady && !this.isDestroyed);
   }
 
+  #whenDestroyed?: Promise<never>;
+  #rejectWhenDestroyed?: (error: Error) => void;
+
+  /**
+   * A promise that rejects the moment this environment is destroyed.
+   *
+   * Every promise the public API hands out races against it. Without that race a caller
+   * would wait forever, because {@link ShadowEnv.destroy} tears down the very listeners
+   * those promises are built on.
+   */
+  #destroyedSignal(): Promise<never> {
+    if (this.#whenDestroyed == null) {
+      this.#whenDestroyed = new Promise<never>((_, reject) => {
+        this.#rejectWhenDestroyed = reject;
+      });
+      // the signal is rejected unconditionally, also when nobody happens to be racing against it
+      this.#whenDestroyed.catch(() => {});
+    }
+    return this.#whenDestroyed;
+  }
+
+  /**
+   * Resolves once the environment is ready.
+   *
+   * @throws {ShadowEnvDestroyedError} if the environment is destroyed before that happens
+   */
   readonly ready = async (): Promise<ShadowEnv> => {
-    return this.isReady ? this : onceAsync(this as ShadowEnv, ShadowEnv.ContextCreated);
+    if (this.#isDestroyed) throw new ShadowEnvDestroyedError();
+    if (this.isReady) return this;
+    return Promise.race([onceAsync<ShadowEnv>(this as ShadowEnv, ShadowEnv.ContextCreated), this.#destroyedSignal()]);
   };
 
   sync(): void {
+    if (this.#isDestroyed) return;
     if (!this.isReady) {
       this.#syncAfterContextCreated = true;
       return;
@@ -144,21 +184,55 @@ export class ShadowEnv {
     queueMicrotask(this.#syncIfScheduled);
   }
 
+  /**
+   * Like {@link ShadowEnv.sync}, but resolves with the change trail once the cycle completed.
+   *
+   * @throws {ShadowEnvDestroyedError} if the environment is destroyed before that happens
+   */
   syncWait(): Promise<ChangeTrailType> {
+    if (this.#isDestroyed) return Promise.reject(new ShadowEnvDestroyedError());
+
     this.#syncWaitForConfirmation = true;
     this.sync();
+
     if (this.#afterNextSync) return this.#afterNextSync;
-    this.#afterNextSync = onceAsync<ChangeTrailType>(this as ShadowEnv, ShadowEnv.AfterSync).then((changeTrail) => {
-      this.#afterNextSync = undefined;
-      return changeTrail;
-    });
+
+    this.#afterNextSync = Promise.race([
+      onceAsync<ChangeTrailType>(this as ShadowEnv, ShadowEnv.AfterSync),
+      this.#destroyedSignal(),
+    ]).then(
+      (changeTrail) => {
+        this.#afterNextSync = undefined;
+        return changeTrail;
+      },
+      (error) => {
+        this.#afterNextSync = undefined;
+        throw error;
+      },
+    );
+
     return this.#afterNextSync;
   }
 
+  /**
+   * Tear the environment down: the proxy is destroyed, the namespace is released, all signals
+   * and listeners are removed, and every caller still waiting on {@link ShadowEnv.ready} or
+   * {@link ShadowEnv.syncWait} is rejected with a {@link ShadowEnvDestroyedError} instead of
+   * being left pending forever. Calling it more than once is a no-op.
+   */
   destroy() {
+    if (this.#isDestroyed) return;
+
+    // set first: isReady must report false for everything that runs below
+    this.#isDestroyed = true;
+
+    this.#syncScheduled = false;
+    this.#syncAfterContextCreated = false;
+    this.#syncWaitForConfirmation = false;
+
     const ns = this.#comCtx?.ns;
 
-    this.envProxy?.destroy();
+    // the `envProxy` setter destroys the previous proxy, so it must not be destroyed here as well
     this.envProxy = undefined;
     this.view = undefined;
 
@@ -170,10 +244,13 @@ export class ShadowEnv {
       }
     }
 
+    // settle everyone still waiting before the listeners they depend on are removed
+    this.#rejectWhenDestroyed?.(new ShadowEnvDestroyedError());
+    this.#afterNextSync = undefined;
+
     destroyObjectSignals(this);
     off(this);
 
-    this.#isDestroyed = true;
     Object.freeze(this);
   }
 
@@ -185,6 +262,8 @@ export class ShadowEnv {
 
   async #syncNow() {
     this.#syncScheduled = false;
+
+    if (this.#isDestroyed) return;
 
     if (!this.isReady) {
       // the environment went away between scheduling and running this sync:

@@ -824,7 +824,23 @@ console.log('Environment is ready:', env.isReady);
 
 #### `destroy()`
 
-Destroys the environment, cleaning up all resources and disconnecting from the Shadow Environment.
+Tears the environment down: the `envProxy` is destroyed, the namespace is released from the global registry, and all signals and event listeners are removed. Calling it more than once is a no-op, and `isDestroyed` reports `true` afterwards.
+
+Destruction is final, so nothing is left waiting on it. Every pending `ready()` and `syncWait()` Promise is rejected with a `ShadowEnvDestroyedError`, and calling either afterwards rejects immediately. `sync()` becomes a no-op, and a sync that was already scheduled does not run.
+
+```typescript
+import { ShadowEnvDestroyedError } from '@spearwolf/shadow-objects';
+
+try {
+  await env.syncWait();
+} catch (error) {
+  if (error instanceof ShadowEnvDestroyedError) {
+    // the environment went away before this sync could complete
+  }
+}
+```
+
+Rejecting is deliberate. Resolving would tell the caller a sync completed that never happened, and leaving the Promise pending -- the previous behaviour -- silently stalls whatever awaited it.
 
 ### Examples
 
