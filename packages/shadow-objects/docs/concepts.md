@@ -221,9 +221,11 @@ Shadow Objects are not nodes in this tree. They are ECS components attached to E
 - An Entity can have multiple Shadow Objects (via routing rules in the Registry).
 - All Shadow Objects attached to the same Entity share the same properties and lifecycle.
 
-### Context (Dependency Injection)
+### Entity Context (Dependency Injection)
 
-Context lets you share data deep into the entity tree without manually threading it through every level.
+> **Two different things are called "context" in this framework.** *Entity Context* -- described here -- is dependency injection along the entity tree, used from inside Shadow Objects via `provideContext` / `useContext`. `ComponentContext` is something else entirely: the View-Layer object that groups ViewComponents under a namespace and connects them to one Shadow Environment. They never interact. Whenever this documentation says just "context", it means Entity Context.
+
+Entity Context lets you share data deep into the entity tree without manually threading it through every level.
 
 **How it works:**
 
@@ -343,4 +345,4 @@ on(viewComponent, {
 });
 ```
 
-If you are using `<shae-ent>`, you can automatically forward these events to the DOM element using the `forward-custom-events` attribute. See the [Web Components API](./03-api/04-web-components.md#forward-custom-events) for details.
+If you are using `<shae-ent>`, you can automatically forward these events to the DOM element using the `forward-custom-events` attribute. See the [`<shae-ent>` reference](./api-reference.md#shae-ent) for details.

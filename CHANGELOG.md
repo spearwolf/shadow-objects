@@ -4,6 +4,11 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-02 — Documentation corrections
+
+- **Root `README.md`:** the "Project Structure" section still credited `nx` as the monorepo orchestrator. Corrected to `turborepo` + pnpm workspaces (the switch happened in the 2026-05-09 build-system renewal).
+- **Concept notes:** added `docs/die-säulen-der-shadow-objects.md` — the framework's domain model (View, Environment, Kernel, Composition, Shadow Object), its data-flow directions, invariants, and binding terminology. Working document, German, not part of the published docs.
+
 ## 2026-05-09 — CI action versions bumped
 
 - **GitHub Actions:** upgraded `actions/checkout` v4 → v6, `actions/setup-node` v4 → v6, and `pnpm/action-setup` v4 → v6 in both `.github/workflows/ci.yml` and `.github/workflows/deploy.yml`. Node version pinned at `24` (latest).

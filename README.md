@@ -48,7 +48,7 @@ If Redux and Zustand are global state on one thread, shadow-objects is reactive 
 
 ## Project Structure (Monorepo)
 
-This repository is a monorepo managed with [nx](https://nx.dev/) and [pnpm](https://pnpm.io/).
+This repository is a monorepo managed with [turborepo](https://turborepo.com/) and [pnpm](https://pnpm.io/) workspaces.
 
 | Package | npm name | Description |
 | :--- | :--- | :--- |

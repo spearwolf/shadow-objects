@@ -142,6 +142,6 @@ This example uses `<shae-worker>` to run logic in a web worker (remote). If you 
 
 ## Next Steps
 
-- Learn how to structure complex logic in [Creating Shadow Objects](./02-guides/02-creating-shadow-objects.md).
-- Understand how to build robust UIs in [View Integration](./02-guides/03-view-integration.md).
+- Learn how to structure complex logic in [Writing Shadow Objects](./guides.md#1-writing-shadow-objects-functional-style).
+- Understand how to build robust UIs in [View Integration](./guides.md#3-view-integration).
 - Read [Concepts](./concepts.md) for a deeper understanding of entities, context, and the architecture.

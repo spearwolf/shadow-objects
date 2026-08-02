@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Docs (correctness):** the package `README.md` quick example was not runnable — it used a non-existent `useSignals()` API and called `Registry.define()` as a static method. Replaced with a working `<shae-worker>` + module-`define` example, plus a pointer to `shadowObjects.define()` for runtime registration.
+- **Docs (correctness):** `api-reference.md` §2 documented `useContext()`/`useParentContext()` as returning the value and `provideContext()`/`provideGlobalContext()` as returning `void`. They return a `SignalReader` and a `Signal` respectively; signatures corrected and `symbol` keys documented.
+- **Docs (terminology):** the two unrelated concepts both called "context" are now disambiguated. Entity Context (`provideContext`/`useContext`, DI along the entity tree) vs. `ComponentContext` (View-Layer namespace binding to a Shadow Environment) — cross-referenced notes in `concepts.md`, `api-reference.md`, and `cheat-sheet.md`; headings renamed to "Entity Context".
+- **Docs (links):** fixed three dead links in `getting-started.md` and `concepts.md` still pointing at the pre-flattening `02-guides/` and `03-api/` layout.
+
 ## [0.33.0] - 2026-06-19
 
 - Runtime dependency bumped: `@spearwolf/signalize` `^0.29.0` → `^0.30.0`.

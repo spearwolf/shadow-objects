@@ -111,7 +111,9 @@ createResource(
 
 ---
 
-## Context (Provider / Consumer)
+## Entity Context (Provider / Consumer)
+
+> Dependency injection along the entity tree. Not to be confused with `ComponentContext`, which is the View-Layer namespace binding to a Shadow Environment.
 
 ```typescript
 // Provider: make a value available to all descendants

@@ -6,7 +6,7 @@ This is the complete API reference for the Shadow Objects framework. Entities ar
 
 - [Shadow Object Creation API](#shadow-object-creation-api)
   - [Inputs (Properties)](#1-inputs-properties)
-  - [Context (Dependency Injection)](#2-context-dependency-injection)
+  - [Entity Context (Dependency Injection)](#2-entity-context-dependency-injection)
   - [Reactivity Primitives](#3-reactivity-primitives)
   - [Events](#4-events)
   - [View Integration](#5-view-integration)
@@ -91,36 +91,41 @@ const { x, y, title } = useProperties<{ x: number; y: number; title: string }>({
 
 ---
 
-### 2. Context (Dependency Injection)
+### 2. Entity Context (Dependency Injection)
 
 The framework provides a hierarchical dependency injection system. Entities can provide values that flow down to all their descendants in the entity tree.
 
-#### `useContext(name)`
+> **Not to be confused with [`ComponentContext`](#componentcontext).** Entity Context is dependency injection inside the Shadow Environment. `ComponentContext` is the View-Layer object that groups ViewComponents under a namespace. Different layer, different purpose, no interaction.
+
+Both the consumer and the provider side work with signals, so a value that changes propagates to every consumer in the subtree without any manual subscription.
+
+#### `useContext(name, options?)`
 
 Consumes a context value provided by the nearest ancestor Entity that has it.
 
-- **Signature:** `useContext<T>(name: string): T | undefined`
-- **Returns:** The context value (can be a static value, a signal, or an object).
-- **Reactivity:** If the provided value is a signal, reading it makes the current computation reactive.
+- **Signature:** `useContext<T>(name: string | symbol, options?): SignalReader<T | undefined>`
+- **Returns:** A signal reader. Call it to get the current value: `const scene = useContext<Scene>('three-scene'); scene();`
+- **Reactivity:** Reading it inside an effect or memo tracks the dependency automatically. The value is `undefined` until some ancestor provides it.
 
-#### `useParentContext(name)`
+#### `useParentContext(name, options?)`
 
 Like `useContext`, but skips the current Entity and starts searching from the parent. Useful for "middleware" components that want to wrap or extend a context value that shares the same name.
 
-- **Signature:** `useParentContext<T>(name: string): T | undefined`
+- **Signature:** `useParentContext<T>(name: string | symbol, options?): SignalReader<T | undefined>`
 
-#### `provideContext(name, value)`
+#### `provideContext(name, sourceOrInitialValue?, options?)`
 
-Makes a value available to all descendant Entities in the subtree.
+Makes a value available to all descendant Entities in the subtree, and to all other Shadow Objects on the same Entity.
 
-- **Signature:** `provideContext(name: string, value: any): void`
-- **Note:** The value is often a signal or a store object to enable reactive communication downstream.
+- **Signature:** `provideContext<T>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T | undefined>, options?): Signal<T | undefined>`
+- **Returns:** The context signal. Write to it with `.set(...)` to push a new value to all consumers.
+- **Note:** Pass a signal as the source to keep the context in sync with existing reactive state.
 
-#### `provideGlobalContext(name, value)`
+#### `provideGlobalContext(name, sourceOrInitialValue?, options?)`
 
-Makes a value available to all Entities in the entire application, regardless of hierarchy position.
+Makes a value available to all Entities in the entire Shadow Environment, regardless of hierarchy position.
 
-- **Signature:** `provideGlobalContext(name: string, value: any): void`
+- **Signature:** `provideGlobalContext<T>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T | undefined>, options?): Signal<T | undefined>`
 
 ---
 
@@ -609,6 +614,8 @@ class GameEntity {
 ## ComponentContext
 
 The orchestrator. It manages a group of `ViewComponent`s and handles the communication channel (Worker or Local) to the Kernel. Multiple independent Shadow Environments can coexist on the same page through namespacing.
+
+> **Not to be confused with [Entity Context](#2-entity-context-dependency-injection).** `ComponentContext` lives in the View Layer and answers "which Shadow Environment does this ViewComponent belong to?". Entity Context lives inside the Shadow Environment and answers "which values does this Entity inherit from its ancestors?". The names are similar; the concepts are unrelated.
 
 ```typescript
 import { ComponentContext } from '@spearwolf/shadow-objects';

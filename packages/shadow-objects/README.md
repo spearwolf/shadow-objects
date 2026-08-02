@@ -12,24 +12,44 @@ npm install @spearwolf/shadow-objects
 
 ## Quick Example
 
-```typescript
-import { Registry } from '@spearwolf/shadow-objects';
+```html
+<!-- index.html -- the view layer -->
+<script type="module">
+  import '@spearwolf/shadow-objects/elements.js';
+</script>
 
-// Define a shadow object -- an ECS component with behavior
-function MyComponent({ entity, useSignals }) {
-  const [count, setCount] = useSignals('count', 0);
+<shae-worker src="./my-logic.js"></shae-worker>
 
-  entity.on('increment', () => setCount(count.get() + 1));
+<shae-ent token="my-component">
+  <shae-prop name="step" value="1" type="int"></shae-prop>
+</shae-ent>
+```
 
-  return () => {
-    // cleanup on destroy
-  };
+```javascript
+// my-logic.js -- runs in the shadow environment
+// A shadow object is an ECS component: its body runs once, then it just reacts.
+function MyComponent({useProperty, createSignal, onViewEvent, dispatchMessageToView}) {
+  const step = useProperty('step');
+  const count = createSignal(0);
+
+  onViewEvent((type) => {
+    if (type === 'increment') {
+      count.set(count() + (step() ?? 1));
+      dispatchMessageToView('count-changed', {value: count()});
+    }
+  });
 }
 
-// Register it: when a view node has the token 'my-component',
-// this shadow object runs in the shadow environment
-Registry.define('my-component', MyComponent);
+// The module default export is the registry (component manifest):
+// a view node with the token 'my-component' gets this shadow object.
+export default {
+  define: {
+    'my-component': MyComponent,
+  },
+};
 ```
+
+Need to register a shadow object at runtime instead? Use `shadowObjects.define(token, constructor)` from `@spearwolf/shadow-objects/shadow-objects.js`.
 
 ## Documentation
 
