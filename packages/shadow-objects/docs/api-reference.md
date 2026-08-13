@@ -825,6 +825,7 @@ const env = ShadowEnv.get('my-game');
 | `ShadowEnv.ContextCreated` | Fired when the environment becomes ready (view and proxy both connected). |
 | `ShadowEnv.ContextLost` | Fired when the environment loses its connection. |
 | `ShadowEnv.AfterSync` | Fired after each synchronization cycle, including cycles with nothing to send. Receives the `ChangeTrailType` data, which is an empty array when nothing changed. |
+| `ShadowEnv.ProxyFailed` | Fired when the proxy loses the Shadow Environment it stands for. Receives the reason and the `ShadowEnv`. `ContextLost` follows, because the environment stops being ready. |
 
 ```typescript
 import { on } from '@spearwolf/eventize';
@@ -837,6 +838,8 @@ on(env, ShadowEnv.AfterSync, (changeTrail) => {
   console.log('Sync complete, changes:', changeTrail.length);
 });
 ```
+
+Recovery from a `ProxyFailed` is a new proxy: `env.envProxy = new RemoteWorkerEnv()`. The setter starts it, and once it is ready the View Layer is rebuilt from the Component Memory, so the entities come back without the application having to replay them.
 
 ### Methods
 
@@ -926,6 +929,8 @@ animate();
 
 The `envProxy` property accepts any implementation of `IShadowObjectEnvProxy`. Two implementations ship out of the box.
 
+`ShadowEnv` installs two callbacks on the proxy it is given: `onMessageToView` for messages coming out of the Shadow Environment, and `onProxyFailed` for the loss of that environment. Both are optional -- an implementation only serves the ones it can serve.
+
 ### `LocalShadowObjectEnv`
 
 Runs the Shadow Environment in the same thread as the View Layer. Good for:
@@ -979,14 +984,42 @@ const remoteEnv = new RemoteWorkerEnv();
 
 | Property | Description |
 | :--- | :--- |
-| `isDestroyed` | `boolean` (read-only). |
-| `workerLoaded` | Promise that resolves when the worker is ready. |
+| `isDestroyed` | `boolean` (read-only). Also `true` once the worker has failed. |
+| `workerLoaded` | Promise that resolves once the worker is ready and rejects with a `WorkerFailedError` when it fails. Every read hands out a promise that can reject, so attach a `catch()` even when you do not await it -- otherwise a failure surfaces as an unhandled rejection. |
 
 **Methods:**
 
 | Method | Description |
 | :--- | :--- |
 | `importScript(url)` | Import a shadow objects module inside the worker. |
+
+**Events:**
+
+| Event | Description |
+| :--- | :--- |
+| `RemoteWorkerEnv.WorkerLoaded` | Fired when the worker has completed its handshake. Receives the environment. Retained, so a late listener still gets it. |
+| `RemoteWorkerEnv.WorkerFailed` | Fired when the worker dies or sends something that cannot be deserialized. Receives a `WorkerFailedEvent`. Retained, so a late listener still gets it. |
+
+`WorkerFailedEvent` fields:
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `env` | `RemoteWorkerEnv` | The environment whose worker failed. |
+| `type` | `'error' \| 'messageerror'` | `'error'` when the worker itself threw, `'messageerror'` when it sent something that could not be deserialized. |
+| `message` | `string` | A readable description of the failure. |
+| `reason` | `WorkerFailedError` | The error every pending and every later request is rejected with. |
+| `event` | `ErrorEvent \| MessageEvent` | The worker event the failure was read from. |
+
+A failure is final for this environment: the worker is terminated, `isDestroyed` becomes `true`, and everything still waiting for a reply -- along with every later `applyChangeTrail()`, `importScript()`, `start()` and `workerLoaded` -- is rejected with the `WorkerFailedError` right away instead of running into its timeout.
+
+```typescript
+import { on } from '@spearwolf/eventize';
+import { RemoteWorkerEnv } from '@spearwolf/shadow-objects';
+
+on(remoteEnv, RemoteWorkerEnv.WorkerFailed, ({ type, message, reason }) => {
+  console.warn('worker failed:', type, message, reason);
+});
+```
 
 ### Worker Timeout Constants
 
@@ -998,6 +1031,8 @@ These constants control how long the framework waits for worker responses:
 | `WorkerConfigureTimeout` | 60000ms | Time to wait for module imports. |
 | `WorkerChangeTrailTimeout` | 5000ms | Time to wait for change trail confirmation. |
 | `WorkerDestroyTimeout` | 5000ms | Time to wait for worker destruction. |
+
+They are the last line of defence, not the first: a worker that dies or sends something unreadable rejects the waiting calls immediately.
 
 ```typescript
 import {
@@ -1051,6 +1086,24 @@ The root of any Shadow Objects application. Initializes the Shadow Environment (
 
 <!-- Manual sync control -->
 <shae-worker src="./kernel.js" auto-sync="off"></shae-worker>
+```
+
+#### DOM Events
+
+The element mirrors the `ShadowEnv` events onto itself as `CustomEvent`s, so the declarative setup has the same information available as the programmatic one. The names are lower-cased; `detail` always carries `shadowEnv`.
+
+| Event | `detail` | When |
+| :--- | :--- | :--- |
+| `contextcreated` | `{shadowEnv}` | The environment became ready. |
+| `contextlost` | `{shadowEnv}` | The environment lost its connection. |
+| `proxyfailed` | `{shadowEnv, reason}` | The proxy lost the Shadow Environment it stands for. `contextlost` follows. |
+
+```javascript
+const worker = document.querySelector('shae-worker');
+
+worker.addEventListener('proxyfailed', (event) => {
+  console.warn('the shadow environment went away:', event.detail.reason);
+});
 ```
 
 ---

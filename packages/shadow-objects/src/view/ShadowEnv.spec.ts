@@ -5,6 +5,7 @@ import {Registry} from '../in-the-dark/Registry.js';
 import {ShadowObject} from '../in-the-dark/ShadowObject.js';
 import type {ChangeTrailType, ShadowObjectCreationAPI} from '../types.js';
 import {ComponentContext} from './ComponentContext.js';
+import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 import {LocalShadowObjectEnv} from './LocalShadowObjectEnv.js';
 import {ShadowEnv, ShadowEnvDestroyedError} from './ShadowEnv.js';
 import {ViewComponent} from './ViewComponent.js';
@@ -409,5 +410,127 @@ describe('ShadowEnv', () => {
     expect(childSpy).not.toHaveBeenCalled();
 
     env.destroy();
+  });
+
+  describe('a proxy that fails', () => {
+    /**
+     * A proxy that starts, does nothing, and can be told to fail. Real failures belong to
+     * `RemoteWorkerEnv`; what is under test here is the hop from the proxy to the consumers.
+     */
+    class FailingProxy implements IShadowObjectEnvProxy {
+      onMessageToView?: (event: any) => any;
+      onProxyFailed?: (reason: unknown) => any;
+
+      destroyCount = 0;
+
+      async start(): Promise<void> {}
+
+      async importScript(): Promise<void> {}
+
+      async applyChangeTrail(): Promise<void> {}
+
+      destroy(): void {
+        this.destroyCount++;
+      }
+
+      fail(reason: unknown) {
+        this.onProxyFailed?.(reason);
+      }
+    }
+
+    const makeEnv = async () => {
+      const env = new ShadowEnv();
+      const proxy = new FailingProxy();
+      env.view = ComponentContext.get();
+      env.envProxy = proxy;
+      await env.ready();
+      return {env, proxy};
+    };
+
+    it('installs onProxyFailed on the proxy it is given', () => {
+      const env = new ShadowEnv();
+      const proxy = new FailingProxy();
+
+      expect(proxy.onProxyFailed).toBeUndefined();
+
+      env.envProxy = proxy;
+
+      expect(typeof proxy.onProxyFailed).toBe('function');
+
+      env.destroy();
+    });
+
+    it('emits ProxyFailed with the reason and the environment', async () => {
+      const {env, proxy} = await makeEnv();
+      const failedSpy = vi.fn();
+      on(env, ShadowEnv.ProxyFailed, failedSpy);
+
+      const reason = new Error('the worker went away');
+      proxy.fail(reason);
+
+      expect(failedSpy).toHaveBeenCalledTimes(1);
+      expect(failedSpy).toHaveBeenCalledWith(reason, env);
+
+      env.destroy();
+    });
+
+    it('stops being ready and loses the context', async () => {
+      const {env, proxy} = await makeEnv();
+      const contextLostSpy = vi.fn();
+      on(env, ShadowEnv.ContextLost, contextLostSpy);
+
+      expect(env.isReady).toBe(true);
+
+      proxy.fail(new Error('the worker went away'));
+
+      expect(env.isReady).toBe(false);
+      expect(contextLostSpy).toHaveBeenCalledTimes(1);
+
+      env.destroy();
+    });
+
+    it('drops the context even when a ProxyFailed listener throws', async () => {
+      const {env, proxy} = await makeEnv();
+      const contextLostSpy = vi.fn();
+      on(env, ShadowEnv.ContextLost, contextLostSpy);
+      on(env, ShadowEnv.ProxyFailed, () => {
+        throw new Error('a consumer that cannot cope');
+      });
+
+      expect(() => proxy.fail(new Error('the worker went away'))).toThrow('a consumer that cannot cope');
+
+      expect(env.isReady).toBe(false);
+      expect(contextLostSpy).toHaveBeenCalledTimes(1);
+
+      env.destroy();
+    });
+
+    it('ignores a failure reported after destroy()', async () => {
+      const {env, proxy} = await makeEnv();
+      const failedSpy = vi.fn();
+      on(env, ShadowEnv.ProxyFailed, failedSpy);
+
+      env.destroy();
+
+      // the environment is frozen and its signals are gone by now — the late report
+      // must not reach any of them
+      expect(() => proxy.fail(new Error('too late'))).not.toThrow();
+      expect(failedSpy).not.toHaveBeenCalled();
+    });
+
+    it('recovers with a new proxy', async () => {
+      const {env, proxy} = await makeEnv();
+
+      proxy.fail(new Error('the worker went away'));
+      expect(env.isReady).toBe(false);
+
+      env.envProxy = new FailingProxy();
+      await env.ready();
+
+      expect(env.isReady).toBe(true);
+      expect(proxy.destroyCount).toBe(1);
+
+      env.destroy();
+    });
   });
 });

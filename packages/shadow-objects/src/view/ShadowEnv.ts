@@ -27,6 +27,7 @@ export class ShadowEnv {
   static AfterSync = 'afterSync';
   static ContextLost = 'contextLost';
   static ContextCreated = 'contextCreated';
+  static ProxyFailed = 'proxyFailed';
 
   static get(ns: NamespaceType): ShadowEnv | undefined {
     if (ns == null) return undefined;
@@ -117,6 +118,7 @@ export class ShadowEnv {
 
       if (this.#shaObjEnvProxy) {
         this.#shaObjEnvProxy.onMessageToView = this.#onMessageToView.bind(this);
+        this.#shaObjEnvProxy.onProxyFailed = this.#onProxyFailed.bind(this);
       }
 
       if (prevProxy) {
@@ -294,5 +296,21 @@ export class ShadowEnv {
       this.logger.debug('onMessageToView', event.type, event.data);
     }
     this.view?.dispatchMessage(event.uuid, event.type, event.data, event.traverseChildren);
+  }
+
+  #onProxyFailed(reason: unknown) {
+    // destroy() freezes this instance and destroys its signals; a proxy may report its failure afterwards
+    if (this.#isDestroyed) return;
+
+    this.logger.error('the environment proxy failed', reason);
+
+    try {
+      // the reason before the consequence: ContextLost follows from dropping proxyReady
+      emit(this as ShadowEnv, ShadowEnv.ProxyFailed, reason, this as ShadowEnv);
+    } finally {
+      // in the `finally`, because losing the environment is not up for debate:
+      // a listener that throws must not leave `isReady` claiming otherwise
+      this.proxyReady = false;
+    }
   }
 }

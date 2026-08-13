@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>worker-failure</title>
+  </head>
+  <body>
+    <!-- no `src`: the page imports the module itself, so that the shadow object is
+         registered before the entity that needs it reaches the worker -->
+    <shae-worker id="worker0"></shae-worker>
+
+    <section id="tests"></section>
+
+    <script type="module" src="/src/worker-failure.js"></script>
+  </body>
+</html>

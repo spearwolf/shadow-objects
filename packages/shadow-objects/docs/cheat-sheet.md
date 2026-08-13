@@ -335,6 +335,7 @@ loop();
 | `ShadowEnv.ContextCreated` | Environment is ready (view + proxy both connected) |
 | `ShadowEnv.ContextLost` | Environment lost connection |
 | `ShadowEnv.AfterSync` | After each sync cycle completes, also when the change trail was empty |
+| `ShadowEnv.ProxyFailed` | The proxy lost its Shadow Environment; the reason comes with the event |
 
 ```typescript
 env.destroy();          // idempotent; env.isDestroyed === true

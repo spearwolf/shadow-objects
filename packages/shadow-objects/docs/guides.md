@@ -484,6 +484,26 @@ import { on } from '@spearwolf/eventize';
 on(env, ShadowEnv.ContextCreated, () => console.log('Ready!'));
 ```
 
+### When the Worker Dies
+
+A remote environment can lose its worker: an unhandled error inside one of your Shadow Objects modules, a module that fails to import, or a message the structured clone algorithm cannot read back. The proxy reports that loss, and `ShadowEnv` passes it on:
+
+```javascript
+import { on } from '@spearwolf/eventize';
+import { ShadowEnv, RemoteWorkerEnv } from '@spearwolf/shadow-objects';
+
+on(env, ShadowEnv.ProxyFailed, (reason) => {
+  console.warn('the shadow environment went away:', reason);
+
+  // start over — the View Layer is rebuilt from the Component Memory
+  env.envProxy = new RemoteWorkerEnv();
+});
+```
+
+Without a listener the failure is still logged, and `env.isReady` drops to `false` -- just quietly.
+
+With the declarative setup the same thing arrives as a DOM event: `<shae-worker>` dispatches `proxyfailed` on itself, with `reason` and `shadowEnv` in the `detail`.
+
 ---
 
 ## 5. Framework Integration Note
