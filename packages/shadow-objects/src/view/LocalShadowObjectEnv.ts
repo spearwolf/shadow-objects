@@ -2,7 +2,7 @@ import {on} from '@spearwolf/eventize';
 import {MessageToView, ShadowObjectsExport} from '../constants.js';
 import {importModule} from '../in-the-dark/importModule.js';
 import {Kernel, type MessageToViewEvent} from '../in-the-dark/Kernel.js';
-import type {Registry} from '../in-the-dark/Registry.js';
+import {Registry} from '../in-the-dark/Registry.js';
 import type {ChangeTrailType, ShadowObjectsModule, SyncEvent} from '../types.js';
 import {toUrlString} from '../utils/toUrlString.js';
 import {cloneChangeTrail} from './cloneChangeTrail.js';
@@ -10,6 +10,7 @@ import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
 export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
   #importedModules: Set<ShadowObjectsModule> = new Set();
+  readonly #usesDefaultRegistry: boolean;
 
   readonly kernel: Kernel;
 
@@ -23,6 +24,13 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
 
   constructor(registry?: Registry) {
     this.kernel = new Kernel(registry);
+    // The default registry is shared with every other environment in this thread and holds
+    // everything `@ShadowObject` and `shadowObjects.define()` register without a registry of
+    // their own, so `destroy()` must not clear it. This check only tells the default registry
+    // apart from any other instance — a custom registry handed to more than one environment is
+    // cleared by the first one of them to be destroyed, same as the default registry would be
+    // without this guard.
+    this.#usesDefaultRegistry = this.kernel.registry === Registry.get();
 
     on(this.kernel, MessageToView, (message: MessageToViewEvent) => {
       if ((this as IShadowObjectEnvProxy).onMessageToView != null) {
@@ -62,7 +70,9 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
 
   destroy(): void {
     this.kernel.destroy();
-    this.registry.clear();
+    if (!this.#usesDefaultRegistry) {
+      this.registry.clear();
+    }
     this.#importedModules.clear();
   }
 }

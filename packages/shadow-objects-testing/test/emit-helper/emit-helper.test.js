@@ -1,7 +1,7 @@
 import {expect} from '@esm-bundle/chai';
 import {on, once} from '@spearwolf/eventize';
 import {ComponentContext} from '@spearwolf/shadow-objects';
-import {shadowObjects} from '@spearwolf/shadow-objects/shadow-objects.js';
+import {Registry, shadowObjects} from '@spearwolf/shadow-objects/shadow-objects.js';
 import '@spearwolf/shadow-objects/shae-ent.js';
 import '@spearwolf/shadow-objects/shae-worker.js';
 import {findElementsById} from '../../src/findElementsById.js';
@@ -21,6 +21,7 @@ describe('ShadowObjectCreationAPI.emit helper', () => {
 
   afterEach(() => {
     ComponentContext.get().clear();
+    Registry.get().clear();
     const localEnv = document.getElementById('localEnv');
     if (localEnv?.shadowEnv) {
       localEnv.shadowEnv.destroy();

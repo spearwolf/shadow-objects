@@ -935,8 +935,14 @@ Runs the Shadow Environment in the same thread as the View Layer. Good for:
 
 ```typescript
 import { LocalShadowObjectEnv } from '@spearwolf/shadow-objects';
+import { Registry } from '@spearwolf/shadow-objects/shadow-objects.js';
 
 const localEnv = new LocalShadowObjectEnv();
+
+// or with a registry of its own, isolated from the default one — note that
+// `@ShadowObject` and `shadowObjects.define()` calls without an explicit
+// `registry` argument still target the default registry, not this one:
+const scopedEnv = new LocalShadowObjectEnv(new Registry());
 ```
 
 **Properties:**
@@ -954,6 +960,7 @@ const localEnv = new LocalShadowObjectEnv();
 | :--- | :--- |
 | `importScript(url)` | Import a shadow objects module from a URL. |
 | `importModule(module)` | Import a shadow objects module directly. |
+| `destroy()` | Tears the environment down: the Kernel is destroyed and the set of imported modules is forgotten. The `Registry` in use is cleared too, unless it is the default registry — that one is shared with every other environment in the thread and stays untouched. |
 
 ### `RemoteWorkerEnv`
 
@@ -1431,6 +1438,8 @@ Checks if a route exists.
 #### `registry.clear()`
 
 Removes all registrations and routes.
+
+Calling this on the default registry removes everything `@ShadowObject` and `shadowObjects.define()` registered anywhere in the thread — including for other environments.
 
 ---
 

@@ -273,7 +273,7 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 | `ComponentContext.dispose()`-Kontrakt (Namespace-Freigabe, Inertheit, Abweisung) | ✅ **gründlich** |
 | `ComponentChanges` / `ComponentMemory` (Unit) | ✅ **gründlich** — eigene Specs, vorher nur indirekt über Trail-Vergleiche |
 | `ShadowEnv` Setup/Teardown | 🟡 **partiell** — `envProxy`-Swap zur Laufzeit nicht getestet; `syncWait()`/`AfterSync` und der `destroy()`-Kontrakt abgedeckt |
-| `LocalShadowObjectEnv` | 🟡 nur Smoke + 1 Sync |
+| `LocalShadowObjectEnv` | 🟡 **partiell** — Smoke + 1 Sync; `destroy()`-Registry-Kontrakt (geteilte Default-Registry vs. eigene Registry) jetzt gründlich getestet |
 | `RemoteWorkerEnv` | 🟡 nur Happy-Path-E2E. **Keine vitest-Spec.** Init-Failure, Termination, Race-Recovery: ❌ |
 | `MessageRouter` | ❌ keine direkten Tests |
 | `WorkerRuntime` | ❌ keine direkten Tests |
