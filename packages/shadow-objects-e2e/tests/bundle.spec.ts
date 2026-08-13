@@ -1,41 +1,22 @@
-import {expect, test} from '@playwright/test';
+import {test} from '@playwright/test';
+import {runPageTests} from './runPageTests.js';
 
 test.describe('bundle', () => {
-  test.beforeEach('goto page', async ({page}) => {
-    await page.goto('/pages/bundle.html');
-  });
-
-  test.describe('shae-ent', () => {
-    test('has element', async ({page}) => {
-      await expect(page.getByTestId('seBase0')).toBeAttached();
-    });
-
-    test('custom element is defined', async ({page}) => {
-      expect(
-        await page.evaluate(() =>
-          customElements
-            .whenDefined('shae-ent')
-            .then(() => true)
-            .catch(() => false),
-        ),
-      ).toBe(true);
-    });
-  });
-
-  test.describe('shae-worker', () => {
-    test('has element', async ({page}) => {
-      await expect(page.getByTestId('workerCtx0')).toBeAttached();
-    });
-
-    test('custom element is defined', async ({page}) => {
-      expect(
-        await page.evaluate(() =>
-          customElements
-            .whenDefined('shae-worker')
-            .then(() => true)
-            .catch(() => false),
-        ),
-      ).toBe(true);
-    });
-  });
+  runPageTests('/pages/bundle.html', [
+    // BUNDLE-3: the single-file build is what is running here
+    'bundle-flag-is-set',
+    'bundle-elements-defined',
+    // BUNDLE-1: the declared entity tree
+    'bundle-entities-have-view-components',
+    'bundle-tree-structure-is-correct',
+    'bundle-cross-namespace-child-is-root',
+    // BUNDLE-2: property type parsing
+    'bundle-string-property-parsed',
+    'bundle-boolean-property-parsed',
+    'bundle-number-array-property-parsed',
+    // BUNDLE-4: a functional round-trip through the inlined worker
+    'bundle-worker-env-ready',
+    'bundle-worker-import-module',
+    'bundle-worker-round-trip',
+  ]);
 });

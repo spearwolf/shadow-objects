@@ -458,6 +458,37 @@ describe('ViewComponent', () => {
     });
   });
 
+  describe('joining a disposed context', () => {
+    it('throws and keeps the component in its current context', () => {
+      const disposed = ComponentContext.get('ViewComponent.spec-disposed');
+      disposed.dispose();
+
+      const c = new ViewComponent('test');
+
+      expect(() => {
+        c.context = disposed;
+      }).toThrow(/disposed/);
+
+      expect(c.isDestroyed, 'the component must survive a rejected join').toBe(false);
+      expect(c.context).toBe(ctx);
+      expect(ctx.hasComponent(c)).toBe(true);
+      expect(c.setProperty('foo', 'bar'), 'the component must still write to its old context').toBe(true);
+    });
+
+    it('leaves no component behind that reports itself as alive', () => {
+      const disposed = ComponentContext.get('ViewComponent.spec-disposed-2');
+      const c = new ViewComponent('test', {context: disposed});
+      disposed.dispose();
+
+      // the component was destroyed by dispose(), so re-joining is the only way back in
+      expect(() => {
+        c.context = disposed;
+      }).toThrow(/disposed/);
+
+      expect(c.isDestroyed).toBe(true);
+    });
+  });
+
   it('should dispatch event from child with traverseChildren=true without affecting parent', () => {
     const parent = new ViewComponent('parent');
     const child = new ViewComponent('child', parent);

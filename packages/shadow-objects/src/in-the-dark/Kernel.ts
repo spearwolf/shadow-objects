@@ -283,10 +283,17 @@ export class Kernel {
     this.#allEntitiesNeedUpdate = true;
   }
 
-  setParent(uuid: string, parentUuid?: string, order = 0): void {
+  /**
+   * @param order the new order, or `undefined` to keep the current one. A set-parent change
+   *   only carries an order when it actually changed, so an absent order must not be read as
+   *   a reset to `0` — that would silently drop the order the view side still holds.
+   */
+  setParent(uuid: string, parentUuid?: string, order?: number): void {
     const e = this.getEntity(uuid);
 
-    if (e.parentUuid === parentUuid && e.order === order) return;
+    const nextOrder = order ?? e.order;
+
+    if (e.parentUuid === parentUuid && e.order === nextOrder) return;
 
     // Validate the new parent before detaching the current one, so a bad UUID
     // never leaves the entity orphaned (KERN-5).
@@ -296,7 +303,7 @@ export class Kernel {
 
     e.removeFromParent();
 
-    e.order = order;
+    e.order = nextOrder;
     e.parentUuid = parentUuid;
 
     if (e.hasParent) {
@@ -309,7 +316,7 @@ export class Kernel {
 
     queueMicrotask(() => {
       if (this.logger.isDebug) {
-        this.logger.debug('entity.onParentChanged', {uuid, parentUuid, order, entity: e});
+        this.logger.debug('entity.onParentChanged', {uuid, parentUuid, order: nextOrder, entity: e});
       }
       emit(e, onParentChanged, e);
     });

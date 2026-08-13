@@ -45,6 +45,10 @@ tsconfig.*.tsbuildinfo
 /blob-report/
 /playwright/.cache/
 
+# vitest browser-mode failure artifacts
+.vitest-attachments/
+__screenshots__/
+
 # turborepo
 .turbo
 

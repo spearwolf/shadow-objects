@@ -6,7 +6,7 @@ import {FrameLoop} from '../utils/FrameLoop.js';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {LocalShadowObjectEnv} from '../view/LocalShadowObjectEnv.js';
 import {RemoteWorkerEnv} from '../view/RemoteWorkerEnv.js';
-import {ShadowEnv} from '../view/ShadowEnv.js';
+import {ShadowEnv, ShadowEnvDestroyedError} from '../view/ShadowEnv.js';
 import {ATTR_AUTO_SYNC, ATTR_LOCAL, ATTR_NO_AUTOSTART, ATTR_NO_STRUCTURED_CLONE, ATTR_SRC} from './constants.js';
 import {ShaeElement} from './ShaeElement.js';
 
@@ -90,12 +90,24 @@ export class ShaeWorkerElement extends ShaeElement {
       () => {
         const src = this.src$.get();
         if (src) {
-          this.importScript(src);
+          this.importScript(src).catch(this.#onUnobservedRejection);
         }
       },
       {autorun: false},
     );
   }
+
+  /**
+   * Both {@link ShaeWorkerElement.start} and {@link ShaeWorkerElement.importScript} await
+   * {@link ShadowEnv.ready}, which rejects once the environment is destroyed — the normal
+   * outcome for an element that connects and disconnects within the same task. Nothing in the
+   * element waits on those promises, so the rejection has to end here instead of surfacing as
+   * an unhandled rejection in the browser or as a hard failure in a test runner.
+   */
+  #onUnobservedRejection = (error: unknown) => {
+    if (error instanceof ShadowEnvDestroyedError) return;
+    this.logger.error('shadowEnv failed', error);
+  };
 
   get shouldAutostart(): boolean {
     return this.autostart && !readBooleanAttribute(this, ATTR_NO_AUTOSTART);
@@ -144,7 +156,7 @@ export class ShaeWorkerElement extends ShaeElement {
       this.isConnected$.set(true);
     });
     if (this.shouldAutostart) {
-      this.start();
+      this.start().catch(this.#onUnobservedRejection);
     }
   }
 

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>create-element</title>
+  </head>
+  <body>
+    <!--
+      Pins down DEFECT-1: the shae elements cannot be built with document.createElement().
+      Their constructors assign attributes, which the custom elements spec forbids, so the
+      browser aborts the upgrade and hands back an HTMLUnknownElement.
+
+      The checks here assert the *correct* behaviour and are registered as known failures, so
+      they turn green — and the suite red — the day the constructors stop touching attributes.
+    -->
+    <section id="tests"></section>
+    <script type="module" src="/src/create-element.js"></script>
+  </body>
+</html>

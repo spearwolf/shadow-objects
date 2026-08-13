@@ -1,10 +1,11 @@
 import {on, onceAsync} from '@spearwolf/eventize';
 import {ComponentContext, RemoteWorkerEnv, ShadowEnv, ViewComponent} from '@spearwolf/shadow-objects';
 import './style.css';
+import {runTestSuite} from './test-helpers/runTestSuite.js';
 import {testAsyncAction} from './test-helpers/testAsyncAction.js';
 import {testBooleanAction} from './test-helpers/testBooleanAction.js';
 
-main();
+runTestSuite(main);
 
 async function main() {
   const shadowEnv = new ShadowEnv();

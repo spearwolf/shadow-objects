@@ -4,6 +4,26 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-13 — Test-harness corrections
+
+Follow-up to a code review of the view-layer hardening and the E2E rework. The library fixes are in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md); what follows only concerns the test harnesses.
+
+- **`runPageTests`:** the `toHaveCount(1)` assertion that turns "the page never wrote this result" into a readable failure was not awaited. Playwright's retrying assertions return a promise — unawaited it neither blocks nor fails, so a page that died during setup reported the generic `expected 'ok', received null` instead of its abort reason, and the floating assertion rejected outside the test.
+- **`testCustomEvent`:** split into `watchCustomEvent(el, eventName)`, which arms the listener, and the returned function, which waits. Arming and timing in one call meant the 5 s budget started at subscription time, not at the `await` — on the `shae-worker` page four sequential awaits sat in between, so a cold worker start could blow the budget for an event that arrived on time. `testCustomEvent` remains for the call sites that await immediately.
+- **`create-element`:** the markup-upgrade case asserted `isShaeEntElement` on a `<shae-prop>`, which only passed because of the copy-pasted flag on `ShaePropElement` (now removed). Asserts `isShaePropElement`.
+- **New integration specs** in `shadow-objects-testing`: `worker-element-teardown` (a destroyed environment must not leave an unhandled rejection) and `prop-element-host` (`<shae-prop>` must walk past a nested `<shae-prop>` to its host entity).
+
+## 2026-08-02 — E2E suite extended
+
+Analysis in [`packages/shadow-objects-e2e/TEST-PLAN.md`](packages/shadow-objects-e2e/TEST-PLAN.md), defects in [`packages/shadow-objects-e2e/KNOWN-DEFECTS.md`](packages/shadow-objects-e2e/KNOWN-DEFECTS.md). The suite grew from 44 to 298 tests (Chromium + Firefox).
+
+- **New pages:** `multi-env` (three environments in parallel: property sync, message routing, namespace isolation, cross-namespace nesting), `dynamic-dom` (runtime insert/move/remove of entities and property elements), `upgrade-timing` (markup parsed before the definitions), `async-events` (message round-trips, `traverseChildren`, `forward-custom-events`, what `auto-sync` actually controls), `create-element` (reproduces DEFECT-1).
+- **`bundle.html`** now asserts the tree, the property type parsing and a functional round-trip through the inlined worker, instead of only checking that two elements exist.
+- **Harness:** single `runPageTests` helper replaces three copies of `lookupTests`; a `data-testsuite` marker (`runTestSuite`) makes a page that dies during setup fail with its stack instead of one locator timeout per expected id; `data-testoutput` now reaches the report as the failure message; page errors and `console.error` fail a dedicated test; timeouts reject with a real `Error` instead of `undefined`.
+- **Known failures:** specs can register test ids that document a defect (`knownFailures`), so the suite stays green while the defect exists and turns red when it is fixed.
+- **Two framework defects found** — see `KNOWN-DEFECTS.md`: the custom elements cannot be built with `document.createElement()` (their constructors assign attributes, so the upgrade is aborted and an `HTMLUnknownElement` comes back), and removing a `<shae-prop>` does not remove the property.
+- **Two orphaned tests activated:** `worker0-env-contextCreated` / `worker1-env-contextCreated` were written by the page but never registered in the spec.
+
 ## 2026-08-02 — Documentation corrections
 
 - **Root `README.md`:** the "Project Structure" section still credited `nx` as the monorepo orchestrator. Corrected to `turborepo` + pnpm workspaces (the switch happened in the 2026-05-09 build-system renewal).

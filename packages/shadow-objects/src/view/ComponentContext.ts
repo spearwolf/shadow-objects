@@ -173,7 +173,11 @@ export class ComponentContext {
 
   removeFromParent(childUuid: string, parent: ViewComponent) {
     if (this.hasComponent(parent)) {
-      const childEntry = this.#components.get(childUuid)!;
+      // the child may already be gone (destroyComponent, removeSubTree) while the component
+      // still holds on to its parent — detaching it must not resurrect it as a root
+      const childEntry = this.#components.get(childUuid);
+      if (childEntry === undefined) return;
+
       const parentEntry = this.#components.get(parent.uuid)!;
       const childIdx = parentEntry.children.indexOf(childUuid);
       if (childIdx !== -1) {
@@ -186,7 +190,7 @@ export class ComponentContext {
   }
 
   moveToRoot(childUuid: string) {
-    const childEntry = this.#components.get(childUuid)!;
+    const childEntry = this.#components.get(childUuid);
     if (childEntry) {
       childEntry.changes?.setParent(undefined);
       this.#appendToOrdered(childEntry.component, this.#rootComponents);
@@ -263,18 +267,21 @@ export class ComponentContext {
   }
 
   changeOrder(component: ViewComponent) {
-    // without this guard the root branch below would insert the uuid back into a disposed context
-    if (this.#isDisposed) return;
+    // a component this context does not (or no longer) hold must never be re-inserted into an
+    // ordered list — clear() and dispose() both leave live components pointing back at us
+    const entry = this.#components.get(component.uuid);
+    if (entry === undefined) return;
 
-    if (component.parent) {
-      const parentEntry = this.#components.get(component.parent.uuid)!;
+    const parentEntry = component.parent ? this.#components.get(component.parent.uuid) : undefined;
+    if (parentEntry !== undefined) {
       removeFrom(parentEntry.children, component.uuid);
       this.#appendToOrdered(component, parentEntry.children);
-    } else {
+    } else if (component.parent == null) {
       removeFrom(this.#rootComponents, component.uuid);
       this.#appendToOrdered(component, this.#rootComponents);
     }
-    this.#components.get(component.uuid)?.changes.changeOrder(component.order);
+
+    entry.changes.changeOrder(component.order);
     this.#viewInstances = undefined;
   }
 

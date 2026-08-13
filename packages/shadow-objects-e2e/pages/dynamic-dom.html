@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>dynamic-dom</title>
+  </head>
+  <body>
+    <shae-worker id="env" no-autostart auto-sync="no"></shae-worker>
+
+    <main>
+      <!-- Answers snapshot requests. Never touched by any of the mutations below. -->
+      <shae-ent id="observer" token="observer"></shae-ent>
+
+      <!-- Two hosts to move entities between. Both are entities themselves, so a child
+           appended to either one has to pick up the matching entity parent. -->
+      <shae-ent id="host-a" token="tracked">
+        <shae-prop name="label" value="host-a"></shae-prop>
+      </shae-ent>
+
+      <shae-ent id="host-b" token="tracked">
+        <shae-prop name="label" value="host-b"></shae-prop>
+      </shae-ent>
+
+      <!-- A plain element with no entity above it: anything appended here stays a root. -->
+      <div id="plain-stage"></div>
+    </main>
+
+    <section id="tests"></section>
+
+    <script type="module" src="/src/dynamic-dom.js"></script>
+  </body>
+</html>

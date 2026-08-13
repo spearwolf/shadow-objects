@@ -6,9 +6,30 @@ This package is not published to npm. It runs full browser tests against a Vite-
 
 ## What lives here
 
-- **Remote worker environment tests** -- spinning up a shadow environment in a web worker and verifying it communicates correctly with the view layer
-- **Bundle smoke tests** -- loading the published build artifacts in a real browser to catch packaging mistakes early
-- **Worker and canvas integration tests** -- exercising the full path from view-layer entities through the worker to rendered output
+Each page in `pages/` runs its own checks and records them as `data-testresult` nodes; the specs
+in `tests/` turn those into one Playwright test per id via `runPageTests`. See
+[`TEST-PLAN.md`](TEST-PLAN.md) for the coverage analysis and [`KNOWN-DEFECTS.md`](KNOWN-DEFECTS.md)
+for the framework defects this suite reproduces.
+
+| Page | Covers |
+|---|---|
+| `multi-env` | three environments in parallel — property sync, message routing, namespace isolation, cross-namespace nesting |
+| `dynamic-dom` | entities and property elements inserted, moved and removed at runtime |
+| `upgrade-timing` | markup parsed before the custom element definitions load |
+| `async-events` | message round-trips in both directions, `traverseChildren`, `forward-custom-events`, what `auto-sync` controls |
+| `remote-worker-env` | the programmatic `ShadowEnv` + `RemoteWorkerEnv` path |
+| `shae-worker` | `<shae-worker>` in remote and local flavour, context lifecycle events |
+| `auto-destruct` | `autoDestructionOnParentRemoval` cascade over a real worker |
+| `bundle` | the single-file build: entity tree, property type parsing, round-trip through the inlined worker |
+| `create-element` | reproduces DEFECT-1 (elements cannot be built with `document.createElement`) |
+
+### Writing a new page
+
+Wrap the setup in `runTestSuite()` so a crash is reported with its stack instead of timing out,
+record results with `testAsyncAction` / `testBooleanAction` / `testCustomEvent`, and register the
+ids in a spec with `runPageTests`. When asserting that something did *not* happen, put a
+round-trip through the worker in front of it as a barrier — a sync cycle alone only confirms the
+change trail went out, not that the answers came back.
 
 ## Prerequisites
 
@@ -20,13 +41,7 @@ pnpm exec playwright install chromium firefox
 
 ## How to run
 
-From the monorepo root:
-
-```bash
-pnpm nx run shadow-objects-e2e:e2e
-```
-
-Or from inside this package:
+From inside this package:
 
 ```bash
 pnpm test

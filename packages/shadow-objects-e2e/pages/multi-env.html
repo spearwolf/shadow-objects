@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>multi-env</title>
+  </head>
+  <body>
+    <!--
+      Three environments side by side: two remote workers and one local env, each in its own
+      namespace, all importing the same fixture module. Every worker starts and syncs on demand
+      (`no-autostart` + `auto-sync="no"`) so the test drives each step explicitly instead of
+      racing the frame loop.
+
+      The module is imported from the script rather than via `src`, because only the explicit
+      call gives us a promise to await — the `src` effect fires on contextCreated and would let
+      the first sync race the module load.
+    -->
+    <shae-worker id="envAlpha" ns="alpha" no-autostart auto-sync="no"></shae-worker>
+    <shae-worker id="envBeta" ns="beta" no-autostart auto-sync="no"></shae-worker>
+    <shae-worker id="envGamma" ns="gamma" local no-autostart auto-sync="no"></shae-worker>
+
+    <main>
+      <shae-ent id="probe-alpha" ns="alpha" token="probe">
+        <shae-prop name="envName" value="alpha"></shae-prop>
+        <shae-prop name="value" value="11" type="number"></shae-prop>
+      </shae-ent>
+
+      <shae-ent id="probe-beta" ns="beta" token="probe">
+        <shae-prop name="envName" value="beta"></shae-prop>
+        <shae-prop name="value" value="22" type="number"></shae-prop>
+      </shae-ent>
+
+      <shae-ent id="probe-gamma" ns="gamma" token="probe">
+        <shae-prop name="envName" value="gamma"></shae-prop>
+        <shae-prop name="value" value="33" type="number"></shae-prop>
+      </shae-ent>
+
+      <!--
+        MULTI-7: a "beta" entity nested inside an "alpha" entity. The namespaces differ, so the
+        parent lookup must refuse to link them: the inner entity has to become a root in beta.
+      -->
+      <shae-ent id="nest-outer" ns="alpha" token="probe">
+        <shae-prop name="envName" value="nest-outer"></shae-prop>
+        <shae-ent id="nest-inner" ns="beta" token="probe">
+          <shae-prop name="envName" value="nest-inner"></shae-prop>
+        </shae-ent>
+      </shae-ent>
+
+      <!-- Same namespace, so this one *must* become a child. The control case for MULTI-7. -->
+      <shae-ent id="same-ns-outer" ns="alpha" token="probe">
+        <shae-prop name="envName" value="same-ns-outer"></shae-prop>
+        <shae-ent id="same-ns-inner" ns="alpha" token="probe">
+          <shae-prop name="envName" value="same-ns-inner"></shae-prop>
+        </shae-ent>
+      </shae-ent>
+    </main>
+
+    <section id="tests"></section>
+
+    <script type="module" src="/src/multi-env.js"></script>
+  </body>
+</html>

@@ -1,19 +1,8 @@
-import {expect, test} from '@playwright/test';
-
-const lookupTestResult = (testId: string) => {
-  test(testId, async ({page}) => {
-    await expect(page.getByTestId(testId)).toHaveAttribute('data-testresult', 'ok');
-  });
-};
-
-const lookupTests = (testIds: string[]) => testIds.forEach(lookupTestResult);
+import {test} from '@playwright/test';
+import {runPageTests} from './runPageTests.js';
 
 test.describe('auto-destruct (KERN-1)', () => {
-  test.beforeEach('goto page', async ({page}) => {
-    await page.goto('/pages/auto-destruct.html');
-  });
-
-  lookupTests([
+  runPageTests('/pages/auto-destruct.html', [
     'auto-destruct-env-ready',
     'auto-destruct-import-module',
     'auto-destruct-result-arrived',

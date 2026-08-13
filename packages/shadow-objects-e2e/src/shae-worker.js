@@ -2,9 +2,10 @@ import {GlobalNS, ShadowEnv} from '@spearwolf/shadow-objects';
 import '@spearwolf/shadow-objects/shae-ent.js';
 import '@spearwolf/shadow-objects/shae-worker.js';
 import './style.css';
+import {runTestSuite} from './test-helpers/runTestSuite.js';
 import {testAsyncAction} from './test-helpers/testAsyncAction.js';
 import {testBooleanAction} from './test-helpers/testBooleanAction.js';
-import {testCustomEvent} from './test-helpers/testCustomEvent.js';
+import {watchCustomEvent} from './test-helpers/testCustomEvent.js';
 
 const ContextCreated = ShadowEnv.ContextCreated.toLowerCase();
 
@@ -36,14 +37,23 @@ class ElementWithShadowDom extends HTMLElement {
 
 customElements.define('element-with-shadow-dom', ElementWithShadowDom);
 
-main();
+runTestSuite(main);
 
 async function main() {
+  const worker0 = document.getElementById('worker0');
+  const worker1 = document.getElementById('worker1');
+
+  // Subscribe before the first await: <shae-worker> dispatches "contextcreated" exactly once
+  // and does not replay it, so a listener attached after the environment came up misses it.
+  // worker0 autostarts, worker1 waits for the explicit start() below. The timeout only starts
+  // where the event is awaited — see watchCustomEvent().
+  const worker0ContextCreated = watchCustomEvent(worker0, ContextCreated);
+  const worker1ContextCreated = watchCustomEvent(worker1, ContextCreated);
+
   await testAsyncAction('shae-worker-whenDefined', () => customElements.whenDefined('shae-worker'));
 
   // --- worker0 | remote | autostart -------------------------------------------------
 
-  const worker0 = document.getElementById('worker0');
   window.worker0 = worker0;
   console.log('shae-worker #worker0', worker0);
 
@@ -52,14 +62,13 @@ async function main() {
   console.log('shadowEnv0', shadowEnv0);
 
   testBooleanAction('worker0-ns', worker0.ns === GlobalNS);
-  testAsyncAction('worker0-is-remote-env', shadowEnv0.envProxy.workerLoaded);
 
-  await testCustomEvent('worker0-env-contextCreated', worker0, ContextCreated);
+  await testAsyncAction('worker0-is-remote-env', shadowEnv0.envProxy.workerLoaded);
+  await worker0ContextCreated('worker0-env-contextCreated');
   await testAsyncAction('worker0-env-ready', shadowEnv0.ready);
 
   // --- worker1 | local | no-autostart ----------------------------------------------
 
-  const worker1 = document.getElementById('worker1');
   window.worker1 = worker1;
   console.log('shae-worker #worker1', worker1);
 
@@ -67,12 +76,11 @@ async function main() {
   window.shadowEnv1 = shadowEnv1;
   console.log('shadowEnv1', shadowEnv1);
 
-  testCustomEvent('worker1-env-contextCreated', worker1, ContextCreated);
-
   worker1.start();
 
   testBooleanAction('worker1-ns', worker1.ns === 'local');
   testBooleanAction('worker1-is-local-env', shadowEnv1.envProxy.kernel != null);
 
+  await worker1ContextCreated('worker1-env-contextCreated');
   await testAsyncAction('worker1-env-ready', shadowEnv1.ready);
 }

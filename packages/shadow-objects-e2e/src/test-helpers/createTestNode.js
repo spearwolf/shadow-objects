@@ -1,3 +1,13 @@
+const getTestsContainer = () => {
+  let container = document.getElementById('tests');
+  if (container == null) {
+    container = document.createElement('section');
+    container.id = 'tests';
+    document.body.append(container);
+  }
+  return container;
+};
+
 export function createTestNode(id, result, text) {
   const nameNode = document.createElement('span');
   nameNode.classList.add('test-name');
@@ -11,5 +21,5 @@ export function createTestNode(id, result, text) {
   outputNode.classList.add('test-output');
   outputNode.textContent = text;
 
-  document.getElementById('tests').append(nameNode, outputNode);
+  getTestsContainer().append(nameNode, outputNode);
 }

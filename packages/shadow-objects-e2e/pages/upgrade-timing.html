@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>upgrade-timing</title>
+  </head>
+  <body>
+    <!--
+      Markup first, definitions later.
+
+      Everything below is parsed before the module script at the end of the body runs
+      customElements.define(). This is the upgrade path: the elements exist as plain unknown
+      elements first and are upgraded in place afterwards. Every other page in this suite relies
+      on that path without ever asserting on it.
+    -->
+    <shae-worker id="env" no-autostart auto-sync="no"></shae-worker>
+
+    <main>
+      <shae-ent id="pre-observer" token="observer"></shae-ent>
+
+      <shae-ent id="pre-root" token="tracked">
+        <shae-prop name="label" value="pre-root"></shae-prop>
+        <shae-prop name="extra" value="declared-before-upgrade"></shae-prop>
+        <shae-ent id="pre-child" token="tracked">
+          <shae-prop name="label" value="pre-child"></shae-prop>
+        </shae-ent>
+      </shae-ent>
+
+      <!-- filled with markup before the definitions load, see the inline script below -->
+      <div id="pre-injected"></div>
+    </main>
+
+    <script>
+      // Runs before the module script, so this markup is also in place pre-definition.
+      document.getElementById('pre-injected').innerHTML =
+        '<shae-ent id="pre-injected-ent" token="tracked">' +
+        '<shae-prop name="label" value="pre-injected"></shae-prop>' +
+        '</shae-ent>';
+
+      window.__preUpgradeState = {
+        entCtor: document.getElementById('pre-root').constructor.name,
+        entIsUpgraded: document.getElementById('pre-root').isShaeEntElement === true,
+        anyDefined:
+          customElements.get('shae-ent') != null ||
+          customElements.get('shae-prop') != null ||
+          customElements.get('shae-worker') != null,
+      };
+    </script>
+
+    <section id="tests"></section>
+
+    <script type="module" src="/src/upgrade-timing.js"></script>
+  </body>
+</html>

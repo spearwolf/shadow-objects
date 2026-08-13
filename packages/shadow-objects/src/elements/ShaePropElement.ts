@@ -65,7 +65,7 @@ const TYPES = new Set([
 export class ShaePropElement extends HTMLElement {
   static observedAttributes = [ATTR_NAME, ATTR_VALUE, ATTR_TYPE, ATTR_NO_TRIM];
 
-  readonly isShaeEntElement = true;
+  readonly isShaePropElement = true;
 
   protected readonly entNode$ = createSignal<ShaeEntElement | undefined>();
   protected readonly viewComponent$ = createSignal<ViewComponent | undefined>();

@@ -93,7 +93,10 @@ export class ComponentChanges {
     token ??= VoidToken;
 
     if (token === this.#token) {
-      this.#nextToken = undefined;
+      // a component that has not been flushed yet still owes the trail its create-token:
+      // #token is only the last *written* token, so dropping #nextToken here would emit a
+      // CreateEntities change without any token at all
+      this.#nextToken = this.#isNew ? token : undefined;
     } else {
       this.#nextToken = token;
       this.#serial++;
@@ -227,13 +230,17 @@ export class ComponentChanges {
   }
 
   makeCreateEntityChange(): ICreateEntitiesChange {
+    // never emit a create without a token: the kernel would register an entity that no
+    // shadow object can ever be looked up for
+    const token = this.#nextToken ?? this.#token;
+
     const entry: ICreateEntitiesChange = {
       type: ComponentChangeType.CreateEntities,
       uuid: this.#uuid,
-      token: this.#nextToken,
+      token,
     };
 
-    this.#token = this.#nextToken;
+    this.#token = token;
 
     if (this.#nextParentUuid !== undefined) {
       const nextParentUuid = this.#nextParentUuid === ROOT ? undefined : this.#nextParentUuid;

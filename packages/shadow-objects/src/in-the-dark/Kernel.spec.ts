@@ -1302,6 +1302,40 @@ describe('Kernel', () => {
     });
   });
 
+  describe('KERN-8: setParent without an order keeps the current one', () => {
+    it('re-parenting an entity does not reset its order to 0', () => {
+      const kernel = new Kernel(new Registry());
+
+      const [aUuid, bUuid, cUuid] = [generateUUID(), generateUUID(), generateUUID()];
+
+      kernel.createEntity(aUuid, 'a');
+      kernel.createEntity(bUuid, 'b');
+      kernel.createEntity(cUuid, 'c', aUuid, 5);
+
+      expect(kernel.getEntity(cUuid).order).toBe(5);
+
+      // a SetParent change only carries an order when it changed — this is the change trail
+      // that ComponentChanges.makeSetParentChange() produces for an unchanged order
+      kernel.setParent(cUuid, bUuid);
+
+      expect(kernel.getEntity(cUuid).parentUuid).toBe(bUuid);
+      expect(kernel.getEntity(cUuid).order, 'the order must survive a re-parent').toBe(5);
+    });
+
+    it('an explicit order still wins', () => {
+      const kernel = new Kernel(new Registry());
+
+      const [aUuid, bUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(aUuid, 'a');
+      kernel.createEntity(bUuid, 'b', aUuid, 5);
+
+      kernel.setParent(bUuid, aUuid, 0);
+
+      expect(kernel.getEntity(bUuid).order).toBe(0);
+    });
+  });
+
   describe('KERN-7: cache-hit on creation-API helpers warns when options would be dropped', () => {
     it('useProperty warns on a second call with a different compare function', () => {
       const registry = new Registry();

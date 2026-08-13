@@ -120,6 +120,8 @@ ComponentContext│  ─ Destroy
 
 **[KERN-4]** ~~Cache-Invalidierung in `traverseLevelOrderBFS` greift bei programmatischer Destruktion nicht.~~ **✅ Behoben** — `#allEntitiesNeedUpdate` wird jetzt direkt in `destroyEntity()` gesetzt, sodass auch Auto-Destroy-Listener-Pfade den BFS-Cache invalidieren.
 
+**[KERN-8]** ~~`Kernel.setParent()` setzt die Order beim Reparenting still auf `0` zurück.~~ **✅ Behoben** — die Kernel-Seite von **VIEW-18**: ein `SetParent`-Change trägt die Order nur mit, wenn sie sich geändert hat, `setParent(uuid, parentUuid, order = 0)` las das fehlende Feld aber als Reset. View- und Kernel-Seite waren danach uneins, und ein `reCreateChanges()` regenerierte aus einem Memory, das dem laufenden Kernel widersprach. Eine fehlende Order behält jetzt die aktuelle; eine explizite gewinnt weiterhin.
+
 ### 3.2 HIGH — View / Worker
 
 **[VIEW-1]** `RemoteWorkerEnv.applyChangeTrail` hängt unbegrenzt, wenn der Worker stirbt.
@@ -175,6 +177,26 @@ Je nachdem, ob eine Aufrufstelle `?.` benutzte, warf dieselbe Situation einen `T
 *Ort:* `ComponentChanges.makeChangePropertyChange()`.
 Beide erzeugten denselben Wire-Eintrag, aber `setProperty` behielt den Key im committeten Property-Map — ein anschließendes `removeProperty()` sendete dieselbe Änderung ein zweites Mal. Ein explizites `undefined` gilt jetzt auch intern als Entfernung.
 
+**[VIEW-23]** ~~`ComponentChanges.changeToken()` verwirft den Create-Token einer noch nicht geflushten Komponente.~~ **✅ Behoben**
+*Ort:* `ComponentChanges.ts`.
+`#token` startet auf `VoidToken` und führt nur den zuletzt *geschriebenen* Token. Ein Reset auf den Void-Token vor dem ersten Change Trail räumte deshalb `#nextToken` ab, und der `CreateEntities`-Eintrag ging ganz ohne `token`-Feld raus: der Kernel registrierte die Entity mit `token: undefined` und suchte nie ein Shadow Object dazu. Ein ausstehender Create behält seinen Token; `makeCreateEntityChange()` emittiert keinen Create mehr ohne.
+
+**[VIEW-24]** ~~Ein fehlgeschlagener Context-Wechsel hinterlässt eine Komponente, die sich für lebendig hält.~~ **✅ Behoben**
+*Ort:* `ViewComponent.ts`.
+Der Setter wies `#context` zu, *bevor* `addComponent()` laufen durfte — und das wirft seit LOW-4 bei einem disposed Context. Ergebnis: `destroy()` war schon durch, `isDestroyed` meldete trotzdem `false`, und jedes `setProperty` / `removeProperty` / `dispatchShadowObjectsEvent` lief ins Leere. Ein disposed Context wird jetzt vor dem Teardown abgewiesen, die Komponente behält ihren bisherigen Context; scheitert das Beitreten aus einem anderen Grund, bleibt sie zerstört statt auf einen fremden Context zu zeigen.
+
+**[VIEW-25]** ~~`ComponentContext.changeOrder()` guardet gegen `dispose()`, nicht gegen `clear()`.~~ **✅ Behoben**
+*Ort:* `ComponentContext.ts`.
+Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`, ohne View-Instanz — der nächste `clear()` warf `component-context panic: #rootComponents is not empty!`. Der Guard fragt jetzt, ob der Context die Komponente überhaupt (noch) hält.
+
+**[VIEW-26]** ~~`ComponentContext.removeFromParent()` dereferenziert den Kind-Eintrag ungeguardet.~~ **✅ Behoben**
+*Ort:* `ComponentContext.ts`.
+`destroyComponent()` ist public und löst die Komponente nicht von ihrem Vater; nach `destroyComponent(c); buildChangeTrails(); c.destroy();` warf der Teardown einen `TypeError`. Ein Kind, das der Context nicht mehr hält, wird jetzt ignoriert — analog zu den Geschwister-Pfaden.
+
+**[ELEM-1]** ~~`<shae-worker>` erzeugt eine unbehandelte Promise-Rejection beim Teardown im selben Task.~~ **✅ Behoben**
+*Ort:* `ShaeWorkerElement.ts`.
+`connectedCallback()` startet per `start()` automatisch, der `src`-Effekt ruft `importScript()`; beide warten auf `ShadowEnv.ready()`, das seit VIEW-8 mit einem `ShadowEnvDestroyedError` ablehnt — und niemand beobachtete diese Promises. Connect und Disconnect im selben Task (was `#deferDestroy` ausdrücklich vorsieht) ergab damit pro Element eine unbehandelte Rejection. Beide Aufrufstellen fangen jetzt ab: ein Teardown ist still, alles andere wird geloggt. Für Aufrufer, die tatsächlich warten, lehnen `start()` und `importScript()` unverändert ab.
+
 ### 3.3 MEDIUM — bemerkenswerte Auswahl
 
 | ID | Beschreibung | Ort |
@@ -185,7 +207,7 @@ Beide erzeugten denselben Wire-Eintrag, aber `setProperty` behielt den Key im co
 | ~~**VIEW-8**~~ | ~~`ShadowEnv.destroy()` löscht alle Listener — `syncWait()`-Aufrufer hängen für immer.~~ **✅ Behoben** — jedes ausstehende `ready()` und `syncWait()` wird mit einem neuen `ShadowEnvDestroyedError` abgelehnt statt hängen gelassen; Aufrufe nach `destroy()` lehnen sofort ab, `sync()` wird zum No-op, ein bereits eingeplanter Sync läuft nicht mehr. `destroy()` ist idempotent und zerstört den `envProxy` nur noch einmal. | `ShadowEnv.ts` |
 | **VIEW-9** | `removeTransferables` mutiert die Caller-Trail-Einträge per `delete`. | `RemoteWorkerEnv.ts:23–40` |
 | **VIEW-10** | `LocalShadowObjectEnv` ignoriert `waitForConfirmation`; `MessageToView` läuft via `queueMicrotask`, sodass der `AfterSync`-Event vor den Worker-Nachrichten feuert. **Verhaltensasymmetrie zu `RemoteWorkerEnv`.** | `LocalShadowObjectEnv.ts:40`, `Kernel.ts:316–319` |
-| **VIEW-11** | `ShaePropElement.isShaeEntElement = true` ist offenbar Copy-Paste — nutzt aber `findEntNode` zur Eltern-Suche, was potenziell falsche Treffer ergibt. | `ShaePropElement.ts:68` |
+| ~~**VIEW-11**~~ | ~~`ShaePropElement.isShaeEntElement = true` ist offenbar Copy-Paste — nutzt aber `findEntNode` zur Eltern-Suche, was potenziell falsche Treffer ergibt.~~ **✅ Behoben** — das Flag heißt jetzt `isShaePropElement`; ein in einem `<shae-prop>` verschachteltes `<shae-prop>` läuft beim Ancestor-Walk korrekt durch bis zur echten Host-Entity. Abgedeckt von `prop-element-host.test.js`. | `ShaePropElement.ts` |
 | ~~**KERN-5**~~ | ~~`Entity.parentUuid`-Setter ruft `removeFromParent()` *vor* dem Resolven des neuen Vaters; wirft `getEntity` einen Fehler, ist die Entity verwaist.~~ **✅ Behoben** — `getEntity` wird *vor* dem Detach aufgerufen; `Kernel.setParent` validiert die neue UUID vorab. | `Entity.ts`, `Kernel.ts` |
 | ~~**KERN-6**~~ | ~~`Registry.clear()` löscht `#truthyPropRoutes` nicht — Test-Pollution + Akkumulation in langlebigen Registries.~~ **✅ Behoben** — `clear()` räumt auch die Prop-basierten Routen ab. | `Registry.ts` |
 | ~~**KERN-7**~~ | ~~`useContext`/`useParentContext`/`useProperty` ignorieren `options` bei Cache-Hit (z. B. `compare`). Der erste Aufrufer „gewinnt", was leise zu falschen Equality-Vergleichen führen kann.~~ **✅ Behoben** — bei Cache-Hit mit abweichender `compare`-Funktion wird ein `console.warn` emittiert; das alte Reader-Objekt bleibt aus Kompatibilitätsgründen erhalten. | `Kernel.ts` |
@@ -232,9 +254,9 @@ Beide erzeugten denselben Wire-Eintrag, aber `setProperty` behielt den Key im co
 **vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 11 Dateien):
 `Kernel.spec.ts` (1080 LoC), `Registry.spec.ts`, `ShadowObject.spec.ts`, `SignalsPath.spec.ts`, `ShadowEnv.spec.ts`, `LocalShadowObjectEnv.spec.ts`, `ViewComponent.spec.ts`, `ComponentContext.spec.ts`, `ComponentChanges.spec.ts`, `ComponentMemory.spec.ts`, `props-utils.spec.ts`.
 
-**`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 9 Dateien — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `forward-custom-events`, `local-env-entities`, `remove-and-append-e`, `send-events`, `emit-helper/emit-helper`.
+**`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 11 Dateien — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `forward-custom-events`, `local-env-entities`, `prop-element-host`, `remove-and-append-e`, `send-events`, `worker-element-teardown`, `emit-helper/emit-helper`.
 
-**`shadow-objects-e2e/`** (Playwright, Chromium + Firefox): 3 Dateien — `bundle.spec.ts`, `remote-worker-env.spec.ts`, `shae-worker.spec.ts`. Assertions liegen meist in den Test-Pages, der Spec-Code prüft nur `data-testresult`.
+**`shadow-objects-e2e/`** (Playwright, Chromium + Firefox): 9 Dateien — `async-events`, `auto-destruct`, `bundle`, `create-element`, `dynamic-dom`, `multi-env`, `remote-worker-env`, `shae-worker`, `upgrade-timing`. Assertions liegen in den Test-Pages, der gemeinsame `runPageTests`-Helper macht daraus je einen Playwright-Test pro `data-testresult`.
 
 ### 4.2 Coverage-Heuristik
 
@@ -255,7 +277,7 @@ Beide erzeugten denselben Wire-Eintrag, aber `setProperty` behielt den Key im co
 | `RemoteWorkerEnv` | 🟡 nur Happy-Path-E2E. **Keine vitest-Spec.** Init-Failure, Termination, Race-Recovery: ❌ |
 | `MessageRouter` | ❌ keine direkten Tests |
 | `WorkerRuntime` | ❌ keine direkten Tests |
-| Custom Elements (`<shae-prop>`!) | 🟡 `ShaePropElement` hat **keine direkten Tests** |
+| Custom Elements (`<shae-prop>`!) | 🟡 `ShaePropElement`: nur die Host-Suche (`prop-element-host.test.js`) und der Markup-Upgrade-Pfad (E2E) direkt getestet — Typ-Parsing und Attribut-Reflexion weiterhin nur indirekt |
 | Utils | ❌ nur `props-utils.spec.ts` — `FrameLoop`, `waitForMessageOfType`, `cloneChangeTrail`, `attr-utils`, `array-utils`, `generateUUID`, `ConsoleLogger`, `toNamespace`, `toUrlString`, `importModule` haben keine Tests. `array-utils` wird inzwischen indirekt über `ComponentContext.spec.ts` und `ComponentChanges.spec.ts` mitgeprüft |
 | Worker-Init-Failure / Terminate / Message-Race | ❌ |
 
@@ -268,6 +290,14 @@ Beide erzeugten denselben Wire-Eintrag, aber `setProperty` behielt den Key im co
 - E2E-Pattern (Page schreibt `data-testresult`) ist konzise, erschwert aber Debugging — Assertions liegen außerhalb des Spec-Files.
 
 ### 4.4 Konkrete Test-Lücken (ticket-fertig)
+
+> **E2E im Detail:** [`packages/shadow-objects-e2e/TEST-PLAN.md`](packages/shadow-objects-e2e/TEST-PLAN.md) (2026-08-02) analysiert die Playwright-Suite einzeln und listet 50 benannte Testfälle mit Seiten, Fixtures und Priorität. **Umgesetzt am 2026-08-02:** Harness-Reparatur, `multi-env`, `dynamic-dom`, `upgrade-timing`, `async-events`, `create-element` und der Umbau von `bundle.html` — die Suite ging von 44 auf 298 Tests. Dabei sind zwei Framework-Defekte aufgefallen, siehe unten und [`KNOWN-DEFECTS.md`](packages/shadow-objects-e2e/KNOWN-DEFECTS.md). Die folgende Liste bleibt der ebenen-übergreifende Überblick.
+
+**[ELEM-1] `document.createElement()` erzeugt keine funktionsfähigen shae-Elemente.** Alle drei Custom Elements setzen im Konstruktor Attribute (`style.display = 'contents'`, `setAttribute('ns')`, `removeAttribute('token')`), was die Custom-Elements-Spec verbietet. Chromium und Firefox brechen das Upgrade ab und liefern ein `HTMLUnknownElement` — ohne `viewComponent`, ohne `uuid`, ohne Verbindung zum Environment. Über `innerHTML` funktioniert es, weshalb der Defekt bisher unsichtbar blieb: alle Testseiten benutzten parser-erzeugtes Markup. **Tragweite:** jede React-/Vue-/Svelte-Integration und jeder eigene Wrapper erzeugt Elemente programmatisch. **Fix:** Attribut- und Style-Zuweisungen aus den Konstruktoren in `connectedCallback` verschieben; `display: contents` als Stylesheet-Regel statt Inline-Style.
+
+**[ELEM-2] Das Entfernen eines `<shae-prop>` entfernt die Property nicht.** `ShaePropElement.disconnectedCallback` löst nur die Verbindung zur `ViewComponent`; `ViewComponent.removeProperty()` existiert, wird von der Element-Ebene aber nie aufgerufen. Der zuletzt gesetzte Wert bleibt im Kernel stehen, obwohl das deklarierende Element weg ist. Beim Fix die bestehende Microtask-Verzögerung in `#disconnectFromEntNode` erhalten — sie unterscheidet ein Verschieben innerhalb eines Ticks von einem echten Entfernen.
+
+**[ELEM-3] `autoDestructionOnParentRemoval` ist über `<shae-ent>` nicht erreichbar.** Kein Attribut, und `ShaeEntElement` erzeugt seine `ViewComponent` ohne die Option — das Feature ist nur über die programmatische API nutzbar. Ein DOM-seitiger Test der Kaskade ist deshalb derzeit nicht möglich.
 
 - Worker-Init-Failure (`Worker`-Konstruktor mit kaputter URL).
 - `worker.terminate()` mitten im Sync; ausstehende `applyChangeTrail`-Promises müssen rejecten.

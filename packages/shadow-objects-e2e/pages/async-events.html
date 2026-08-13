@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>async-events</title>
+  </head>
+  <body>
+    <!-- manual sync, so the "auto-sync is off" case can be asserted -->
+    <shae-worker id="env" no-autostart auto-sync="no"></shae-worker>
+
+    <!-- a second environment that syncs on a timer, to prove auto-sync actually drives it -->
+    <shae-worker id="tickEnv" ns="ticking" no-autostart auto-sync="20fps"></shae-worker>
+
+    <main>
+      <shae-ent id="counter" token="counter">
+        <shae-prop name="n" value="1" type="number"></shae-prop>
+      </shae-ent>
+
+      <!-- broadcaster with two levels of children, for the traverseChildren case -->
+      <shae-ent id="broadcaster" token="broadcaster">
+        <shae-ent id="listener-1" token="counter">
+          <shae-prop name="n" value="1" type="number"></shae-prop>
+          <shae-ent id="listener-2" token="counter">
+            <shae-prop name="n" value="1" type="number"></shae-prop>
+          </shae-ent>
+        </shae-ent>
+      </shae-ent>
+
+      <!-- forwards every shadow object event as a DOM CustomEvent -->
+      <shae-ent id="shouter-all" token="shouter" forward-custom-events></shae-ent>
+
+      <!-- forwards only the listed types -->
+      <shae-ent id="shouter-filtered" token="shouter" forward-custom-events="allowed"></shae-ent>
+
+      <shae-ent id="ticker" ns="ticking" token="counter">
+        <shae-prop name="n" value="1" type="number"></shae-prop>
+      </shae-ent>
+    </main>
+
+    <section id="tests"></section>
+
+    <script type="module" src="/src/async-events.js"></script>
+  </body>
+</html>

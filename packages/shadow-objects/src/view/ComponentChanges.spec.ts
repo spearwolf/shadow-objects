@@ -224,6 +224,22 @@ describe('ComponentChanges', () => {
 
       expect(buildTrail(changes)).toEqual([{type: ComponentChangeType.ChangeToken, uuid: UUID, token: VoidToken}]);
     });
+
+    it('keeps the create-token when a pending create is reset to the void token', () => {
+      const changes = new ComponentChanges(UUID);
+      changes.create('a');
+      changes.changeToken(VoidToken);
+
+      expect(buildTrail(changes)).toEqual([{type: ComponentChangeType.CreateEntities, uuid: UUID, token: VoidToken}]);
+    });
+
+    it('keeps the create-token when a pending create is reset to undefined', () => {
+      const changes = new ComponentChanges(UUID);
+      changes.create('a');
+      changes.changeToken(undefined);
+
+      expect(buildTrail(changes)).toEqual([{type: ComponentChangeType.CreateEntities, uuid: UUID, token: VoidToken}]);
+    });
   });
 
   describe('parent and order', () => {

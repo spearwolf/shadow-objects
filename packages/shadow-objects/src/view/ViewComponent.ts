@@ -1,7 +1,7 @@
 import {emit, eventize} from '@spearwolf/eventize';
 import {VoidToken} from '../constants.js';
 import {generateUUID} from '../utils/generateUUID.js';
-import {ComponentContext} from './ComponentContext.js';
+import {ComponentContext, ComponentContextDisposedError} from './ComponentContext.js';
 
 class ViewComponentError extends Error {
   constructor(message: string) {
@@ -65,16 +65,36 @@ export class ViewComponent {
     return this.#context;
   }
 
+  /**
+   * @throws {ComponentContextDisposedError} if the new context has been disposed. The component
+   *   keeps its current context in that case: leaving the old one is only worth it if the new
+   *   one can actually be joined.
+   */
   set context(context: ComponentContext | null | undefined) {
     const next = context ?? undefined;
     if (this.#context === next) return;
+
+    // checked before the teardown below, so a rejected join costs the component nothing
+    if (next?.isDisposed) {
+      throw new ComponentContextDisposedError(
+        `the view component ${this.#uuid} cannot join the component context because it has been disposed`,
+      );
+    }
 
     if (this.#context) {
       this.destroy();
     }
 
     this.#context = next;
-    next?.addComponent(this);
+
+    try {
+      next?.addComponent(this);
+    } catch (error) {
+      // a failed join must not leave a destroyed component pointing at a context that never
+      // took it in — every later mutation would silently go nowhere while `isDestroyed` lies
+      this.#context = undefined;
+      throw error;
+    }
   }
 
   /**

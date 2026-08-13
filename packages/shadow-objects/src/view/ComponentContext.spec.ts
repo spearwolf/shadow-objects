@@ -161,6 +161,47 @@ describe('ComponentContext', () => {
 
       expect(ctx.traverseLevelOrderBFS().map((c) => c.token)).toEqual(['a', 'mover', 'b', 'c']);
     });
+
+    it('ignores a component the context no longer holds', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx});
+
+      ctx.clear();
+      a.order = 7;
+
+      expect(ctx.hasComponent(a)).toBe(false);
+      expect(ctx.isRootComponent(a)).toBe(false);
+      // a re-inserted uuid without a view instance makes the next clear() panic
+      expect(() => ctx.clear()).not.toThrow();
+    });
+
+    it('ignores a component of a disposed context', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx});
+
+      ctx.dispose();
+
+      expect(() => {
+        a.order = 7;
+      }).not.toThrow();
+      expect(ctx.hasComponents()).toBe(false);
+    });
+  });
+
+  describe('removeFromParent', () => {
+    it('survives a child that was already deleted from the context', () => {
+      ctx = makeContext();
+      const parent = new ViewComponent('p', {context: ctx});
+      const child = new ViewComponent('c', {context: ctx, parent});
+
+      // buildChangeTrails() drops a component that never made it into a trail
+      ctx.destroyComponent(child);
+      ctx.buildChangeTrails();
+
+      expect(() => child.destroy()).not.toThrow();
+      expect(ctx.getChildren(parent)).toEqual([]);
+      expect(ctx.isRootComponent(child)).toBe(false);
+    });
   });
 
   describe('properties', () => {

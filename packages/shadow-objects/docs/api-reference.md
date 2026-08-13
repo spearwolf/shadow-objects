@@ -673,6 +673,8 @@ component.context = ComponentContext.get();
 component.isDestroyed; // false -- a new Entity is created with the same uuid
 ```
 
+Assigning a context that has been disposed throws a `ComponentContextDisposedError` and changes nothing: a component that still lives in another context stays there. Leaving the old context is only worth it if the new one can actually be joined.
+
 ### Custom Integration Example
 
 Here is how you map a game engine object to a Shadow Entity manually:
@@ -745,7 +747,7 @@ Removes all components without writing anything to a change trail. The context s
 
 The final teardown. Every `ViewComponent` the context holds is destroyed (so each one reports `isDestroyed === true`), the component memory is dropped, and the namespace is released, so `ComponentContext.get(ns)` hands out a fresh context afterwards. Calling it more than once is a no-op.
 
-A disposed context stays inert: it holds no components, `buildChangeTrails()` returns an empty array, and any `ViewComponent` that tries to join it -- through the constructor or by assigning `context` -- is rejected with a `ComponentContextDisposedError`. It cannot be revived.
+A disposed context stays inert: it holds no components, `buildChangeTrails()` returns an empty array, and any `ViewComponent` that tries to join it -- through the constructor or by assigning `context` -- is rejected with a `ComponentContextDisposedError`. The rejected component keeps whatever context it had. A disposed context cannot be revived.
 
 ```typescript
 import { ComponentContext, ComponentContextDisposedError } from '@spearwolf/shadow-objects';
