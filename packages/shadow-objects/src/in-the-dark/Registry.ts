@@ -57,8 +57,9 @@ export class Registry {
         this.#truthyPropRoutes.set(propRoute.key, {routes: new Set(routes), token: propRoute.token});
       }
     } else {
-      if (this.#routes.has(token)) {
-        addRoutes(this.#routes.get(token), routes);
+      const knownRoutes = this.#routes.get(token);
+      if (knownRoutes) {
+        addRoutes(knownRoutes, routes);
       } else {
         this.#routes.set(token, new Set(routes));
       }
@@ -77,19 +78,18 @@ export class Registry {
   findTokensByRoute(route: string, truthyProps?: Set<string>): Set<string> {
     const tokens = new Set<string>([route]);
 
-    const next = this.#routes.has(route) ? [...this.#routes.get(route)] : [];
+    const next = Array.from(this.#routes.get(route) ?? []);
 
-    while (next.length) {
-      const cur = next.shift();
-
+    for (let cur = next.shift(); cur !== undefined; cur = next.shift()) {
       if (tokens.has(cur)) {
         continue;
       }
 
       tokens.add(cur);
 
-      if (this.#routes.has(cur)) {
-        next.push(...Array.from(this.#routes.get(cur)).filter((route) => !tokens.has(route)));
+      const nextRoutes = this.#routes.get(cur);
+      if (nextRoutes) {
+        next.push(...Array.from(nextRoutes).filter((route) => !tokens.has(route)));
       }
     }
 

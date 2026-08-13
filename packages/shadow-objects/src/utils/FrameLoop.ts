@@ -1,6 +1,6 @@
 import {emit, eventize, getSubscriptionCount, off, on} from '@spearwolf/eventize';
 
-let gUniqInstance: FrameLoop = null;
+let gUniqInstance: FrameLoop | null = null;
 
 export class FrameLoop {
   static OnFrame = Symbol('onFrame');

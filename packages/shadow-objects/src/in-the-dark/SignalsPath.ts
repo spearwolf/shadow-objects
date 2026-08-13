@@ -25,7 +25,9 @@ export class SignalsPath {
   constructor(signals?: SignalLike<any>[]) {
     retain(this as SignalsPath, VALUE);
 
-    this.value$ = findObjectSignalByName(this, VALUE);
+    // the @signal accessor above creates this signal during field initialization,
+    // so the lookup by that name always resolves once the constructor body runs
+    this.value$ = findObjectSignalByName(this, VALUE)!;
     this.value$.onChange((val) => emit(this as SignalsPath, VALUE, val));
 
     if (signals) {

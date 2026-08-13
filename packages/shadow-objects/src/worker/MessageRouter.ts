@@ -63,21 +63,23 @@ export class MessageRouter {
   }
 
   async #configure(data: ConfigurePayloadData) {
+    const url = data.importModule;
     try {
-      const module = await import(/* @vite-ignore */ toUrlString(data.importModule));
+      if (!url) throw new Error('missing "importModule" url');
+      const module = await import(/* @vite-ignore */ toUrlString(url));
       if (module[ShadowObjectsExport]) {
         await importModule(this.kernel, module[ShadowObjectsExport], this.#importedModules);
-        this.postMessage({type: ImportedModule, url: data.importModule});
+        this.postMessage({type: ImportedModule, url});
       } else {
         this.postMessage({
           type: ImportedModule,
-          url: data.importModule,
+          url,
           error: `module has no "${ShadowObjectsExport}" export`,
         } as ImportedModuleEvent);
       }
     } catch (error) {
       console.error('[MessageRouter] failed to import module', error);
-      this.postMessage({type: ImportedModule, url: data.importModule, error: `${error}`} as ImportedModuleEvent);
+      this.postMessage({type: ImportedModule, url, error: `${error}`} as ImportedModuleEvent);
     }
   }
 
@@ -88,7 +90,7 @@ export class MessageRouter {
       this.kernel.run(data);
     } catch (error) {
       console.error('[MessageRouter] failed to apply change trail', error);
-      this.postMessage({type: AppliedChangeTrail, serial: data.serial, error: error.toString()} as AppliedChangeTrailEvent);
+      this.postMessage({type: AppliedChangeTrail, serial: data.serial, error: `${error}`} as AppliedChangeTrailEvent);
     }
 
     if (data.serial) {

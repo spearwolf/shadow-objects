@@ -26,11 +26,13 @@ const asBoolean = (val: string | boolean) => {
 const getKeyPath = (key: string | string[]): string =>
   [HAS_LOCAL_STORAGE ? CONSOLE_LOGGER : undefined, ...(Array.isArray(key) ? key : [key])].filter(Boolean).join('.');
 
-function loadConfigValue<T>(key: string | string[], as: (val: string) => T = undefined, defaultValue: T): T {
+function loadConfigValue<T>(key: string | string[], as: ((val: string) => T) | undefined, defaultValue: T): T {
   const _key = getKeyPath(key);
   // @ts-ignore
   const value = HAS_LOCAL_STORAGE ? localStorage.getItem(_key) : globalThis[CONSOLE_LOGGER_STORAGE]?.[_key];
-  return value != undefined ? as(value) : defaultValue;
+  if (value == undefined) return defaultValue;
+  // without a converter the stored value is the value: that is how the styles are read
+  return as ? as(value) : (value as T);
 }
 
 function saveConfigValue(key: string | string[], val: any) {

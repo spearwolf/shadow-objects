@@ -28,7 +28,8 @@ export const waitForMessageOfType = (
       signal?.removeEventListener('abort', onAbort);
     };
 
-    // a function declaration, so that `cleanup` may reference it above its own definition
+    // a function declaration, so that `cleanup` may reference it above its own definition;
+    // it only ever runs when a signal was passed in, since that is the only case where it gets registered below
     function onAbort() {
       cleanup();
       reject(signal!.reason);
@@ -50,7 +51,7 @@ export const waitForMessageOfType = (
           }
         } catch (error) {
           cleanup();
-          reject(error.toString());
+          reject(error);
         }
       }
     };
