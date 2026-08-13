@@ -25,3 +25,32 @@ jobs:
 
       - name: Run all tests
         run: pnpm run ci
+
+  e2e:
+    name: Run the e2e test suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: true
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium firefox
+
+      - name: Run e2e tests
+        run: pnpm exec turbo run test --filter=shadow-objects-e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: packages/shadow-objects-e2e/playwright-report/
+          retention-days: 7

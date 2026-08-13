@@ -4,6 +4,12 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-13 — E2E suite in CI
+
+- **`.github/workflows/ci.yml`:** new `e2e` job, parallel to the existing `ci` job, running `pnpm exec turbo run test --filter=shadow-objects-e2e` against both Playwright projects (Chromium and Firefox).
+- **Deployment gate:** `.github/workflows/deploy.yml` triggers on the `Continuous Integration` workflow's `conclusion == 'success'`, which now requires the `e2e` job to pass alongside `ci` before an npm publish.
+- On failure, the job uploads the Playwright HTML report (`packages/shadow-objects-e2e/playwright-report/`) as a build artifact for 7 days.
+
 ## 2026-08-13 — Test-harness corrections
 
 Follow-up to a code review of the view-layer hardening and the E2E rework. The library fixes are in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md); what follows only concerns the test harnesses.
