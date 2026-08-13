@@ -72,19 +72,24 @@ const withTimeout = <T>(promise: Promise<T>, ms = 250) =>
   Promise.race([promise, new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timed out')), ms))]);
 
 /**
- * Asserts that the promise rejects because the worker failed. A plain
- * `rejects.toThrow()` would swallow the timeout rejection as well, which is
- * exactly the hanging call this guards against.
+ * Asserts that the promise rejects, and with which error. Naming the error is what keeps the
+ * assertion honest: `withTimeout()` rejects with a plain `Error` of its own, so a check that
+ * only asks for a rejection would go green on exactly the hanging call this guards against.
  */
-const expectWorkerFailedRejection = async (promise: Promise<unknown>) => {
+const expectRejection = async (promise: Promise<unknown>, name: string) => {
   const reason = await withTimeout(promise).then(
     () => {
       throw new Error('expected the promise to reject, but it resolved');
     },
     (error) => error,
   );
-  expect((reason as Error).name).toBe('WorkerFailedError');
+  expect((reason as Error).name).toBe(name);
+  return reason as Error;
 };
+
+const expectWorkerFailedRejection = (promise: Promise<unknown>) => expectRejection(promise, 'WorkerFailedError');
+
+const expectWorkerDestroyedRejection = (promise: Promise<unknown>) => expectRejection(promise, 'WorkerDestroyedError');
 
 /** Lets a `.finally()` chained onto an already settled promise run. */
 const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -247,6 +252,70 @@ describe('RemoteWorkerEnv', () => {
       await flushMicrotasks();
 
       expect(worker.terminateCount).toBe(1);
+    });
+  });
+
+  describe('after destroy', () => {
+    const destroyed = async () => {
+      const {env, worker} = await startEnv();
+      env.destroy();
+      // settles the Destroyed handshake so its 5s timer does not stay open past the case
+      worker.reply({type: Destroyed});
+      return {env, worker};
+    };
+
+    it('rejects applyChangeTrail instead of throwing a TypeError', async () => {
+      const {env} = await destroyed();
+
+      await expectWorkerDestroyedRejection(env.applyChangeTrail([], true));
+    });
+
+    it('rejects importScript instead of throwing a TypeError', async () => {
+      const {env} = await destroyed();
+
+      await expectWorkerDestroyedRejection(env.importScript('./late.js'));
+    });
+
+    it('turns a start() away instead of spawning a worker nobody can reach', async () => {
+      const {env} = await destroyed();
+      const workerCount = workers.length;
+
+      await expectWorkerDestroyedRejection(env.start());
+
+      // the decisive part: a second thread would run on with no reference left to stop it
+      expect(workers.length, 'workers created after the teardown').toBe(workerCount);
+    });
+
+    it('rejects a start() that is torn down while it waits for the worker', async () => {
+      const env = new RemoteWorkerEnv();
+      const started = env.start();
+      const worker = workers.at(-1)!;
+
+      env.destroy();
+      worker.reply({type: Loaded});
+      worker.reply({type: Destroyed});
+
+      await expectWorkerDestroyedRejection(started);
+    });
+
+    it('rejects a second start() that is torn down before it hands out the environment', async () => {
+      const {env, worker} = await startEnv();
+
+      // the environment is up, so this call takes the already-started branch and only waits
+      // for the load promise, which resolves from the retained event one microtask later
+      const started = env.start();
+      env.destroy();
+      worker.reply({type: Destroyed});
+
+      await expectWorkerDestroyedRejection(started);
+    });
+
+    it('still reports a worker failure rather than the teardown that followed it', async () => {
+      const {env, worker} = await startEnv();
+
+      worker.fail();
+
+      await expectWorkerFailedRejection(env.start());
     });
   });
 });

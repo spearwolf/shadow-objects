@@ -1,5 +1,6 @@
 import {on} from '@spearwolf/eventize';
 import {beQuiet, createEffect, createSignal} from '@spearwolf/signalize';
+import {VoidToken} from '../constants.js';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
 import {ViewComponent} from '../view/ViewComponent.js';
@@ -133,7 +134,9 @@ export class ShaeEntElement extends ShaeElement {
 
       return () => {
         if (Object.hasOwn(vc, 'dispatchEvent') && vc.dispatchEvent === newDispatch) {
-          delete vc.dispatchEvent;
+          // the property lives on the instance (defineProperty above), the method it shadows lives on
+          // the prototype: deleting the own property restores the original, it does not remove the method
+          delete (vc as {dispatchEvent?: ViewComponent['dispatchEvent']}).dispatchEvent;
         }
       };
     });
@@ -162,7 +165,7 @@ export class ShaeEntElement extends ShaeElement {
       if (vc) {
         vc.context = context;
       } else if (context) {
-        vc = new ViewComponent(token, {context});
+        vc = new ViewComponent(token ?? VoidToken, {context});
         this.viewComponent$.set(vc);
       }
 
@@ -201,10 +204,11 @@ export class ShaeEntElement extends ShaeElement {
     return this.#shadowRootHost;
   }
 
-  protected getParentNodeForObserver() {
-    const parent = this.parentNode;
-    if (parent) return parent;
-    return (parent as ShadowRoot).host ?? parent;
+  protected getParentNodeForObserver(): Node | undefined {
+    // a node still sitting in a tree answers from the first term, and for one placed directly
+    // under a shadow root that term is the shadow root itself. Once it has no parent left it is
+    // its own root, so the host lookup comes up empty too and the answer is: no parent
+    return this.parentNode ?? (this.getRootNode() as ShadowRoot)?.host ?? undefined;
   }
 
   connectedCallback() {
@@ -350,7 +354,7 @@ export class ShaeEntElement extends ShaeElement {
       this.#unsubscribeFromParent = () => e.destroy();
     } else {
       const vc = this.viewComponent;
-      if (vc.parent) {
+      if (vc?.parent) {
         vc.parent = undefined;
         this.syncShadowObjects();
       }

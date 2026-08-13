@@ -74,7 +74,9 @@ export class ShadowEnv {
           emit(self, ShadowEnv.ContextLost, self);
         };
       }
-    }, [findObjectSignalByName(this, 'viewReady'), findObjectSignalByName(this, 'proxyReady')]);
+      // the two @signal accessors above create their signals during field initialization,
+      // so both lookups resolve by the time the constructor body runs
+    }, [findObjectSignalByName(this, 'viewReady')!, findObjectSignalByName(this, 'proxyReady')!]);
   }
 
   get view(): ComponentContext | undefined {
@@ -238,12 +240,9 @@ export class ShadowEnv {
     this.envProxy = undefined;
     this.view = undefined;
 
-    if (ns) {
-      if (globalThis.__shadowEnvs.has(ns)) {
-        if (globalThis.__shadowEnvs.get(ns) === this) {
-          globalThis.__shadowEnvs.delete(ns);
-        }
-      }
+    const shadowEnvs = globalThis.__shadowEnvs;
+    if (ns && shadowEnvs?.get(ns) === this) {
+      shadowEnvs.delete(ns);
     }
 
     // settle everyone still waiting before the listeners they depend on are removed

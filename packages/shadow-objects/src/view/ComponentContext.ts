@@ -102,11 +102,9 @@ export class ComponentContext {
       );
     }
 
-    let viewInstance: ViewInstance | undefined;
+    let viewInstance = this.#components.get(component.uuid);
 
-    if (this.#components.has(component.uuid)) {
-      viewInstance = this.#components.get(component.uuid);
-
+    if (viewInstance) {
       if (viewInstance.component !== component) {
         // another component claims this uuid: promote the children of the previous one to
         // root components, otherwise they would stay in the map but drop out of the tree
@@ -518,8 +516,9 @@ export class ComponentContext {
       const viewInstance = this.#components.get(uuid);
       if (viewInstance == null) return;
 
-      if (lvl.has(depth)) {
-        lvl.get(depth).push(viewInstance);
+      const atDepth = lvl.get(depth);
+      if (atDepth) {
+        atDepth.push(viewInstance);
       } else {
         lvl.set(depth, [viewInstance]);
       }

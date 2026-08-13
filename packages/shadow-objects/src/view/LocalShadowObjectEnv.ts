@@ -33,11 +33,14 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
     this.#usesDefaultRegistry = this.kernel.registry === Registry.get();
 
     on(this.kernel, MessageToView, (message: MessageToViewEvent) => {
-      if ((this as IShadowObjectEnvProxy).onMessageToView != null) {
-        const {type, uuid, traverseChildren} = message;
-        const data = structuredClone(message.data, {transfer: message.transferables});
-        (this as IShadowObjectEnvProxy).onMessageToView({type, uuid, data, traverseChildren});
-      }
+      const onMessageToView = (this as IShadowObjectEnvProxy).onMessageToView;
+      if (onMessageToView == null) return;
+
+      const {type, uuid, traverseChildren} = message;
+      const data = structuredClone(message.data, {transfer: message.transferables});
+      // call() keeps the binding a plain method call would have given it: an outside
+      // implementation of the proxy interface need not hand over a bound callback
+      onMessageToView.call(this, {type, uuid, data, traverseChildren});
     });
   }
 

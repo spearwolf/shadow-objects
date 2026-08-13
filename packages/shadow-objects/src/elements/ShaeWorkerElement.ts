@@ -153,14 +153,22 @@ export class ShaeWorkerElement extends ShaeElement {
     if (this.logger.isInfo) {
       this.logger.info('shadowEnv importScript:', src, {shadowEnv});
     }
-    await shadowEnv.envProxy.importScript(src);
+    // ready() only vouches for the proxy at the moment it resolves; a teardown can slip in
+    // between that microtask and this line
+    const envProxy = shadowEnv.envProxy;
+    if (envProxy == null) {
+      throw new ShadowEnvDestroyedError();
+    }
+
+    await envProxy.importScript(src);
     return this;
   }
 
   connectedCallback() {
     batch(() => {
-      if (this.hasAttribute(ATTR_AUTO_SYNC)) {
-        this.autoSync$.set(this.getAttribute(ATTR_AUTO_SYNC));
+      const autoSync = this.getAttribute(ATTR_AUTO_SYNC);
+      if (autoSync != null) {
+        this.autoSync$.set(autoSync);
       }
       this.isConnected$.set(true);
     });

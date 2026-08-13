@@ -54,6 +54,17 @@ export class WorkerFailedError extends Error {
   }
 }
 
+/**
+ * The reason a request is rejected with once the environment has been torn down
+ * with {@link RemoteWorkerEnv.destroy}. The worker is gone; no reply can arrive.
+ */
+export class WorkerDestroyedError extends Error {
+  constructor(message = 'the worker environment has been destroyed') {
+    super(message);
+    this.name = 'WorkerDestroyedError';
+  }
+}
+
 /** What {@link RemoteWorkerEnv.WorkerFailed} carries. */
 export interface WorkerFailedEvent {
   /** the environment whose worker failed */
@@ -134,8 +145,15 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   }
 
   async start(): Promise<void> {
+    // both guards are needed, and in this order: a failure aborts the signal *and* marks the
+    // environment destroyed, so asking about the teardown first would bury the more precise
+    // reason — while a teardown leaves the signal untouched and would slip past it
     const {signal} = this.#workerFailure;
     if (signal.aborted) throw signal.reason;
+
+    // a torn-down environment must not spawn a worker: nothing would ever reach it, and
+    // nothing would ever shut it down again
+    if (this.#isDestroyed) throw new WorkerDestroyedError();
 
     if (this.#worker) {
       if (this.logger.isWarn) {
@@ -144,7 +162,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
 
       return this.workerLoaded.then((): void => {
         if (this.isDestroyed) {
-          throw 'worker was destroyed';
+          throw new WorkerDestroyedError();
         }
       });
     }
@@ -162,7 +180,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
       await waitForMessageOfType(worker, Loaded, WorkerLoadTimeout, undefined, signal);
 
       if (this.isDestroyed) {
-        throw 'worker was destroyed';
+        throw new WorkerDestroyedError();
       }
 
       worker.addEventListener('message', this.onMessageFromWorker.bind(this));
@@ -195,6 +213,9 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     const {signal} = this.#workerFailure;
     if (signal.aborted) return Promise.reject(signal.reason);
 
+    const worker = this.#worker;
+    if (worker == null) return Promise.reject(new WorkerDestroyedError());
+
     const transferables = removeTransferables(changeTrail);
     const message = {type: ChangeTrail, changeTrail} as any;
 
@@ -203,11 +224,11 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
       message.serial = serial;
     }
 
-    this.#worker.postMessage(message, transferables);
+    worker.postMessage(message, transferables ?? []);
 
     if (waitForConfirmation) {
       return waitForMessageOfType(
-        this.#worker,
+        worker,
         AppliedChangeTrail,
         WorkerChangeTrailTimeout,
         (data: AppliedChangeTrailEvent) => {
@@ -225,10 +246,13 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     const {signal} = this.#workerFailure;
     if (signal.aborted) return Promise.reject(signal.reason);
 
+    const worker = this.#worker;
+    if (worker == null) return Promise.reject(new WorkerDestroyedError());
+
     url = toUrlString(url);
-    this.#worker.postMessage({type: Configure, importModule: url});
+    worker.postMessage({type: Configure, importModule: url});
     return waitForMessageOfType(
-      this.#worker,
+      worker,
       ImportedModule,
       WorkerConfigureTimeout,
       (data: ImportedModuleEvent) => {

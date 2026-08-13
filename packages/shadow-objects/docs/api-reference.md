@@ -991,7 +991,9 @@ const remoteEnv = new RemoteWorkerEnv();
 
 | Method | Description |
 | :--- | :--- |
-| `importScript(url)` | Import a shadow objects module inside the worker. |
+| `importScript(url)` | Import a shadow objects module inside the worker. Rejects with a `WorkerDestroyedError` after `destroy()`. |
+| `applyChangeTrail(changeTrail, waitForConfirmation)` | Send a change trail to the worker; with `waitForConfirmation` the promise resolves once the worker has applied it. Rejects with a `WorkerDestroyedError` after `destroy()`. |
+| `destroy()` | Tears the environment down and terminates the worker — once it has acknowledged, or after `WorkerDestroyTimeout` if it stays silent. |
 
 **Events:**
 
@@ -1011,6 +1013,8 @@ const remoteEnv = new RemoteWorkerEnv();
 | `event` | `ErrorEvent \| MessageEvent` | The worker event the failure was read from. |
 
 A failure is final for this environment: the worker is terminated, `isDestroyed` becomes `true`, and everything still waiting for a reply -- along with every later `applyChangeTrail()`, `importScript()`, `start()` and `workerLoaded` -- is rejected with the `WorkerFailedError` right away instead of running into its timeout.
+
+The two ends are told apart by the error they hand out: a worker that broke down reports a `WorkerFailedError`, a deliberate `destroy()` a `WorkerDestroyedError`. Both are final for that environment -- carry on with a fresh `RemoteWorkerEnv`. Both classes are exported from `@spearwolf/shadow-objects`.
 
 ```typescript
 import { on } from '@spearwolf/eventize';
@@ -1064,6 +1068,7 @@ The root of any Shadow Objects application. Initializes the Shadow Environment (
 | `auto-sync` | Controls sync frequency. See values below. |
 | `ns` | Namespace (Component Context). Defaults to the Global Context. |
 | `no-structured-clone` | Only valid with `local`. Disables `structuredClone` for a performance boost. Objects are passed by reference. Use with caution. |
+| `no-autostart` | If present, the element does not create the Shadow Environment on connect. Call `start()` yourself. |
 
 **`auto-sync` values:**
 
@@ -1087,6 +1092,14 @@ The root of any Shadow Objects application. Initializes the Shadow Environment (
 <!-- Manual sync control -->
 <shae-worker src="./kernel.js" auto-sync="off"></shae-worker>
 ```
+
+#### Methods
+
+| Method | Description |
+| :--- | :--- |
+| `start()` | Creates the Shadow Environment and waits until it is ready. The element calls it on connect by itself, unless `no-autostart` is set. |
+| `importScript(src)` | Waits for the environment and imports a shadow objects module into it. Rejects with a `ShadowEnvDestroyedError` when the environment is torn down before the import begins. |
+| `syncShadowObjects()` | Pushes the pending changes to the Shadow Environment. Needed with `auto-sync="off"`. |
 
 #### DOM Events
 
