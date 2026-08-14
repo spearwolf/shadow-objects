@@ -35,11 +35,11 @@
 - Sehr gute Abdeckung des wichtigsten Anwender-Kontrakts (`ShadowObjectCreationAPI`, Kontext-Vererbung, Lifecycle).
 
 **Hauptrisiken:**
-1. **Worker-Fehlerpfade unter-implementiert** — keine `error`/`messageerror`-Handler, keine Reconnect-Logik, ausstehende Promises hängen nach Worker-Tod ewig (oder bis 5–60 s Timeout).
+1. ~~**Worker-Fehlerpfade unter-implementiert** — keine `error`/`messageerror`-Handler, keine Reconnect-Logik, ausstehende Promises hängen nach Worker-Tod ewig (oder bis 5–60 s Timeout).~~ **Weitgehend behoben (VIEW-1, VIEW-2)** — `error` und `messageerror` werden vor dem Load-Handshake abonniert, ein Ausfall terminiert den Worker und lehnt alles Ausstehende mit `WorkerFailedError` ab; `ShadowEnv.ProxyFailed` meldet ihn nach außen, ein neuer `envProxy` ist der Weg zurück. Offen bleibt der gewollte Abbau: ein `applyChangeTrail`, das beim `destroy()` schon unterwegs ist, läuft in seinen 5-Sekunden-Timeout (VIEW-1).
 2. ~~**Neues Feature „auto destruction on parent removal" (Commit 89c59c2) ist im Datenpfad nicht erreichbar** und behandelt Re-Parenting nicht.~~ **Behoben (KERN-1, KERN-2)** — Flag fließt jetzt durch `ICreateEntitiesChange` → `ComponentChanges.create()` → `parse()`; Subscription wird bei Re-Parent neu verdrahtet.
 3. ~~**`destroyEntity` rekursiert nicht über Kinder** — bei Eltern-Destruktion bleiben Nicht-Auto-Kinder als verwaiste Einträge im Kernel.~~ **Behoben (KERN-3)** — Variante C: Flagged-Kinder kaskadieren, ungeflaggte werden zu Roots befördert.
 4. **DOM-In-Place-Re-Parenting wird nicht beobachtet** (`<shae-prop>` und `<shae-ent>` resolvieren ihren Eltern-Knoten nur in `connectedCallback`).
-5. **CI lässt das gesamte E2E-Paket aus** — der Worker-Roundtrip wird damit faktisch nicht von CI verifiziert.
+5. ~~**CI lässt das gesamte E2E-Paket aus** — der Worker-Roundtrip wird damit faktisch nicht von CI verifiziert.~~ **Behoben** — eigener Job `e2e` in `.github/workflows/ci.yml`, Chromium und Firefox bei jedem Push; der Deployment-Workflow hängt über `workflow_run` daran.
 6. **`MessageRouter` schluckt Fehler** durch doppeltes `AppliedChangeTrail` im Catch-Pfad — Konsumenten sehen Erfolg trotz interner Exception.
 
 Keiner dieser Punkte ist katastrophal; jeder einzelne sollte aber vor einem 1.0-Release adressiert werden.
@@ -87,7 +87,7 @@ ComponentContext│  ─ Destroy
 
 ### 2.3 Verwendete Technologien
 
-- **TypeScript 6** (strict, aber **`strictNullChecks: false`** — Achtung: das ist eine bewusste Lockerung, die Typen-Sicherheit signifikant einschränkt).
+- **TypeScript 6** (`strict: true` mit **`strictNullChecks: true`** in der Wurzel-`tsconfig.json`).
 - **`@spearwolf/signalize` 0.29.0** — Signals/Effects.
 - **`@spearwolf/eventize` 5.0.0** — Event-Emitter.
 - **esbuild 0.28** — Bundling, mit `esbuild-plugin-inline-worker` für den Worker-Inline.
@@ -124,13 +124,12 @@ ComponentContext│  ─ Destroy
 
 ### 3.2 HIGH — View / Worker
 
-**[VIEW-1]** `RemoteWorkerEnv.applyChangeTrail` hängt unbegrenzt, wenn der Worker stirbt.
-*Ort:* `RemoteWorkerEnv.ts:100–140`, `constants.ts:45` (`WorkerChangeTrailTimeout = 5000`, `WorkerLoadTimeout = 60000`).
-Fällt der Worker zwischen `postMessage` und `AppliedChangeTrail` aus, läuft erst der 5-Sekunden-Timeout ab. Bei `destroy()` werden `worker.terminate()` aufgerufen, die noch hängenden `waitForMessageOfType`-Listener werden aber nicht abgewickelt. Pending-Promises werden nicht zurückgewiesen.
+**[VIEW-1]** ~~`RemoteWorkerEnv.applyChangeTrail` hängt unbegrenzt, wenn der Worker stirbt.~~ **🟡 Behoben für den Ausfall, offen für den Teardown.**
+*Ausfall — erledigt:* ein `AbortController` trägt den Ausfallzustand: `waitForMessageOfType` nimmt ihn als Abbruch-Kanal entgegen, jedes ausstehende Promise wird im Moment des Ausfalls mit `WorkerFailedError` abgelehnt, jeder spätere Aufruf sofort. Die Timeouts sind auf diesem Weg der letzte Ausweg statt des einzigen.
+*Teardown — offen:* `#workerFailure.abort()` steht ausschließlich in `handleWorkerFailure` (`RemoteWorkerEnv.ts:305`); `destroy()` (`:266–279`) rührt den Controller bewusst nicht an, damit der eigene `Destroyed`-Wartelauf seinen Timeout behält und die beiden Ablehnungsgründe nicht durcheinandergeraten. Ein `applyChangeTrail`, das beim Abbau schon unterwegs ist, wird deshalb nicht abgewickelt: sein `message`-Hörer und sein Timer überleben den Teardown bis zum 5-Sekunden-`WorkerChangeTrailTimeout`. Konsumenten der `ShadowEnv` merken davon nichts — `destroy()` lehnt dort `ready()` und `syncWait()` mit `ShadowEnvDestroyedError` ab —, wer den Proxy direkt fährt, wartet die vollen fünf Sekunden.
+*Ungetestet:* `RemoteWorkerEnv.spec.ts:126` deckt das Ausstehende beim **Ausfall** ab, `:286`/`:292` die Aufrufe **nach** `destroy()`; den Sync **während** des Teardowns trifft kein Fall.
 
-**[VIEW-2]** Keine `error`/`messageerror`-Handler auf dem Worker.
-*Ort:* `RemoteWorkerEnv.ts` (kein `addEventListener('error', …)`).
-Worker-Modul-Init-Fehler bleiben stumm, bis der 60-Sekunden-Loaded-Timeout zuschlägt. Keine Reconnect-/Recover-Logik.
+**[VIEW-2]** ~~Keine `error`/`messageerror`-Handler auf dem Worker.~~ **✅ Behoben** — beide werden abonniert, bevor der Load-Handshake beginnt. Ein Ausfall terminiert den Worker, setzt `isDestroyed` und meldet sich als `RemoteWorkerEnv.WorkerFailed` und `ShadowEnv.ProxyFailed` (samt `proxyfailed`-DOM-Event auf `<shae-worker>`). Der Weg zurück ist ein neuer `envProxy`: sobald er bereit ist, baut die View ihre Änderungen aus der Component Memory neu auf, und der nächste Sync stellt die Entities in der neuen Umgebung her.
 
 **[VIEW-3]** `MessageRouter` schluckt Fehler durch doppeltes `AppliedChangeTrail`.
 *Ort:* `MessageRouter.ts:84–97`.
@@ -251,12 +250,12 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 
 ### 4.1 Inventar
 
-**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 11 Dateien):
-`Kernel.spec.ts` (1080 LoC), `Registry.spec.ts`, `ShadowObject.spec.ts`, `SignalsPath.spec.ts`, `ShadowEnv.spec.ts`, `LocalShadowObjectEnv.spec.ts`, `ViewComponent.spec.ts`, `ComponentContext.spec.ts`, `ComponentChanges.spec.ts`, `ComponentMemory.spec.ts`, `props-utils.spec.ts`.
+**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 13 Dateien):
+`Kernel.spec.ts` (1549 LoC), `Registry.spec.ts`, `ShadowObject.spec.ts`, `SignalsPath.spec.ts`, `ShadowEnv.spec.ts`, `LocalShadowObjectEnv.spec.ts`, `RemoteWorkerEnv.spec.ts`, `ViewComponent.spec.ts`, `ComponentContext.spec.ts`, `ComponentChanges.spec.ts`, `ComponentMemory.spec.ts`, `props-utils.spec.ts`, `ConsoleLogger.spec.ts`.
 
-**`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 11 Dateien — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `forward-custom-events`, `local-env-entities`, `prop-element-host`, `remove-and-append-e`, `send-events`, `worker-element-teardown`, `emit-helper/emit-helper`.
+**`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 12 Dateien — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `ent-element-teardown`, `forward-custom-events`, `local-env-entities`, `prop-element-host`, `remove-and-append-e`, `send-events`, `worker-element-teardown`, `emit-helper/emit-helper`.
 
-**`shadow-objects-e2e/`** (Playwright, Chromium + Firefox): 9 Dateien — `async-events`, `auto-destruct`, `bundle`, `create-element`, `dynamic-dom`, `multi-env`, `remote-worker-env`, `shae-worker`, `upgrade-timing`. Assertions liegen in den Test-Pages, der gemeinsame `runPageTests`-Helper macht daraus je einen Playwright-Test pro `data-testresult`.
+**`shadow-objects-e2e/`** (Playwright, Chromium + Firefox): 10 Dateien — `async-events`, `auto-destruct`, `bundle`, `create-element`, `dynamic-dom`, `multi-env`, `remote-worker-env`, `shae-worker`, `upgrade-timing`, `worker-failure`. Assertions liegen in den Test-Pages, der gemeinsame `runPageTests`-Helper macht daraus je einen Playwright-Test pro `data-testresult`.
 
 ### 4.2 Coverage-Heuristik
 
@@ -272,14 +271,14 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 | `ComponentContext`-Sortierordnung + Baum-Invarianten | ✅ **gründlich** |
 | `ComponentContext.dispose()`-Kontrakt (Namespace-Freigabe, Inertheit, Abweisung) | ✅ **gründlich** |
 | `ComponentChanges` / `ComponentMemory` (Unit) | ✅ **gründlich** — eigene Specs, vorher nur indirekt über Trail-Vergleiche |
-| `ShadowEnv` Setup/Teardown | 🟡 **partiell** — `envProxy`-Swap zur Laufzeit nicht getestet; `syncWait()`/`AfterSync` und der `destroy()`-Kontrakt abgedeckt |
+| `ShadowEnv` Setup/Teardown | ✅ **gründlich** — `syncWait()`/`AfterSync`, der `destroy()`-Kontrakt, `ProxyFailed` und der `envProxy`-Swap zur Laufzeit samt Wiederherstellung der Entities aus der Component Memory. Gefahren werden Doppelgänger → Doppelgänger und Doppelgänger → `LocalShadowObjectEnv` (`ShadowEnv.spec.ts:521`, `:536`) sowie Remote → Remote in der E2E-Seite `worker-failure`; Local → Remote fährt kein Fall |
 | `LocalShadowObjectEnv` | 🟡 **partiell** — Smoke + 1 Sync; `destroy()`-Registry-Kontrakt (geteilte Default-Registry vs. eigene Registry) jetzt gründlich getestet |
-| `RemoteWorkerEnv` | 🟡 nur Happy-Path-E2E. **Keine vitest-Spec.** Init-Failure, Termination, Race-Recovery: ❌ |
+| `RemoteWorkerEnv` | ✅ **gründlich** — `RemoteWorkerEnv.spec.ts` (19 Fälle über einen Worker-Doppelgänger) deckt Ausfall, Termination, Ablehnung des Ausstehenden und des Nachgereichten, `destroy()`-Kontrakt; E2E-Seite `worker-failure` fährt denselben Weg über echtes `postMessage` inklusive Erholung. Nicht abgedeckt: ein `applyChangeTrail`, das beim `destroy()` schon unterwegs ist (VIEW-1) |
 | `MessageRouter` | ❌ keine direkten Tests |
 | `WorkerRuntime` | ❌ keine direkten Tests |
 | Custom Elements (`<shae-prop>`!) | 🟡 `ShaePropElement`: nur die Host-Suche (`prop-element-host.test.js`) und der Markup-Upgrade-Pfad (E2E) direkt getestet — Typ-Parsing und Attribut-Reflexion weiterhin nur indirekt |
-| Utils | ❌ nur `props-utils.spec.ts` — `FrameLoop`, `waitForMessageOfType`, `cloneChangeTrail`, `attr-utils`, `array-utils`, `generateUUID`, `ConsoleLogger`, `toNamespace`, `toUrlString`, `importModule` haben keine Tests. `array-utils` wird inzwischen indirekt über `ComponentContext.spec.ts` und `ComponentChanges.spec.ts` mitgeprüft |
-| Worker-Init-Failure / Terminate / Message-Race | ❌ |
+| Utils | 🟡 `props-utils.spec.ts` und `ConsoleLogger.spec.ts` — `FrameLoop`, `waitForMessageOfType`, `cloneChangeTrail`, `attr-utils`, `array-utils`, `generateUUID`, `toNamespace`, `toUrlString`, `importModule` haben keine eigenen Tests. `array-utils` wird indirekt über `ComponentContext.spec.ts` und `ComponentChanges.spec.ts` mitgeprüft, `waitForMessageOfType` über `RemoteWorkerEnv.spec.ts` |
+| Worker-Init-Failure / Terminate / Message-Race | 🟡 **partiell** — ein Ausfall während des Load-Handshakes, `terminate()` beim Ausfall, verspätete Nachrichten nach `destroy()` und der doppelte Ausfall sind abgedeckt; ein `Worker`-Konstruktor, der an einer kaputten URL selbst wirft, ist es nicht |
 
 ### 4.3 Qualität
 
@@ -300,23 +299,22 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 **[ELEM-3] `autoDestructionOnParentRemoval` ist über `<shae-ent>` nicht erreichbar.** Kein Attribut, und `ShaeEntElement` erzeugt seine `ViewComponent` ohne die Option — das Feature ist nur über die programmatische API nutzbar. Ein DOM-seitiger Test der Kaskade ist deshalb derzeit nicht möglich.
 
 - Worker-Init-Failure (`Worker`-Konstruktor mit kaputter URL).
-- `worker.terminate()` mitten im Sync; ausstehende `applyChangeTrail`-Promises müssen rejecten.
+- `destroy()` mitten im Sync — ein ausstehendes `applyChangeTrail` läuft in den `WorkerChangeTrailTimeout`, statt abgewickelt zu werden. *(VIEW-1)*
+- `ShadowEnv.envProxy`-Swap zur Laufzeit von `LocalShadowObjectEnv` auf `RemoteWorkerEnv` (die Gegenrichtung und Remote → Remote sind abgedeckt).
 - `<shae-prop>` Tests (Property-Bindung, DOM-Verschiebung).
 - `<shae-ent>`-`attributeChangedCallback` für `token` / `parent-id` / `forward-custom-events` (Re-Set auf leer).
 - `<shae-worker>`-`src`-Wechsel nach `start()` (Re-Import-Pfad).
 - `Transferables` über echten Worker (nicht nur In-Process).
-- `ShadowEnv.envProxy`-Swap zur Laufzeit (Local → Remote und zurück).
 - `provideContext` → Provider-Entity stirbt vor Consumer — `useContext`-Effect-Cleanup.
 - `Registry.removeRoute` / `clear()` während aktive Entities existieren — Re-Upgrade-Verhalten.
 - Mehrfaches `shadowObjects.define` mit gleichem Token.
 
 ### 4.5 Empfehlungen (priorisiert)
 
-1. **`RemoteWorkerEnv`-Failure-Modes specifizieren** — größte produktionskritische Lücke (~170 LoC Transport-Code, nur Happy-Path-E2E).
-2. **Magische Timeouts in `ShadowEnv.spec.ts` durch deterministische Drains ersetzen** — eliminiert das einzige offensichtliche Flake-Risiko.
-3. **`<shae-prop>` end-to-end testen** — öffentliches Element ohne direkte Tests.
-4. **Nicht-triviale Utils specifizieren** — vor allem `FrameLoop`, `waitForMessageOfType`, `cloneChangeTrail` (Worker-Boundary).
-5. **`ShadowEnv` env-proxy-Swap-Test + `<shae-worker>` re-import-Test** — beide rühren an den aktuell ungetesteten `MessageRouter`/`WorkerRuntime`.
+1. **Magische Timeouts in `ShadowEnv.spec.ts` durch deterministische Drains ersetzen** — eliminiert das einzige offensichtliche Flake-Risiko.
+2. **`<shae-prop>` end-to-end testen** — öffentliches Element ohne direkte Tests.
+3. **Nicht-triviale Utils specifizieren** — vor allem `FrameLoop`, `cloneChangeTrail` (Worker-Boundary).
+4. **`<shae-worker>` re-import-Test und der `envProxy`-Swap Local → Remote** — beide rühren an den aktuell ungetesteten `MessageRouter`/`WorkerRuntime`.
 
 ---
 
@@ -342,16 +340,12 @@ Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements
 
 ### 5.3 Lint / TS
 
-- `strict: true` **mit `strictNullChecks: false`** — die größte Typensicherheits-Lücke.
-- Biome-Root deaktiviert (analog zur alten ESLint-Config) `noExplicitAny`, `noTsIgnore`, `noNonNullAssertion`, `noImplicitAnyLet`. Bewusste Lockerung, aber in Kombination mit `strictNullChecks: false` riskant.
+- `strict: true` **mit `strictNullChecks: true`** in der Wurzel-`tsconfig.json`. ✅
+- Biome-Root deaktiviert (analog zur alten ESLint-Config) `noExplicitAny`, `noTsIgnore`, `noNonNullAssertion`, `noImplicitAnyLet`. Bewusste Lockerung; `noNonNullAssertion` wiegt am schwersten, weil ein `!` die eingeschaltete Null-Prüfung wieder aushebelt.
 - `any`-Hotspots (heuristisch): `ConsoleLogger.ts` (~20), `Kernel.ts` (~11), `ShadowObject.ts` (~4).
 - Biome meldet aktuell ~30 Warnings im Source (z. B. `useIterableCallbackReturn`, `noShadowRestrictedNames`, `useNodejsImportProtocol`). Schrittweise abarbeiten oder bewusst weiter unterdrücken.
 
-### 5.4 CI-Gap
-
-Die GitHub-Action ruft `pnpm run ci` = `turbo run build typecheck test --filter=!shadow-objects-e2e && pnpm lint`. **`test:ci` schließt `shadow-objects-e2e` weiterhin aus.** Damit wird der gesamte Worker-Roundtrip nicht von CI verifiziert. Da `RemoteWorkerEnv` ohnehin keine Unit-Tests hat, ist das ein doppelt-blinder Punkt.
-
-### 5.5 Sonstige Stolperfallen auf frischer Maschine
+### 5.4 Sonstige Stolperfallen auf frischer Maschine
 
 - `pnpm install` installiert keine Playwright-Browser — manuelles `pnpm exec playwright install chromium firefox` nötig (wird in CLAUDE.md erwähnt).
 - `engines.node: ">=24.13.0"` blockiert Mitwirkende auf Node 22.x. Hinweis: Node 24+ ships eine inerte `localStorage`-Stub auf `globalThis`; für Tests gefixt durch `packages/shadow-objects/vitest.setup.ts`.
@@ -384,8 +378,8 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 1. ~~**Auto-Destroy-Feature komplett verdrahten** — Feld in `ICreateEntitiesChange`, durchreichen in `parse()`, Re-Parenting-Subscription pflegen, E2E-Test mit Worker. *(KERN-1, KERN-2)*~~ ✅ Erledigt (Kernel- und ViewComponent-Specs sowie Playwright-E2E `auto-destruct.spec.ts` mit echtem `RemoteWorkerEnv`).
 2. ~~**`destroyEntity` rekursiv über Kinder** — Politik definieren (kaskadieren oder zu Root befördern). *(KERN-3)*~~ ✅ Erledigt (Variante C).
 3. **`MessageRouter`-Doppel-Confirm im Catch-Pfad fixen.** *(VIEW-3)*
-4. **Worker-Fehlerpfade härten:** `error`/`messageerror`-Handler, ausstehende Promises bei `destroy()` rejecten, expliziter `terminated`-Status. *(VIEW-1, VIEW-2)*
-5. **CI lässt E2E nicht aus** — Playwright-Browser im CI-Image installieren, `test:ci` umstellen oder zweiten Job ergänzen. *(CI-Gap)*
+4. **Worker-Fehlerpfade härten:** ~~`error`/`messageerror`-Handler~~, ausstehende Promises bei `destroy()` rejecten, ~~expliziter `terminated`-Status~~. *(VIEW-1, VIEW-2)* — 🟡 Handler, `WorkerFailedError`/`WorkerDestroyedError`, `isDestroyed`, `RemoteWorkerEnv.WorkerFailed` und `ShadowEnv.ProxyFailed` stehen; `destroy()` bricht das Ausstehende weiterhin nicht ab (VIEW-1).
+5. ~~**CI lässt E2E nicht aus** — Playwright-Browser im CI-Image installieren, `test:ci` umstellen oder zweiten Job ergänzen.~~ ✅ Erledigt — eigener Job `e2e`, Chromium und Firefox, vor dem npm-Publish.
 6. ~~**Cache-Invalidierung von `traverseLevelOrderBFS` bei programmatischer Destruktion.** *(KERN-4)*~~ ✅ Erledigt.
 
 ### 7.2 Sollte zeitnah
@@ -400,7 +394,7 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 
 ### 7.3 Mittelfristig
 
-14. **`strictNullChecks: true`** schrittweise einschalten — größter Hebel für Typensicherheit.
+14. ~~**`strictNullChecks: true`** schrittweise einschalten — größter Hebel für Typensicherheit.~~ ✅ Erledigt — in drei Etappen (utils/worker/registry, view/elements, `Kernel`), das Flag steht in der Wurzel-`tsconfig.json`.
 15. **`exports`-Konditionen umsortieren** (`types` vor `import`) für strikte Node-ESM-Konsumenten.
 16. **`peerDependencies` für `@spearwolf/eventize`/`signalize`** dokumentiert beschließen.
 17. **API-Aufräumen:** `appendRoute` aufteilen, `onDestroy`-Tripel-Bedeutung dokumentieren oder trennen, `IShadowObjectEnvProxy.isDestroyed`/`error`-Surface ergänzen, Worker-Timeouts konfigurierbar machen.
@@ -419,8 +413,8 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 
 `shadow-objects` ist konzeptionell ausgereift und kompakt: das ECS-Modell, die View/Worker-Spiegelung über ein 4-Methoden-Proxy und das `ShadowObjectCreationAPI` bilden ein in sich konsistentes, gut testbares Framework. Der Code ist überwiegend klar geschrieben, das Reaktivitätsmodell stützt sich konsequent auf zwei eigene, aktiv gepflegte Bibliotheken.
 
-Die größten Risiken liegen weniger in der Architektur als in den **Fehler- und Lebenszyklus-Pfaden**: das gerade frisch eingeführte Auto-Destruction-Feature ist im Datenpfad nicht erreichbar, `destroyEntity` lässt Kindern offene Enden, der Worker-Tod wird nicht aktiv erkannt, und der `MessageRouter` schluckt Exceptions. Hinzu kommt eine relevante CI-Lücke (kein E2E in CI) und das Fehlen jeglicher Unit-Tests für `RemoteWorkerEnv`/`MessageRouter`/`WorkerRuntime`.
+Die größten Risiken liegen weniger in der Architektur als in den **Fehler- und Lebenszyklus-Pfaden**: der `MessageRouter` schluckt Exceptions, und `MessageRouter`/`WorkerRuntime` haben nach wie vor keine eigenen Tests. Die Lebenszyklus-Punkte sind abgearbeitet, der Worker-Ausfall ebenso, die E2E-Suite läuft in CI; offen bleibt der gewollte Abbau, der ausstehende Anfragen in ihren Timeout laufen lässt (VIEW-1).
 
-Die empfohlene Reihenfolge ist: erst die sechs **Muss-Punkte aus §7.1** angehen (Lifecycle-Korrektheit + Worker-Fehlerpfade + CI-Verifikation), dann die **Test-Lücken aus §4.5/§7.2** schließen, dann die **Tooling-/Typensicherheits-Modernisierung aus §7.3** in Angriff nehmen.
+Die empfohlene Reihenfolge ist: erst die verbliebenen **Muss-Punkte aus §7.1** angehen (`MessageRouter`-Doppel-Confirm und der Teardown-Rest von VIEW-1), dann die **Test-Lücken aus §4.5/§7.2** schließen, dann die **Tooling-Modernisierung aus §7.3** in Angriff nehmen.
 
 In der jetzigen Version (0.30.2) ist das Framework für Demos, Spielwiesen und kleine Anwendungen einsetzbar; vor einem produktiven 1.0-Stempel sollte zumindest die §7.1-Liste abgearbeitet sein.

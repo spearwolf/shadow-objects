@@ -839,7 +839,7 @@ on(env, ShadowEnv.AfterSync, (changeTrail) => {
 });
 ```
 
-Recovery from a `ProxyFailed` is a new proxy: `env.envProxy = new RemoteWorkerEnv()`. The setter starts it, and once it is ready the View Layer is rebuilt from the Component Memory, so the entities come back without the application having to replay them.
+Recovery from a `ProxyFailed` is a new proxy: `env.envProxy = new RemoteWorkerEnv()`. The setter starts it, and once it is ready the view re-creates its pending changes from the Component Memory. The next `sync()` therefore restores every entity in the new environment -- token, parent, order and properties -- so the application does not have to rebuild its `ViewComponent`s or its markup.
 
 ### Methods
 

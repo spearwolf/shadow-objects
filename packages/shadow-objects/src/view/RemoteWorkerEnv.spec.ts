@@ -1,6 +1,7 @@
 import {on} from '@spearwolf/eventize';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {Destroy, Destroyed, Loaded} from '../constants.js';
+import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 import {RemoteWorkerEnv} from './RemoteWorkerEnv.js';
 
 const {FakeWorker, workers} = vi.hoisted(() => {
@@ -199,6 +200,24 @@ describe('RemoteWorkerEnv', () => {
       worker.failToDeserialize();
 
       expect(failedSpy).toHaveBeenCalledTimes(1);
+      expect(worker.terminateCount).toBe(1);
+    });
+
+    it('announces the failure even when the proxy-failed callback throws', async () => {
+      const {env, worker} = await startEnv();
+
+      const failedSpy = vi.fn();
+      on(env, 'workerFailed', failedSpy);
+
+      (env as IShadowObjectEnvProxy).onProxyFailed = () => {
+        throw new Error('a consumer that cannot cope');
+      };
+
+      expect(() => worker.fail('kaboom')).not.toThrow();
+
+      expect(failedSpy).toHaveBeenCalledTimes(1);
+      expect(failedSpy.mock.calls[0][0].reason.name).toBe('WorkerFailedError');
+      expect(env.isDestroyed).toBe(true);
       expect(worker.terminateCount).toBe(1);
     });
 

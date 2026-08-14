@@ -495,7 +495,7 @@ import { ShadowEnv, RemoteWorkerEnv } from '@spearwolf/shadow-objects';
 on(env, ShadowEnv.ProxyFailed, (reason) => {
   console.warn('the shadow environment went away:', reason);
 
-  // start over — the View Layer is rebuilt from the Component Memory
+  // start over — the next sync restores the entities from the Component Memory
   env.envProxy = new RemoteWorkerEnv();
 });
 ```

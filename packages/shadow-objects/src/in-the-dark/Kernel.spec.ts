@@ -1500,5 +1500,51 @@ describe('Kernel', () => {
 
       kernel.destroy();
     });
+
+    it('skips an entity the destroy pass removed from the snapshot', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const [aUuid, bUuid, cUuid] = [generateUUID(), generateUUID(), generateUUID()];
+
+      @ShadowObject({registry, token: 'destroysTheFirstEntity'})
+      class DestroysTheFirstEntity implements OnDestroy {
+        [onDestroy]() {
+          kernel.destroyEntity(aUuid);
+        }
+      }
+
+      @ShadowObject({registry, token: 'marker'})
+      class Marker {}
+
+      expect(DestroysTheFirstEntity).toBeDefined();
+      expect(Marker).toBeDefined();
+
+      // the route has to exist before the entity, otherwise it never gets the shadow object
+      // whose [onDestroy] the upgrade is about
+      registry.appendRoute('entC', ['destroysTheFirstEntity']);
+
+      kernel.createEntity(aUuid, 'entA');
+      kernel.createEntity(bUuid, 'entB');
+      kernel.createEntity(cUuid, 'entC');
+
+      expect(kernel.findShadowObjects(cUuid)).toHaveLength(1);
+
+      // dropping the route is what makes the destroy pass tear that shadow object down
+      registry.clearRoute('entC');
+      registry.appendRoute('entB', ['marker']);
+
+      // The destroy pass walks the snapshot in reverse — C, B, A. C destroys A from its
+      // [onDestroy], so A is gone by the time the pass reaches it.
+      expect(() => kernel.upgradeEntities()).not.toThrow();
+
+      expect(kernel.hasEntity(aUuid)).toBe(false);
+
+      // B sits behind C in the reversed snapshot and must still have been upgraded.
+      expect(kernel.findShadowObjects(bUuid)).toHaveLength(1);
+      expect(kernel.findShadowObjects(bUuid)[0]).toBeInstanceOf(Marker);
+
+      kernel.destroy();
+    });
   });
 });

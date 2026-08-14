@@ -7,6 +7,7 @@ import {runTestSuite} from './test-helpers/runTestSuite.js';
 import {testAsyncAction} from './test-helpers/testAsyncAction.js';
 import {testBooleanAction} from './test-helpers/testBooleanAction.js';
 import {watchCustomEvent} from './test-helpers/testCustomEvent.js';
+import {waitUntil} from './test-helpers/waitUntil.js';
 
 const ProxyFailed = ShadowEnv.ProxyFailed.toLowerCase();
 const ContextLost = ShadowEnv.ContextLost.toLowerCase();
@@ -17,6 +18,14 @@ const ContextLost = ShadowEnv.ContextLost.toLowerCase();
  * because it waited long enough would prove the opposite of what is under test here.
  */
 const FailureTimeout = 3000;
+
+/**
+ * How long the survivor's `helloFromFoo` may take to travel back from the fresh worker. It caps the
+ * poll and nothing else: the worker start and the module import belong to the preceding test id and
+ * its own budget, and the sync is awaited before the poll begins. Generous where
+ * {@link FailureTimeout} is deliberately tight — an abort condition, not an assertion about speed.
+ */
+const RecoveryTimeout = 5000;
 
 runTestSuite(main);
 
@@ -43,7 +52,15 @@ async function main() {
   // the markup path, not document.createElement — see KNOWN-DEFECTS.md
   const host = document.createElement('div');
   document.body.append(host);
-  host.innerHTML = '<shae-ent token="crasher"></shae-ent>';
+  host.innerHTML = '<shae-ent id="survivor" token="foo"></shae-ent><shae-ent id="crasher" token="crasher"></shae-ent>';
+
+  const survivor = document.getElementById('survivor');
+  survivor.viewComponent.setProperty('xyz', 23);
+
+  // `mod-hello.js` reaches the second worker only, so every `helloFromFoo` that ever
+  // arrives on this page was produced after the recovery
+  const hellos = [];
+  on(survivor.viewComponent, 'helloFromFoo', (data) => hellos.push(data));
 
   await testAsyncAction('worker-failure-entity-reached-the-worker', () => shadowEnv.syncWait());
 
@@ -81,10 +98,10 @@ async function main() {
     FailureTimeout,
   );
 
-  // the documented way back: a new proxy rebuilds the view from the component memory.
-  // The crashing entity goes first — otherwise the fresh worker meets the same shadow
-  // object and dies the same death.
-  host.innerHTML = '';
+  // the documented way back: a new proxy restores the entities from the component memory.
+  // Only the crashing entity goes — otherwise the fresh worker meets the same shadow
+  // object and dies the same death. The survivor stays where it is, untouched.
+  document.getElementById('crasher').remove();
 
   await testAsyncAction(
     'worker-failure-recovers-with-a-new-proxy',
@@ -97,4 +114,16 @@ async function main() {
   );
 
   testBooleanAction('worker-failure-env-is-ready-again', shadowEnv.isReady);
+
+  await testAsyncAction(
+    'worker-failure-survivor-is-recreated-in-the-new-worker',
+    async () => {
+      await shadowEnv.syncWait();
+      await waitUntil('the survivor to report in from the new worker', () => hellos.length > 0, RecoveryTimeout);
+      if (hellos[0]?.xyz !== 23) {
+        throw new Error(`expected the property to survive as xyz=23, got: ${JSON.stringify(hellos[0])}`);
+      }
+    },
+    10000,
+  );
 }

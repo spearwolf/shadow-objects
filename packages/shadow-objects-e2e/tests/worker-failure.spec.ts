@@ -16,6 +16,7 @@ test.describe('worker-failure', () => {
       'worker-failure-later-call-rejects-right-away',
       'worker-failure-recovers-with-a-new-proxy',
       'worker-failure-env-is-ready-again',
+      'worker-failure-survivor-is-recreated-in-the-new-worker',
     ],
     // the page kills a worker on purpose: the uncaught error and the framework's own report
     // of it both reach the console

@@ -41,8 +41,9 @@ export class Registry {
   readonly #truthyPropRoutes = new Map<string, {routes: Set<string>; token?: string}>();
 
   define(token: string, constructa: ShadowObjectConstructor) {
-    if (this.#registry.has(token)) {
-      appendTo(this.#registry.get(token)!.constructors, constructa);
+    const entry = this.#registry.get(token);
+    if (entry) {
+      appendTo(entry.constructors, constructa);
     } else {
       this.#registry.set(token, {token, constructors: [constructa]});
     }
@@ -51,8 +52,9 @@ export class Registry {
   appendRoute(token: string, routes: string[]) {
     const propRoute = toPropRoute(token);
     if (propRoute) {
-      if (this.#truthyPropRoutes.has(propRoute.key)) {
-        addRoutes(this.#truthyPropRoutes.get(propRoute.key)!.routes, routes);
+      const knownPropRoutes = this.#truthyPropRoutes.get(propRoute.key);
+      if (knownPropRoutes) {
+        addRoutes(knownPropRoutes.routes, routes);
       } else {
         this.#truthyPropRoutes.set(propRoute.key, {routes: new Set(routes), token: propRoute.token});
       }
@@ -95,8 +97,9 @@ export class Registry {
 
     if (truthyProps) {
       for (const prop of truthyProps) {
-        if (this.#truthyPropRoutes.has(prop)) {
-          addRoutes(tokens, this.#truthyPropRoutes.get(prop)!.routes);
+        const propRoutes = this.#truthyPropRoutes.get(prop);
+        if (propRoutes) {
+          addRoutes(tokens, propRoutes.routes);
         }
       }
 
@@ -105,9 +108,9 @@ export class Registry {
         tokenCountBefore = tokens.size;
         for (const token of new Set(tokens)) {
           for (const prop of truthyProps) {
-            const key = `${token}@${prop}`;
-            if (this.#truthyPropRoutes.has(key)) {
-              addRoutes(tokens, this.#truthyPropRoutes.get(key)!.routes);
+            const keyedRoutes = this.#truthyPropRoutes.get(`${token}@${prop}`);
+            if (keyedRoutes) {
+              addRoutes(tokens, keyedRoutes.routes);
             }
           }
         }

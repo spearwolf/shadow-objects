@@ -532,5 +532,45 @@ describe('ShadowEnv', () => {
 
       env.destroy();
     });
+
+    it('re-creates the entities in the new environment from the component memory', async () => {
+      const {env, proxy} = await makeEnv();
+
+      @ShadowObject({token: 'recovery-child'})
+      class Survivor {}
+
+      expect(Survivor).toBeDefined();
+
+      const parent = new ViewComponent('recovery-parent', {context: env.view});
+      const child = new ViewComponent('recovery-child', {context: env.view, parent, order: 7});
+      child.setProperty('foo', 'bar');
+
+      // the memory is written by this cycle, not by the proxy: what comes back later
+      // comes from the view side
+      await env.syncWait();
+
+      proxy.fail(new Error('the worker went away'));
+      expect(env.isReady).toBe(false);
+
+      const localEnv = new LocalShadowObjectEnv();
+      env.envProxy = localEnv;
+      await env.ready();
+
+      // no component is touched between the failure and this sync: nothing is replayed
+      await env.syncWait();
+
+      expect(localEnv.kernel.hasEntity(parent.uuid)).toBe(true);
+      expect(localEnv.kernel.hasEntity(child.uuid)).toBe(true);
+
+      const childEntity = localEnv.kernel.getEntity(child.uuid);
+      expect(childEntity.parentUuid).toBe(parent.uuid);
+      expect(childEntity.order).toBe(7);
+      expect(Object.fromEntries(childEntity.propEntries())).toEqual({foo: 'bar'});
+
+      expect(localEnv.kernel.findShadowObjects(child.uuid)).toHaveLength(1);
+      expect(localEnv.kernel.findShadowObjects(child.uuid)[0]).toBeInstanceOf(Survivor);
+
+      env.destroy();
+    });
   });
 });
