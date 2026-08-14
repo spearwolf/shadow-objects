@@ -11,8 +11,6 @@ If you've ever worked with a game engine, this will feel familiar: **Your UI is 
 > [!WARNING]
 > 🚀 This is a highly experimental framework that is slowly maturing. Use at your own risk. 🔥
 
----
-
 ## ✨ Your Superpowers (Why use it?)
 
 Shadow Objects doesn't replace your UI framework; it supercharges the logic layer underneath it. It gives you:
@@ -22,8 +20,6 @@ Shadow Objects doesn't replace your UI framework; it supercharges the logic laye
 *   **🏗️ Decoupled Hierarchy:** The DOM structure produced by React/Angular rarely matches your true application logic. Shadow Objects lets your logic live in its own clean ECS hierarchy, which is merely *spanned and queried* by the View.
 *   **🔄 Seamless Reactivity:** Powered by `@spearwolf/signalize` and `@spearwolf/eventize`, data syncs reactively and efficiently across thread boundaries.
 
----
-
 ## 🏗️ How it Works (Architecture at a Glance)
 
 Shadow Objects bridges the gap between the DOM and the ECS Kernel using a highly optimized, asynchronous protocol based on serialized **Change Trails**.
@@ -31,6 +27,8 @@ Shadow Objects bridges the gap between the DOM and the ECS Kernel using a highly
 1. **The View (DOM):** Custom Elements (`<shae-ent>`, `<shae-prop>`, `<shae-worker>`) anchor your logic to the DOM. They define *what* exists and *how* it's structured.
 2. **The Change Trail:** Mutations in the View are collected in a Change Trail and sent via a MessageRouter across the boundary (e.g., `postMessage`).
 3. **The Kernel (Shadow Env):** The ECS heart receives the Trail. Based on Token-Routing, the Registry creates and destroys **Shadow Objects** (your logic components) and binds them to Entities.
+
+![What is Shadow-Objects](./docs/what-is-shadow-objects.webp)
 
 More details are in [concepts.md](packages/shadow-objects/docs/concepts.md#1-the-mental-model).
 
@@ -80,8 +78,6 @@ Full walkthrough: [getting-started.md](packages/shadow-objects/docs/getting-star
 ---
 
 ## 📦 What's in the Box? (Project Structure)
-
-![What is Shadow-Objects](./docs/what-is-shadow-objects.webp)
 
 The framework is strictly modularized into functional domains.
 
