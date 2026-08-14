@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> **Next release: minor.** The package is below `1.0.0`, so the accumulated breaking
+> changes below bump the minor position — `0.33.0` → `0.34.0`. Two of them reach existing
+> consumers: the emitted declarations carry `| undefined` where a value can be missing, so a
+> build with `strictNullChecks` sees new errors; and `RemoteWorkerEnv` rejects with
+> `WorkerDestroyedError` / `WorkerFailedError` instead of the string `'worker was destroyed'`,
+> so a `catch` that compared against that string no longer matches. Everything else in this
+> section is additive or a bugfix.
+
 - **Types:** the emitted declarations are as narrow as the values behind them. They carry `| undefined` wherever a value can be missing — visible on `ShaeEntElement.componentContext$` / `viewComponent$` / `token$`, `ShaePropElement.entNode$` / `viewComponent$` / `name$` / `type$`, `ShadowEnv.ns$`, the return of `FrameLoop.start()` and of `filterUndefinedProps()` — and `generateUUID()` returns the template literal type of `crypto.randomUUID()` instead of a plain `string`. Consumers compiling with `strictNullChecks` will see new errors where they relied on a value that was never promised — the promise is the fix.
 - **Types (public API):** `provideContext()` and `provideGlobalContext()` accept a `SignalReader<T>` as their source, next to the `SignalReader<T | undefined>` they already took. Handing an existing signal to a context is the documented way to keep it in sync, and it is now typeable.
 - **Bugfix (worker environments):** `RemoteWorkerEnv.applyChangeTrail()` and `importScript()` reached for a worker that a regular `destroy()` had already released, and threw a `TypeError` out of a method that promises a `Promise`. Both reject with a new `WorkerDestroyedError` now, and a `start()` that is torn down while it waits does the same instead of throwing a bare string.
