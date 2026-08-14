@@ -60,8 +60,8 @@ These methods let the Shadow Object read data flowing in from the View Layer -- 
 
 Creates a reactive signal that tracks the value of a specific property on the Entity.
 
-- **Signature:** `useProperty<T>(name: string): () => T`
-- **Returns:** A signal reader function (getter). Calling it returns the current value.
+- **Signature:** `useProperty<T>(name: string, options?): SignalReader<T | undefined>`
+- **Returns:** A signal reader function (getter). Calling it returns the current value, or `undefined` while the View has not set the property.
 - **Reactivity:** When the property changes in the View, any effect or computed value reading this signal will re-run.
 
 ```typescript
@@ -117,7 +117,7 @@ Like `useContext`, but skips the current Entity and starts searching from the pa
 
 Makes a value available to all descendant Entities in the subtree, and to all other Shadow Objects on the same Entity.
 
-- **Signature:** `provideContext<T>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T | undefined>, options?): Signal<T | undefined>`
+- **Signature:** `provideContext<T>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>, options?): Signal<T | undefined>`
 - **Returns:** The context signal. Write to it with `.set(...)` to push a new value to all consumers.
 - **Note:** Pass a signal as the source to keep the context in sync with existing reactive state.
 
@@ -125,7 +125,7 @@ Makes a value available to all descendant Entities in the subtree, and to all ot
 
 Makes a value available to all Entities in the entire Shadow Environment, regardless of hierarchy position.
 
-- **Signature:** `provideGlobalContext<T>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T | undefined>, options?): Signal<T | undefined>`
+- **Signature:** `provideGlobalContext<T>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>, options?): Signal<T | undefined>`
 
 ---
 
@@ -993,6 +993,7 @@ const remoteEnv = new RemoteWorkerEnv();
 | :--- | :--- |
 | `importScript(url)` | Import a shadow objects module inside the worker. Rejects with a `WorkerDestroyedError` after `destroy()`. |
 | `applyChangeTrail(changeTrail, waitForConfirmation)` | Send a change trail to the worker; with `waitForConfirmation` the promise resolves once the worker has applied it. Rejects with a `WorkerDestroyedError` after `destroy()`. |
+| `start()` | Spawn the worker and wait for the load handshake. Rejects with a `WorkerDestroyedError` after `destroy()`. |
 | `destroy()` | Tears the environment down and terminates the worker — once it has acknowledged, or after `WorkerDestroyTimeout` if it stays silent. |
 
 **Events:**

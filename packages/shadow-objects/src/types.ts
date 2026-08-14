@@ -111,13 +111,13 @@ export interface ShadowObjectCreationAPI {
 
   provideContext<T = unknown>(
     name: string | symbol,
-    sourceOrInitialValue?: T | SignalReader<T | undefined>,
+    sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>,
     options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
   ): Signal<Maybe<T>>;
 
   provideGlobalContext<T = unknown>(
     name: string | symbol,
-    sourceOrInitialValue?: T | SignalReader<T | undefined>,
+    sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>,
     options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
   ): Signal<Maybe<T>>;
 

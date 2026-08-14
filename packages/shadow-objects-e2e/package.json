@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "preview": "pnpm build && vite preview --host",
     "clean": "rimraf build dist playwright-report test-results",
     "test": "playwright test",

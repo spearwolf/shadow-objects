@@ -1459,4 +1459,46 @@ describe('Kernel', () => {
       warnSpy.mockRestore();
     });
   });
+
+  describe('upgradeEntities with an entity that is destroyed while the upgrade runs', () => {
+    it('skips the destroyed entity and upgrades the ones behind it', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const [aUuid, bUuid, cUuid] = [generateUUID(), generateUUID(), generateUUID()];
+
+      @ShadowObject({registry, token: 'destroysTheNextEntity'})
+      class DestroysTheNextEntity implements OnCreate {
+        [onCreate]() {
+          kernel.destroyEntity(bUuid);
+        }
+      }
+
+      @ShadowObject({registry, token: 'marker'})
+      class Marker {}
+
+      expect(DestroysTheNextEntity).toBeDefined();
+      expect(Marker).toBeDefined();
+
+      kernel.createEntity(aUuid, 'entA');
+      kernel.createEntity(bUuid, 'entB');
+      kernel.createEntity(cUuid, 'entC');
+
+      // 'entB' has no route of its own, so the upgrade carries an empty constructor set for it.
+      registry.appendRoute('entA', ['destroysTheNextEntity']);
+      registry.appendRoute('entC', ['marker']);
+
+      // The upgrade walks a snapshot of the entity tree. Entity A destroys B from its
+      // [onCreate], so B is gone by the time the snapshot reaches it.
+      expect(() => kernel.upgradeEntities()).not.toThrow();
+
+      expect(kernel.hasEntity(bUuid)).toBe(false);
+
+      // C sits behind B in the snapshot and must still have been upgraded.
+      expect(kernel.findShadowObjects(cUuid)).toHaveLength(1);
+      expect(kernel.findShadowObjects(cUuid)[0]).toBeInstanceOf(Marker);
+
+      kernel.destroy();
+    });
+  });
 });

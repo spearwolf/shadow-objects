@@ -23,7 +23,7 @@
     },
     "typecheck": {
       "dependsOn": ["^build"],
-      "inputs": ["src/**", "tsconfig*.json"],
+      "inputs": ["src/**", "test/**", "tests/**", "tsconfig*.json"],
       "outputs": []
     },
     "dev": {

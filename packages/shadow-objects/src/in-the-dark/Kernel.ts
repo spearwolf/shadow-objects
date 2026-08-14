@@ -79,8 +79,8 @@ export class Kernel {
   #entities: Map<string, EntityEntry> = new Map();
   #rootEntities: Set<string> = new Set();
 
-  #allEntities?: Entity[];
-  #allEntitiesReversed?: Entity[];
+  #allEntities: Entity[] = [];
+  #allEntitiesReversed: Entity[] = [];
   #allEntitiesNeedUpdate = true;
 
   #rootContexts: Map<string | symbol, SignalsPath> = new Map();
@@ -91,11 +91,22 @@ export class Kernel {
   }
 
   getEntity(uuid: string): Entity {
-    const entity = this.#entities.get(uuid)?.entity;
-    if (!entity) {
+    return this.#requireEntry(uuid).entity;
+  }
+
+  /**
+   * The entry for an entity that is expected to exist.
+   *
+   * The uuid is the caller's responsibility: `getEntity()` hands the throw on to its own
+   * callers, and `updateShadowObjects()` is reached only for an entity the caller has just
+   * confirmed. Failing here names the uuid instead of failing later on an undefined field.
+   */
+  #requireEntry(uuid: string): EntityEntry {
+    const entry = this.#entities.get(uuid);
+    if (entry === undefined) {
       throw new Error(`entity with uuid "${uuid}" not found!`);
     }
-    return entity;
+    return entry;
   }
 
   hasEntity(uuid: string): boolean {
@@ -112,8 +123,9 @@ export class Kernel {
       const traverse = (uuid: string, depth: number) => {
         const e = this.getEntity(uuid);
 
-        if (lvl.has(depth)) {
-          lvl.get(depth).push(e);
+        const entities = lvl.get(depth);
+        if (entities) {
+          entities.push(e);
         } else {
           lvl.set(depth, [e]);
         }
@@ -139,29 +151,38 @@ export class Kernel {
   }
 
   getEntityGraph(): EntityGraphNode[] {
-    return Array.from(this.#rootEntities).map((uuid) => this.getEntityGraphNode(uuid)!);
+    return Array.from(this.#rootEntities)
+      .map((uuid) => this.getEntityGraphNode(uuid))
+      .filter((node) => node !== undefined);
   }
 
   private getEntityGraphNode(uuid: string): EntityGraphNode | undefined {
-    if (!this.#entities.has(uuid)) return undefined;
+    const entry = this.#entities.get(uuid);
+    if (entry === undefined) return undefined;
 
-    const {token, entity} = this.#entities.get(uuid);
+    const {token, entity} = entry;
     return {
       token,
       entity,
       props: Object.fromEntries(entity.propEntries()),
-      children: entity.children.map((child) => this.getEntityGraphNode(child.uuid)),
+      // A node the kernel no longer holds drops out of the graph.
+      children: entity.children.map((child) => this.getEntityGraphNode(child.uuid)).filter((node) => node !== undefined),
     };
   }
 
   upgradeEntities(): void {
     const entityConstructors = new Map<String, Set<ShadowObjectConstructor>>();
 
+    // Both loops walk a snapshot of the entity tree, and a lifecycle callback is free to destroy
+    // an entity while the upgrade is running. An entry from the snapshot can therefore be gone by
+    // the time its turn comes: it needs no upgrade, and the entities behind it still do.
     for (const entity of this.traverseLevelOrderBFS(true)) {
+      if (!this.hasEntity(entity.uuid)) continue;
       entityConstructors.set(entity.uuid, this.updateShadowObjects(entity.uuid, ShadowObjectAction.DestroyOnly));
     }
 
     for (const entity of this.traverseLevelOrderBFS(false)) {
+      if (!this.hasEntity(entity.uuid)) continue;
       this.updateShadowObjects(entity.uuid, ShadowObjectAction.JustCreate, entityConstructors.get(entity.uuid));
     }
 
@@ -252,13 +273,14 @@ export class Kernel {
       e.setProperties(properties);
     }
 
-    this.createShadowObjects(uuid);
+    this.createShadowObjects(entry);
   }
 
   destroyEntity(uuid: string): void {
-    if (!this.#entities.has(uuid)) return;
+    const entry = this.#entities.get(uuid);
+    if (entry === undefined) return;
 
-    const {entity, usedConstructors} = this.#entities.get(uuid);
+    const {entity, usedConstructors} = entry;
 
     // Children with autoDestructionOnParentRemoval cascade; the rest are promoted
     // to root so they remain reachable instead of leaking inside the kernel.
@@ -336,9 +358,8 @@ export class Kernel {
   }
 
   changeToken(uuid: string, token: string): void {
-    if (!this.#entities.has(uuid)) return;
-
     const entry = this.#entities.get(uuid);
+    if (entry === undefined) return;
 
     if (entry.token === token) return;
 
@@ -362,7 +383,7 @@ export class Kernel {
     action = ShadowObjectAction.CreateAndDestroy,
     nextConstructors?: Set<ShadowObjectConstructor>,
   ): Set<ShadowObjectConstructor> {
-    const entry = this.#entities.get(uuid);
+    const entry = this.#requireEntry(uuid);
     nextConstructors ??= new Set(this.registry.findConstructors(entry.token, entry.entity.truthyProps()));
 
     const shouldDestroy = action === ShadowObjectAction.CreateAndDestroy || action === ShadowObjectAction.DestroyOnly;
@@ -411,7 +432,7 @@ export class Kernel {
     const getUseProperty = <T = any>(
       name: string,
       options?: SignalValueOptions<T> | CompareFunc<T | undefined>,
-    ): SignalReader<T> => {
+    ): SignalReader<Maybe<T>> => {
       if (!usePropertyOptionsDeprecatedShown && options != null && typeof options === 'function') {
         console.warn(
           '[shadow-objects] Deprecation Warning: The "isEqual" option of "useProperty()" is now passed as {compare} argument. Please update your code accordingly.',
@@ -444,7 +465,7 @@ export class Kernel {
 
         provideContext<T = unknown>(
           name: string | symbol,
-          sourceOrInitialValue?: T | SignalReader<T | undefined>,
+          sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>,
           options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
         ) {
           if (!provideContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
@@ -485,7 +506,7 @@ export class Kernel {
 
         provideGlobalContext<T = unknown>(
           name: string | symbol,
-          sourceOrInitialValue?: T | SignalReader<T | undefined>,
+          sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>,
           options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
         ) {
           if (!provideGlobalContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
@@ -769,8 +790,9 @@ export class Kernel {
     // We want to keep track which shadow-objects are created by which constructors.
     // This will all
     //
-    if (entry.usedConstructors.has(construct)) {
-      entry.usedConstructors.get(construct).add(shadowObject);
+    const createdBy = entry.usedConstructors.get(construct);
+    if (createdBy) {
+      createdBy.add(shadowObject);
     } else {
       entry.usedConstructors.set(construct, new Set([shadowObject]));
     }
@@ -780,18 +802,17 @@ export class Kernel {
     return shadowObject;
   }
 
-  private createShadowObjects(uuid: string): void {
-    const entry = this.#entities.get(uuid);
-
+  private createShadowObjects(entry: EntityEntry): void {
     this.registry.findConstructors(entry.token, entry.entity.truthyProps())?.forEach((construct) => {
       this.constructShadowObject(construct, entry);
     });
   }
 
   findShadowObjects(uuid: string): ShadowObjectType[] {
-    if (!this.#entities.has(uuid)) return [];
+    const entry = this.#entities.get(uuid);
+    if (entry === undefined) return [];
 
-    const {usedConstructors} = this.#entities.get(uuid);
+    const {usedConstructors} = entry;
 
     return Array.from(new Set(Array.from(usedConstructors.values()).flatMap((objs) => Array.from(objs))));
   }

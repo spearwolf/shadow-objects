@@ -4,6 +4,13 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-14 — strictNullChecks
+
+- **`tsconfig.json`:** `strictNullChecks` is `true`, alongside the other `strict`-family flags the file spells out.
+- **`packages/shadow-objects-e2e/package.json`:** new `typecheck` script. Its TypeScript sources and Playwright tests inherit the root config but had no task running `tsc` over them, so `pnpm typecheck` now covers both TypeScript packages instead of one, and `pnpm ci` runs the same check for the e2e package without pulling its Playwright suite into the `ci` job.
+- **`turbo.json`:** the `typecheck` task counts `test/**` and `tests/**` among its inputs — the e2e config type-checks its tests, and a change there has to invalidate the cache.
+- `shae-offscreen-canvas` and `shadow-objects-testing` needed no change: their sources are `.js`, pulled in via `allowJs` but not checked.
+
 ## 2026-08-13 — E2E suite in CI
 
 - **`.github/workflows/ci.yml`:** new `e2e` job, parallel to the existing `ci` job, running `pnpm exec turbo run test --filter=shadow-objects-e2e` against both Playwright projects (Chromium and Firefox).

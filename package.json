@@ -21,7 +21,7 @@
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean && rimraf dist node_modules/.cache .turbo",
     "cbt": "pnpm clean && turbo run build test",
-    "ci": "turbo run build typecheck test --filter=!shadow-objects-e2e && pnpm lint:ci",
+    "ci": "turbo run build typecheck test --filter=!shadow-objects-e2e && turbo run typecheck --filter=shadow-objects-e2e && pnpm lint:ci",
     "dev": "turbo run dev --filter=@spearwolf/shae-offscreen-canvas",
     "start": "pnpm dev",
     "make:todo": "node scripts/makeTODO.mjs TODO.md",
