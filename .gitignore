@@ -57,3 +57,4 @@ __screenshots__/
 
 # git worktrees
 .worktrees
+.obsidian

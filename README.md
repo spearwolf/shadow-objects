@@ -1,25 +1,38 @@
-# shadow-objects
+# 🌑 Shadow-Objects
 
-*a reactive entity-component framework that feels at home in the shadows*
+*A reactive entity-component framework that feels at home in the shadows* 🧛
+
+**A reactive Entity-Component-System (ECS) that moves your application logic out of the UI thread and into the shadows.**
+
+Shadow Objects separates your application logic from its presentation. It treats your UI (React, Vue, or plain DOM) merely as a *renderer*, while your actual state and business logic run in a dedicated "Shadow Environment" — either on the main thread or fully offloaded to a Web Worker. 
+
+If you've ever worked with a game engine, this will feel familiar: **Your UI is the renderer, Shadow Objects is the game world.**
 
 > [!WARNING]
 > 🚀 This is a highly experimental framework that is slowly maturing. Use at your own risk. 🔥
 
 ---
 
-## What It Is
+## ✨ Your Superpowers (Why use it?)
 
-Shadow Objects is an Entity Component System (ECS) for the browser platform. It separates your application logic from its presentation, and not just logically: the logic runs in a **Shadow Environment**, which lives either on the main thread (`LocalShadowObjectEnv`) or inside a web worker (`RemoteWorkerEnv`). Your Shadow Object code is identical in both cases. Only the proxy gets swapped.
+Shadow Objects doesn't replace your UI framework; it supercharges the logic layer underneath it. It gives you:
 
-The logic itself lives in **Shadow Objects**. Those are ECS components: small, stateful units bound to an **Entity**. Entities form a tree that models the structure of your application, and the **View** is what defines that structure.
+*   **🧵 True Thread-Agnostic Logic:** Write your application logic once. Run it locally (Main Thread) or in a Web Worker. Your `Shadow Object` code remains exactly identical — only the proxy gets swapped.
+*   **⚡️ Unblocked UI:** By offloading state calculation to a Web Worker, your UI thread remains butter-smooth, even when dealing with complex, reactive data trees.
+*   **🏗️ Decoupled Hierarchy:** The DOM structure produced by React/Angular rarely matches your true application logic. Shadow Objects lets your logic live in its own clean ECS hierarchy, which is merely *spanned and queried* by the View.
+*   **🔄 Seamless Reactivity:** Powered by `@spearwolf/signalize` and `@spearwolf/eventize`, data syncs reactively and efficiently across thread boundaries.
 
-The View is authoritative for structure, not for behavior. It decides which entities exist, how they hang in the tree, and which properties they carry. It does *not* decide which Shadow Objects end up on an entity. That call belongs to the Registry, driven by the **Token** and the routing rules of the environment.
+---
 
-The View is anchored in the DOM, but it is not bound to the DOM structure. The reality of browser apps is that the DOM tree produced by React, Angular, Vue, or plain JavaScript rarely matches the structure of your application logic. Shadow Objects lets the logic live in its own hierarchy, spanned, driven, and queried by the View.
+## 🏗️ How it Works (Architecture at a Glance)
 
-**Shadow Objects doesn't replace React, Vue, or Svelte.** It's the logic layer those frameworks render. If Redux and Zustand are global state on one thread, shadow-objects is reactive ECS state across any number of threads.
+Shadow Objects bridges the gap between the DOM and the ECS Kernel using a highly optimized, asynchronous protocol based on serialized **Change Trails**.
 
-If you have worked with a game engine, the split will feel familiar: your UI is the renderer, Shadow Objects is the game world. That analogy is unpacked in [concepts.md](packages/shadow-objects/docs/concepts.md#1-the-mental-model).
+1. **The View (DOM):** Custom Elements (`<shae-ent>`, `<shae-prop>`, `<shae-worker>`) anchor your logic to the DOM. They define *what* exists and *how* it's structured.
+2. **The Change Trail:** Mutations in the View are collected in a Change Trail and sent via a MessageRouter across the boundary (e.g., `postMessage`).
+3. **The Kernel (Shadow Env):** The ECS heart receives the Trail. Based on Token-Routing, the Registry creates and destroys **Shadow Objects** (your logic components) and binds them to Entities.
+
+More details are in [concepts.md](packages/shadow-objects/docs/concepts.md#1-the-mental-model).
 
 ---
 
@@ -66,17 +79,37 @@ Full walkthrough: [getting-started.md](packages/shadow-objects/docs/getting-star
 
 ---
 
+## 📦 What's in the Box? (Project Structure)
+
+![What is Shadow-Objects](./docs/what-is-shadow-objects.webp)
+
+The framework is strictly modularized into functional domains.
+
+### Core Runtimes
+*   **`src/in-the-dark/` (The Shadow Runtime):** The ECS heart. Contains the Kernel, Entity tree, Registry, Token-Routing, and SignalsPath. This is where your logic executes.
+*   **`src/worker/` (Worker Runtime):** The mirror of the View side. Contains the `MessageRouter` and WorkerRuntime to enable Web Worker execution.
+*   **`src/view/` (The View Bridge):** The Facade (`ShadowEnv`) and `ComponentContext`. It translates DOM state into serialized Change Trails.
+
+### Integrations & Elements
+*   **`src/elements/` (Custom Elements):** The HTML bindings (`ShaeElement` base plus `<shae-ent>`, `<shae-prop>`, `<shae-worker>`). Over 1,100 lines of robust lifecycle logic.
+
+### Examples & Testing
+*   **`packages/shadow-offscreen-canvas/`:** A reference implementation demonstrating heavy lifting! Runs `three.js` in a Worker, proving the power of Transferables and Namespaces.
+*   **`packages/shadow-objects-testing/` & `e2e`:** Massive test suite spanning unit tests (vitest), real DOM integration in Chromium, and E2E specs via Playwright.
+
+---
+
 ## The Five Domains
 
 The framework splits into five domains. The line between domain 4 and domain 5 is the important one: it separates *composition* of logic from the logic itself.
 
-| # | Domain | Responsibility | Where it lives |
-|---|---|---|---|
-| 1 | **View** | Structure, properties, input | always the main thread |
-| 2 | **Environment** | Place of execution, transport | main thread or worker |
-| 3 | **Kernel** | Lifecycle, entity tree | inside the environment |
-| 4 | **Composition** | Registry, token, routing | inside the environment |
-| 5 | **Shadow Object** | Application logic, reactivity, communication | inside the environment |
+| #   | Domain            | Responsibility                               | Where it lives         |
+| --- | ----------------- | -------------------------------------------- | ---------------------- |
+| 1   | **View**          | Structure, properties, input                 | always the main thread |
+| 2   | **Environment**   | Place of execution, transport                | main thread or worker  |
+| 3   | **Kernel**        | Lifecycle, entity tree                       | inside the environment |
+| 4   | **Composition**   | Registry, token, routing                     | inside the environment |
+| 5   | **Shadow Object** | Application logic, reactivity, communication | inside the environment |
 
 ### 1. View -- Structure and Input
 
@@ -151,12 +184,12 @@ This is where your application lives.
 
 A Shadow Object is a function or a class. The body runs exactly once at `mount` and builds the reactive graph. After that nothing runs top to bottom any more, it only reacts. The `ShadowObjectCreationAPI` hands you four toolboxes for that:
 
-| Toolbox | Tools | What for |
-|---|---|---|
-| Inputs | `useProperty`, `useProperties` | read properties from the View as signals |
-| Reactivity | `createSignal`, `createMemo`, `createEffect`, `createResource` | own state, derived values, side effects, external resources with a lifecycle |
-| Context | `provideContext`, `provideGlobalContext`, `useContext`, `useParentContext` | dependency injection along the entity tree |
-| Events | `onViewEvent`, `dispatchMessageToView`, `on`, `emit` | talking to the View, to siblings, and to the subtree |
+| Toolbox    | Tools                                                                      | What for                                                                     |
+| ---------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Inputs     | `useProperty`, `useProperties`                                             | read properties from the View as signals                                     |
+| Reactivity | `createSignal`, `createMemo`, `createEffect`, `createResource`             | own state, derived values, side effects, external resources with a lifecycle |
+| Context    | `provideContext`, `provideGlobalContext`, `useContext`, `useParentContext` | dependency injection along the entity tree                                   |
+| Events     | `onViewEvent`, `dispatchMessageToView`, `on`, `emit`                       | talking to the View, to siblings, and to the subtree                         |
 
 Several Shadow Objects on the same entity share its properties, its contexts, its event bus, and its lifetime. That is exactly where composition comes from: `player` is not one big class, it is `PhysicsBody` plus `Health` plus `RenderMesh`, talking over the entity bus and needing no import of each other.
 
