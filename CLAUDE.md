@@ -8,16 +8,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | Concern | Tool |
 |---|---|
-| Package manager | `pnpm` (workspaces + `catalog:` for version SSOT) |
-| Monorepo orchestrator | `turborepo` (`turbo.json` defines the pipeline) |
-| TypeScript | `tsc` 6.x — only used to emit `.d.ts` |
+| Package manager | `pnpm` 11 (workspaces + `catalog:` for version SSOT) |
+| Monorepo orchestrator | `turborepo` 2.10 (`turbo.json` defines the pipeline) |
+| TypeScript | `tsc` 7.x — only used to emit `.d.ts` |
 | Bundler / transpiler | `esbuild` 0.28 (lib transpile + single-file bundle) |
 | Unit / integration tests | `vitest` 4 (happy-dom for unit, `@vitest/browser` + Playwright provider for DOM-integration) |
-| E2E | `@playwright/test` 1.59 |
-| Lint + format | `biome` 2.4 (replaces eslint + prettier) |
-| Dev server | `vite` (only `shae-offscreen-canvas` demo and `shadow-objects-e2e`) |
+| E2E | `@playwright/test` 1.62 |
+| Lint + format | `biome` 2.5 (replaces eslint + prettier) |
+| Dev server | `vite` 7 (only `shae-offscreen-canvas` demo and `shadow-objects-e2e`) |
 
 Versions live exclusively in `pnpm-workspace.yaml` (`catalog:` block). Reference them from each package as `"<dep>": "catalog:"` — never write a plain version range in a per-package `package.json`.
+
+Three entries in that file are deliberate holdbacks, each with the reason in a comment above it. Don't "fix" them by bumping to latest:
+
+- **`overrides: {vite: ^7.3.6}`** — Vite 8 swapped esbuild for Rolldown/Oxc, and Oxc does not lower native decorators. `SignalsPath.ts` and `ShadowEnv.ts` use `@signal … accessor`, so under Vite 8 five spec files fail with `SyntaxError: Invalid or unexpected token`. vitest resolves its own vite (`^6 || ^7 || ^8`) regardless of the catalog, hence an override rather than a catalog pin.
+- **`@spearwolf/eventize: ^5.1.0`** — `@spearwolf/signalize` peers on `^5.0.0`; eventize 6 would resolve a second copy into the tree.
+- **`turbo: ^2.10.9`** — pnpm 11 defaults `minimumReleaseAge` to one day and re-applies it to every lockfile entry on install, so a lockfile pinning a release younger than that fails `--frozen-lockfile` on a clean runner.
+
+**pnpm 11 specifics.** Dependency build scripts are refused unless listed in `allowBuilds` (`strictDepBuilds` is on by default) — currently just `esbuild`. `.npmrc` is auth/registry only; every pnpm setting belongs in `pnpm-workspace.yaml`. The `packageManager` field in `package.json` decides which pnpm actually runs.
 
 ## Commands
 

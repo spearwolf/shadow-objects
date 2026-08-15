@@ -87,12 +87,12 @@ ComponentContext│  ─ Destroy
 
 ### 2.3 Verwendete Technologien
 
-- **TypeScript 6** (`strict: true` mit **`strictNullChecks: true`** in der Wurzel-`tsconfig.json`).
-- **`@spearwolf/signalize` 0.29.0** — Signals/Effects.
-- **`@spearwolf/eventize` 5.0.0** — Event-Emitter.
+- **TypeScript 7** (`strict: true` mit **`strictNullChecks: true`** in der Wurzel-`tsconfig.json`).
+- **`@spearwolf/signalize` 0.31.1** — Signals/Effects.
+- **`@spearwolf/eventize` 5.1.0** — Event-Emitter. Bleibt auf 5.x, solange signalize auf `^5.0.0` peert.
 - **esbuild 0.28** — Bundling, mit `esbuild-plugin-inline-worker` für den Worker-Inline.
-- **vitest 4** für Unit-Tests (happy-dom) und Integrationstests (browser-mode + Playwright-Provider). **Playwright** für E2E.
-- **turborepo 2.9** als Monorepo-Orchestrator, **biome 2.4** für Lint/Format, **pnpm 9.15** mit `catalog:`-SSOT, Node ≥ 24.13.0.
+- **vitest 4** für Unit-Tests (happy-dom) und Integrationstests (browser-mode + Playwright-Provider). **Playwright 1.62** für E2E. **vite 7** per Override festgehalten (Oxc in Vite 8 senkt Decorators nicht ab).
+- **turborepo 2.10** als Monorepo-Orchestrator, **biome 2.5** für Lint/Format, **pnpm 11** mit `catalog:`-SSOT, Node ≥ 24.13.0.
 
 ### 2.4 Lebenszyklus einer Entity (vereinfacht)
 
@@ -335,7 +335,10 @@ Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements
 ### 5.2 Dependency-Hygiene
 
 - Versionen leben jetzt zentral in `pnpm-workspace.yaml#catalog:` — keine Drift mehr möglich. ✅
-- Tooling auf modernen Major-Versionen: vitest 4, biome 2.4, turbo 2.9, esbuild 0.28, Playwright 1.59, TypeScript 6, happy-dom 20. ✅
+- Tooling auf modernen Major-Versionen: vitest 4, biome 2.5, turbo 2.10, esbuild 0.28, Playwright 1.62, TypeScript 7, happy-dom 20, pnpm 11. ✅
+- Drei bewusste Holdbacks, jeweils mit Begründung im Kommentar in `pnpm-workspace.yaml`: `vite` (Override auf 7.x, weil Oxc keine nativen Decorators absenkt), `@spearwolf/eventize` (5.x wegen des signalize-Peers), `turbo` (2.10.9 wegen `minimumReleaseAge`).
+- **Offen, liegt außerhalb dieses Repos:** `@spearwolf/signalize` braucht ein Release mit `peerDependencies: {"@spearwolf/eventize": "^5.0.0 || ^6.0.0"}`. Bis dahin ist eventize 6 hier gesperrt.
+- **Offen:** Sobald Oxc native Decorators absenkt, den `vite`-Override entfernen und auf 8.x gehen.
 - Kern-Lib hat **keine `peerDependencies`** — `@spearwolf/eventize`/`signalize` sind harte Deps; bei Mehrfach-Resolutionen drohen Duplikate.
 
 ### 5.3 Lint / TS
@@ -352,6 +355,7 @@ Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements
 - `make:todo` ist Honor-System (kein Pre-Commit-Hook, kein CI-Check).
 - Manuelles `CHANGELOG.md`-Pflegen ohne Changesets/release-please.
 - **npm-Publish läuft über OIDC Trusted Publishing**, nicht über ein `NPM_TOKEN`-Secret. Einmalig auf npmjs.com je Paket einzutragen (GitHub Actions, Repo `spearwolf/shadow-objects`, Workflow `deploy.yml`); ohne diesen Eintrag bricht `deploy.yml` beim OIDC-Austausch ab. `turbo` läuft im Strict-Env-Mode — wer dem Publish-Pfad eine neue Umgebungsvariable gibt, muss sie in `turbo.json#tasks.publishNpmPkg.passThroughEnv` eintragen, sonst kommt sie im Skript nie an.
+- **`deploy.yml` darf nicht umbenannt und nicht in einen `workflow_call`-Reusable verschoben werden.** npm prüft den OIDC-Claim gegen den registrierten Dateinamen und validiert dabei den *aufrufenden* Workflow — aus `ci.yml` heraus aufgerufen käme der Publish als `ci.yml` an und der Trusted-Publisher-Eintrag würde nicht mehr greifen. Deshalb bleibt das Gating bei `workflow_run`; der Checkout ist seit 2026-08-15 auf `github.event.workflow_run.head_sha` gepinnt, sonst publiziert der Job den Default-Branch-HEAD statt des von der CI geprüften Commits.
 - Die `dist/`-Form von `@spearwolf/shadow-objects` ist Teil des öffentlichen Kontrakts, wird aber von keinem Task geprüft. Die beiden Snapshots, die das früher belegen sollten, sind entfernt (siehe `CHANGELOG.md`, 2026-08-15); eine echte Prüfung im Build oder in einem Test steht aus.
 
 ---

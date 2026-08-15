@@ -4,6 +4,41 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-15 — toolchain update: pnpm 11, TypeScript 7, CI/Deployment rework
+
+Package manager, dependency catalog and both GitHub workflows brought up to current versions. Baseline before the change: 13 spec files / 292 tests in the core package, 41 integration tests, 324 e2e tests, all green — the same counts hold after it.
+
+**pnpm 9.15.4 → 11.21.0.** Two majors, and the defaults moved underneath the repository.
+
+- **`package.json`:** `packageManager` is `pnpm@11.21.0`, `engines.pnpm` is `>=11.0.0`. From pnpm 10 on, `managePackageManagerVersions` is on by default, so the `packageManager` field is what actually decides which pnpm runs, locally and on a runner.
+- **`pnpm-workspace.yaml`:** new `allowBuilds` block. pnpm 11 removed `onlyBuiltDependencies` and friends outright and defaults `strictDepBuilds` to `true`, so an install aborts on any dependency that wants to run a build script. Exactly one does: `esbuild`, whose `postinstall` fetches the platform binary.
+- **`minimumReleaseAge` defaults to one day** in pnpm 11, and the supply-chain step re-applies it to every lockfile entry on each install — a lockfile that pins a release younger than the cutoff fails `--frozen-lockfile` on a clean runner even though it installed fine locally. The catalog therefore holds `turbo` at `^2.10.9` rather than the `^2.10.10` that was published 22 hours earlier; pinning the newest patch would have required a `minimumReleaseAgeExclude` entry that rots within a day.
+- **`.npmrc` is auth/registry only** from pnpm 11 on. The repository has none, so nothing had to move; the `.npmrc` copy in `scripts/publishNpmPkg.mjs` was already guarded by an existence check and stays a no-op.
+- `pnpm-lock.yaml` regenerated from a fresh resolution. `lockfileVersion` stays at `9.0`.
+
+**Dependency catalog.** `typescript` 6.0.3 → 7.0.2, `turbo` 2.9.18 → 2.10.9, `@biomejs/biome` 2.4.14 → 2.5.8, `vitest` and `@vitest/*` 4.1.5 → 4.1.10, `playwright` 1.59.1 → 1.62.1, `sinon` 19 → 22 with `@types/sinon` 17 → 22, `happy-dom` 20.9.0 → 20.11.2, `esbuild` 0.28.0 → 0.28.2, `three` 0.179.1 → 0.185.1, `rimraf` 6.1.2 → 6.1.3, `lit-html` 3.3.2 → 3.3.3.
+
+- **`jsdom` and `@types/react` removed** from the catalog, `jsdom` also from the root `devDependencies`. Neither is imported anywhere in the workspace.
+- **`@types/node` stays on the 24.x line** (24.10.12 → 24.13.3 resolved) rather than following to 26. It describes the runtime named in `engines.node`, and that is `>=24.13.0`.
+- **`@spearwolf/eventize` stays on 5.x** (5.0.0 → 5.1.0). `@spearwolf/signalize@0.31.1` declares `peerDependencies: {"@spearwolf/eventize": "^5.0.0"}`, so moving to 6.0.0 resolves a second eventize copy into the tree and breaks emitter identity. Blocked until signalize widens the range.
+- **`typescript` 7 verified against the published output**, since `dist/` is part of the API contract: same 190 files, 45 of 47 `.d.ts` byte-identical, `dist/package.json` differing only in the two intended dependency ranges. The two that differ are `create-worker.d.ts` and `create-worker.bundle.d.ts`, where TS 7 emits `declare function _default(): Worker` where TS 6 emitted `declare const _default: () => Worker` — the same type, written differently, in a module the `exports` map does not expose.
+
+**`vite` held at 7.3.6, not 8.** Vite 8 replaced esbuild with Rolldown/Oxc, and Oxc does not lower native decorators yet ("waiting for the specification to progress", per the Vite 8 migration guide). `src/in-the-dark/SignalsPath.ts` and `src/view/ShadowEnv.ts` use `@signal … accessor` from `@spearwolf/signalize/decorators`; under Vite 8 that syntax reaches node untransformed and 5 spec files die with `SyntaxError: Invalid or unexpected token` before a single test runs. `vitest` declares `vite: ^6 || ^7 || ^8` and resolves 8.x on its own regardless of the catalog, so `pnpm-workspace.yaml` carries an `overrides: {vite: ^7.3.6}` to hold the whole workspace on 7. Drop the override once Oxc lowers decorators.
+
+**`.github/workflows/ci.yml`.**
+
+- `pnpm/action-setup` moved ahead of `actions/setup-node`, which now caches the pnpm store (`cache: pnpm`) — that ordering is required, the cache path is resolved through the pnpm binary. `run_install: true` is gone in favour of an explicit `pnpm install --frozen-lockfile`, since the implicit install ran before any cache could apply.
+- Node version comes from a new `.nvmrc` instead of being written into three places.
+- Added a top-level `permissions: contents: read`, a `timeout-minutes` on the `ci` job, and a `concurrency` group that cancels superseded runs — except on `main`, where cancelling a CI run would also drop the Deployment that keys off its completion.
+
+**`.github/workflows/deploy.yml`.** The file keeps its name: npm trusted publishing matches the OIDC claim against the exact registered workflow filename, and it validates the *calling* workflow, so the publish step cannot move into a reusable workflow invoked from `ci.yml`.
+
+- **Publishes the commit CI actually validated.** `actions/checkout` in a `workflow_run` job resolves to the default branch HEAD when no `ref` is given, so two pushes in quick succession could publish a commit that was never tested. It now checks out `github.event.workflow_run.head_sha`.
+- The job condition gained `github.event.workflow_run.event == 'push'`, so nothing but a branch push can reach the registry.
+- Same pnpm/setup-node ordering and store cache as `ci.yml`, plus an explicit frozen install and a `timeout-minutes`.
+
+**`turbo.json`:** `$schema` follows turbo to `v2-10-9`.
+
 ## 2026-08-15 — npm publish over OIDC trusted publishing
 
 The last three `Deployment` runs died after 25 seconds with `ENEEDAUTH`, so `@spearwolf/shadow-objects` sits at `0.32.0` on npm while the repository is at `0.33.0`. Two independent causes, either of which was enough on its own.

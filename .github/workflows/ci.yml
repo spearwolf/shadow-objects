@@ -5,25 +5,41 @@ on:
     paths-ignore:
       - '**.md'
 
+permissions:
+  contents: read
+
+# Supersede in-flight runs for the same ref, but never on main: the Deployment
+# workflow keys off a *completed* CI run, and cancelling one would drop the
+# publish for that commit on the floor.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   ci:
     name: Build and run tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
 
+      # Must run before setup-node: `cache: pnpm` needs the pnpm binary to
+      # resolve the store path. The version comes from the `packageManager`
+      # field in package.json — do not pin it here as well.
+      - uses: pnpm/action-setup@v6
+
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: .nvmrc
+          cache: pnpm
 
-      - uses: pnpm/action-setup@v6
-        with:
-          run_install: true
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run all tests
+      - name: Build, typecheck, test and lint
         run: pnpm run ci
 
   e2e:
@@ -33,13 +49,15 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - uses: pnpm/action-setup@v6
+
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: .nvmrc
+          cache: pnpm
 
-      - uses: pnpm/action-setup@v6
-        with:
-          run_install: true
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium firefox

@@ -95,16 +95,18 @@ Documentation that invents plausible-sounding names is the most dangerous kind. 
 
 | Concern | Tool |
 |---|---|
-| Package manager | `pnpm` (workspaces + `catalog:` for dependency-version SSOT) |
-| Monorepo orchestrator | `turborepo` — pipeline in `turbo.json` |
-| TypeScript | `tsc` 6 — only emits `.d.ts` (declaration-only) |
+| Package manager | `pnpm` 11 (workspaces + `catalog:` for dependency-version SSOT) |
+| Monorepo orchestrator | `turborepo` 2.10 — pipeline in `turbo.json` |
+| TypeScript | `tsc` 7 — only emits `.d.ts` (declaration-only) |
 | Bundler / transpiler | `esbuild` 0.28 (lib transpile + single-file inline-worker bundle) |
 | Unit / integration tests | `vitest` 4 (happy-dom for unit, `@vitest/browser` + Playwright provider for DOM-integration) |
-| E2E | `@playwright/test` 1.59 |
-| Lint + format | `biome` 2.4 (replaces eslint + prettier) |
-| Dev server | `vite` (only `shae-offscreen-canvas` demo and `shadow-objects-e2e`) |
+| E2E | `@playwright/test` 1.62 |
+| Lint + format | `biome` 2.5 (replaces eslint + prettier) |
+| Dev server | `vite` 7 (only `shae-offscreen-canvas` demo and `shadow-objects-e2e`) |
 
 **Dependency versions:** never write a plain version range in a per-package `package.json`. Add the version to the `catalog:` block of `pnpm-workspace.yaml` and reference it from each package as `"<dep>": "catalog:"`.
+
+**Deliberate holdbacks.** `vite` (override at 7.x — Oxc does not lower the `@signal … accessor` decorators), `@spearwolf/eventize` (5.x — signalize peers on `^5.0.0`) and `turbo` (2.10.9 — pnpm's one-day `minimumReleaseAge`) are pinned below latest on purpose. Each carries its reason as a comment in `pnpm-workspace.yaml`; `CLAUDE.md` has the long form. Bumping one without reading the comment breaks the test suite or the install.
 
 **Run tasks via turbo (`pnpm build`, `pnpm test`, …) instead of invoking the underlying tools directly** — the cache and the cross-package dependency graph are defined there. See `CLAUDE.md` for the full command reference.
 

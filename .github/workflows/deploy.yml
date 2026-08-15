@@ -1,5 +1,9 @@
 name: Deployment
 
+# This workflow must keep its filename. npm trusted publishing matches the
+# OIDC claim against the exact workflow file registered for the package, and
+# it validates the *calling* workflow — so the publish step can never move
+# into a reusable workflow invoked from ci.yml.
 on:
   workflow_run:
     workflows: [Continuous Integration]
@@ -16,19 +20,32 @@ jobs:
   deploy:
     name: Publish all NPM Packages
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    timeout-minutes: 20
+    # `conclusion` covers every job in the CI workflow, so both the build/test
+    # job and the e2e job have to be green. The `event` guard keeps anything
+    # other than a branch push from reaching the registry.
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push' }}
     steps:
+      # Pin the checkout to the commit CI actually validated. Without `ref`,
+      # a workflow_run checkout resolves to the default branch HEAD, which by
+      # then may already be a newer, untested commit.
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: .nvmrc
+          cache: pnpm
           registry-url: https://registry.npmjs.org
           scope: '@spearwolf'
 
-      - uses: pnpm/action-setup@v6
-        with:
-          run_install: true
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       # Trusted publishing needs npm >= 11.5.1. Node 24 ships a new enough npm today,
       # but the publish must not degrade into an ENEEDAUTH if that ever regresses.

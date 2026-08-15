@@ -1,47 +1,72 @@
 packages:
   - 'packages/*'
 
+# vitest declares `vite: ^6 || ^7 || ^8` and would resolve 8.x on its own,
+# independently of the catalog entry below. Vite 8 swapped esbuild for
+# Rolldown/Oxc, and Oxc does not lower native decorators yet ("waiting for the
+# specification to progress" — Vite 8 migration guide). `src/in-the-dark/
+# SignalsPath.ts` and `src/view/ShadowEnv.ts` use `@signal ... accessor`, so
+# their transformed output reaches node unlowered and dies with
+# `SyntaxError: Invalid or unexpected token`. This override keeps every vite in
+# the workspace on 7.x. Drop it once Oxc lowers decorators.
+overrides:
+  vite: ^7.3.6
+
+# pnpm >=11 refuses dependency build scripts unless they are listed here
+# (`strictDepBuilds` is on by default). esbuild's postinstall fetches the
+# platform-specific binary — without it there is no compiler.
+allowBuilds:
+  esbuild: true
+
 # Single source of truth for dependency versions.
 # Reference from package.json with `"<dep>": "catalog:"`.
 catalog:
   # --- runtime deps (shipped) ---
-  '@spearwolf/eventize': ^5.0.0
-  '@spearwolf/signalize': ^0.30.0
-  three: ^0.179.1
+  # eventize stays on 5.x: @spearwolf/signalize declares `peerDependencies:
+  # {"@spearwolf/eventize": "^5.0.0"}`. Moving to 6.x would resolve a second
+  # eventize copy into the tree and break emitter identity. Revisit once
+  # signalize widens the range.
+  '@spearwolf/eventize': ^5.1.0
+  '@spearwolf/signalize': ^0.31.1
+  three: ^0.185.1
 
   # --- typescript ---
-  typescript: ^6.0.3
+  typescript: ^7.0.2
   tslib: ^2.8.1
 
   # --- build ---
-  esbuild: ^0.28.0
+  esbuild: ^0.28.2
   esbuild-plugin-inline-worker: ^0.1.1
 
   # --- test ---
-  vitest: ^4.1.5
-  '@vitest/browser': ^4.1.5
-  '@vitest/browser-playwright': ^4.1.5
-  happy-dom: ^20.9.0
-  jsdom: ^29.1.1
-  sinon: ^19.0.2
-  '@types/sinon': ^17.0.4
-  lit-html: ^3.3.2
+  vitest: ^4.1.10
+  '@vitest/browser': ^4.1.10
+  '@vitest/browser-playwright': ^4.1.10
+  happy-dom: ^20.11.2
+  sinon: ^22.1.0
+  '@types/sinon': ^22.0.0
+  lit-html: ^3.3.3
 
   # --- e2e ---
-  '@playwright/test': ^1.59.1
-  playwright: ^1.59.1
-  vite: ^6.2.2
+  '@playwright/test': ^1.62.1
+  playwright: ^1.62.1
+  # Held at 7.x on purpose — see the `overrides` block at the top of this file.
+  vite: ^7.3.6
 
   # --- lint/format ---
-  '@biomejs/biome': ^2.4.14
+  '@biomejs/biome': ^2.5.8
 
   # --- types ---
+  # Pinned to the 24.x line to match `engines.node` (>=24.13.0) — the type
+  # surface must not describe APIs the supported runtime does not have.
   '@types/node': ^24.10.12
-  '@types/react': ^18.3.28
 
   # --- monorepo orchestrator ---
-  turbo: ^2.9.18
+  # Deliberately one patch behind latest: `minimumReleaseAge` (1 day, pnpm >=11
+  # default) holds back releases younger than that. Pinning the newest patch
+  # would force a `minimumReleaseAgeExclude` entry that rots within a day.
+  turbo: ^2.10.9
 
   # --- misc ---
-  rimraf: ^6.1.2
+  rimraf: ^6.1.3
   leasot: ^14.4.0

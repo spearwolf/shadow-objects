@@ -68,6 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Docs (terminology):** the two unrelated concepts both called "context" are now disambiguated. Entity Context (`provideContext`/`useContext`, DI along the entity tree) vs. `ComponentContext` (View-Layer namespace binding to a Shadow Environment) — cross-referenced notes in `concepts.md`, `api-reference.md`, and `cheat-sheet.md`; headings renamed to "Entity Context".
 - **Docs (links):** fixed three dead links in `getting-started.md` and `concepts.md` still pointing at the pre-flattening `02-guides/` and `03-api/` layout.
 - **Packaging:** releases are published from GitHub Actions through npm trusted publishing (OIDC) rather than a long-lived token, so every tarball from this version on carries a provenance attestation linking it to the commit and workflow run that built it. Nothing in the published `dist/` layout changes; details in the [monorepo changelog](../../CHANGELOG.md).
+- **Dependencies:** the declared runtime ranges in the published `package.json` widen to `@spearwolf/eventize@^5.1.0` and `@spearwolf/signalize@^0.31.1`. eventize deliberately stays on 5.x — signalize peers on `^5.0.0`, and 6.0.0 would pull a second copy into a consumer's tree.
+- **Build:** declarations are emitted by TypeScript 7. The published file list is unchanged and the declarations are byte-identical except for `create-worker.d.ts` / `create-worker.bundle.d.ts`, which now read `declare function _default(): Worker` instead of `declare const _default: () => Worker` — the same type in a different spelling, in a module the `exports` map does not expose.
 
 ## [0.33.0] - 2026-06-19
 
