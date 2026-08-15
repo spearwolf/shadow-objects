@@ -15,6 +15,14 @@ The last three `Deployment` runs died after 25 seconds with `ENEEDAUTH`, so `@sp
 
 **One manual step is left and cannot be done from the repository:** each package needs a trusted publisher on npmjs.com — GitHub Actions, repository `spearwolf/shadow-objects`, workflow `deploy.yml`. Until that entry exists, `deploy.yml` fails at the OIDC exchange.
 
+## 2026-08-15 — removed the stale `dist/` snapshots
+
+`docs/superpowers/specs/dist-snapshot.txt` and `dist-package.json.snapshot` are gone. They were written for the 2026-05-09 toolchain renewal to prove the published output survived it byte-for-byte, and served that purpose. Since then they were read by no task, no test and no CI job, and both had drifted away from the build: the file list still carried a `tsconfig.lib.tsbuildinfo` the pipeline stopped emitting, and the package snapshot still described version `0.30.2` with `@spearwolf/signalize@^0.29.0` against a build of `0.33.0` and `^0.30.0`. A reference that nothing enforces and that quietly goes wrong is worse than no reference.
+
+- **`CLAUDE.md`:** the `dist/` layout is still part of the public API contract. The paragraph now says what actually holds — nothing asserts it automatically — and how to diff the output against a previous build instead of pointing at two files that no longer describe it.
+- **`biome.json`:** dropped the two `files.includes` exclusions that existed only for those snapshots.
+- `docs/superpowers/specs/2026-05-09-build-system-renewal-design.md` stays. It is a dated design record, linked from this changelog and from `Backlog.md`, not a verification artifact.
+
 ## 2026-08-14 — strictNullChecks
 
 - **`tsconfig.json`:** `strictNullChecks` is `true`, alongside the other `strict`-family flags the file spells out.

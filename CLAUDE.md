@@ -70,7 +70,7 @@ Three stages, all in one Node script:
 3. **Bundle** — esbuild with `bundle: true` on `dist/src/bundle.js` (the *transpiled* entry, not `src/bundle.ts`, so the package.json `sideEffects` array — which references `dist/src/*.js` paths — keeps the side-effect imports from being tree-shaken). Two custom resolvers swap `create-worker.js` → `create-worker.bundle.js` (the inlined-blob variant) and route the virtual `./bundle.worker.js` import to `dist/src/shadow-objects.worker.js`. The `esbuild-plugin-inline-worker` then bundles + base64-inlines that worker.
 4. `scripts/makePackageJson.mjs` writes `dist/package.json` (resolves `workspace:*` and `catalog:` refs, applies `package.override.json`, strips the `dist/` prefix from `exports`/`main`/`module`/`types`).
 
-The published `dist/` layout is part of the public API contract — its file list and `dist/package.json` shape must stay stable. Snapshots used for verification: `docs/superpowers/specs/dist-snapshot.txt` and `docs/superpowers/specs/dist-package.json.snapshot`.
+The published `dist/` layout is part of the public API contract — its file list and `dist/package.json` shape must stay stable. Nothing in the repository asserts this automatically; a change that adds, removes or renames a file under `dist/` has to be a deliberate decision with a `CHANGELOG.md` entry. To see what a change does to the output, diff `find packages/shadow-objects/dist -type f | sort` and `packages/shadow-objects/dist/package.json` against a build of the previous commit.
 
 ## Changelogs and Backlog — keep them in sync
 
