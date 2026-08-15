@@ -41,7 +41,15 @@
     },
     "publishNpmPkg": {
       "dependsOn": ["^build", "build"],
-      "cache": false
+      "cache": false,
+      "passThroughEnv": [
+        "ACTIONS_ID_TOKEN_REQUEST_URL",
+        "ACTIONS_ID_TOKEN_REQUEST_TOKEN",
+        "GITHUB_*",
+        "NPM_CONFIG_*",
+        "NODE_AUTH_TOKEN",
+        "NPM_TOKEN"
+      ]
     }
   }
 }

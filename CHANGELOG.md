@@ -4,6 +4,17 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-15 — npm publish over OIDC trusted publishing
+
+The last three `Deployment` runs died after 25 seconds with `ENEEDAUTH`, so `@spearwolf/shadow-objects` sits at `0.32.0` on npm while the repository is at `0.33.0`. Two independent causes, either of which was enough on its own.
+
+- **`.github/workflows/deploy.yml`:** publishes through npm trusted publishing instead of a long-lived token. The repository has no `NPM_TOKEN` secret, so `${{ secrets.NPM_TOKEN }}` expanded to an empty string and `NODE_AUTH_TOKEN` arrived empty. The `id-token: write` permission the file already declared is now what actually carries the authentication: `always-auth` and the `NODE_AUTH_TOKEN` env are gone, `actions/setup-node` moved from `v5` to `v6` to match `ci.yml`, and a preflight step upgrades npm if the runner ever ships something below the 11.5.1 that trusted publishing requires.
+- **`turbo.json`:** the `publishNpmPkg` task declares `passThroughEnv`. turbo runs its tasks in strict environment mode, which stripped `ACTIONS_ID_TOKEN_REQUEST_URL` / `_TOKEN`, `NPM_CONFIG_USERCONFIG` (written by `actions/setup-node`) and `NODE_AUTH_TOKEN` before `npm publish` ever saw them. The token route would have failed identically with the secret in place.
+- **`scripts/publishNpmPkg.mjs`:** refuses to publish when neither an OIDC id-token request nor a token reaches the process, and names the two setups that can be missing instead of leaving a bare `ENEEDAUTH` in the log. npm's own output is inherited rather than swallowed, and the diagnostics no longer print the first six characters of the token into the build log.
+- **`packages/shae-offscreen-canvas/package.json`:** gained `repository`, `homepage` and `publishConfig.registry`. Trusted publishing generates provenance attestations without being asked, and provenance without a `repository` field aborts the publish — the package would have broken on the very step that fixed the other one.
+
+**One manual step is left and cannot be done from the repository:** each package needs a trusted publisher on npmjs.com — GitHub Actions, repository `spearwolf/shadow-objects`, workflow `deploy.yml`. Until that entry exists, `deploy.yml` fails at the OIDC exchange.
+
 ## 2026-08-14 — strictNullChecks
 
 - **`tsconfig.json`:** `strictNullChecks` is `true`, alongside the other `strict`-family flags the file spells out.

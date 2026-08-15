@@ -1,6 +1,7 @@
 {
   "name": "@spearwolf/shae-offscreen-canvas",
   "description": "an offscreen canvas element based on the shadow-objects framework",
+  "homepage": "https://github.com/spearwolf/shadow-objects/",
   "version": "0.6.0",
   "type": "module",
   "license": "Apache-2.0",
@@ -8,6 +9,14 @@
     "name": "Wolfger Schramm",
     "email": "wolfger@spearwolf.de",
     "url": "https://www.spearwolf.de"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spearwolf/shadow-objects.git",
+    "directory": "packages/shae-offscreen-canvas"
   },
   "main": "src/bundle.js",
   "module": "src/bundle.js",

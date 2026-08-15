@@ -10,13 +10,21 @@ const projectRoot = path.resolve(process.cwd());
 const packageRoot = path.resolve(projectRoot, process.argv[2]);
 const pkgJson = JSON.parse(fs.readFileSync(path.resolve(packageRoot, 'package.json'), 'utf8'));
 
+// npm reaches the registry either through OIDC trusted publishing (CI) or a token (local).
+// Both arrive as environment variables, and turbo runs its tasks in strict env mode — every
+// name read here has to be listed in the `publishNpmPkg` task's `passThroughEnv` in turbo.json,
+// or it is stripped before this script ever starts.
+const hasOidc = Boolean(process.env.ACTIONS_ID_TOKEN_REQUEST_URL && process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN);
+const authToken = process.env.NODE_AUTH_TOKEN || process.env.NPM_TOKEN;
+
 console.log('workspaceRoot:', workspaceRoot);
 console.log('projectRoot:', projectRoot);
 console.log('packageRoot:', packageRoot);
 console.log('dryRun:', DRY_RUN ? 'yes' : 'no');
-console.log('env: ---');
-console.log(' - NPM_TOKEN:', process.env.NPM_TOKEN ? `${process.env.NPM_TOKEN.substring(0, 6)}...` : 'unset');
-console.log(' - NODE_AUTH_TOKEN:', process.env.NODE_AUTH_TOKEN ? `${process.env.NODE_AUTH_TOKEN.substring(0, 6)}...` : 'unset');
+console.log('auth: ---');
+console.log(' - OIDC trusted publishing:', hasOidc ? 'available' : 'unavailable');
+console.log(' - NPM_TOKEN:', process.env.NPM_TOKEN ? 'set' : 'unset');
+console.log(' - NODE_AUTH_TOKEN:', process.env.NODE_AUTH_TOKEN ? 'set' : 'unset');
 console.log('packageJson: ---');
 console.dir(pkgJson);
 
@@ -47,11 +55,23 @@ exec(`npm show ${pkgJson.name} versions --json`, (error, stdout, stderr) => {
 });
 
 function publishPackage(dryRun = DRY_RUN) {
+  if (!dryRun && !hasOidc && !authToken) {
+    console.error(
+      'no way to authenticate against the registry: neither an OIDC id-token request (ACTIONS_ID_TOKEN_REQUEST_URL /',
+      '_TOKEN) nor NODE_AUTH_TOKEN / NPM_TOKEN reached this process.',
+    );
+    console.error('in CI this usually means the job lacks `permissions: id-token: write`,');
+    console.error('or turbo stripped the variable because it is missing from `passThroughEnv` in turbo.json.');
+    process.exit(1);
+  }
+
   if (packageRoot !== projectRoot) {
     preparePackageRoot();
   }
 
-  execSync(`npm publish --access public${dryRun ? ' --dry-run' : ''}`, {cwd: packageRoot});
+  // Provenance attestations come for free with trusted publishing; npm generates them
+  // without --provenance as long as the package.json carries a `repository` field.
+  execSync(`npm publish --access public${dryRun ? ' --dry-run' : ''}`, {cwd: packageRoot, stdio: 'inherit'});
 
   process.exit(0);
 }

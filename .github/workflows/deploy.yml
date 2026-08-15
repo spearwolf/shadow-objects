@@ -6,8 +6,10 @@ on:
     types: [completed]
     branches: [main]
 
+# npm trusted publishing (OIDC): the runner mints a short-lived id-token that npm
+# exchanges for a publish credential. No NPM_TOKEN secret is involved.
 permissions:
-  id-token: write  # Required for OIDC
+  id-token: write
   contents: read
 
 jobs:
@@ -18,18 +20,27 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          scope: '@spearwolf'
+
       - uses: pnpm/action-setup@v6
         with:
           run_install: true
 
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
-          always-auth: true
-          scope: '@spearwolf'
+      # Trusted publishing needs npm >= 11.5.1. Node 24 ships a new enough npm today,
+      # but the publish must not degrade into an ENEEDAUTH if that ever regresses.
+      - name: Ensure npm supports trusted publishing
+        run: |
+          version="$(npm --version)"
+          echo "npm $version"
+          if ! printf '11.5.1\n%s\n' "$version" | sort -C -V; then
+            echo "npm $version is older than the required 11.5.1, upgrading"
+            npm install -g npm@latest
+            npm --version
+          fi
 
-      - run: pnpm run publishNpmPkg
-        name: Publish packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish packages
+        run: pnpm run publishNpmPkg

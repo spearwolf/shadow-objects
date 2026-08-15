@@ -351,6 +351,8 @@ Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements
 - `engines.node: ">=24.13.0"` blockiert Mitwirkende auf Node 22.x. Hinweis: Node 24+ ships eine inerte `localStorage`-Stub auf `globalThis`; für Tests gefixt durch `packages/shadow-objects/vitest.setup.ts`.
 - `make:todo` ist Honor-System (kein Pre-Commit-Hook, kein CI-Check).
 - Manuelles `CHANGELOG.md`-Pflegen ohne Changesets/release-please.
+- **npm-Publish läuft über OIDC Trusted Publishing**, nicht über ein `NPM_TOKEN`-Secret. Einmalig auf npmjs.com je Paket einzutragen (GitHub Actions, Repo `spearwolf/shadow-objects`, Workflow `deploy.yml`); ohne diesen Eintrag bricht `deploy.yml` beim OIDC-Austausch ab. `turbo` läuft im Strict-Env-Mode — wer dem Publish-Pfad eine neue Umgebungsvariable gibt, muss sie in `turbo.json#tasks.publishNpmPkg.passThroughEnv` eintragen, sonst kommt sie im Skript nie an.
+- `docs/superpowers/specs/dist-package.json.snapshot` steht noch auf `0.30.2` und weicht damit von `dist/package.json` ab (Version, `@spearwolf/signalize`-Range). Die Layout-Prüfung trägt der Snapshot weiter, den Versionsvergleich nicht.
 
 ---
 
