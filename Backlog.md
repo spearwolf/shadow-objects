@@ -88,8 +88,8 @@ ComponentContext│  ─ Destroy
 ### 2.3 Verwendete Technologien
 
 - **TypeScript 7** (`strict: true` mit **`strictNullChecks: true`** in der Wurzel-`tsconfig.json`).
-- **`@spearwolf/signalize` 0.31.1** — Signals/Effects.
-- **`@spearwolf/eventize` 5.1.0** — Event-Emitter. Bleibt auf 5.x, solange signalize auf `^5.0.0` peert.
+- **`@spearwolf/signalize` 1.0.0-beta.0** — Signals/Effects. Version-exakt gepinnt, solange es ein Beta ist.
+- **`@spearwolf/eventize` 6.0.0** — Event-Emitter. Peer von signalize; beide werden nur gemeinsam gehoben.
 - **esbuild 0.28** — Bundling, mit `esbuild-plugin-inline-worker` für den Worker-Inline.
 - **vitest 4** für Unit-Tests (happy-dom) und Integrationstests (browser-mode + Playwright-Provider). **Playwright 1.62** für E2E. **vite 7** per Override festgehalten (Oxc in Vite 8 senkt Decorators nicht ab).
 - **turborepo 2.10** als Monorepo-Orchestrator, **biome 2.5** für Lint/Format, **pnpm 11** mit `catalog:`-SSOT, Node ≥ 24.13.0.
@@ -336,8 +336,9 @@ Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements
 
 - Versionen leben jetzt zentral in `pnpm-workspace.yaml#catalog:` — keine Drift mehr möglich. ✅
 - Tooling auf modernen Major-Versionen: vitest 4, biome 2.5, turbo 2.10, esbuild 0.28, Playwright 1.62, TypeScript 7, happy-dom 20, pnpm 11. ✅
-- Drei bewusste Holdbacks, jeweils mit Begründung im Kommentar in `pnpm-workspace.yaml`: `vite` (Override auf 7.x, weil Oxc keine nativen Decorators absenkt), `@spearwolf/eventize` (5.x wegen des signalize-Peers), `turbo` (2.10.9 wegen `minimumReleaseAge`).
-- **Offen, liegt außerhalb dieses Repos:** `@spearwolf/signalize` braucht ein Release mit `peerDependencies: {"@spearwolf/eventize": "^5.0.0 || ^6.0.0"}`. Bis dahin ist eventize 6 hier gesperrt.
+- Zwei bewusste Holdbacks, jeweils mit Begründung im Kommentar in `pnpm-workspace.yaml`: `vite` (Override auf 7.x, weil Oxc keine nativen Decorators absenkt), `turbo` (2.10.9 wegen `minimumReleaseAge`).
+- signalize 1.0.0-beta.0 + eventize 6.0.0 sind drin; der alte 5.x-Holdback ist erledigt, weil signalize jetzt auf `^6.0.0` peert. Beide Pakete werden nur gemeinsam gehoben, und `pnpm why -r @spearwolf/eventize` muss danach genau eine Version melden. ✅
+- **Offen:** signalize von `1.0.0-beta.0` auf das finale `1.0.0` ziehen, sobald es da ist — dann auch den `minimumReleaseAgeExclude`-Eintrag mitziehen oder streichen.
 - **Offen:** Sobald Oxc native Decorators absenkt, den `vite`-Override entfernen und auf 8.x gehen.
 - Kern-Lib hat **keine `peerDependencies`** — `@spearwolf/eventize`/`signalize` sind harte Deps; bei Mehrfach-Resolutionen drohen Duplikate.
 

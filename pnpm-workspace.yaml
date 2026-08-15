@@ -22,12 +22,13 @@ allowBuilds:
 # Reference from package.json with `"<dep>": "catalog:"`.
 catalog:
   # --- runtime deps (shipped) ---
-  # eventize stays on 5.x: @spearwolf/signalize declares `peerDependencies:
-  # {"@spearwolf/eventize": "^5.0.0"}`. Moving to 6.x would resolve a second
-  # eventize copy into the tree and break emitter identity. Revisit once
-  # signalize widens the range.
-  '@spearwolf/eventize': ^5.1.0
-  '@spearwolf/signalize': ^0.31.1
+  # eventize and signalize move as a pair: signalize 1.0 declares
+  # `peerDependencies: {"@spearwolf/eventize": "^6.0.0"}`. Both marker symbols
+  # (`Symbol.for('eventize')`, the `@spearwolf/signalize/` keys) are realm-wide,
+  # so two majors of either in one tree share a slot and throw at the boundary.
+  # Keep the ranges pinned to one major each and check `pnpm why` after a bump.
+  '@spearwolf/eventize': ^6.0.0
+  '@spearwolf/signalize': 1.0.0-beta.0
   three: ^0.185.1
 
   # --- typescript ---
@@ -70,3 +71,11 @@ catalog:
   # --- misc ---
   rimraf: ^6.1.3
   leasot: ^14.4.0
+
+# `minimumReleaseAge` (1 day, pnpm >=11 default) exists to keep a freshly
+# compromised third-party release out of the tree. The @spearwolf packages are
+# first-party — published from this account, reviewed here — so the cooling-off
+# buys nothing and only blocks the install. Written by pnpm on install; the
+# entry is version-exact and can go once the release is a day old.
+minimumReleaseAgeExclude:
+  - '@spearwolf/signalize@1.0.0-beta.0'

@@ -761,6 +761,59 @@ describe('Kernel', () => {
         // After destruction, signal should be destroyed - check by verifying it can't be read properly
         expect(() => sig.value).not.toThrow();
       });
+
+      it('should create a signal without an initial value', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        let createdSignal: Signal<string | undefined> | undefined;
+
+        @ShadowObject({registry, token: 'testCreateSignalEmpty'})
+        class TestCreateSignalEmpty {
+          constructor({createSignal: cs}: ShadowObjectCreationAPI) {
+            // the API hands out signalize's own overload set, so the missing initial value
+            // widens the type to `Signal<string | undefined>` instead of lying about it
+            createdSignal = cs<string>();
+          }
+        }
+        expect(TestCreateSignalEmpty).toBeDefined();
+
+        kernel.createEntity(generateUUID(), 'testCreateSignalEmpty');
+
+        expect(createdSignal).toBeDefined();
+        expect(value(createdSignal!)).toBeUndefined();
+
+        createdSignal!.set('later');
+        expect(value(createdSignal!)).toBe('later');
+
+        kernel.destroy();
+      });
+
+      it('should create a lazy signal from a factory', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const factory = vi.fn(() => 42);
+        let createdSignal: Signal<number> | undefined;
+
+        @ShadowObject({registry, token: 'testCreateSignalLazy'})
+        class TestCreateSignalLazy {
+          constructor({createSignal: cs}: ShadowObjectCreationAPI) {
+            createdSignal = cs(factory, {lazy: true});
+          }
+        }
+        expect(TestCreateSignalLazy).toBeDefined();
+
+        kernel.createEntity(generateUUID(), 'testCreateSignalLazy');
+
+        expect(createdSignal).toBeDefined();
+        expect(factory).not.toHaveBeenCalled();
+
+        expect(value(createdSignal!)).toBe(42);
+        expect(factory).toHaveBeenCalledTimes(1);
+
+        kernel.destroy();
+      });
     });
 
     describe('createMemo', () => {

@@ -65,7 +65,7 @@ export default {
 | `useParentContext` | `(name) => SignalReader` | Read context starting from parent (skip self) |
 | `provideContext` | `(name, value?) => Signal` | Provide value to all descendant entities |
 | `provideGlobalContext` | `(name, value?) => Signal` | Provide value to all entities everywhere |
-| `createSignal` | `(initial?) => Signal` | Create local reactive state |
+| `createSignal` | `(initial) => Signal`, `() => Signal<T \| undefined>`, `(factory, {lazy: true}) => Signal` | Create local reactive state |
 | `createMemo` | `(fn) => SignalReader` | Derived/computed value, re-evaluates when deps change |
 | `createEffect` | `(fn, options?) => Effect` | Run side effect, re-runs when deps change |
 | `createResource` | `(factory, cleanup?) => Signal` | Manage external resources with auto teardown |

@@ -13,11 +13,11 @@ catalogs:
       specifier: ^1.62.1
       version: 1.62.1
     '@spearwolf/eventize':
-      specifier: ^5.1.0
-      version: 5.1.0
+      specifier: ^6.0.0
+      version: 6.0.0
     '@spearwolf/signalize':
-      specifier: ^0.31.1
-      version: 0.31.1
+      specifier: 1.0.0-beta.0
+      version: 1.0.0-beta.0
     '@types/node':
       specifier: ^24.10.12
       version: 24.13.3
@@ -118,10 +118,10 @@ importers:
     dependencies:
       '@spearwolf/eventize':
         specifier: 'catalog:'
-        version: 5.1.0
+        version: 6.0.0
       '@spearwolf/signalize':
         specifier: 'catalog:'
-        version: 0.31.1(@spearwolf/eventize@5.1.0)
+        version: 1.0.0-beta.0(@spearwolf/eventize@6.0.0)
     devDependencies:
       esbuild-plugin-inline-worker:
         specifier: 'catalog:'
@@ -131,7 +131,7 @@ importers:
     dependencies:
       '@spearwolf/eventize':
         specifier: 'catalog:'
-        version: 5.1.0
+        version: 6.0.0
       '@spearwolf/shadow-objects':
         specifier: workspace:*
         version: link:../shadow-objects
@@ -150,7 +150,7 @@ importers:
     dependencies:
       '@spearwolf/eventize':
         specifier: 'catalog:'
-        version: 5.1.0
+        version: 6.0.0
       '@spearwolf/shadow-objects':
         specifier: workspace:*
         version: link:../shadow-objects
@@ -181,13 +181,13 @@ importers:
     dependencies:
       '@spearwolf/eventize':
         specifier: 'catalog:'
-        version: 5.1.0
+        version: 6.0.0
       '@spearwolf/shadow-objects':
         specifier: workspace:*
         version: link:../shadow-objects
       '@spearwolf/signalize':
         specifier: 'catalog:'
-        version: 0.31.1(@spearwolf/eventize@5.1.0)
+        version: 1.0.0-beta.0(@spearwolf/eventize@6.0.0)
       three:
         specifier: 'catalog:'
         version: 0.185.1
@@ -615,15 +615,15 @@ packages:
   '@sinonjs/samsam@10.0.2':
     resolution: {integrity: sha512-8lVwD1Df1BmzoaOLhMcGGcz/Jyr5QY2KSB75/YK1QgKzoabTeLdIVyhXNZK9ojfSKSdirbXqdbsXXqP9/Ve8+A==}
 
-  '@spearwolf/eventize@5.1.0':
-    resolution: {integrity: sha512-MFkjYk3DY5cyVhXUSKi/PWX47LF8v+bHzpj0jraPmUPgQjt0H20bV02BwawxCJOu5070dHLoq/Qb3rSUzExNLQ==}
+  '@spearwolf/eventize@6.0.0':
+    resolution: {integrity: sha512-7mIk5S3IdILBBk91NvhN7Vvh7x23B++3j+N1ZYoGgtP6i8vEMVN5FS2qEJrmsp57SI2V/3nGhx8fGWG/oTS14A==}
     engines: {node: '>=18.16'}
 
-  '@spearwolf/signalize@0.31.1':
-    resolution: {integrity: sha512-uziSQJ6OHDcSDvbC50ddvEMcT2tcz+Bn32hpuU5RSKh/iiPY5LxF6yQATUZyI/gb9XODpFLk4NHRgjsUuVEuJg==}
-    engines: {node: '>=24.13'}
+  '@spearwolf/signalize@1.0.0-beta.0':
+    resolution: {integrity: sha512-iTRQRjZWnO5OHiBKXGvGlLe3B3aMr2xjZaBQRiOoG6OeIYaBMKzWQtUhK/1HWTsqVvQOAnFMtYEl9GOMngwdoA==}
+    engines: {node: '>=22'}
     peerDependencies:
-      '@spearwolf/eventize': ^5.0.0
+      '@spearwolf/eventize': ^6.0.0
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
@@ -1649,11 +1649,11 @@ snapshots:
       '@sinonjs/commons': 3.0.1
       type-detect: 4.1.0
 
-  '@spearwolf/eventize@5.1.0': {}
+  '@spearwolf/eventize@6.0.0': {}
 
-  '@spearwolf/signalize@0.31.1(@spearwolf/eventize@5.1.0)':
+  '@spearwolf/signalize@1.0.0-beta.0(@spearwolf/eventize@6.0.0)':
     dependencies:
-      '@spearwolf/eventize': 5.1.0
+      '@spearwolf/eventize': 6.0.0
 
   '@standard-schema/spec@1.1.0': {}
 

@@ -134,7 +134,9 @@ export class Entity {
   constructor(kernel: Kernel, uuid: string) {
     this.#kernel = kernel;
     this.#uuid = uuid;
-    once(this as Entity, onDestroy, Priority.Min, this);
+    // both slots need the concrete class: eventize cannot reduce its listener-object
+    // conditional over the polymorphic `this` type, and no overload then matches
+    once(this as Entity, onDestroy, Priority.Min, this as Entity);
   }
 
   traverse(callback: (entity: Entity) => void) {
@@ -364,7 +366,10 @@ export class Entity {
       return this.#rootContexts.get(name)!.signal as Signal<T>;
     }
     const rootCtx = this.#kernel.findOrCreateRootContext(name);
-    const signal = createSignal<T>();
+    // `createSignal<T>()` is a `Signal<T | undefined>` since signalize 1.0 — a context
+    // signal does start out empty. The cast keeps the same contract `provideContext()`
+    // hands out; callers see the `undefined` through `Maybe<T>` in the shadow-object API.
+    const signal = createSignal<T>() as Signal<T>;
     const cleanup = rootCtx.add(signal);
     this.#rootContexts.set(name, {cleanup, signal});
     return signal;

@@ -58,7 +58,7 @@ export class ShadowEnv {
     const self = this as ShadowEnv;
     retain(self, ShadowEnv.ContextCreated);
 
-    on(self, ShadowEnv.ContextLost, Priority.AAA, () => {
+    on(self, ShadowEnv.ContextLost, Priority.Critical, () => {
       retainClear(self, ShadowEnv.ContextCreated);
     });
 

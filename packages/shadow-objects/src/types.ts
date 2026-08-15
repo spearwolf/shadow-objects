@@ -141,10 +141,14 @@ export interface ShadowObjectCreationAPI {
 
   createResource<T = unknown>(factory: () => T | undefined, cleanup?: (resource: NonNullable<T>) => unknown): Signal<Maybe<T>>;
 
-  // `typeof` keeps all four createEffect() overloads intact — `Parameters<>` would collapse them
-  // onto the last one and make the common `createEffect(callback)` call a type error.
+  // `typeof` keeps every overload intact — `Parameters<>`/`ReturnType<>` collapse them onto the
+  // last one. For createEffect that made the common `createEffect(callback)` call a type error;
+  // for createSignal it would drop the `{lazy: true}` factory form and claim `Signal<T>` where
+  // `createSignal<T>()` without an initial value actually hands out a `Signal<T | undefined>`.
   createEffect: typeof createEffect;
-  createSignal<T = unknown>(...args: Parameters<typeof createSignal<T>>): ReturnType<typeof createSignal<T>>;
+  createSignal: typeof createSignal;
+  // createMemo has a single signature, so the collapse is a no-op here; the return type is
+  // narrowed on purpose, because the Kernel hands back the reader rather than signalize's value.
   createMemo<T = unknown>(...args: Parameters<typeof createMemo<T>>): SignalReader<T>;
 
   on(...args: SubscribeArgs): ReturnType<typeof on>;

@@ -137,7 +137,10 @@ The framework re-exports reactivity primitives via [@spearwolf/signalize](https:
 
 Creates a local reactive state value.
 
-- **Signature:** `createSignal<T>(initial?: T, params?): Signal<T>`
+- **Signatures:**
+  - `createSignal<T>(initial: T, params?): Signal<T>`
+  - `createSignal<T>(params?): Signal<T | undefined>` (no initial value)
+  - `createSignal<T>(factory: () => T, params: {lazy: true}): Signal<T>` (evaluated on the first read)
 - **Returns:** A `Signal` object. It is *not* callable — read it via `count.get()` or `count.value`, write it via `count.set(val)`.
 
 ```typescript
@@ -146,6 +149,22 @@ const count = createSignal(0);
 count.get();                // read -- subscribes the surrounding effect
 count.value;                // read without subscribing
 count.set(count.value + 1); // write
+```
+
+Leave the initial value out and you get a `Signal<T | undefined>`, because that is what the signal actually holds until the first write:
+
+```typescript
+const name = createSignal<string>(); // Signal<string | undefined>
+name.value;                          // undefined
+name.set('spearwolf');
+```
+
+Need the value computed on demand instead of up front? Pass a factory with `{lazy: true}`. Without that flag a function argument is stored as the value, so the flag is required rather than optional:
+
+```typescript
+const expensive = createSignal(() => buildLookupTable(), {lazy: true});
+// buildLookupTable() has not run yet
+expensive.get(); // now it runs, once
 ```
 
 > **`set()` takes a value, never an updater.** `count.set(c => c + 1)` does not call your function — it stores it as the signal's value. Read the previous value yourself, via `count.value` so the write does not subscribe the surrounding effect to its own signal.

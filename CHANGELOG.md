@@ -4,6 +4,15 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-15 — the eventize holdback is lifted
+
+`@spearwolf/signalize@1.0.0-beta.0` peers on `@spearwolf/eventize@^6.0.0`, which is exactly the range widening the section below was waiting for. Both catalog entries move together; the runtime consequences for the published package are in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md).
+
+- **`pnpm-workspace.yaml` catalog:** `@spearwolf/eventize` `^5.1.0` → `^6.0.0`, `@spearwolf/signalize` `^0.31.1` → `1.0.0-beta.0`. The signalize entry is version-exact rather than a `^` range on purpose — `^1.0.0-beta.0` would also admit `1.0.0` final, and a beta is not a range you want to drift inside. The comment above the pair no longer records a holdback; it records that the two have to move together and why.
+- **`minimumReleaseAgeExclude`** is new, holding `@spearwolf/signalize@1.0.0-beta.0`. pnpm 11 defaults `minimumReleaseAge` to one day and refuses anything younger; the beta was minutes old. pnpm writes the entry itself on install, and it is version-exact, so it expires with the next bump rather than rotting silently. The cooling-off exists to keep a freshly compromised third-party release out of the tree — the `@spearwolf` packages are first-party, so it buys nothing here and only blocks the install.
+- **One copy of each, verified.** Both libraries key their internal slots with realm-wide symbols (`Symbol.for('eventize')`, the `@spearwolf/signalize/` keys), so a second major resolved alongside is not a duplicate-code problem but a broken-identity one. `pnpm why -r` reports a single version of each across all five workspace projects.
+- **Verified:** typecheck across all packages, `dist/` diffed against a build of the previous commit (same 190 files, `dist/package.json` differing only in the two intended dependency ranges), 294 unit tests in the core package, 41 integration tests, 324 e2e tests in Chromium and Firefox — all green.
+
 ## 2026-08-15 — toolchain update: pnpm 11, TypeScript 7, CI/Deployment rework
 
 Package manager, dependency catalog and both GitHub workflows brought up to current versions. Baseline before the change: 13 spec files / 292 tests in the core package, 41 integration tests, 324 e2e tests, all green — the same counts hold after it.

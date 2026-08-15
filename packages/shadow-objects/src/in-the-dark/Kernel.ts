@@ -657,8 +657,9 @@ export class Kernel {
           return effect;
         },
 
-        createSignal<T = unknown>(...args: Parameters<typeof createSignal<T>>): ReturnType<typeof createSignal<T>> {
-          const sig = createSignal<T>(...args);
+        createSignal(...args: any[]): any {
+          // @ts-ignore
+          const sig = createSignal(...args);
           unsubscribeSecondary.add(() => {
             destroySignal(sig);
           });

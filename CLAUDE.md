@@ -19,11 +19,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Versions live exclusively in `pnpm-workspace.yaml` (`catalog:` block). Reference them from each package as `"<dep>": "catalog:"` — never write a plain version range in a per-package `package.json`.
 
-Three entries in that file are deliberate holdbacks, each with the reason in a comment above it. Don't "fix" them by bumping to latest:
+Two entries in that file are deliberate holdbacks, each with the reason in a comment above it. Don't "fix" them by bumping to latest:
 
 - **`overrides: {vite: ^7.3.6}`** — Vite 8 swapped esbuild for Rolldown/Oxc, and Oxc does not lower native decorators. `SignalsPath.ts` and `ShadowEnv.ts` use `@signal … accessor`, so under Vite 8 five spec files fail with `SyntaxError: Invalid or unexpected token`. vitest resolves its own vite (`^6 || ^7 || ^8`) regardless of the catalog, hence an override rather than a catalog pin.
-- **`@spearwolf/eventize: ^5.1.0`** — `@spearwolf/signalize` peers on `^5.0.0`; eventize 6 would resolve a second copy into the tree.
 - **`turbo: ^2.10.9`** — pnpm 11 defaults `minimumReleaseAge` to one day and re-applies it to every lockfile entry on install, so a lockfile pinning a release younger than that fails `--frozen-lockfile` on a clean runner.
+
+**`@spearwolf/eventize` and `@spearwolf/signalize` are bumped together, never separately.** signalize peers on exactly one eventize major (`1.0.x` on `^6.0.0`), and both key their internal slots with realm-wide symbols — `Symbol.for('eventize')` and the `@spearwolf/signalize/` keys. Two majors of either resolved side by side therefore share one slot per object: eventize 6 throws a `TypeError` naming both protocols, signalize 1.0 builds two graphs that recognise nothing of each other. After a bump, `pnpm why -r @spearwolf/eventize` must report exactly one version. The signalize entry is pinned version-exact while it is a beta, and `minimumReleaseAgeExclude` carries whatever release is younger than pnpm's one-day cutoff.
 
 **pnpm 11 specifics.** Dependency build scripts are refused unless listed in `allowBuilds` (`strictDepBuilds` is on by default) — currently just `esbuild`. `.npmrc` is auth/registry only; every pnpm setting belongs in `pnpm-workspace.yaml`. The `packageManager` field in `package.json` decides which pnpm actually runs.
 
