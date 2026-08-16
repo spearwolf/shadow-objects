@@ -38,7 +38,7 @@
 1. ~~**Worker-Fehlerpfade unter-implementiert** — keine `error`/`messageerror`-Handler, keine Reconnect-Logik, ausstehende Promises hängen nach Worker-Tod ewig (oder bis 5–60 s Timeout).~~ **Weitgehend behoben (VIEW-1, VIEW-2)** — `error` und `messageerror` werden vor dem Load-Handshake abonniert, ein Ausfall terminiert den Worker und lehnt alles Ausstehende mit `WorkerFailedError` ab; `ShadowEnv.ProxyFailed` meldet ihn nach außen, ein neuer `envProxy` ist der Weg zurück. Offen bleibt der gewollte Abbau: ein `applyChangeTrail`, das beim `destroy()` schon unterwegs ist, läuft in seinen 5-Sekunden-Timeout (VIEW-1).
 2. ~~**Neues Feature „auto destruction on parent removal" (Commit 89c59c2) ist im Datenpfad nicht erreichbar** und behandelt Re-Parenting nicht.~~ **Behoben (KERN-1, KERN-2)** — Flag fließt jetzt durch `ICreateEntitiesChange` → `ComponentChanges.create()` → `parse()`; Subscription wird bei Re-Parent neu verdrahtet.
 3. ~~**`destroyEntity` rekursiert nicht über Kinder** — bei Eltern-Destruktion bleiben Nicht-Auto-Kinder als verwaiste Einträge im Kernel.~~ **Behoben (KERN-3)** — Variante C: Flagged-Kinder kaskadieren, ungeflaggte werden zu Roots befördert.
-4. **DOM-In-Place-Re-Parenting wird nur teilweise beobachtet** — `<shae-prop>` resolviert seinen Eltern-Knoten weiterhin nur in `connectedCallback`; bei `<shae-ent>` folgt die Beobachtung dem Element an seine neue Position, sieht aber einen zwischengeschobenen Container nicht (`subtree: false`, VIEW-6).
+4. **DOM-In-Place-Re-Parenting wird nur teilweise beobachtet** — bei `<shae-ent>` folgt die Beobachtung dem Element an seine neue Position, sieht aber einen zwischengeschobenen Container nicht (`subtree: false`, VIEW-6).
 5. ~~**CI lässt das gesamte E2E-Paket aus** — der Worker-Roundtrip wird damit faktisch nicht von CI verifiziert.~~ **Behoben** — eigener Job `e2e` in `.github/workflows/ci.yml`, Chromium und Firefox bei jedem Push; der Deployment-Workflow hängt über `workflow_run` daran.
 6. **`MessageRouter` schluckt Fehler** durch doppeltes `AppliedChangeTrail` im Catch-Pfad — Konsumenten sehen Erfolg trotz interner Exception.
 
@@ -200,7 +200,6 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 
 | ID | Beschreibung | Ort |
 |---|---|---|
-| **VIEW-5** | `<shae-prop>` löst seinen Eltern-`<shae-ent>` nur in `connectedCallback` auf — DOM-Verschiebungen ohne Disconnect lassen den Prop am alten Ent kleben. | `ShaePropElement.ts:9–18, 323` |
 | **VIEW-6** | `MutationObserver` in `ShaeEntElement` setzt `subtree: false` — In-Tree-Reparenting via Zwischen-Container wird nicht gesehen. Die Beobachtung folgt dem Element inzwischen an seine neue Position, der Zwischen-Container bleibt offen. | `ShaeEntElement.ts` |
 | **VIEW-6b** | `Element.moveBefore` ist für ein `<shae-ent>` kein atomarer Umzug: ohne `connectedMoveCallback` fällt der Browser auf `disconnectedCallback` + `connectedCallback` zurück, die Entity wird zerstört und unter derselben uuid neu erzeugt — im Change Trail ein Abriss statt einer Bewegung. | `ShaeEntElement.ts` |
 | **VIEW-7** | `ShadowEnv.envProxy`-Setter feuert `start()` fire-and-forget; ein nachfolgender Reassign kann durch das *alte* `start().then()` das `proxyReady`-Flag des neuen Proxys verfälschen. | `ShadowEnv.ts:117–125` |
@@ -389,7 +388,7 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 
 ### 7.2 Sollte zeitnah
 
-7. **DOM-In-Place-Re-Parenting beobachten** — `MutationObserver(subtree:true)` auf einer höheren Ebene oder Re-Lookup in `<shae-prop>` bei `slotchange`/Mutation. *(VIEW-5, VIEW-6)*
+7. **DOM-In-Place-Re-Parenting beobachten** — `MutationObserver(subtree:true)` auf einer höheren Ebene, damit ein zwischengeschobener Container gesehen wird. *(VIEW-6)*
 8. **`ShadowEnv.envProxy`-Swap-Sicherheit:** Closure-Identitätscheck vor `proxyReady`-Toggle. *(VIEW-7)*
 9. **`syncWait()` muss nach `destroy()` rejecten.** *(VIEW-8)*
 10. **`LocalShadowObjectEnv.applyChangeTrail`** muss `MessageToView`-Reihenfolge zur Remote-Variante symmetrisch halten. *(VIEW-10)*

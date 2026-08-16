@@ -1,5 +1,6 @@
 export const RequestEntParentEventName = 'shaeRequestEntParent';
 export const ReRequestEntParentEventName = 'shaeReRequestEntParent';
+export const ReRequestEntHostEventName = 'shaeReRequestEntHost';
 
 export const SHAE_WORKER = 'shae-worker';
 export const SHAE_ENT = 'shae-ent';

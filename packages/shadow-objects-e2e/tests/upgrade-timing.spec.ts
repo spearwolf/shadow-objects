@@ -30,9 +30,11 @@ test.describe('upgrade-timing', () => {
     'upgrade-late-definitions-arrive',
     'upgrade-late-subclass-is-upgraded',
     'upgrade-late-subclass-adopts-the-child',
+    'upgrade-late-prop-found-its-host',
     'upgrade-late-subclass-keeps-its-own-parent',
     'upgrade-late-wrapper-adopts-the-slotted-child',
     'upgrade-late-definition-sync',
+    'upgrade-late-prop-reached-the-worker',
     'upgrade-late-hierarchy-reached-the-worker',
   ]);
 });

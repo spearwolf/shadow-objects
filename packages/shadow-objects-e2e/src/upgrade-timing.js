@@ -130,8 +130,8 @@ async function main() {
 
   // --- UPG-7: an element that becomes an entity after the first sync ---
   //
-  // The two islands below carry no <shae-prop>, so `find(label)` cannot reach them — they are
-  // looked up by uuid instead.
+  // `find(label)` only reaches an entity that carries a label property; of the two islands below
+  // that is the late-ent one. Everything else is looked up by uuid.
 
   const entityOf = (el) => snap.entities.find((e) => e.uuid === el.uuid);
   const wrapInner = () => byId('late-wrap').shadowRoot.getElementById('wrap-inner');
@@ -179,6 +179,10 @@ async function main() {
     );
   });
 
+  testBooleanAction('upgrade-late-prop-found-its-host', () => {
+    return byId('late-mid').querySelector(':scope > shae-prop').entNode === byId('late-mid');
+  });
+
   testBooleanAction('upgrade-late-subclass-keeps-its-own-parent', () => {
     return byId('late-mid').viewComponent.parent === byId('late-gp').viewComponent;
   });
@@ -191,6 +195,12 @@ async function main() {
 
   await testAsyncAction('upgrade-late-definition-sync', async () => {
     snap = await snapshot();
+  });
+
+  // `find` looks up the entity carrying the label, so the question is *which* entity carries it —
+  // an assertion on the label itself would be tautological
+  testBooleanAction('upgrade-late-prop-reached-the-worker', () => {
+    return find('late-mid')?.uuid === byId('late-mid').uuid;
   });
 
   testBooleanAction('upgrade-late-hierarchy-reached-the-worker', () => {

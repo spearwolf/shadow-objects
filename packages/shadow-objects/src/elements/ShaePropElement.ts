@@ -3,7 +3,7 @@ import {readBooleanAttribute} from '../utils/attr-utils.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {TRUTHY_VALUES} from '../utils/constants.js';
 import type {ViewComponent} from '../view/ViewComponent.js';
-import {ATTR_NAME, ATTR_NO_TRIM, ATTR_TYPE, ATTR_VALUE} from './constants.js';
+import {ATTR_NAME, ATTR_NO_TRIM, ATTR_TYPE, ATTR_VALUE, ReRequestEntHostEventName} from './constants.js';
 import {requestEntAncestor} from './requestEntAncestor.js';
 import type {ShaeEntElement} from './ShaeEntElement.js';
 
@@ -431,21 +431,99 @@ export class ShaePropElement extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this.#stopListeningForHostChanges();
     this.#disconnectFromEntNode();
   }
+
+  #reportedMissingHost = false;
+  #reRequestHostTarget?: EventTarget;
+  #hostLookupPending = false;
 
   // Determines the host from where the element stands right now. The request runs *without* a
   // namespace: a property belongs to the closest entity above it, whatever namespace that entity
   // is in.
   //
-  // Nobody answering means there is no entity above this position, and the element says so — it
-  // has just arrived where it is, and a binding it brought along belongs to a place it left. The
-  // cleanup on `entNode$` then takes the property off the entity that no longer holds it, instead
-  // of leaving the element writing into an entity it does not sit under any more.
+  // Nobody answering means there is no entity above this position, and the element says so. A
+  // binding without an answer belongs to a place that is no longer there — whether the element
+  // moved or the entity above it did. The cleanup on `entNode$` then takes the property off the
+  // entity that no longer holds it, instead of leaving the element writing into an entity it does
+  // not sit under any more.
   #findEntNode = () => {
     let found: ShaeEntElement | undefined;
     requestEntAncestor(this, {answer: (entNode) => (found = entNode)});
+
     this.entNode$.set(found);
+
+    // Reported once per element, not once per request: the re-request channel repeats this very
+    // lookup, so a property that never gets a host would otherwise report again on every upgrade
+    // happening anywhere above it.
+    //
+    // The `isConnected` term is what separates "no host" from "no position": an element on its way
+    // out of the tree is not missing a host.
+    //
+    // The limit of this report belongs next to it: `logger.warn` hangs on
+    // `ConsoleLogger.sharedConfig.enable`, which means "the page is served from localhost" —
+    // elsewhere the case stays silent. `warn` and not `error`, because in the upgrade path this
+    // framework supports by design, "no entity above me yet" is a state to pass through: a
+    // <shae-prop> under an element whose tag is registered later reports once and finds its host
+    // right afterwards.
+    if (found == null && this.isConnected && !this.#reportedMissingHost) {
+      this.#reportedMissingHost = true;
+      if (this.logger.isWarn) {
+        this.logger.warn(`[${this.name}] no entity above this element, the property is set nowhere`, {
+          shaeProp: this,
+        });
+      }
+    }
+
+    this.#listenForHostChanges();
+  };
+
+  // Someone above started or stopped answering. Two things separate this from a lookup the
+  // element makes on arrival, and both belong here, to the trigger — what an unanswered
+  // request means is the same on either path.
+  //
+  // It waits a microtask: the message arrives while the tree is still moving. An entity that
+  // announces its departure has left, but everything below it can be back in place before the
+  // tick ends, and an ancestor answering *right now* can be one this element is about to
+  // leave behind. Asking after the dust settles is asking once, about the tree that is
+  // actually there.
+  //
+  // And it drops the question if this element has left in the meantime, for the same reason
+  // `#reRequestParent` does in `ShaeEntElement`: an element that is out of the tree answers
+  // nothing about its position any more. Whether its departure is a move or an end is
+  // `#disconnectFromEntNode`'s to answer, one microtask later, and it is answered in one place.
+  // Nothing observable turns on the test — a departing entity takes its properties with it
+  // either way — so it stands as a rule, not as a measurement.
+  //
+  // `#hostLookupPending` bounds the cost: a page filling up with entities sends many messages
+  // through the same ancestor chain, and the flag turns them into one lookup per microtask and
+  // per element.
+  #onReRequestHost = () => {
+    if (this.#hostLookupPending) return;
+    this.#hostLookupPending = true;
+    queueMicrotask(() => {
+      this.#hostLookupPending = false;
+      if (this.isConnected) {
+        this.#findEntNode();
+      }
+    });
+  };
+
+  #listenForHostChanges = () => {
+    // bound: the entity itself is on the ascent of every element that could take the property
+    // away from it. Unbound: the document is the one node every such event reaches, out of any
+    // tree, closed roots included
+    const target: EventTarget = this.entNode$.value ?? this.ownerDocument;
+    if (target === this.#reRequestHostTarget) return;
+    this.#stopListeningForHostChanges();
+    target.addEventListener(ReRequestEntHostEventName, this.#onReRequestHost);
+    this.#reRequestHostTarget = target;
+  };
+
+  #stopListeningForHostChanges = () => {
+    this.#reRequestHostTarget?.removeEventListener(ReRequestEntHostEventName, this.#onReRequestHost);
+    this.#reRequestHostTarget = undefined;
   };
 
   #disconnectFromEntNode = () => {

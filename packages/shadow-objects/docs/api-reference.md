@@ -1208,13 +1208,10 @@ object created for it in the other environment starts from the state the view ho
 already dispatched do not travel: they are delivered in the environment they were addressed to,
 which is the one the entity still lives in at that moment.
 
-Everything else keeps the parent it resolved. Two cases are worth knowing:
-
-- A `<shae-prop>` keeps the host entity it resolved: the binding is not followed up when another
-  entity moves in between.
-- A move that leaves an element attached to the same parent node — a container inserted between it
-  and its parent — goes unseen. A move that takes it out of its parent node is noticed, whether
-  the element runs through disconnect and reconnect on the way or is watched across the move.
+Everything else keeps the parent it resolved. One case is worth knowing: a move that leaves an
+element attached to the same parent node — a container inserted between it and its parent — goes
+unseen. A move that takes it out of its parent node is noticed, whether the element runs through
+disconnect and reconnect on the way or is watched across the move.
 
 ---
 
@@ -1228,12 +1225,26 @@ The element binds to the closest entity above it, measured on the flattened tree
 page renders it. The search goes through shadow roots, follows slot projections to the entity that
 holds the `<slot>`, and crosses closed shadow boundaries just as well.
 
-The lookup runs when the element enters the tree and every time it is moved. It does not run again
-while the element stays where it is: an entity that appears above it afterwards — a custom element
-registered late, a shadow root attached later, a slot re-assigned — does not take the property over,
-and an entity that leaves the tree is not replaced by the next one up. Moving the element re-decides
-the question; if nothing above it answers then, it has no host and the property is taken off the
-entity it left.
+The lookup runs when the element enters the tree, every time it is moved, and every time something
+changes above it. A custom element whose tag is registered late takes the properties under it along
+the moment it upgrades; a shadow root attached afterwards takes over what its slots project; a
+changed slot assignment is followed. When the host entity leaves the tree, the property looks for
+the next entity above it and binds to that one. If nothing answers, it has no host and the property
+is taken off the entity it left.
+
+One case is out of reach: moving the `<slot>` element itself out of one entity and into another.
+`slotchange` fires after the move and therefore at the new position, so the entity the slot left
+hears nothing and keeps the property. Changing what a slot is assigned is followed; moving the slot
+is not.
+
+The timing is worth knowing, because the code does not show it: a re-binding takes effect one
+microtask after the change, not in the same step. Rebuild the tree and read `entNode` right
+afterwards and you read the state from before.
+
+A `<shae-prop>` with no entity anywhere above it sets its property nowhere and reports that once
+through the `ConsoleLogger`. The report is a `warn` and therefore gated behind
+`ConsoleLogger.sharedConfig.enable`, which defaults to "the page is served from localhost" — off a
+localhost page the case is silent.
 
 The namespace plays no part in it: what counts is proximity, not membership. A `<shae-prop>` under
 a `<shae-ent ns="hud">` inside a `<shae-ent>` of the global namespace belongs to the `hud` entity,

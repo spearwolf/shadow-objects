@@ -33,12 +33,15 @@
 
       <!--
         late-ent and late-wrapper are defined at the very end of the module, after the first sync.
-        Neither island carries a <shae-prop> on purpose: a property resolves its host element at
-        upgrade time and would end up on the wrong entity, which would blur the very measurement
-        these two islands make.
+
+        The late-ent island carries a <shae-prop>, because a property follows the element that
+        moves in between it and the entity it is bound to. The late-wrapper island stays without
+        one: it measures the slot assignment, and two measurements in one island make a red case
+        unreadable.
       -->
       <shae-ent id="late-gp" token="tracked">
         <late-ent id="late-mid" token="tracked">
+          <shae-prop name="label" value="late-mid"></shae-prop>
           <shae-ent id="late-child" token="tracked"></shae-ent>
         </late-ent>
       </shae-ent>

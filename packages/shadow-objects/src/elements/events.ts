@@ -1,4 +1,4 @@
-import type {RequestEntParentEventName, ReRequestEntParentEventName} from './constants.js';
+import type {RequestEntParentEventName, ReRequestEntHostEventName, ReRequestEntParentEventName} from './constants.js';
 import type {EntAncestorRequest} from './requestEntAncestor.js';
 import type {ShaeEntElement} from './ShaeEntElement.js';
 
@@ -13,17 +13,20 @@ export interface ReRequestEntParentEvent extends CustomEvent {
   };
 }
 
+export interface ReRequestEntHostEvent extends CustomEvent {
+  detail: {
+    requester: ShaeEntElement;
+  };
+}
+
 export interface ShadowEntsEventMap {
   [RequestEntParentEventName]: RequestEntParentEvent;
   [ReRequestEntParentEventName]: ReRequestEntParentEvent;
+  [ReRequestEntHostEventName]: ReRequestEntHostEvent;
 }
 
 declare global {
-  interface HTMLElementEventMap extends ShadowEntsEventMap {
-    addEventListener<K extends keyof ShadowEntsEventMap>(
-      type: K,
-      listener: (this: Document, ev: ShadowEntsEventMap[K]) => void,
-    ): void;
-    dispatchEvent<K extends keyof ShadowEntsEventMap>(ev: ShadowEntsEventMap[K]): void;
-  }
+  // An event map maps event names to event types, and nothing else. Anything else declared in
+  // here becomes an event name for the whole program — a method name included.
+  interface HTMLElementEventMap extends ShadowEntsEventMap {}
 }

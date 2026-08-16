@@ -4,7 +4,13 @@ import {VoidToken} from '../constants.js';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
 import {ViewComponent} from '../view/ViewComponent.js';
-import {ATTR_FORWARD_CUSTOM_EVENTS, ATTR_TOKEN, RequestEntParentEventName, ReRequestEntParentEventName} from './constants.js';
+import {
+  ATTR_FORWARD_CUSTOM_EVENTS,
+  ATTR_TOKEN,
+  RequestEntParentEventName,
+  ReRequestEntHostEventName,
+  ReRequestEntParentEventName,
+} from './constants.js';
 import {type EntAncestorRequest, requestEntAncestor} from './requestEntAncestor.js';
 import {ShaeElement} from './ShaeElement.js';
 
@@ -119,6 +125,10 @@ export class ShaeEntElement extends ShaeElement {
         // there when it arrived in this namespace
         this.#askPeersToReRequestParent();
       }
+
+      // The properties below this element are deliberately left alone here. A property belongs to
+      // the closest entity above it whatever namespace that entity is in, and a namespace change
+      // moves no element — the closest one is still the closest one.
 
       // the environment it leaves holds the destruction of this entity and hears about it from
       // nobody else: `syncShadowObjects()` without an argument reads `this.ns`, which carries the
@@ -337,8 +347,15 @@ export class ShaeEntElement extends ShaeElement {
     // before it is defined, and a closed one is invisible from the inside, so `shadowRoot` reads
     // null while the entities in it are bound to an ancestor further up. An empty element is not
     // an element with nothing below it.
+    //
+    // --- properties ---
+    // The same reasoning carries the second call, and so does the same limit: an element built in
+    // a detached subtree and inserted afterwards does *not* announce itself, because the
+    // properties below it connect after it and find it on their own. A property already connected
+    // and then projected into that subtree is reached by the `#onSlotChange` call further down.
     if (this.#wasUpgradedInPlace) {
       this.#askPeersToReRequestParent();
+      this.#askPropertiesToReRequestHost();
     }
     this.#createParentObserver();
 
@@ -397,6 +414,12 @@ export class ShaeEntElement extends ShaeElement {
 
     this.removeEventListener('slotchange', this.#onSlotChange, {capture: false});
     this.removeEventListener(RequestEntParentEventName, this.#onRequestParent, {capture: false});
+
+    // after the listener came off, never before: a property that asks again because of this must
+    // not be answered by this element any more. The element is out of the tree by now, so the
+    // event reaches only whoever listens on the element itself — which is exactly the set of
+    // properties bound to it
+    this.#askPropertiesToReRequestHost();
 
     this.#setParent(undefined);
 
@@ -460,6 +483,15 @@ export class ShaeEntElement extends ShaeElement {
     }
   }
 
+  // Properties below this element bind to the closest entity above them. This element becoming
+  // one — or ceasing to be one — changes that answer, and no component context can carry the
+  // message: a <shae-prop> has no view component to receive it. The event travels the same
+  // ascent every request travels, so it passes exactly the entities a property could be bound
+  // to right now, and nothing else.
+  #askPropertiesToReRequestHost() {
+    this.dispatchEvent(new CustomEvent(ReRequestEntHostEventName, {bubbles: true, composed: true, detail: {requester: this}}));
+  }
+
   #dispatchRequestParent() {
     // an entity takes only an ancestor from its own namespace as a parent
     requestEntAncestor(this, {ns: this.ns, answer: (entNode) => this.#setParent(entNode)});
@@ -511,6 +543,12 @@ export class ShaeEntElement extends ShaeElement {
   }
 
   #onSlotChange = () => {
+    // this stands before the shadow-root condition below, and that is where the two channels part
+    // ways: the entity channel only cares about a slot change inside a shadow root, because that
+    // is what moves a parent binding across the boundary. For a property every changed slot
+    // assignment counts — it moves what sits below this element.
+    this.#askPropertiesToReRequestHost();
+
     const shadowRootHost = this.findShadowRootHost();
     if (shadowRootHost == null) return;
     this.dispatchEvent(
