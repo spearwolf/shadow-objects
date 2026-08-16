@@ -326,6 +326,23 @@ export class ComponentContext {
   }
 
   /**
+   * Inform the children of `component` that they should re-request their parents.
+   *
+   * The receivers are the components hanging on `component` right now, and every one of them has
+   * to let go: the message carries no sender and needs no filter, because there is nothing here to
+   * decide. {@link ComponentContext.ReRequestParentRoots} is the signal for it — it means "drop
+   * your parent and ask again", which is what the roots happen to be asked for most often, not
+   * what it says.
+   */
+  dispatchReRequestParentChildren(component: ViewComponent) {
+    // getChildren() hands out a fresh array, so a child that re-parents mid-loop cannot displace
+    // the entry behind it
+    for (const child of this.getChildren(component)) {
+      this.dispatchMessage(child.uuid, ComponentContext.ReRequestParentRoots);
+    }
+  }
+
+  /**
    * Inform the siblings of `component` that they should re-request their parents.
    *
    * This narrows the candidate set for one specific question: which components could have bound

@@ -35,5 +35,11 @@ test.describe('multi-env', () => {
     'multi-env-request-answer-is-correct',
     'multi-env-request-barrier',
     'multi-env-request-reached-no-other-namespace',
+    // MULTI-8: a namespace change at runtime
+    'multi-env-ns-switch-syncs',
+    'multi-env-ns-switch-left-the-old-env',
+    'multi-env-ns-switch-joined-the-new-env',
+    'multi-env-ns-switch-view-matches-tree',
+    'multi-env-ns-switch-back-restores-the-tree',
   ]);
 });

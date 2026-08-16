@@ -1152,7 +1152,7 @@ Represents an Entity (game object) in the Shadow Environment. Corresponds to a `
 | Attribute | Description |
 | :--- | :--- |
 | `token` | The Token (Component Tag) matching a registered Shadow Object constructor. Required. |
-| `ns` | The context this entity belongs to. Must match the `ns` on `<shae-worker>` when using named contexts. |
+| `ns` | The context this entity belongs to. Must match the `ns` on `<shae-worker>` when using named contexts. Can be changed at runtime, see [Entity Hierarchy](#entity-hierarchy). |
 | `forward-custom-events` | Re-dispatches events from the Shadow Object as DOM `CustomEvent`s on this element. Empty or `true` = all events. Comma-separated list = specific events only. |
 
 ```html
@@ -1191,21 +1191,25 @@ Nesting `<shae-ent>` elements creates parent-child relationships in the Shadow E
 The parent is resolved when an element connects: it is the closest `<shae-ent>` on the ancestor
 path that answers at that moment, across shadow boundaries and slot projections.
 
-Two things happen after that and are picked up on their own: an element that is itself an entity —
+Three things happen after that and are picked up on their own: an element that is itself an entity —
 a subclass of `ShaeEntElement`, say, loaded from a lazy module — and that is registered with
 `customElements.define()` while the markup around it already sits in the document takes the
-entities below it under itself; and a change to a `<slot>` assignment re-binds what the slot
-projects. Neither needs the application to trigger anything.
+entities below it under itself; a change to a `<slot>` assignment re-binds what the slot projects;
+and an entity that stays in the tree while its parent entity leaves it looks for the closest
+ancestor still answering. None of this needs the application to trigger anything.
 
-Everything else keeps the parent it resolved. Three cases are worth knowing:
+A change of `ns` at runtime takes the entity along into the other environment: it leaves the
+`ComponentContext` of one namespace and joins the one of the other. The binding to the ancestor is
+resolved again in both directions — for the element itself, and for the entities that hung on it,
+which look for the closest ancestor answering in their own namespace.
+
+Everything else keeps the parent it resolved. Two cases are worth knowing:
 
 - A `<shae-prop>` resolves its host entity once and keeps it, so a property does not follow a late
   registration the way an entity does.
-- Changing the `ns` of an element makes it answer requests from that point on, but nothing already
-  bound is asked to look again.
-- Moving an element within the tree is only noticed when the element itself disconnects and
-  reconnects. A move that leaves it attached — a container inserted between it and its parent —
-  goes unseen.
+- A move that leaves an element attached to the same parent node — a container inserted between it
+  and its parent — goes unseen. A move that takes it out of its parent node is noticed, whether
+  the element runs through disconnect and reconnect on the way or is watched across the move.
 
 ---
 

@@ -83,6 +83,16 @@ async function main() {
     on(el.viewComponent, 'pong', (data) => record.pongs.push(data));
   }
 
+  // The two entities of MULTI-8 keep a recording of their own and stay out of `ENT_IDS`: the
+  // entity that changes its namespace mid-run is created once per environment it joins, and four
+  // of the loops over `ENT_IDS` ask questions that take one creation per entity for granted.
+  const switchIds = ['switch-outer', 'switch-me'];
+  const switchRecords = Object.fromEntries(switchIds.map((id) => [id, {created: []}]));
+
+  for (const id of switchIds) {
+    on(byId(id).viewComponent, 'probeCreated', (data) => switchRecords[id].created.push(data));
+  }
+
   /**
    * Waits until every entity has answered a fresh ping.
    *
@@ -240,4 +250,49 @@ async function main() {
   testBooleanAction('multi-env-request-reached-no-other-namespace', () => {
     return ENT_IDS.filter((id) => id !== 'probe-beta').every((id) => records[id].reports.length === 0);
   });
+
+  // --- MULTI-8: a namespace change at runtime --------------------------------------
+  //
+  // What is asserted here is the hierarchy and the arrival: that the entity leaves one
+  // environment, turns up in the other, and that the DOM view and the entity tree tell the same
+  // story on both sides. What the entity carries with it is a separate question — it arrives in
+  // the new environment without its properties, and the case for that belongs with the property
+  // lifecycle, not here.
+
+  const switchMe = byId('switch-me');
+  const switchOuter = byId('switch-outer');
+
+  switchMe.ns = 'beta';
+
+  await testAsyncAction('multi-env-ns-switch-syncs', syncAll);
+
+  testBooleanAction('multi-env-ns-switch-left-the-old-env', () => {
+    return ShadowEnv.get('alpha').view.getChildren(switchOuter.viewComponent).length === 0;
+  });
+
+  await testAsyncAction('multi-env-ns-switch-joined-the-new-env', () =>
+    waitUntil(
+      'the entity to report its creation in beta, as a root',
+      () => switchRecords['switch-me'].created.length === 2 && switchRecords['switch-me'].created[1].hasParent === false,
+    ),
+  );
+
+  testBooleanAction('multi-env-ns-switch-view-matches-tree', () => {
+    return switchMe.entParentNode == null && switchMe.viewComponent.parent == null;
+  });
+
+  switchMe.ns = 'alpha';
+
+  await syncAll();
+
+  await testAsyncAction('multi-env-ns-switch-back-restores-the-tree', () =>
+    waitUntil(
+      'the entity to be a child of switch-outer again, in the view and in alpha',
+      () =>
+        switchMe.entParentNode === switchOuter &&
+        switchMe.viewComponent.parent === switchOuter.viewComponent &&
+        switchRecords['switch-me'].created.length === 3 &&
+        switchRecords['switch-me'].created[2].parentUuid === switchOuter.uuid,
+    ),
+  );
 }

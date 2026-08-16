@@ -92,9 +92,30 @@ export class ShaeEntElement extends ShaeElement {
     super();
 
     this.ns$.onChange((ns) => {
+      // the order below is what makes the change symmetric: every entity that could be affected by
+      // it is told before this element settles into its new context, and the element asks for its
+      // own parent only once it is there
+
+      // the entities hanging on this element stay in the namespace they are in, and this element
+      // is about to leave it. `this.ns` already carries the new value at this point, so a child
+      // that asks again right away is turned away by #onRequestParent
+      const previousContext = this.componentContext;
+      const previousViewComponent = this.viewComponent;
+      if (previousContext != null && previousViewComponent != null) {
+        previousContext.dispatchReRequestParentChildren(previousViewComponent);
+      }
+
+      // this element's own binding: it belongs to the namespace it is leaving. Clearing it here
+      // takes nothing but this element out of its parent's children
+      this.#setParent(undefined);
+
       this.componentContext$.set(ComponentContext.get(ns));
+
       if (this.isConnected) {
         this.#dispatchRequestParent();
+        // ...and this element may well be the closest ancestor for entities that were already
+        // there when it arrived in this namespace
+        this.#askPeersToReRequestParent();
       }
     });
 
@@ -207,23 +228,25 @@ export class ShaeEntElement extends ShaeElement {
 
   #unsubscribeViewComponentEffect?: () => void;
 
+  #applyComponentContext = (context: ComponentContext | undefined) => {
+    const token = this.token$.value;
+
+    let vc = this.viewComponent$.value;
+
+    if (vc) {
+      vc.context = context;
+    } else if (context) {
+      vc = new ViewComponent(token ?? VoidToken, {context});
+      this.viewComponent$.set(vc);
+    }
+
+    this.syncShadowObjects();
+  };
+
   #setupViewComponentEffect() {
     this.#unsubscribeViewComponentEffect?.();
 
-    const unsubscribeComponentContext = this.componentContext$.onChange((context) => {
-      const token = this.token$.value;
-
-      let vc = this.viewComponent$.value;
-
-      if (vc) {
-        vc.context = context;
-      } else if (context) {
-        vc = new ViewComponent(token ?? VoidToken, {context});
-        this.viewComponent$.set(vc);
-      }
-
-      this.syncShadowObjects();
-    });
+    const unsubscribeComponentContext = this.componentContext$.onChange(this.#applyComponentContext);
 
     this.#unsubscribeViewComponentEffect = () => {
       unsubscribeComponentContext();
@@ -281,6 +304,13 @@ export class ShaeEntElement extends ShaeElement {
     // --- componentContext | viewComponent ---
     if (this.componentContext == null) {
       this.componentContext$.set(ComponentContext.get(this.ns));
+    } else {
+      // the namespace may have been set or changed while the element was outside the tree. The
+      // context signal then already stands on its new value, nothing is going to fire for it
+      // again, and the element would sit in a namespace without ever becoming an entity in it.
+      // In the ordinary case this hands over the very same context the component already has,
+      // which the setter answers with a return
+      this.#applyComponentContext(this.componentContext);
     }
 
     // --- viewComponent.parent ---
@@ -288,8 +318,18 @@ export class ShaeEntElement extends ShaeElement {
 
     // --- parents ---
     // the order matters: before the line above, this element's own parent is not settled and the
-    // candidate set would be the wrong one
-    this.#askPeersToReRequestParent();
+    // candidate set would be the wrong one.
+    //
+    // The guard decides in constant time whether the question arises at all, and it has to,
+    // because this runs on every connect. It cannot hide a case the request would have found: an
+    // element constructed before it entered the tree is answering by the time anything below it
+    // connects. What this element holds is no such question — a shadow root can be attached to it
+    // before it is defined, and a closed one is invisible from the inside, so `shadowRoot` reads
+    // null while the entities in it are bound to an ancestor further up. An empty element is not
+    // an element with nothing below it.
+    if (this.#wasUpgradedInPlace) {
+      this.#askPeersToReRequestParent();
+    }
     this.#createParentObserver();
 
     // --- sync! ---
@@ -320,6 +360,10 @@ export class ShaeEntElement extends ShaeElement {
   onParentChanged(_newParent: Node | undefined, _oldParent: Node) {
     this.#setParent(undefined);
     this.#dispatchRequestParent();
+    // the observation watches one specific parent node, so it has to travel with the element:
+    // left at the old position it would report the next move of a node that is no longer here.
+    // The call is idempotent — #createParentObserver starts with #destroyParentObserver
+    this.#createParentObserver();
   }
 
   #destroyParentObserver() {
@@ -345,6 +389,17 @@ export class ShaeEntElement extends ShaeElement {
     this.removeEventListener(RequestEntParentEventName, this.#onRequestParent, {capture: false});
 
     this.#setParent(undefined);
+
+    // an entity that hung on this element can outlive its departure: it stays connected whenever
+    // only the way between them is cut, which is what happens to everything projected into a slot
+    // this element holds. Leaving the context destroys the ViewComponent and promotes those
+    // entities to roots, so they have to look for an ancestor again — and this element is past
+    // answering by now, its listener came off a few lines above. An entity that leaves the tree
+    // along with this one is not affected: it turns the message down while disconnected
+    const vc = this.viewComponent;
+    if (vc != null) {
+      this.componentContext?.dispatchReRequestParentChildren(vc);
+    }
 
     this.componentContext$.set(undefined);
 
@@ -380,18 +435,7 @@ export class ShaeEntElement extends ShaeElement {
   // closest ancestor for entities that bound while it was not yet answering. Those entities are
   // its peers in the component context — the children of its own parent, or the roots while it
   // has none — and they are asked to request their parent once more.
-  //
-  // The guard below decides the question locally, in constant time, because this runs on every
-  // connect. It cannot hide a case the request would have found: an element constructed before it
-  // entered the tree is answering by the time anything below it connects.
-  //
-  // What this element holds is no such question. A shadow root can be attached to it before it is
-  // defined, and a closed one is invisible from the inside — `shadowRoot` reads null while the
-  // entities in it are bound to an ancestor further up. An empty element is not an element with
-  // nothing below it.
   #askPeersToReRequestParent() {
-    if (!this.#wasUpgradedInPlace) return;
-
     const vc = this.viewComponent;
     if (vc == null) {
       this.componentContext?.dispatchReRequestParentRoots();

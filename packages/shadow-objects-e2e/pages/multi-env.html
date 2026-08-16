@@ -55,6 +55,16 @@
           <shae-prop name="envName" value="same-ns-inner"></shae-prop>
         </shae-ent>
       </shae-ent>
+      <!--
+        MULTI-8: a namespace change at runtime. Both entities start out in "alpha" and are linked;
+        the inner one is moved to "beta" while the page runs and back to "alpha" afterwards.
+      -->
+      <shae-ent id="switch-outer" ns="alpha" token="probe">
+        <shae-prop name="envName" value="switch-outer"></shae-prop>
+        <shae-ent id="switch-me" ns="alpha" token="probe">
+          <shae-prop name="envName" value="switch-me"></shae-prop>
+        </shae-ent>
+      </shae-ent>
     </main>
 
     <section id="tests"></section>

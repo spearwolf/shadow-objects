@@ -1,4 +1,5 @@
 import {expect} from '@esm-bundle/chai';
+import {on} from '@spearwolf/eventize';
 import {ComponentChangeType, ComponentContext, ViewComponent} from '@spearwolf/shadow-objects';
 
 describe('ComponentContext', () => {
@@ -145,6 +146,33 @@ describe('ComponentContext', () => {
       ],
       'b) just change props',
     );
+  });
+
+  it('should tell the children of a component to re-request their parents', () => {
+    // its own context, because this case asserts on messages instead of on a change trail and
+    // therefore never drains one — anything it leaves behind would show up in the next trail
+    const ctx = ComponentContext.get('re-request-parent-children');
+
+    const parent = new ViewComponent('parent', {context: ctx});
+    const children = ['a', 'b', 'c'].map((token) => new ViewComponent(token, {parent, context: ctx}));
+
+    const received = new Map();
+    const count = (key) => received.set(key, (received.get(key) ?? 0) + 1);
+
+    on(parent, ComponentContext.ReRequestParentRoots, () => count('parent'));
+    for (const child of children) {
+      on(child, ComponentContext.ReRequestParentRoots, () => count(child.uuid));
+    }
+
+    ctx.dispatchReRequestParentChildren(parent);
+
+    expect(
+      children.map((child) => received.get(child.uuid)),
+      'every child is told exactly once',
+    ).to.deep.equal([1, 1, 1]);
+    expect(received.get('parent'), 'and the component itself is not told at all').to.be.undefined;
+
+    ctx.dispose();
   });
 
   it('should ignore create and destroy in same change trail', () => {
