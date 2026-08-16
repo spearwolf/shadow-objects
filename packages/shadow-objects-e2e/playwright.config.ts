@@ -21,6 +21,10 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
+  // Only keep test artifacts for failures. Stale artifacts from a passing run
+  // can confuse debugging — a failure context with a fresh timestamp looks current
+  // even if it came from an older test execution.
+  preserveOutput: 'failures-only',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */

@@ -4,6 +4,11 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-16 — exclude generated audit reports and clear stale Playwright artifacts
+
+- **`biome.json`:** audit reports (`*audit*.html`) are excluded from lint checks — they are generated snapshots of the audit process, not project code.
+- **`packages/shadow-objects-e2e/`:** `preserveOutput: 'failures-only'` in Playwright config prevents stale failure contexts from lingering after a passing run and confusing later investigation. Test scripts clear `test-results/` before each run to ensure artifacts reflect the current execution only.
+
 ## 2026-08-15 — the eventize holdback is lifted
 
 `@spearwolf/signalize@1.0.0-beta.0` peers on `@spearwolf/eventize@^6.0.0`, which is exactly the range widening the section below was waiting for. Both catalog entries move together; the runtime consequences for the published package are in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md).
