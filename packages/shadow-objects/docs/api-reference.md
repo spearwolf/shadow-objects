@@ -1199,9 +1199,9 @@ Declaratively sets properties on the parent `<shae-ent>`.
 | Attribute | Description |
 | :--- | :--- |
 | `name` | Property name to set on the Shadow Object. |
-| `value` | Property value. Always a string in HTML; use `type` to cast it. |
+| `value` | Property value. Always a string in HTML; use `type` to cast it. An empty attribute (`value=""`) counts as a missing one and sets no property at all. |
 | `type` | Casts the string value to a JavaScript type. See supported types below. |
-| `no-trim` | Preserves leading/trailing whitespace. By default string values are trimmed. |
+| `no-trim` | Preserves leading/trailing whitespace. By default string values are trimmed — a whitespace-only value therefore becomes the empty string, and `type` converts it from there (`type="number" value="   "` is `0`). |
 
 **Supported `type` values:**
 
@@ -1214,6 +1214,24 @@ Declaratively sets properties on the parent `<shae-ent>`.
 | `json` | `JSON.parse` |
 | `number[]`, `string[]`, `int[]`, etc. | Splits by whitespace or comma into an array. |
 | `float32array`, `uint8array`, etc. | Typed array variants. |
+
+#### JavaScript API
+
+| Member | Description |
+| :--- | :--- |
+| `name` | The property name, read-only. Mirrors the `name` attribute. |
+| `value` | Reads the converted value. Writing bypasses the `value` attribute and feeds the conversion directly — the attribute keeps whatever it had. `0`, `false` and `''` are values and are set as such; `null` and `undefined` clear the property (see `ViewComponent.setProperty` above). A value that is not a string passes through untouched, even with a `type` set, because the conversion only applies to strings. |
+| `shouldTrim` | Whether string values are trimmed, read-only. The inverse of the `no-trim` attribute. |
+
+#### Invalid Values
+
+A value that cannot be converted into the requested type — malformed JSON, a string `bigint`
+cannot parse, the same inside `bigint64array` and `biguint64array` — is reported through the
+`ConsoleLogger` and sets the property to `undefined`. This holds for both paths, the attribute
+and the JavaScript property; neither throws. The report goes out at error level, which the
+logger does not gate behind `ConsoleLogger.sharedConfig.enable`, so it reaches the console on
+any host. Every other type is lenient by construction and reports nothing: the numeric ones
+yield `NaN`, the typed arrays yield a filled array.
 
 ```html
 <shae-ent token="player">

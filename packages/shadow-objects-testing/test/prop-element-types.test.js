@@ -1,6 +1,9 @@
 import {expect} from '@esm-bundle/chai';
+import {ComponentContext} from '@spearwolf/shadow-objects';
+import {ConsoleLogger} from '@spearwolf/shadow-objects/ConsoleLogger.js';
 import '@spearwolf/shadow-objects/shae-ent.js';
 import '@spearwolf/shadow-objects/shae-prop.js';
+import sinon from 'sinon';
 import {mount as mountHtml, unmountAll} from '../src/mount.js';
 import {withSwallowedErrors} from '../src/withSwallowedErrors.js';
 
@@ -168,57 +171,78 @@ describe('shae-prop type conversion — malformed input that does not throw', ()
   }
 });
 
-describe('shae-prop type conversion — malformed input that throws', () => {
+describe('shae-prop type conversion — malformed input that is reported instead of thrown', () => {
   // The JS property setter is chosen on purpose: the conversion effect runs synchronously
-  // there, so the exception reaches the caller directly instead of vanishing into the
-  // Custom Elements reaction queue (see ../src/withSwallowedErrors.js).
-  const throwCases = [
+  // there, so the line after the assignment already reads back what became of the invalid
+  // value.
+  const reportCases = [
     ['bigint', '1', 'abc'],
     ['json', '{}', '{oops'],
     ['bigint64array', '1', '1 x 3'],
     ['biguint64array', '1', '1 x 3'],
   ];
 
-  for (const [type, validValue, badValue] of throwCases) {
-    it(`${type} throws on the property path`, () => {
+  for (const [type, validValue, badValue] of reportCases) {
+    it(`${type} reports invalid input on the property path`, () => {
       const prop = mount({type, value: validValue});
       expect(() => {
         prop.value = badValue;
-      }).to.throw(SyntaxError);
+      }).to.not.throw();
+      expect(prop.value).to.be.undefined;
     });
   }
 
-  it('a throw at upgrade time leaves the element dead', () => {
-    // this pins the current behaviour and is expected to change: a throw from the batch() in
-    // the constructor puts the custom element into the "failed" state, so attributeChangedCallback
-    // is never enqueued again for this element — the conversion effect itself is untouched, it
-    // simply never gets re-triggered because its trigger stops firing.
+  it('invalid input at upgrade time leaves the element usable', () => {
+    // an invalid value in the markup costs that one value and nothing else: the element
+    // finishes its upgrade and the attribute path keeps converting whatever comes next
     let prop;
     const messages = withSwallowedErrors(() => {
       prop = mount({type: 'json', value: '{oops'});
     });
-    expect(messages).to.have.lengthOf(1);
-    expect(messages[0]).to.match(/JSON/);
+    expect(messages).to.have.lengthOf(0);
     expect(prop.isShaePropElement).to.be.true;
     expect(prop.value).to.be.undefined;
 
     prop.setAttribute('value', '{"a":1}');
-    expect(prop.value).to.be.undefined;
+    expect(prop.value).to.deep.equal({a: 1});
   });
 
-  it('a throw after upgrade keeps the previous value and recovers', () => {
+  it('invalid input after upgrade clears the value and recovers', () => {
     const prop = mount({type: 'json', value: '{}'});
     expect(prop.value).to.deep.equal({});
 
     const messages = withSwallowedErrors(() => {
       prop.setAttribute('value', '{oops');
     });
-    expect(messages).to.have.lengthOf(1);
-    expect(messages[0]).to.match(/JSON/);
-    expect(prop.value).to.deep.equal({});
+    expect(messages).to.have.lengthOf(0);
+    expect(prop.value).to.be.undefined;
 
     prop.setAttribute('value', '{"z":9}');
     expect(prop.value).to.deep.equal({z: 9});
+  });
+
+  it('the conversion failure is reported through the ConsoleLogger', () => {
+    // `ConsoleLogger.sharedConfig.enable` defaults to "the page is served from localhost", and
+    // the logger's `warn` is gated behind it while `error` is not. The switch is turned off
+    // here on purpose: the report has to survive the setting a production page runs under.
+    const previousEnable = ConsoleLogger.sharedConfig.enable;
+    ConsoleLogger.sharedConfig.enable = false;
+    const error = sinon.stub(console, 'error');
+    try {
+      const messages = withSwallowedErrors(() => {
+        mount({type: 'json', value: '{oops'});
+      });
+      expect(messages).to.have.lengthOf(0);
+      // counted by content, not by call count: an unrelated report during mount must not
+      // decide this case either way
+      const reports = error
+        .getCalls()
+        .filter((call) => call.args.some((arg) => typeof arg === 'string' && arg.includes('"json"')));
+      expect(reports, 'reports naming the type').to.have.lengthOf(1);
+    } finally {
+      error.restore();
+      ConsoleLogger.sharedConfig.enable = previousEnable;
+    }
   });
 });
 
@@ -299,39 +323,68 @@ describe('shae-prop type conversion — type attribute handling', () => {
 
 describe('shae-prop type conversion — falsy values', () => {
   it('value="" with type="number" is undefined', () => {
-    // the conversion effect collapses every falsy value to undefined before the type switch
-    // runs, so an empty attribute is indistinguishable from a missing one — that result is
-    // settled, only the place where the normalization happens is still open
+    // #readValueAttribute normalizes an empty attribute to "no value", which makes it
+    // indistinguishable from a missing one before the type switch ever sees it
     const prop = mount({type: 'number', value: ''});
     expect(prop.value).to.be.undefined;
   });
 
-  it('value="0" with type="number" is 0, because the string "0" is truthy', () => {
+  it('value="0" with type="number" is 0', () => {
     const prop = mount({type: 'number', value: '0'});
     expect(prop.value).to.equal(0);
   });
 
-  it('a whitespace only value is undefined once trimmed', () => {
-    // this pins the current behaviour and is expected to change
+  it('a whitespace only value is the empty string once trimmed', () => {
     const prop = mount({value: '   '});
-    expect(prop.value).to.be.undefined;
+    expect(prop.value).to.equal('');
   });
 
-  it('falsy values assigned through the JS property are lost', () => {
-    // this pins the current behaviour and is expected to change
-    const prop = mount({type: 'number'});
+  it('a whitespace only value with a type is converted like an empty string', () => {
+    // the trim leaves the empty string behind, and Number('') is 0
+    const prop = mount({type: 'number', value: '   '});
+    expect(prop.value).to.equal(0);
+  });
+
+  it('falsy values assigned through the JS property survive', () => {
+    // deliberately without a type: a type would be applied to the empty string as well,
+    // which is the subject of the next case, not of this one
+    const prop = mount();
 
     prop.value = 0;
-    expect(prop.value).to.be.undefined;
+    expect(prop.value).to.equal(0);
 
     prop.value = false;
-    expect(prop.value).to.be.undefined;
+    expect(prop.value).to.equal(false);
 
     prop.value = '';
-    expect(prop.value).to.be.undefined;
+    expect(prop.value).to.equal('');
 
     prop.value = 7;
     expect(prop.value).to.equal(7);
+  });
+
+  it('an empty string assigned through the JS property is converted when a type is set', () => {
+    // two rules, one after the other: the empty string survives as a value, and the type
+    // conversion then treats it like any other string
+    const prop = mount({type: 'number'});
+    prop.value = '';
+    expect(prop.value).to.equal(0);
+  });
+
+  it('null and undefined assigned through the JS property clear the value', () => {
+    const prop = mount();
+
+    prop.value = 'x';
+    expect(prop.value).to.equal('x');
+
+    prop.value = null;
+    expect(prop.value).to.be.undefined;
+
+    prop.value = 'y';
+    expect(prop.value).to.equal('y');
+
+    prop.value = undefined;
+    expect(prop.value).to.be.undefined;
   });
 
   it('a non-string value assigned through the JS property passes through unchanged', () => {
@@ -341,5 +394,36 @@ describe('shae-prop type conversion — falsy values', () => {
     const arr = [1, 2];
     prop.value = arr;
     expect(prop.value).to.equal(arr);
+  });
+});
+
+describe('shae-prop value path — what reaches the entity', () => {
+  // `ComponentChanges` reads an explicit `undefined` as removing the property, so `0` is not
+  // the same as "no value". These cases look past `prop.value` at the change trail the kernel
+  // is handed.
+  const cc = ComponentContext.get();
+
+  const mountEnt = (attrs) => mountHtml(`<shae-ent token="probe"><shae-prop name="n"${attrs}></shae-prop></shae-ent>`);
+
+  const createEntry = (container) => {
+    const ent = container.querySelector('shae-ent');
+    return cc.buildChangeTrails().find((change) => change.uuid === ent.uuid);
+  };
+
+  it('a falsy value assigned through the JS property reaches the entity', () => {
+    // no type attribute and a number, so nothing but the value path itself is under test
+    const container = mountEnt('');
+    container.querySelector('shae-prop').value = 0;
+    expect(createEntry(container).properties).to.deep.equal([['n', 0]]);
+  });
+
+  it('a falsy value is a property value, not a removal', () => {
+    const entry = createEntry(mountEnt(' value="0" type="number"'));
+    expect(entry.properties).to.deep.equal([['n', 0]]);
+  });
+
+  it('an empty value attribute leaves the property unset', () => {
+    const entry = createEntry(mountEnt(' value="" type="number"'));
+    expect((entry.properties ?? []).map(([key]) => key)).to.not.include('n');
   });
 });

@@ -10,14 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 > **Next release: minor.** The package is below `1.0.0`, so the accumulated breaking
-> changes below bump the minor position — `0.33.0` → `0.34.0`. Three of them reach existing
+> changes below bump the minor position — `0.33.0` → `0.34.0`. Five of them reach existing
 > consumers: both runtime dependencies take a major step and carry behaviour changes of their
 > own; the emitted declarations carry `| undefined` where a value can be missing, so a
-> build with `strictNullChecks` sees new errors; and `RemoteWorkerEnv` rejects with
+> build with `strictNullChecks` sees new errors; `RemoteWorkerEnv` rejects with
 > `WorkerDestroyedError` / `WorkerFailedError` instead of the string `'worker was destroyed'`,
-> so a `catch` that compared against that string no longer matches. Everything else in this
-> section is additive or a bugfix.
+> so a `catch` that compared against that string no longer matches; a `<shae-prop>` value that
+> used to vanish now arrives at the Shadow Object — `0`, `false` and `''` through the JS
+> property, and a whitespace-only `value` attribute as the empty string the trim leaves behind;
+> and an unconvertible `<shae-prop>` value no longer throws, so a `try`/`catch` around an
+> assignment to `prop.value` stops firing. Everything else in this section is additive or a
+> bugfix.
 
+- **Bugfix (elements):** `<shae-prop>` keeps `0`, `false` and the empty string assigned through the `value` JS property. `ComponentChanges` reads an explicit `undefined` as removing the property, so those three used to leave the Shadow Object without the property at all instead of with a falsy value. An empty `value` attribute still counts as a missing one and sets nothing; the normalization for that case sits where attributes are read, not in the conversion effect.
+- **Behavior (elements):** a whitespace-only `value` attribute is the empty string once trimmed, and is converted from there — `<shae-prop type="number" value="   ">` is `0`. Previously it set no property at all. `no-trim` is unaffected and still keeps the whitespace as the value.
+- **Behavior (elements):** a `<shae-prop>` value that cannot be converted into the requested type is reported through the `ConsoleLogger` and sets the property to `undefined`, instead of throwing out of the element. This covers `json`, `bigint`, `bigint64array` and `biguint64array` — the four types whose conversion can fail — and applies to both paths, the `value` attribute and the `value` JS property. Assigning an unconvertible value to `prop.value` therefore no longer raises a `SyntaxError` at the caller. The report goes through `logger.error`, which is not gated behind `ConsoleLogger.sharedConfig.enable`, so a dropped value stays visible outside localhost.
 - **Dependencies (breaking):** the declared runtime ranges in the published `package.json` move to `@spearwolf/eventize@^6.0.0` and `@spearwolf/signalize@1.0.0-beta.0`, from the `^5.0.0` / `^0.30.0` that `0.33.0` shipped. The two move as a pair — signalize 1.0 declares `peerDependencies: {"@spearwolf/eventize": "^6.0.0"}`, which is the range widening that lifts the 5.x holdback. Both libraries key their marker slots with realm-wide symbols, so two majors of either in one consumer tree share a slot per object: eventize 6 answers that with a `TypeError` naming both protocols, signalize 1.0 with two graphs that recognise nothing of each other. Verify with `pnpm why @spearwolf/eventize` after upgrading. Behaviour reaching code built on this package:
   - A bulk `off(target)` clears retained events as well as listeners. Inside the framework this only happens while tearing `ShadowEnv`, `SignalsPath` and `Entity` down, so nothing changes here; a consumer that used `off()` as a listener reset and went on relying on a retained value has to `retain()` again.
   - An event name matching only an inherited `Object.prototype` member — `toString`, `valueOf`, `constructor`, `hasOwnProperty` and their kin — no longer dispatches to that inherited function. `ViewComponent.dispatchShadowObjectsEvent()` and `Entity.dispatchViewEvent()` carry consumer-chosen strings, so an event named this way used to reach `Object.prototype` and now reaches nothing.

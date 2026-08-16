@@ -165,145 +165,162 @@ export class ShaePropElement extends HTMLElement {
         value = value.trim();
       }
 
-      value = value || undefined;
+      // only null and undefined mean "no value" — 0, false and the empty string are values
+      value = value ?? undefined;
 
+      // the `value != null` half is covered by the `typeof` check next to it; it stays until the
+      // conversion moves out of this switch, so that rewrite touches one shape, not two
       if (value != null && typeof value === 'string' && type) {
-        switch (type) {
-          case 'string':
-          case 'text':
-            break;
+        // invalid input is an operating case for this element, not an exceptional state: it is
+        // reported and clears the value instead of throwing out of a reactive effect
+        try {
+          switch (type) {
+            case 'string':
+            case 'text':
+              break;
 
-          case 'number':
-            value = Number(value);
-            break;
+            case 'number':
+              value = Number(value);
+              break;
 
-          case 'bigint':
-            value = BigInt(value);
-            break;
+            case 'bigint':
+              value = BigInt(value);
+              break;
 
-          case 'float':
-            value = parseFloat(value);
-            break;
+            case 'float':
+              value = parseFloat(value);
+              break;
 
-          case 'int':
-          case 'integer':
-            value = parseInt(value, 10);
-            break;
+            case 'int':
+            case 'integer':
+              value = parseInt(value, 10);
+              break;
 
-          case 'hex':
-          case 'hexadecimal':
-            value = parseInt(value, 16);
-            break;
+            case 'hex':
+            case 'hexadecimal':
+              value = parseInt(value, 16);
+              break;
 
-          case 'oct':
-          case 'octal':
-            value = parseInt(value, 8);
-            break;
+            case 'oct':
+            case 'octal':
+              value = parseInt(value, 8);
+              break;
 
-          case 'bin':
-          case 'binary':
-            value = parseInt(value, 2);
-            break;
+            case 'bin':
+            case 'binary':
+              value = parseInt(value, 2);
+              break;
 
-          case 'bool':
-          case 'boolean':
-            value = TRUTHY_VALUES.has(value.toLowerCase());
-            break;
+            case 'bool':
+            case 'boolean':
+              value = TRUTHY_VALUES.has(value.toLowerCase());
+              break;
 
-          case '[]':
-          case 'text[]':
-          case 'string[]':
-            value = value.split(/\W+/);
-            break;
+            case '[]':
+            case 'text[]':
+            case 'string[]':
+              value = value.split(/\W+/);
+              break;
 
-          case 'number[]':
-            value = value.split(/\s+/).map((v) => Number(v));
-            break;
+            case 'number[]':
+              value = value.split(/\s+/).map((v) => Number(v));
+              break;
 
-          case 'float[]':
-            value = value.split(/\s+/).map((v) => parseFloat(v));
-            break;
+            case 'float[]':
+              value = value.split(/\s+/).map((v) => parseFloat(v));
+              break;
 
-          case 'int[]':
-          case 'integer[]':
-            value = value.split(/\s+/).map((v) => parseInt(v, 10));
-            break;
+            case 'int[]':
+            case 'integer[]':
+              value = value.split(/\s+/).map((v) => parseInt(v, 10));
+              break;
 
-          case 'hex[]':
-          case 'hexadecimal[]':
-            value = value.split(/\W+/).map((v) => parseInt(v, 16));
-            break;
+            case 'hex[]':
+            case 'hexadecimal[]':
+              value = value.split(/\W+/).map((v) => parseInt(v, 16));
+              break;
 
-          case 'oct[]':
-          case 'octal[]':
-            value = value.split(/\W+/).map((v) => parseInt(v, 8));
-            break;
+            case 'oct[]':
+            case 'octal[]':
+              value = value.split(/\W+/).map((v) => parseInt(v, 8));
+              break;
 
-          case 'bin[]':
-          case 'binary[]':
-            value = value.split(/\W+/).map((v) => parseInt(v, 2));
-            break;
+            case 'bin[]':
+            case 'binary[]':
+              value = value.split(/\W+/).map((v) => parseInt(v, 2));
+              break;
 
-          case 'bool[]':
-          case 'boolean[]':
-            value = value.split(/\W+/).map((v) => TRUTHY_VALUES.has(v.toLowerCase()));
-            break;
+            case 'bool[]':
+            case 'boolean[]':
+              value = value.split(/\W+/).map((v) => TRUTHY_VALUES.has(v.toLowerCase()));
+              break;
 
-          case 'int8array':
-            value = new Int8Array(value.split(/\W+/).map((v) => Number(v)));
-            break;
+            case 'int8array':
+              value = new Int8Array(value.split(/\W+/).map((v) => Number(v)));
+              break;
 
-          case 'uint8array':
-            value = new Uint8Array(value.split(/\W+/).map((v) => Number(v)));
-            break;
+            case 'uint8array':
+              value = new Uint8Array(value.split(/\W+/).map((v) => Number(v)));
+              break;
 
-          case 'uint8clampedarray':
-            value = new Uint8ClampedArray(value.split(/\W+/).map((v) => Number(v)));
-            break;
+            case 'uint8clampedarray':
+              value = new Uint8ClampedArray(value.split(/\W+/).map((v) => Number(v)));
+              break;
 
-          case 'int16array':
-            value = new Int16Array(value.split(/\W+/).map((v) => Number(v)));
-            break;
+            case 'int16array':
+              value = new Int16Array(value.split(/\W+/).map((v) => Number(v)));
+              break;
 
-          case 'uint16array':
-            value = new Uint16Array(value.split(/\W+/).map((v) => Number(v)));
-            break;
+            case 'uint16array':
+              value = new Uint16Array(value.split(/\W+/).map((v) => Number(v)));
+              break;
 
-          case 'int32array':
-            value = new Int32Array(value.split(/\W+/).map((v) => Number(v)));
-            break;
+            case 'int32array':
+              value = new Int32Array(value.split(/\W+/).map((v) => Number(v)));
+              break;
 
-          case 'uint32array':
-            value = new Uint32Array(value.split(/\W+/).map((v) => Number(v)));
-            break;
+            case 'uint32array':
+              value = new Uint32Array(value.split(/\W+/).map((v) => Number(v)));
+              break;
 
-          case 'float32array':
-            value = new Float32Array(value.split(/\s+/).map((v) => Number(v)));
-            break;
+            case 'float32array':
+              value = new Float32Array(value.split(/\s+/).map((v) => Number(v)));
+              break;
 
-          case 'float64array':
-            value = new Float64Array(value.split(/\s+/).map((v) => Number(v)));
-            break;
+            case 'float64array':
+              value = new Float64Array(value.split(/\s+/).map((v) => Number(v)));
+              break;
 
-          case 'bigint64array':
-            value = new BigInt64Array(value.split(/\W+/).map((v) => BigInt(v)));
-            break;
+            case 'bigint64array':
+              value = new BigInt64Array(value.split(/\W+/).map((v) => BigInt(v)));
+              break;
 
-          case 'biguint64array':
-            value = new BigUint64Array(value.split(/\W+/).map((v) => BigInt(v)));
-            break;
+            case 'biguint64array':
+              value = new BigUint64Array(value.split(/\W+/).map((v) => BigInt(v)));
+              break;
 
-          case 'json':
-            value = JSON.parse(value);
-            break;
+            case 'json':
+              value = JSON.parse(value);
+              break;
 
-          default:
-            if (this.logger.isWarn) {
-              this.logger.warn(`[${this.name}] unknown type "${type}"`, {
-                value,
-                shaeProp: this,
-              });
-            }
+            default:
+              if (this.logger.isWarn) {
+                this.logger.warn(`[${this.name}] unknown type "${type}"`, {
+                  value,
+                  shaeProp: this,
+                });
+              }
+          }
+        } catch (error) {
+          // reported through `error`, not `warn`: `warn` is gated behind
+          // `ConsoleLogger.sharedConfig.enable`, which defaults to "the page is served from
+          // localhost". A dropped property value has to stay visible in production too.
+          this.logger.error(`[${this.name}] could not convert the value into the type "${type}"`, {
+            value,
+            error,
+            shaeProp: this,
+          });
+          value = undefined;
         }
       }
 
@@ -371,7 +388,11 @@ export class ShaePropElement extends HTMLElement {
   };
 
   #readValueAttribute = () => {
-    this.valueIn$.set(this.getAttribute(ATTR_VALUE));
+    // an empty value attribute means "no value", exactly like a missing one. Everything else
+    // goes in raw: valueIn$ is the source a no-trim switch recalculates from, so whitespace
+    // has to survive until the trim decides what is left of it.
+    const value = this.getAttribute(ATTR_VALUE);
+    this.valueIn$.set(value === null || value === '' ? undefined : value);
   };
 
   #readTypeAttribute = () => {

@@ -232,9 +232,9 @@ ent.addEventListener('login-success', (e) => console.log(e.detail.user));
 | Attribute | Values | Description |
 |---|---|---|
 | `name` | string | Property name to set on the parent entity |
-| `value` | string | The value (cast according to `type`) |
+| `value` | string | The value (cast according to `type`); `value=""` counts as no value |
 | `type` | see below | Type cast for the value attribute |
-| `no-trim` | boolean (presence) | Preserve whitespace in string values |
+| `no-trim` | boolean (presence) | Preserve whitespace in string values; without it `value="   "` trims down to `''` |
 
 **`type` values for `<shae-prop>`:**
 
@@ -247,6 +247,9 @@ ent.addEventListener('login-success', (e) => console.log(e.detail.user));
 | `json` | `JSON.parse` |
 | `number[]`, `string[]`, `int[]` | Split by whitespace/comma |
 | `float32array`, `uint8array`, etc. | Typed array |
+
+A value that does not convert is reported through the `ConsoleLogger` at error level and leaves the property `undefined` -- nothing throws.
+Via the `el.value` property, `0`, `false` and `''` are values and reach the entity; only `null` and `undefined` clear it.
 
 ---
 

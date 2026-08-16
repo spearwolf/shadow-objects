@@ -346,6 +346,8 @@ Declaratively set properties on the parent entity:
 
 Supported `type` values: `string`, `number`, `float`, `int`, `boolean`, `json`, `number[]`, `string[]`, `float32array`, `uint8array`, and more.
 
+A value that cannot be converted into the requested type -- malformed JSON, for instance -- arrives as an error in the console and leaves the property empty.
+
 ### Sending and Receiving Events via JavaScript
 
 Send an event from the view to the Shadow Environment:
