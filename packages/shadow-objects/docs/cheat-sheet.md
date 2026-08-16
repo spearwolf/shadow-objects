@@ -252,12 +252,19 @@ A move within a single tick is a move, not a removal — the property travels wi
 | Type | Result |
 |---|---|
 | `string`, `text` | Plain string (default) |
-| `number`, `float` | `parseFloat` |
-| `int`, `integer` | `parseInt` |
+| `number` | `Number()` |
+| `float` | `parseFloat` |
+| `int`, `integer` | `parseInt` (base 10) |
+| `hex`, `hexadecimal` | `parseInt` (base 16) |
+| `oct`, `octal` | `parseInt` (base 8) |
+| `bin`, `binary` | `parseInt` (base 2) |
+| `bigint` | `BigInt()` |
 | `boolean`, `bool` | `true` / `false` |
 | `json` | `JSON.parse` |
-| `number[]`, `string[]`, `int[]` | Split by whitespace/comma |
-| `float32array`, `uint8array`, etc. | Typed array |
+| `number[]`, `float[]`, `int[]`, `integer[]` | Split on whitespace only — `"1,2,3"` stays one element |
+| `[]`, `string[]`, `text[]`, `hex[]`, `oct[]`, `bin[]`, `bool[]`, etc. | Split on any run of non-word characters (whitespace, commas, …) |
+| `float32array`, `float64array` | Typed array, split on whitespace only |
+| `int8array`, `uint8array`, `bigint64array`, etc. | Typed array, split on any run of non-word characters |
 
 A value that does not convert is reported through the `ConsoleLogger` at error level and leaves the property `undefined` -- nothing throws.
 Via the `el.value` property, `0`, `false` and `''` are values and reach the entity; only `null` and `undefined` clear it.

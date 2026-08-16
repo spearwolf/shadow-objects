@@ -1279,12 +1279,19 @@ can host a property.
 | Type | Result |
 | :--- | :--- |
 | `string`, `text` | String (default). |
-| `number`, `float` | `parseFloat` |
-| `int`, `integer` | `parseInt` |
+| `number` | `Number()` |
+| `float` | `parseFloat` |
+| `int`, `integer` | `parseInt` (base 10) |
+| `hex`, `hexadecimal` | `parseInt` (base 16) |
+| `oct`, `octal` | `parseInt` (base 8) |
+| `bin`, `binary` | `parseInt` (base 2) |
+| `bigint` | `BigInt()` |
 | `boolean`, `bool` | `true` / `false` |
 | `json` | `JSON.parse` |
-| `number[]`, `string[]`, `int[]`, etc. | Splits by whitespace or comma into an array. |
-| `float32array`, `uint8array`, etc. | Typed array variants. |
+| `number[]`, `float[]`, `int[]`, `integer[]` | Splits on whitespace only, then converts each element. `value="1,2,3"` is a single unsplit element, not three. |
+| `[]`, `string[]`, `text[]`, `hex[]`, `hexadecimal[]`, `oct[]`, `octal[]`, `bin[]`, `binary[]`, `bool[]`, `boolean[]` | Splits on any run of non-word characters — whitespace, commas, semicolons, etc. |
+| `float32array`, `float64array` | Splits on whitespace only, like the numeric array types above. |
+| `int8array`, `uint8array`, `uint8clampedarray`, `int16array`, `uint16array`, `int32array`, `uint32array`, `bigint64array`, `biguint64array` | Splits on any run of non-word characters, like the string/hex/oct/bin/bool array types above. |
 
 #### JavaScript API
 

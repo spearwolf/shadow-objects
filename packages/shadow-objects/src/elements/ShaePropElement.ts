@@ -1,9 +1,9 @@
 import {batch, createEffect, createSignal, link} from '@spearwolf/signalize';
 import {readBooleanAttribute} from '../utils/attr-utils.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
-import {TRUTHY_VALUES} from '../utils/constants.js';
 import type {ViewComponent} from '../view/ViewComponent.js';
 import {ATTR_NAME, ATTR_NO_TRIM, ATTR_TYPE, ATTR_VALUE, ReRequestEntHostEventName} from './constants.js';
+import {propValueConverters} from './propValueConverters.js';
 import {requestEntAncestor} from './requestEntAncestor.js';
 import type {ShaeEntElement} from './ShaeEntElement.js';
 
@@ -43,51 +43,6 @@ const removeDeclarant = (vc: ViewComponent, name: string): boolean => {
   }
   return true;
 };
-
-const TYPES = new Set([
-  'string',
-  'text',
-  'number',
-  'bigint',
-  'float',
-  'int',
-  'integer',
-  'hex',
-  'hexadecimal',
-  'oct',
-  'octal',
-  'bin',
-  'binary',
-  'bool',
-  'boolean',
-  '[]',
-  'text[]',
-  'string[]',
-  'number[]',
-  'float[]',
-  'int[]',
-  'integer[]',
-  'hex[]',
-  'hexadecimal[]',
-  'oct[]',
-  'octal[]',
-  'bin[]',
-  'binary[]',
-  'bool[]',
-  'boolean[]',
-  'int8array',
-  'uint8array',
-  'uint8clampedarray',
-  'int16array',
-  'uint16array',
-  'int32array',
-  'uint32array',
-  'float32array',
-  'float64array',
-  'bigint64array',
-  'biguint64array',
-  'json',
-]);
 
 /**
  * Sets a property on the entity above it.
@@ -259,160 +214,29 @@ export class ShaePropElement extends HTMLElement {
       // only null and undefined mean "no value" — 0, false and the empty string are values
       value = value ?? undefined;
 
-      // the `value != null` half is covered by the `typeof` check next to it; it stays until the
-      // conversion moves out of this switch, so that rewrite touches one shape, not two
-      if (value != null && typeof value === 'string' && type) {
-        // invalid input is an operating case for this element, not an exceptional state: it is
-        // reported and clears the value instead of throwing out of a reactive effect
-        try {
-          switch (type) {
-            case 'string':
-            case 'text':
-              break;
-
-            case 'number':
-              value = Number(value);
-              break;
-
-            case 'bigint':
-              value = BigInt(value);
-              break;
-
-            case 'float':
-              value = parseFloat(value);
-              break;
-
-            case 'int':
-            case 'integer':
-              value = parseInt(value, 10);
-              break;
-
-            case 'hex':
-            case 'hexadecimal':
-              value = parseInt(value, 16);
-              break;
-
-            case 'oct':
-            case 'octal':
-              value = parseInt(value, 8);
-              break;
-
-            case 'bin':
-            case 'binary':
-              value = parseInt(value, 2);
-              break;
-
-            case 'bool':
-            case 'boolean':
-              value = TRUTHY_VALUES.has(value.toLowerCase());
-              break;
-
-            case '[]':
-            case 'text[]':
-            case 'string[]':
-              value = value.split(/\W+/);
-              break;
-
-            case 'number[]':
-              value = value.split(/\s+/).map((v) => Number(v));
-              break;
-
-            case 'float[]':
-              value = value.split(/\s+/).map((v) => parseFloat(v));
-              break;
-
-            case 'int[]':
-            case 'integer[]':
-              value = value.split(/\s+/).map((v) => parseInt(v, 10));
-              break;
-
-            case 'hex[]':
-            case 'hexadecimal[]':
-              value = value.split(/\W+/).map((v) => parseInt(v, 16));
-              break;
-
-            case 'oct[]':
-            case 'octal[]':
-              value = value.split(/\W+/).map((v) => parseInt(v, 8));
-              break;
-
-            case 'bin[]':
-            case 'binary[]':
-              value = value.split(/\W+/).map((v) => parseInt(v, 2));
-              break;
-
-            case 'bool[]':
-            case 'boolean[]':
-              value = value.split(/\W+/).map((v) => TRUTHY_VALUES.has(v.toLowerCase()));
-              break;
-
-            case 'int8array':
-              value = new Int8Array(value.split(/\W+/).map((v) => Number(v)));
-              break;
-
-            case 'uint8array':
-              value = new Uint8Array(value.split(/\W+/).map((v) => Number(v)));
-              break;
-
-            case 'uint8clampedarray':
-              value = new Uint8ClampedArray(value.split(/\W+/).map((v) => Number(v)));
-              break;
-
-            case 'int16array':
-              value = new Int16Array(value.split(/\W+/).map((v) => Number(v)));
-              break;
-
-            case 'uint16array':
-              value = new Uint16Array(value.split(/\W+/).map((v) => Number(v)));
-              break;
-
-            case 'int32array':
-              value = new Int32Array(value.split(/\W+/).map((v) => Number(v)));
-              break;
-
-            case 'uint32array':
-              value = new Uint32Array(value.split(/\W+/).map((v) => Number(v)));
-              break;
-
-            case 'float32array':
-              value = new Float32Array(value.split(/\s+/).map((v) => Number(v)));
-              break;
-
-            case 'float64array':
-              value = new Float64Array(value.split(/\s+/).map((v) => Number(v)));
-              break;
-
-            case 'bigint64array':
-              value = new BigInt64Array(value.split(/\W+/).map((v) => BigInt(v)));
-              break;
-
-            case 'biguint64array':
-              value = new BigUint64Array(value.split(/\W+/).map((v) => BigInt(v)));
-              break;
-
-            case 'json':
-              value = JSON.parse(value);
-              break;
-
-            default:
-              if (this.logger.isWarn) {
-                this.logger.warn(`[${this.name}] unknown type "${type}"`, {
-                  value,
-                  shaeProp: this,
-                });
-              }
+      if (typeof value === 'string' && type) {
+        const convert = propValueConverters.get(type);
+        if (convert != null) {
+          // invalid input is an operating case for this element, not an exceptional state: it is
+          // reported and clears the value instead of throwing out of a reactive effect
+          try {
+            value = convert(value);
+          } catch (error) {
+            // reported through `error`, not `warn`: `warn` is gated behind
+            // `ConsoleLogger.sharedConfig.enable`, which defaults to "the page is served from
+            // localhost". A dropped property value has to stay visible in production too.
+            this.logger.error(`[${this.name}] could not convert the value into the type "${type}"`, {
+              value,
+              error,
+              shaeProp: this,
+            });
+            value = undefined;
           }
-        } catch (error) {
-          // reported through `error`, not `warn`: `warn` is gated behind
-          // `ConsoleLogger.sharedConfig.enable`, which defaults to "the page is served from
-          // localhost". A dropped property value has to stay visible in production too.
-          this.logger.error(`[${this.name}] could not convert the value into the type "${type}"`, {
-            value,
-            error,
-            shaeProp: this,
-          });
-          value = undefined;
         }
+        // an unrecognized type name — `convert == null` — passes the string through untouched and
+        // unreported here. `type$` is `protected`; the only writer in this repository is
+        // `#readTypeAttribute`, which already warns for every unknown name it sees, so this branch
+        // stays silent on purpose rather than warning a second time for the same name.
       }
 
       this.valueOut$.set(value);
@@ -576,7 +400,7 @@ export class ShaePropElement extends HTMLElement {
 
   #readTypeAttribute = () => {
     let type = this.getAttribute(ATTR_TYPE)?.trim().toLowerCase();
-    if (type && !TYPES.has(type)) {
+    if (type && !propValueConverters.has(type)) {
       if (this.logger.isWarn) {
         this.logger.warn(`[${this.name}] unknown type "${type}"`, {
           shaeProp: this,
