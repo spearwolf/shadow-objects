@@ -39,10 +39,10 @@ describe('shae-ent forward-custom-events attribute forms', () => {
     ['forward-custom-events="foo,,bar"', ['foo', 'bar'], 'foo,bar'],
     ['forward-custom-events=" foo , bar "', ['foo', 'bar'], 'foo,bar'],
     ['forward-custom-events="foo,"', ['foo'], 'foo'],
-    // an explicitly empty allow-list ends up meaning "forward everything" instead of "forward
-    // nothing" — the reflected attribute becomes the empty string, which reads back the same
-    // way a bare attribute does
-    ['forward-custom-events=","', true, ''],
+    // a list without entries names no event type, so nothing is forwarded. The attribute stays as
+    // written: the signal never leaves its default, so the reflection has no change to write back
+    ['forward-custom-events=","', false, ','],
+    ['forward-custom-events=" , , "', false, ' , , '],
     // splitting is comma-only: whitespace inside an entry is part of the type name
     ['forward-custom-events="foo foo"', ['foo foo'], 'foo foo'],
     ['', false, null],
@@ -109,9 +109,9 @@ describe('shae-ent forward-custom-events runtime changes and reflection', () => 
     expect(attrOf(el)).to.equal('a,b');
   });
 
-  it('forwardCustomEvents$.set(new Set()) also ends up meaning "forward everything"', () => {
-    // same result as the empty-list attribute form above, reached through the signal instead —
-    // this is the current behaviour, not the intended one
+  it('forwardCustomEvents$.set(new Set()) forwards nothing and drops the attribute', () => {
+    // the empty list clears the attribute, and because clearing it is an attribute change, the
+    // element reads the value back once and settles on false
     const el = mountFCE();
     el.setAttribute('forward-custom-events', 'bar,baz');
     el.setAttribute('forward-custom-events', '');
@@ -119,8 +119,8 @@ describe('shae-ent forward-custom-events runtime changes and reflection', () => 
     el.forwardCustomEvents$.set(true);
     el.forwardCustomEvents$.set(new Set(['a', 'b']));
     el.forwardCustomEvents$.set(new Set());
-    expect(fce(el)).to.equal(true);
-    expect(attrOf(el)).to.equal('');
+    expect(fce(el)).to.equal(false);
+    expect(attrOf(el)).to.equal(null);
   });
 
   it('forwardCustomEvents$.set(false) removes the attribute', () => {
@@ -133,6 +133,20 @@ describe('shae-ent forward-custom-events runtime changes and reflection', () => 
     el.forwardCustomEvents$.set(new Set());
     el.forwardCustomEvents$.set(false);
     expect(attrOf(el)).to.equal(null);
+  });
+
+  it('setAttribute("forward-custom-events", ",") drops the attribute and forwards nothing', () => {
+    // the asymmetry against the "attribute forms" cases above: at runtime there is a change to
+    // write back, in markup there is not
+    const el = mountFCE();
+    el.setAttribute('forward-custom-events', ',');
+    expect(fce(el)).to.equal(false);
+    expect(attrOf(el)).to.equal(null);
+
+    const domEvents = [];
+    el.addEventListener('foo', (e) => domEvents.push(e));
+    el.viewComponent.dispatchEvent('foo', {}, false);
+    expect(domEvents).to.have.lengthOf(0);
   });
 });
 
@@ -333,5 +347,19 @@ describe('shae-ent the dispatchEvent patch', () => {
     p.addEventListener('foo', (e) => domEvents.push(e));
     p.viewComponent.dispatchEvent('foo', {}, false);
     expect(domEvents).to.have.lengthOf(1);
+  });
+
+  it('an allow-list without entries installs no dispatchEvent patch', () => {
+    // the one path on which an empty Set stays in the signal instead of being normalized away by
+    // an attribute round-trip — it still behaves like `false`
+    const container = mount('<shae-ent token="t"></shae-ent>');
+    const el = container.querySelector('shae-ent');
+    el.forwardCustomEvents$.set(new Set());
+    expect(Object.hasOwn(el.viewComponent, 'dispatchEvent')).to.be.false;
+
+    const domEvents = [];
+    el.addEventListener('x', (e) => domEvents.push(e));
+    el.viewComponent.dispatchEvent('x', {}, false);
+    expect(domEvents).to.have.lengthOf(0);
   });
 });

@@ -223,9 +223,9 @@ ent.addEventListener('login-success', (e) => console.log(e.detail.user));
 
 | Attribute | Values | Description |
 |---|---|---|
-| `token` | string | Token (Component Tag) matching a Registry entry. Required. |
+| `token` | string | Token (Component Tag) matching a Registry entry. Optional; without it the entity carries `#void`. |
 | `ns` | string | Connect to a named Component Context |
-| `forward-custom-events` | empty or comma-list | Re-dispatch Shadow Object events as DOM CustomEvents |
+| `forward-custom-events` | absent, empty/whitespace, or comma-list | Re-dispatch Shadow Object events as DOM CustomEvents. Empty or whitespace-only: every event. A list: only the types it names. Absent, or a list with no entries: nothing. |
 
 ### `<shae-prop>`
 

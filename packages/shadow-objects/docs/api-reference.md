@@ -1151,9 +1151,9 @@ Represents an Entity (game object) in the Shadow Environment. Corresponds to a `
 
 | Attribute | Description |
 | :--- | :--- |
-| `token` | The Token (Component Tag) matching a registered Shadow Object constructor. Required. |
+| `token` | The Token (Component Tag) matching a registered Shadow Object constructor. Optional: an entity without one carries the void token `#void` and matches no Shadow Object. Removing the attribute takes the entity back to it. |
 | `ns` | The context this entity belongs to. Must match the `ns` on `<shae-worker>` when using named contexts. Can be changed at runtime, see [Entity Hierarchy](#entity-hierarchy). |
-| `forward-custom-events` | Re-dispatches events from the Shadow Object as DOM `CustomEvent`s on this element. Empty or `true` = all events. Comma-separated list = specific events only. |
+| `forward-custom-events` | Re-dispatches events from the Shadow Object as DOM `CustomEvent`s on this element. Present with an empty or whitespace-only value: every event. A comma-separated list: only the types it names — `forward-custom-events="true"` forwards the type named `true` and nothing else. Absent, or a list that names no type: nothing is forwarded. |
 
 ```html
 <shae-ent token="my-player"></shae-ent>

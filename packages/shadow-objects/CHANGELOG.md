@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 > **Next release: minor.** The package is below `1.0.0`, so the accumulated breaking
-> changes below bump the minor position — `0.33.0` → `0.34.0`. Fifteen of them reach existing
+> changes below bump the minor position — `0.33.0` → `0.34.0`. Seventeen of them reach existing
 > consumers: both runtime dependencies take a major step and carry behaviour changes of their
 > own; the emitted declarations carry `| undefined` where a value can be missing, so a
 > build with `strictNullChecks` sees new errors; `RemoteWorkerEnv` rejects with
@@ -39,8 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > above it changes, so a property that used to sit on the entity that happened to be closest at
 > upgrade time now follows the closest one there is, which again puts it on a different entity than
 > before; and `@spearwolf/shadow-objects/shae-prop.js`, imported on its own, now defines `<shae-prop>`
-> right away instead of leaving it inert forever. Everything else in this section is additive or a
-> bugfix.
+> right away instead of leaving it inert forever; a `removeAttribute('token')` now resets the entity
+> to `#void` instead of leaving it holding the token that was there before; and an empty
+> `forward-custom-events` filter list now forwards nothing instead of everything. Everything else in
+> this section is additive or a bugfix.
 
 - **Bugfix (elements):** a `<shae-prop>` finds the same entity a `<shae-ent>` in its place would find. Both elements now send one and the same request, so the host is the closest entity above the element in the flattened tree — through shadow roots, along slot projections, across closed boundaries — regardless of its namespace. The lookup used to walk `parentElement`, a chain that ends at the top element of a shadow root: a `<shae-prop>` inside one never reached its host, and where a slot or a closed boundary was involved it bound to an entity further out instead of the one right above it. A move to a position with no entity above it leaves the element without a host, and the property is taken off the entity it left. The rule is written down in `docs/api-reference.md` under `#### Finding the Host Entity`.
 - **Bugfix (elements):** a `<shae-prop>` follows the closest entity above it while it stays where it is. Every way of becoming that entity moves the binding — a custom element whose tag is registered late takes the properties under it along, a shadow root attached afterwards takes over what its slots project, a changed slot assignment is followed, though not a `<slot>` element moved into another entity — and so does every way of ceasing to be one: when the host entity leaves the tree, the property binds to the next entity above it, or to none if there is none. The host used to be resolved when the element connected and never again, which left a property on an entity that was no longer the closest one, or on none at all, without a message about it. A re-binding takes effect one microtask after the change, not in the same step. A `<shae-prop>` with no entity anywhere above it reports that once through the `ConsoleLogger`, gated behind `ConsoleLogger.sharedConfig.enable` like every `warn`.
@@ -124,6 +126,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Docs (correctness):** `api-reference.md` and `cheat-sheet.md` listed `number` and `float` together as `parseFloat`. `number` converts with `Number()` — for `value="3.14abc"` that is `NaN`, not `3.14`. Both tables now list them separately and add the previously missing `bigint`, `hex`/`hexadecimal`, `oct`/`octal` and `bin`/`binary` rows.
 - **Breaking (elements):** `@spearwolf/shadow-objects/shae-prop.js` defines `<shae-prop>` on import, with no wait on `<shae-ent>`'s registration — the two registration modules place no requirement on each other's order. A consumer importing the subpath on its own gets a working element; a consumer importing both sees no difference. A `<shae-prop>` that connects before any entity above it answers reports that once through the `ConsoleLogger` and finds its host the moment one registers.
 - **New (public API):** the event types in `src/elements/events.ts` — `RequestEntParentEvent`, `ReRequestEntParentEvent`, `ReRequestEntHostEvent` and the `ShadowEntsEventMap` they sit in — are re-exported as types from `index.ts`. `HTMLElementEventMap` carries `shaeRequestEntParent`, `shaeReRequestEntParent` and `shaeReRequestEntHost` for every consumer of the package, so `el.addEventListener('shaeReRequestEntHost', …)` types its event argument.
+- **Breaking (elements):** a removed `token` attribute takes the token with it. The element read the attribute only while it was there, so removing it left the property and the `ViewComponent` standing on a value that had already vanished from the markup — while `el.token = undefined` cleared both. An entity without a token carries `VoidToken` (`#void`) and matches no Shadow Object; removing the attribute now destroys the Shadow Object that the token had selected.
+- **Breaking (elements):** a `forward-custom-events` list that names no event type forwards nothing. `forward-custom-events=","` and `forwardCustomEvents$.set(new Set())` landed as an empty attribute value, and that is the spelling for "every event"; they now mean what they say. "Forward nothing" still means leaving the attribute out.
+- **Docs (correctness):** `api-reference.md` promised "Empty or `true` = all events" for `forward-custom-events`. The attribute is a string; `forward-custom-events="true"` never matched the empty-value branch and instead named one event type, literally `true` — markup written against that promise forwarded nothing it named. Corrected alongside the two entries above.
 
 ## [0.33.0] - 2026-06-19
 

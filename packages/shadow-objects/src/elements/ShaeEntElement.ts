@@ -49,6 +49,9 @@ interface ReRequestParentData {
   newAncestor?: ShaeEntElement;
 }
 
+/** An allow-list without entries forwards nothing — the same thing `false` says. */
+const isEmptyFilter = (val: Set<string> | boolean): boolean => val instanceof Set && val.size === 0;
+
 export class ShaeEntElement extends ShaeElement {
   static override observedAttributes = [...ShaeElement.observedAttributes, ATTR_TOKEN, ATTR_FORWARD_CUSTOM_EVENTS];
 
@@ -152,7 +155,7 @@ export class ShaeEntElement extends ShaeElement {
     this.#updateForwardCustomEventsValue();
 
     this.forwardCustomEvents$.onChange((val) => {
-      if (!val) {
+      if (!val || isEmptyFilter(val)) {
         this.removeAttribute(ATTR_FORWARD_CUSTOM_EVENTS);
       } else if (val === true) {
         if (!this.hasAttribute(ATTR_FORWARD_CUSTOM_EVENTS)) {
@@ -199,7 +202,7 @@ export class ShaeEntElement extends ShaeElement {
         : vc.dispatchEvent;
 
       const filter = this.forwardCustomEvents$.get();
-      if (!filter) return;
+      if (!filter || isEmptyFilter(filter)) return;
 
       const allowedTypes = filter instanceof Set ? filter : undefined;
 
@@ -599,6 +602,10 @@ export class ShaeEntElement extends ShaeElement {
     if (this.hasAttribute(ATTR_TOKEN)) {
       const token = this.getAttribute(ATTR_TOKEN)?.trim() || undefined;
       this.token$.set(token);
+    } else {
+      // both ways of taking the token away end in the same place: the entity falls back to
+      // VoidToken, and the reflection has nothing left to write
+      this.token$.set(undefined);
     }
   }
 
@@ -608,14 +615,16 @@ export class ShaeEntElement extends ShaeElement {
       if (!val || val.trim().length === 0) {
         this.forwardCustomEvents$.set(true);
       } else {
-        this.forwardCustomEvents$.set(
-          new Set(
-            val
-              .split(',')
-              .map((s) => s.trim())
-              .filter((s) => s.length > 0),
-          ),
+        const types = new Set(
+          val
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0),
         );
+        // a reflected empty string is the spelling for "all events" — a list that names none of
+        // them has to mean the opposite, so it falls back to the signal's own default instead of
+        // becoming a Set that would round-trip into that same empty string
+        this.forwardCustomEvents$.set(types.size > 0 ? types : false);
       }
     } else {
       this.forwardCustomEvents$.set(false);

@@ -97,10 +97,9 @@ describe('shae-ent token attribute', () => {
     expect(el.viewComponent.token).to.equal('c');
   });
 
-  it('removeAttribute("token") leaves the property and the entity holding the old token', () => {
-    // pins the current behaviour: #updateTokenValue only reads when the attribute is present,
-    // so removal never runs it, and the property and the entity keep the stale token while the
-    // attribute itself is already gone
+  it('removeAttribute("token") clears the property and voids the entity token', () => {
+    // the attribute and the JS property are two ways to reach the same value, and both ways of
+    // taking it away end at VoidToken
     const container = mount('<shae-ent token="a b"></shae-ent>');
     const el = container.querySelector('shae-ent');
     el.token = 'b';
@@ -108,9 +107,19 @@ describe('shae-ent token attribute', () => {
     el.setAttribute('token', 'c');
 
     el.removeAttribute('token');
-    expect(el.token).to.equal('c');
+    expect(el.token).to.be.undefined;
     expect(el.hasAttribute('token')).to.be.false;
-    expect(el.viewComponent.token).to.equal('c');
+    expect(el.viewComponent.token).to.equal(VoidToken);
+  });
+
+  it('removeAttribute("token") on an element that only ever had the attribute', () => {
+    const container = mount('<shae-ent token="a"></shae-ent>');
+    const el = container.querySelector('shae-ent');
+
+    el.removeAttribute('token');
+    expect(el.token).to.be.undefined;
+    expect(el.hasAttribute('token')).to.be.false;
+    expect(el.viewComponent.token).to.equal(VoidToken);
   });
 });
 
