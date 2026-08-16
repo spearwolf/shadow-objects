@@ -1,5 +1,5 @@
 import {expect} from '@esm-bundle/chai';
-import {ComponentContext, GlobalNS, VoidToken} from '@spearwolf/shadow-objects';
+import {GlobalNS, VoidToken} from '@spearwolf/shadow-objects';
 import '@spearwolf/shadow-objects/shae-ent.js';
 import {mount, unmountAll} from '../src/mount.js';
 
@@ -155,16 +155,12 @@ describe('shae-ent ns attribute', () => {
     const previousViewComponent = el.viewComponent;
     const previousUuid = el.uuid;
 
-    try {
-      el.ns = 'other';
-      expect(el.getAttribute('ns')).to.equal('other');
-      expect(el.componentContext).to.not.equal(previousContext);
-      expect(el.viewComponent).to.equal(previousViewComponent);
-      expect(el.uuid).to.equal(previousUuid);
-      expect(el.viewComponent.context.ns).to.equal('other');
-    } finally {
-      ComponentContext.get('other').clear();
-    }
+    el.ns = 'other';
+    expect(el.getAttribute('ns')).to.equal('other');
+    expect(el.componentContext).to.not.equal(previousContext);
+    expect(el.viewComponent).to.equal(previousViewComponent);
+    expect(el.uuid).to.equal(previousUuid);
+    expect(el.viewComponent.context.ns).to.equal('other');
   });
 
   it('el.ns = "" falls back to the global namespace and removes the attribute', () => {

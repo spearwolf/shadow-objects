@@ -310,17 +310,13 @@ describe('shae-ent the dispatchEvent patch', () => {
     const {p} = mountPK();
     const vc = p.viewComponent;
 
-    try {
-      p.ns = 'probe-ns';
-      expect(p.viewComponent).to.equal(vc);
-      expect(Object.hasOwn(vc, 'dispatchEvent')).to.be.true;
+    p.ns = 'probe-ns';
+    expect(p.viewComponent).to.equal(vc);
+    expect(Object.hasOwn(vc, 'dispatchEvent')).to.be.true;
 
-      const domEvents = [];
-      p.addEventListener('foo', (e) => domEvents.push(e));
-      p.viewComponent.dispatchEvent('foo', {}, false);
-      expect(domEvents).to.have.lengthOf(1);
-    } finally {
-      ComponentContext.get('probe-ns').clear();
-    }
+    const domEvents = [];
+    p.addEventListener('foo', (e) => domEvents.push(e));
+    p.viewComponent.dispatchEvent('foo', {}, false);
+    expect(domEvents).to.have.lengthOf(1);
   });
 });
