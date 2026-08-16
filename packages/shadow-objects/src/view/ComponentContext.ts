@@ -49,6 +49,7 @@ export class ComponentContextDisposedError extends Error {
 
 export class ComponentContext {
   static readonly ReRequestParentRoots = 're-request-parent-roots';
+  static readonly ReRequestParent = 're-request-parent';
 
   static getContextsMap(): Map<NamespaceType, ComponentContext> {
     if (globalThis.__shadowEntsContexts == null) {
@@ -317,8 +318,43 @@ export class ComponentContext {
    * Inform all root components that they should re-request their parents
    */
   dispatchReRequestParentRoots() {
-    for (const uuid of this.#rootComponents) {
+    // a root that answers with a parent is taken out of #rootComponents right away, so walking
+    // the live array would skip the entry that slid into the freed slot — every second candidate
+    for (const uuid of this.#rootComponents.slice(0)) {
       this.dispatchMessage(uuid, ComponentContext.ReRequestParentRoots);
+    }
+  }
+
+  /**
+   * Inform the siblings of `component` that they should re-request their parents.
+   *
+   * This narrows the candidate set for one specific question: which components could have bound
+   * to an ancestor further away than they should have, because `component` was not yet answering
+   * when they asked? Such a component sits below `component` in the element tree and shares its
+   * parent — any entity in between would have answered first. As long as `component` has no
+   * parent of its own, the roots are that same set.
+   *
+   * The signal alone does not decide anything: the receiver re-asks, and whoever answers first
+   * wins. Which components exist as candidates is what this method knows; whether one of them
+   * really sits below `component` is settled on the receiving side, which is where the element
+   * tree is visible — `data` is what carries the sender's identity there.
+   *
+   * The two signals differ in what they ask for: {@link ComponentContext.ReRequestParentRoots}
+   * means "drop your parent and ask again", {@link ComponentContext.ReRequestParent} means "ask
+   * again and keep what you have until a different answer arrives".
+   */
+  dispatchReRequestParentSiblings(component: ViewComponent, data: unknown = undefined) {
+    const parent = component.parent;
+    if (parent == null) {
+      this.dispatchReRequestParentRoots();
+      return;
+    }
+    // getChildren() hands out a fresh array, so a child that re-parents mid-loop cannot displace
+    // the entry behind it — unlike #rootComponents, which is the live list
+    for (const child of this.getChildren(parent)) {
+      if (child !== component) {
+        this.dispatchMessage(child.uuid, ComponentContext.ReRequestParent, data);
+      }
     }
   }
 

@@ -1188,6 +1188,25 @@ Nesting `<shae-ent>` elements creates parent-child relationships in the Shadow E
 </shae-ent>
 ```
 
+The parent is resolved when an element connects: it is the closest `<shae-ent>` on the ancestor
+path that answers at that moment, across shadow boundaries and slot projections.
+
+Two things happen after that and are picked up on their own: an element that is itself an entity —
+a subclass of `ShaeEntElement`, say, loaded from a lazy module — and that is registered with
+`customElements.define()` while the markup around it already sits in the document takes the
+entities below it under itself; and a change to a `<slot>` assignment re-binds what the slot
+projects. Neither needs the application to trigger anything.
+
+Everything else keeps the parent it resolved. Three cases are worth knowing:
+
+- A `<shae-prop>` resolves its host entity once and keeps it, so a property does not follow a late
+  registration the way an entity does.
+- Changing the `ns` of an element makes it answer requests from that point on, but nothing already
+  bound is asked to look again.
+- Moving an element within the tree is only noticed when the element itself disconnects and
+  reconnects. A move that leaves it attached — a container inserted between it and its parent —
+  goes unseen.
+
 ---
 
 ### `<shae-prop>`

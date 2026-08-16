@@ -208,6 +208,21 @@ describe('shae-ent the dispatchEvent patch', () => {
     expect(eventizeCalled).to.be.true;
   });
 
+  it('never forwards ComponentContext.ReRequestParent to the DOM, even with a bare filter', () => {
+    const {p} = mountPK();
+    const domEvents = [];
+    let eventizeCalled = false;
+    p.addEventListener(ComponentContext.ReRequestParent, (e) => domEvents.push(e));
+    on(p.viewComponent, ComponentContext.ReRequestParent, () => {
+      eventizeCalled = true;
+    });
+
+    p.viewComponent.dispatchEvent(ComponentContext.ReRequestParent, undefined, false);
+
+    expect(domEvents).to.have.lengthOf(0);
+    expect(eventizeCalled).to.be.true;
+  });
+
   it('with traverseChildren the child forwards first, then bubbles into the parent before the parent forwards its own', () => {
     // the original dispatchEvent traverses the children before the patch fires its own event,
     // so the child's CustomEvent (bubbling up through the DOM) reaches the parent's listener

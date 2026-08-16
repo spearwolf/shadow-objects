@@ -238,7 +238,7 @@ any definition happens.
 | UPG-4 | P2 | `innerHTML` assigned before the definitions load: same result as parser-generated markup. |
 | UPG-5 | P2 | Definitions loaded first, markup inserted afterwards: identical observable outcome to UPG-1. |
 | UPG-6 | P2 | `<shae-worker>` upgraded after its `<shae-ent>` children: the entities are still delivered once the environment comes up (`reCreateChanges` path). |
-| UPG-7 | P2 | A `<shae-ent>` inside a custom element whose own definition arrives later: parent resolution survives the host upgrade. |
+| UPG-7 | P2 | **Implemented** — `upgrade-late-*` on `pages/upgrade-timing.html`. A `<shae-ent>` inside a custom element whose own definition arrives later: parent resolution survives the host upgrade, both for a subclass of `ShaeEntElement` and for a wrapper projecting through a `<slot>`. |
 | UPG-8 | P3 | Importing only `@spearwolf/shadow-objects/shae-prop.js` — pin down whether this is supported or must fail loudly, then assert it. |
 
 ### 3.4 New page `pages/async-events.html` — message round-trips and sync modes

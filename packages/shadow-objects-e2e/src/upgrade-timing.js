@@ -1,4 +1,5 @@
 import {on} from '@spearwolf/eventize';
+import {ShaeEntElement} from '@spearwolf/shadow-objects';
 import '@spearwolf/shadow-objects/elements.js';
 import './style.css';
 import {runTestSuite} from './test-helpers/runTestSuite.js';
@@ -125,5 +126,78 @@ async function main() {
     const post = find('post-child');
     const pre = find('pre-child');
     return post?.alive === true && post?.parentUuid === pre?.parentUuid;
+  });
+
+  // --- UPG-7: an element that becomes an entity after the first sync ---
+  //
+  // The two islands below carry no <shae-prop>, so `find(label)` cannot reach them — they are
+  // looked up by uuid instead.
+
+  const entityOf = (el) => snap.entities.find((e) => e.uuid === el.uuid);
+  const wrapInner = () => byId('late-wrap').shadowRoot.getElementById('wrap-inner');
+
+  testBooleanAction('upgrade-late-elements-are-not-defined-yet', () => {
+    return (
+      customElements.get('late-ent') == null &&
+      customElements.get('late-wrapper') == null &&
+      byId('late-mid').isShaeEntElement !== true
+    );
+  });
+
+  // the starting point, not a defect: the closer ancestor does not exist as an entity yet
+  testBooleanAction('upgrade-late-child-starts-at-the-outer-entity', () => {
+    return byId('late-child').entParentNode === byId('late-gp') && byId('wrap-child').entParentNode === byId('wrap-gp');
+  });
+
+  await testAsyncAction('upgrade-late-definitions-arrive', async () => {
+    class LateEnt extends ShaeEntElement {}
+
+    class LateWrapper extends HTMLElement {
+      connectedCallback() {
+        if (this.shadowRoot) return;
+        this.attachShadow({mode: 'open'}).innerHTML = '<shae-ent id="wrap-inner" token="tracked"><slot></slot></shae-ent>';
+      }
+    }
+
+    customElements.define('late-ent', LateEnt);
+    customElements.define('late-wrapper', LateWrapper);
+
+    await Promise.all([customElements.whenDefined('late-ent'), customElements.whenDefined('late-wrapper')]);
+
+    // the upgrade itself is synchronous; the wait is for the slot assignment
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  testBooleanAction('upgrade-late-subclass-is-upgraded', () => {
+    return byId('late-mid').isShaeEntElement === true && byId('late-mid').viewComponent != null;
+  });
+
+  testBooleanAction('upgrade-late-subclass-adopts-the-child', () => {
+    return (
+      byId('late-child').entParentNode === byId('late-mid') &&
+      byId('late-child').viewComponent.parent === byId('late-mid').viewComponent
+    );
+  });
+
+  testBooleanAction('upgrade-late-subclass-keeps-its-own-parent', () => {
+    return byId('late-mid').viewComponent.parent === byId('late-gp').viewComponent;
+  });
+
+  testBooleanAction('upgrade-late-wrapper-adopts-the-slotted-child', () => {
+    return (
+      byId('wrap-child').entParentNode === wrapInner() && byId('wrap-child').viewComponent.parent === wrapInner().viewComponent
+    );
+  });
+
+  await testAsyncAction('upgrade-late-definition-sync', async () => {
+    snap = await snapshot();
+  });
+
+  testBooleanAction('upgrade-late-hierarchy-reached-the-worker', () => {
+    return (
+      entityOf(byId('late-child'))?.parentUuid === byId('late-mid').uuid &&
+      entityOf(byId('late-mid'))?.parentUuid === byId('late-gp').uuid &&
+      entityOf(byId('wrap-child'))?.parentUuid === wrapInner().uuid
+    );
   });
 }

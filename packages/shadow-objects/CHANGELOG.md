@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 > **Next release: minor.** The package is below `1.0.0`, so the accumulated breaking
-> changes below bump the minor position — `0.33.0` → `0.34.0`. Five of them reach existing
+> changes below bump the minor position — `0.33.0` → `0.34.0`. Six of them reach existing
 > consumers: both runtime dependencies take a major step and carry behaviour changes of their
 > own; the emitted declarations carry `| undefined` where a value can be missing, so a
 > build with `strictNullChecks` sees new errors; `RemoteWorkerEnv` rejects with
@@ -19,9 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > used to vanish now arrives at the Shadow Object — `0`, `false` and `''` through the JS
 > property, and a whitespace-only `value` attribute as the empty string the trim leaves behind;
 > and an unconvertible `<shae-prop>` value no longer throws, so a `try`/`catch` around an
-> assignment to `prop.value` stops firing. Everything else in this section is additive or a
-> bugfix.
+> assignment to `prop.value` stops firing; and an entity below a custom element that is registered
+> late now moves under that element, so an application that read the resulting hierarchy — or the
+> Entity Context resolved along it — sees a different shape than before. Everything else in this
+> section is additive or a bugfix.
 
+- **Bugfix (elements):** a `<shae-ent>` moves under its closest entity ancestor when that ancestor is registered with `customElements.define()` while it already sits in the document. Parent resolution runs on a bubbling, composed event that only listening elements answer, and an element not yet upgraded does not listen — the entity below it stayed attached to the next ancestor up, permanently and without a warning, giving it a wrong Entity Context. Every application that subclasses `ShaeEntElement` or puts entities inside a lazily registered wrapper element is affected. The adjustment covers entities that were roots as well as entities that already had a parent, and it reaches across shadow boundaries. It does not extend to `<shae-prop>`, which resolves its host entity once, nor to a later `ns` change, nor to a move that leaves the element connected — see the parent-resolution rules in `docs/api-reference.md`.
 - **Bugfix (elements):** `<shae-prop>` keeps `0`, `false` and the empty string assigned through the `value` JS property. `ComponentChanges` reads an explicit `undefined` as removing the property, so those three used to leave the Shadow Object without the property at all instead of with a falsy value. An empty `value` attribute still counts as a missing one and sets nothing; the normalization for that case sits where attributes are read, not in the conversion effect.
 - **Behavior (elements):** a whitespace-only `value` attribute is the empty string once trimmed, and is converted from there — `<shae-prop type="number" value="   ">` is `0`. Previously it set no property at all. `no-trim` is unaffected and still keeps the whitespace as the value.
 - **Behavior (elements):** a `<shae-prop>` value that cannot be converted into the requested type is reported through the `ConsoleLogger` and sets the property to `undefined`, instead of throwing out of the element. This covers `json`, `bigint`, `bigint64array` and `biguint64array` — the four types whose conversion can fail — and applies to both paths, the `value` attribute and the `value` JS property. Assigning an unconvertible value to `prop.value` therefore no longer raises a `SyntaxError` at the caller. The report goes through `logger.error`, which is not gated behind `ConsoleLogger.sharedConfig.enable`, so a dropped value stays visible outside localhost.

@@ -201,7 +201,7 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 | ID | Beschreibung | Ort |
 |---|---|---|
 | **VIEW-5** | `<shae-prop>` löst seinen Eltern-`<shae-ent>` nur in `connectedCallback` auf — DOM-Verschiebungen ohne Disconnect lassen den Prop am alten Ent kleben. | `ShaePropElement.ts:9–18, 323` |
-| **VIEW-6** | `MutationObserver` in `ShaeEntElement` setzt `subtree: false` — In-Tree-Reparenting via Zwischen-Container wird nicht gesehen. | `ShaeEntElement.ts:257` |
+| **VIEW-6** | `MutationObserver` in `ShaeEntElement` setzt `subtree: false` — In-Tree-Reparenting via Zwischen-Container wird nicht gesehen. | `ShaeEntElement.ts:298` |
 | **VIEW-7** | `ShadowEnv.envProxy`-Setter feuert `start()` fire-and-forget; ein nachfolgender Reassign kann durch das *alte* `start().then()` das `proxyReady`-Flag des neuen Proxys verfälschen. | `ShadowEnv.ts:117–125` |
 | ~~**VIEW-8**~~ | ~~`ShadowEnv.destroy()` löscht alle Listener — `syncWait()`-Aufrufer hängen für immer.~~ **✅ Behoben** — jedes ausstehende `ready()` und `syncWait()` wird mit einem neuen `ShadowEnvDestroyedError` abgelehnt statt hängen gelassen; Aufrufe nach `destroy()` lehnen sofort ab, `sync()` wird zum No-op, ein bereits eingeplanter Sync läuft nicht mehr. `destroy()` ist idempotent und zerstört den `envProxy` nur noch einmal. | `ShadowEnv.ts` |
 | **VIEW-9** | `removeTransferables` mutiert die Caller-Trail-Einträge per `delete`. | `RemoteWorkerEnv.ts:23–40` |
@@ -211,7 +211,7 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 | ~~**KERN-6**~~ | ~~`Registry.clear()` löscht `#truthyPropRoutes` nicht — Test-Pollution + Akkumulation in langlebigen Registries.~~ **✅ Behoben** — `clear()` räumt auch die Prop-basierten Routen ab. | `Registry.ts` |
 | ~~**KERN-7**~~ | ~~`useContext`/`useParentContext`/`useProperty` ignorieren `options` bei Cache-Hit (z. B. `compare`). Der erste Aufrufer „gewinnt", was leise zu falschen Equality-Vergleichen führen kann.~~ **✅ Behoben** — bei Cache-Hit mit abweichender `compare`-Funktion wird ein `console.warn` emittiert; das alte Reader-Objekt bleibt aus Kompatibilitätsgründen erhalten. | `Kernel.ts` |
 | **VIEW-12** | `ShaePropElement` parst numerische Attribute ohne Warnung — `Number("foo")` → `NaN` propagiert. | `ShaePropElement.ts:177–205` |
-| **VIEW-13** | `ShaeEntElement.#dispatchRequestParent`-Microtask prüft `isConnected` nicht; nach Disconnect bubbelt ein Streu-Event. | `ShaeEntElement.ts:343–346` |
+| **VIEW-13** | `ShaeEntElement.#dispatchRequestParent`-Microtask prüft `isConnected` nicht; nach Disconnect bubbelt ein Streu-Event. | `ShaeEntElement.ts:419–423` |
 
 ### 3.4 LOW (Auswahl)
 

@@ -24,5 +24,15 @@ test.describe('upgrade-timing', () => {
     // UPG-5: elements added after the definitions
     'upgrade-post-definition-sync',
     'upgrade-post-definition-element-matches-pre-existing',
+    // UPG-7: an element that becomes an entity after the first sync
+    'upgrade-late-elements-are-not-defined-yet',
+    'upgrade-late-child-starts-at-the-outer-entity',
+    'upgrade-late-definitions-arrive',
+    'upgrade-late-subclass-is-upgraded',
+    'upgrade-late-subclass-adopts-the-child',
+    'upgrade-late-subclass-keeps-its-own-parent',
+    'upgrade-late-wrapper-adopts-the-slotted-child',
+    'upgrade-late-definition-sync',
+    'upgrade-late-hierarchy-reached-the-worker',
   ]);
 });

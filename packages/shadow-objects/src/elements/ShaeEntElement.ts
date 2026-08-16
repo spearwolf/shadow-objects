@@ -7,6 +7,41 @@ import {ViewComponent} from '../view/ViewComponent.js';
 import {ATTR_FORWARD_CUSTOM_EVENTS, ATTR_TOKEN, RequestEntParentEventName, ReRequestEntParentEventName} from './constants.js';
 import {ShaeElement} from './ShaeElement.js';
 
+/**
+ * The parent of `node` in the flattened tree: the slot it is assigned to, otherwise its parent
+ * node, and for a node sitting directly under a shadow root the host of that root.
+ */
+const flattenedParentOf = (node: Node): Node | undefined =>
+  (node as Element).assignedSlot ?? node.parentNode ?? (node as unknown as ShadowRoot).host ?? undefined;
+
+/** Whether `node` sits below `ancestor`, across shadow boundaries and slot projections. */
+const isBelow = (node: Node, ancestor: Node): boolean => {
+  for (let current = flattenedParentOf(node); current != null; current = flattenedParentOf(current)) {
+    if (current === ancestor) return true;
+  }
+  return false;
+};
+
+/**
+ * Whether `node` sits inside a closed shadow tree, at any level.
+ *
+ * This is the one question {@link isBelow} cannot answer for itself. A node projected into a
+ * closed shadow root reports no `assignedSlot`, so the ascent steps from it straight to the host
+ * and skips the slot along with everything the closed tree holds. It rejoins the real event path
+ * at that host, which means the only nodes it can ever miss are the ones inside a closed tree —
+ * and an ancestor it cannot see is one it must not rule out.
+ */
+const isInClosedShadowTree = (node: Node): boolean => {
+  for (let root = node.getRootNode() as ShadowRoot; root?.host != null; root = root.host.getRootNode() as ShadowRoot) {
+    if (root.mode === 'closed') return true;
+  }
+  return false;
+};
+
+interface ReRequestParentData {
+  newAncestor?: ShaeEntElement;
+}
+
 export class ShaeEntElement extends ShaeElement {
   static override observedAttributes = [...ShaeElement.observedAttributes, ATTR_TOKEN, ATTR_FORWARD_CUSTOM_EVENTS];
 
@@ -38,6 +73,18 @@ export class ShaeEntElement extends ShaeElement {
   }
 
   entParentNode?: ShaeEntElement;
+
+  /**
+   * Whether this element already sat in a live tree while its constructor ran.
+   *
+   * An element created by the parser or by `createElement` runs its constructor before it enters
+   * the tree, so everything below it connects after it and finds it on the first request. Only an
+   * element upgraded in place can have entities below it that bound to a further ancestor while it
+   * was not yet answering. Markup written into a connected node through `innerHTML` reports the
+   * same, because the fragment parser builds the element undefined and upgrades it on insertion —
+   * that keeps the guard on the safe side, it errs towards asking too often.
+   */
+  readonly #wasUpgradedInPlace = this.isConnected;
 
   #parentObserver?: MutationObserver;
 
@@ -81,10 +128,14 @@ export class ShaeEntElement extends ShaeElement {
     createEffect(() => {
       const vc = this.viewComponent$.get();
       if (vc) {
-        const unsubcribe = on(vc, ComponentContext.ReRequestParentRoots, () => this.#reReuestParentRoot());
+        const unsubcribe = on(vc, ComponentContext.ReRequestParentRoots, () => this.#reRequestParentAsRoot());
+        const unsubscribeReRequestParent = on(vc, ComponentContext.ReRequestParent, (data?: ReRequestParentData) =>
+          this.#reRequestParent(data?.newAncestor),
+        );
         const oldNs = vc.context?.ns;
         return () => {
           unsubcribe();
+          unsubscribeReRequestParent();
           vc.destroy();
           if (oldNs && oldNs !== this.ns) {
             ShadowEnv.get(oldNs)?.sync();
@@ -112,7 +163,9 @@ export class ShaeEntElement extends ShaeElement {
       const newDispatch = (type: string, data: unknown, traverseChildren: boolean) => {
         originalDispatchEvent.call(vc, type, data, traverseChildren);
 
-        if (type === ComponentContext.ReRequestParentRoots) return;
+        // the internal signals of the parent resolution never leave the view side as a DOM event,
+        // not even under `forward-custom-events` without a filter list
+        if (type === ComponentContext.ReRequestParentRoots || type === ComponentContext.ReRequestParent) return;
 
         if (allowedTypes && !allowedTypes.has(type)) return;
 
@@ -234,7 +287,9 @@ export class ShaeEntElement extends ShaeElement {
     this.#dispatchRequestParent();
 
     // --- parents ---
-    this.componentContext?.dispatchReRequestParentRoots();
+    // the order matters: before the line above, this element's own parent is not settled and the
+    // candidate set would be the wrong one
+    this.#askPeersToReRequestParent();
     this.#createParentObserver();
 
     // --- sync! ---
@@ -298,10 +353,56 @@ export class ShaeEntElement extends ShaeElement {
     this.#destroyViewComponentEffect();
   }
 
-  #reReuestParentRoot() {
+  #reRequestParentAsRoot() {
     if (this.isConnected) {
       this.#setParent(undefined);
       this.#dispatchRequestParent();
+    }
+  }
+
+  // nothing is cleared here: an element already bound to its closest ancestor gets the same
+  // answer back and #setParent bails out. Clearing first would take every correctly bound
+  // sibling out of its parent's children and append it again at the end
+  #reRequestParent(newAncestor?: ShaeEntElement) {
+    if (!this.isConnected) return;
+
+    // the peers of an entity are its siblings in the component context, which says nothing about
+    // where their elements sit. Only one below `newAncestor` can get a different answer, and
+    // walking up to find out costs a few pointer hops against a bubbling event through the whole
+    // ancestor chain. A signal that carries no ancestor asks unconditionally — the sender leaves
+    // it out wherever the ascent could not see the whole way
+    if (newAncestor != null && !isBelow(this, newAncestor)) return;
+
+    this.#dispatchRequestParent();
+  }
+
+  // An element that becomes an entity while the tree around it already stands can be the new
+  // closest ancestor for entities that bound while it was not yet answering. Those entities are
+  // its peers in the component context — the children of its own parent, or the roots while it
+  // has none — and they are asked to request their parent once more.
+  //
+  // The guard below decides the question locally, in constant time, because this runs on every
+  // connect. It cannot hide a case the request would have found: an element constructed before it
+  // entered the tree is answering by the time anything below it connects.
+  //
+  // What this element holds is no such question. A shadow root can be attached to it before it is
+  // defined, and a closed one is invisible from the inside — `shadowRoot` reads null while the
+  // entities in it are bound to an ancestor further up. An empty element is not an element with
+  // nothing below it.
+  #askPeersToReRequestParent() {
+    if (!this.#wasUpgradedInPlace) return;
+
+    const vc = this.viewComponent;
+    if (vc == null) {
+      this.componentContext?.dispatchReRequestParentRoots();
+    } else {
+      // the peer decides from the element tree whether it really sits below this element, and it
+      // can only do so while the way up to here stays visible to it. From inside a closed shadow
+      // tree it does not: the ascent of a projected peer steps over the closed tree and would
+      // rule out exactly the case that needs correcting. The filter is an optimization, so where
+      // it cannot see, it does not travel — every peer is then asked and answers for itself
+      const newAncestor = isInClosedShadowTree(this) ? undefined : this;
+      this.componentContext?.dispatchReRequestParentSiblings(vc, {newAncestor} satisfies ReRequestParentData);
     }
   }
 
