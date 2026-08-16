@@ -1,8 +1,9 @@
 import {expect} from '@esm-bundle/chai';
-import {ComponentChangeType, ComponentContext, ShaeEntElement} from '@spearwolf/shadow-objects';
+import {ComponentChangeType, ComponentContext, ShadowEnv, ShaeEntElement} from '@spearwolf/shadow-objects';
 import {ConsoleLogger} from '@spearwolf/shadow-objects/ConsoleLogger.js';
 import '@spearwolf/shadow-objects/shae-ent.js';
 import '@spearwolf/shadow-objects/shae-prop.js';
+import '@spearwolf/shadow-objects/shae-worker.js';
 import sinon from 'sinon';
 import {findElementsById} from '../src/findElementsById.js';
 import {mount, unmountAll} from '../src/mount.js';
@@ -35,6 +36,13 @@ describe('shae-prop host lookup', () => {
 
     expect(outer.isShaePropElement).to.be.true;
     expect(outer.isShaeEntElement).to.be.undefined;
+  });
+
+  it('has no namespace of its own', () => {
+    const [outer] = findElementsById('outer');
+
+    expect(outer.constructor.observedAttributes, 'a namespace decides nothing for a property').to.not.include('ns');
+    expect(outer.ns, 'and the element carries none').to.be.undefined;
   });
 
   // Mutation that turns this red: give `ShaePropElement` a `shaeRequestEntParent` listener that
@@ -339,5 +347,36 @@ describe('shae-prop follows its host entity', () => {
       warn.restore();
       ConsoleLogger.sharedConfig.enable = previousEnable;
     }
+  });
+});
+
+/**
+ * `<shae-prop>` has no namespace of its own (see the class comment on `ShaePropElement`) and
+ * delegates every sync to `entNode`, its host. This is the one case that reads the result of
+ * that delegation instead of just the DOM-level binding: it names the environment the sync has
+ * to land in, not merely that a sync happened.
+ */
+describe('shae-prop syncs the environment its host lives in', () => {
+  afterEach(() => {
+    unmountAll();
+  });
+
+  it('syncs the environment of its host entity when the binding ends', async () => {
+    const container = mount(
+      '<shae-worker local auto-sync="off" ns="hs-ns" id="hs-worker"></shae-worker>' +
+        '<shae-ent ns="hs-ns" token="host"><shae-prop id="hs-prop" name="x" value="1"></shae-prop></shae-ent>',
+    );
+    await Promise.all(['shae-worker', 'shae-ent', 'shae-prop'].map((name) => customElements.whenDefined(name)));
+    await nextTask();
+
+    const prop = container.querySelector('#hs-prop');
+    const hostEnv = ShadowEnv.get('hs-ns');
+    expect(hostEnv, 'the host entity brings its environment up with it').to.exist;
+    const sync = sinon.spy(hostEnv, 'sync');
+
+    prop.remove();
+    await nextTask();
+
+    expect(sync.callCount, 'the environment of the host entity is the one that has to hear about it').to.be.greaterThan(0);
   });
 });

@@ -89,6 +89,33 @@ const TYPES = new Set([
   'json',
 ]);
 
+/**
+ * Sets a property on the entity above it.
+ *
+ * Unlike `<shae-ent>` and `<shae-worker>`, this element does not extend `ShaeElement` and has
+ * no namespace of its own. `ShaeElement` exists for elements that pick an environment: their
+ * `ns` attribute names the one they live in, and what they do goes there by default —
+ * `ShaeElement.syncShadowObjectsOf()` is the explicit way to reach a different one, as
+ * `<shae-ent>` does on a namespace change. A property picks nothing. It belongs to the closest
+ * entity above it in the flattened tree, whatever namespace that entity happens to be in —
+ * proximity decides, not membership. An `ns` on a `<shae-prop>` would therefore be an attribute
+ * that changes no answer, and the convention both siblings follow — spreading
+ * `ShaeElement.observedAttributes` into their own — would put it into `observedAttributes` for
+ * every reader to trip over.
+ *
+ * That is also why the sync runs through the host: the environment that has to hear about a
+ * property is the one the host entity lives in, and this element is the wrong place to ask.
+ * `entNode.syncShadowObjects()` reaches it; a sync of this element's own would target the
+ * global namespace instead — nothing happens if no environment answers to that, and if one
+ * does, it still leaves the namespaced host waiting.
+ *
+ * The marker for this element is `isShaePropElement`, beside `isShaeEntElement` and
+ * `isShaeWorkerElement`. Each names one tag for consumers and tests to check — this file's own
+ * spec included — not for the host lookup itself: that is decided by `ShaeEntElement`'s
+ * `#onRequestParent`, the only listener registered for the request, and it checks `requester`,
+ * `answer` and `ns`, never a flag. A `<shae-prop>` never answers a host request because it never
+ * listens for one, not because its marker reads differently.
+ */
 export class ShaePropElement extends HTMLElement {
   static observedAttributes = [ATTR_NAME, ATTR_VALUE, ATTR_TYPE, ATTR_NO_TRIM];
 
@@ -179,7 +206,8 @@ export class ShaePropElement extends HTMLElement {
       if (vc == null || !name) return;
 
       // untracked on purpose: the host is where the sync has to go, not something this binding
-      // depends on
+      // depends on. And it is the host and not this element, because the host carries the
+      // namespace — the environment holding this property is its, and nothing else knows which.
       const entNode = this.entNode$.value;
 
       addDeclarant(vc, name);
