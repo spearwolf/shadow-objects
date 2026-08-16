@@ -8,6 +8,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 - **`biome.json`:** audit reports (`*audit*.html`) are excluded from lint checks — they are generated snapshots of the audit process, not project code.
 - **`packages/shadow-objects-e2e/`:** `preserveOutput: 'failures-only'` in Playwright config prevents stale failure contexts from lingering after a passing run and confusing later investigation. Test scripts clear `test-results/` before each run to ensure artifacts reflect the current execution only.
+- **`packages/shadow-objects-e2e/pages/shae-worker.html`:** the page now asserts the entity structure it builds. Two `structure-observer` shadow objects (`public/mod-structure.js`, one per environment) report each worker's own entity graph back to the view; the page checks every parent-child relation, both slot projections, and the namespace boundary that keeps the isolated-namespace entities unreachable.
 
 ## 2026-08-15 — the eventize holdback is lifted
 

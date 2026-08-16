@@ -21,7 +21,7 @@ layers. This file is E2E-only and goes one level deeper: it names pages, fixture
 
 ## 1. What exists today
 
-Four spec files, 22 registered test cases. The specs themselves contain almost no logic — they
+Four spec files, 43 registered test cases. The specs themselves contain almost no logic — they
 navigate to a page and assert `data-testresult="ok"` on nodes the page wrote. All real assertions
 live in `src/*.js`.
 
@@ -29,7 +29,7 @@ live in `src/*.js`.
 |---|---|---|---|
 | `bundle.spec.ts` | `pages/bundle.html` | 4 | Two elements are attached, two custom elements are defined. Nothing else. |
 | `remote-worker-env.spec.ts` | `pages/remote-worker-env.html` | 5 | Programmatic `ShadowEnv` + `RemoteWorkerEnv`: `ready()`, `importScript()`, `isReady`, one `sync()`, one message worker → view. |
-| `shae-worker.spec.ts` | `pages/shae-worker.html` | 7 | `<shae-worker>` is defined; two workers (remote+autostart, local+no-autostart) report the right `ns`, the right env type, and reach `ready()`. |
+| `shae-worker.spec.ts` | `pages/shae-worker.html` | 28 | `<shae-worker>` is defined; two workers (remote+autostart, local+no-autostart) report the right `ns`, the right env type, and reach `ready()`; both workers' kernels are asked for their entity graph and every parent-child relation, slot projection and namespace boundary in the tree is checked against it. |
 | `auto-destruct.spec.ts` | `pages/auto-destruct.html` | 6 | `autoDestructionOnParentRemoval` cascade vs. promotion-to-root, over a real worker. |
 
 `auto-destruct` is the only scenario built end-to-end on purpose: a fixture module
@@ -45,8 +45,6 @@ coverage:
   `boolean` and `number[]`, and places `seBase4` (namespace `worker0`) *inside* `seBase1`
   (global namespace) — the cross-namespace nesting case. All of it is written to `console.log`
   and asserted nowhere. Property parsing, tree shape and namespace isolation are silently untested.
-- **`pages/shae-worker.html`** builds an eight-entity tree across two namespaces and two nested
-  shadow roots with `<slot>` projection. No assertion touches the resulting parent structure.
 - **`public/mod-hello.js`** registers a reaction on the `xyz` property that dispatches `fooEcho`
   to the view. Nothing ever changes `xyz`, so that path never runs.
 - **`src/remote-worker-env.js`** creates a child `ViewComponent` `bar` with property `plah`.

@@ -18,13 +18,16 @@
         <shae-ent id="ent1_1" ns="local" token="ent1_1"></shae-ent>
         <element-with-shadow-dom ent-inside="ent-a" ent-slot-container="ant-b" ns="local">
           <shae-ent id="ent1_2_1" ns="local" token="ent1_2_1"></shae-ent>
-          <element-with-shadow-dom ent-inside="foo" ent-slot-container="bar">
+          <element-with-shadow-dom ns="isolated" ent-inside="iso-a" ent-slot-container="iso-b">
             <shae-ent id="ent0_3_1" token="ent0_3_1"></shae-ent>
             <shae-ent id="ent1_3_2" ns="local" token="ent1_3_2"></shae-ent>
           </element-with-shadow-dom>
         </element-with-shadow-dom>
       </shae-ent>
     </shae-ent>
+
+    <shae-ent id="observer0" token="structure-observer"></shae-ent>
+    <shae-ent id="observer1" ns="local" token="structure-observer"></shae-ent>
 
     <section id="tests"></section>
 
