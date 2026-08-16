@@ -1,7 +1,8 @@
 import {expect} from '@esm-bundle/chai';
-import {ComponentContext} from '@spearwolf/shadow-objects';
 import '@spearwolf/shadow-objects/shae-ent.js';
 import '@spearwolf/shadow-objects/shae-prop.js';
+import {mount as mountHtml, unmountAll} from '../src/mount.js';
+import {withSwallowedErrors} from '../src/withSwallowedErrors.js';
 
 /**
  * `ShaePropElement` converts its `value` attribute through a `switch` keyed by `type`, entirely
@@ -10,48 +11,20 @@ import '@spearwolf/shadow-objects/shae-prop.js';
  * in Chromium, because happy-dom does not reproduce Custom Elements upgrade timing reliably.
  */
 
-let container;
-
 const esc = (value) => String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
 /**
  * Builds `<shae-ent token="probe"><shae-prop name="p" ...></shae-prop></shae-ent>` and returns
- * the `<shae-prop>`. Uses `innerHTML` rather than `document.createElement('shae-prop')`: the
- * element constructors set `this.style.display = 'contents'`, which the Custom Elements spec
- * forbids during construction and which aborts the upgrade for elements created that way
- * (tracked as DEFECT-1 in packages/shadow-objects-e2e/KNOWN-DEFECTS.md, out of scope here) — so
- * only the markup path reaches a fully upgraded element.
+ * the `<shae-prop>`.
  */
 const mount = ({type, value, noTrim} = {}) => {
-  container = document.createElement('div');
   const typeAttr = type != null ? ` type="${esc(type)}"` : '';
   const valueAttr = value != null ? ` value="${esc(value)}"` : '';
   const noTrimAttr = noTrim != null ? ` no-trim="${esc(noTrim)}"` : '';
-  container.innerHTML = `<shae-ent token="probe"><shae-prop name="p"${typeAttr}${valueAttr}${noTrimAttr}></shae-prop></shae-ent>`;
-  document.body.append(container);
+  const container = mountHtml(
+    `<shae-ent token="probe"><shae-prop name="p"${typeAttr}${valueAttr}${noTrimAttr}></shae-prop></shae-ent>`,
+  );
   return container.querySelector('shae-prop');
-};
-
-/**
- * A throw from a Custom Elements reaction (constructor, attributeChangedCallback) does not
- * reach the caller of `innerHTML`/`setAttribute` — per spec it is reported to the global
- * `error` event instead of propagating synchronously. Without this guard, vitest logs the
- * swallowed reaction as an "Unhandled Error" and the run exits non-zero even though every
- * test is green.
- */
-const withSwallowedErrors = (fn) => {
-  const messages = [];
-  const onError = (event) => {
-    messages.push(event.message);
-    event.preventDefault();
-  };
-  window.addEventListener('error', onError);
-  try {
-    fn();
-  } finally {
-    window.removeEventListener('error', onError);
-  }
-  return messages;
 };
 
 const ta = (ctor, items) => ({ctor, items});
@@ -71,9 +44,7 @@ const check = (actual, expected) => {
 };
 
 afterEach(() => {
-  container?.remove();
-  container = undefined;
-  ComponentContext.get().clear();
+  unmountAll();
 });
 
 describe('shae-prop type conversion — one case per type name', () => {
@@ -200,7 +171,7 @@ describe('shae-prop type conversion — malformed input that does not throw', ()
 describe('shae-prop type conversion — malformed input that throws', () => {
   // The JS property setter is chosen on purpose: the conversion effect runs synchronously
   // there, so the exception reaches the caller directly instead of vanishing into the
-  // Custom Elements reaction queue (see withSwallowedErrors below).
+  // Custom Elements reaction queue (see ../src/withSwallowedErrors.js).
   const throwCases = [
     ['bigint', '1', 'abc'],
     ['json', '{}', '{oops'],
