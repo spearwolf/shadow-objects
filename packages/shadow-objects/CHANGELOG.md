@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 > **Next release: minor.** The package is below `1.0.0`, so the accumulated breaking
-> changes below bump the minor position — `0.33.0` → `0.34.0`. Twelve of them reach existing
+> changes below bump the minor position — `0.33.0` → `0.34.0`. Thirteen of them reach existing
 > consumers: both runtime dependencies take a major step and carry behaviour changes of their
 > own; the emitted declarations carry `| undefined` where a value can be missing, so a
 > build with `strictNullChecks` sees new errors; `RemoteWorkerEnv` rejects with
@@ -31,10 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > instead of staying inert, which adds entities an application never saw arrive; a `<shae-prop>`
 > that is removed, renamed or moved to another entity clears the property it declared, where a
 > shadow object used to keep observing the value under the old name or on the entity the element
-> left; and a `<shae-ent>` that changes its `ns` carries its properties into the other environment,
-> so the shadow object created there starts from a state it did not see before. Everything else in
-> this section is additive or a bugfix.
+> left; a `<shae-ent>` that changes its `ns` carries its properties into the other environment,
+> so the shadow object created there starts from a state it did not see before; and a `<shae-prop>`
+> that sits in a shadow root or is projected into a slot binds to the entity the flattened tree
+> shows above it, where it used to reach an entity further out or none at all — the property then
+> arrives on a different entity than it did before. Everything else in this section is additive or
+> a bugfix.
 
+- **Bugfix (elements):** a `<shae-prop>` finds the same entity a `<shae-ent>` in its place would find. Both elements now send one and the same request, so the host is the closest entity above the element in the flattened tree — through shadow roots, along slot projections, across closed boundaries — regardless of its namespace. The lookup used to walk `parentElement`, a chain that ends at the top element of a shadow root: a `<shae-prop>` inside one never reached its host, and where a slot or a closed boundary was involved it bound to an entity further out instead of the one right above it. A move to a position with no entity above it leaves the element without a host, and the property is taken off the entity it left. The rule is written down in `docs/api-reference.md` under `#### Finding the Host Entity`.
+- **Breaking (elements):** a `shaeRequestEntParent` event built by hand is only answered when its `detail` carries an `answer(entNode)` callback — that callback is how the answer travels now, and an event without it passes every entity untouched. The `detail` also takes an optional `ns`: without it the closest entity answers whatever namespace it is in, with it only an entity of that namespace does. `requestEntAncestor(requester, request)` builds and dispatches such an event and is exported for anyone driving the lookup by hand, together with the `EntAncestorRequest` type.
 - **Bugfix (elements):** a `<shae-prop>` clears the property it declared when its binding ends. A property belongs to the pair of host entity and name, and that pair is undone in three ways: the element leaves the tree, its `name` attribute changes, or it moves to another entity. All three used to leave the value standing — a removed element left its property behind, a rename added the new name next to the old one, and a move left the property on both entities. A removal and a re-insertion within the same tick stays a move and keeps the property; removing the whole entity writes no property change, because the entity takes its properties with it. Two elements may declare the same name on the same entity — the property is cleared once the last of them lets go, not the first. A cleared property reads `undefined` on the Shadow Object side; the key stays visible in `propKeys()` and `propEntries()`, so a reader from `useProperty()` survives the whole lifecycle. The lifecycle is written down in `docs/api-reference.md`.
 - **Bugfix (view components):** a `ViewComponent` carries its properties into the `ComponentContext` it joins. A namespace change already took the token, the parent, the order and `autoDestructionOnParentRemoval` along; the properties stayed behind, and the entity arrived in the other environment as a bare token. They now travel together with the equality function registered for each key, and land in the same `CreateEntities` change as the rest. The function does not decide about the arrival — the target holds nothing for the key yet, so it would be asked whether the value equals `undefined`, and a function comparing by a field would answer yes and drop the property. The value is written first, the rule applies from the next write on. A component that leaves its context without joining another carries nothing — there is no receiver for it — and events already dispatched are still delivered in the environment they were addressed to.
 - **New (public API):** `ComponentContext.transferPropertiesTo(component, target)` — hands the properties a context holds for a component over to the context it has just joined. Called by the `ViewComponent#context` setter; available for anyone driving a context switch by hand.

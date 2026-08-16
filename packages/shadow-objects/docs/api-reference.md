@@ -1210,8 +1210,8 @@ which is the one the entity still lives in at that moment.
 
 Everything else keeps the parent it resolved. Two cases are worth knowing:
 
-- A `<shae-prop>` resolves its host entity once and keeps it, so a property does not follow a late
-  registration the way an entity does.
+- A `<shae-prop>` keeps the host entity it resolved: the binding is not followed up when another
+  entity moves in between.
 - A move that leaves an element attached to the same parent node — a container inserted between it
   and its parent — goes unseen. A move that takes it out of its parent node is noticed, whether
   the element runs through disconnect and reconnect on the way or is watched across the move.
@@ -1221,6 +1221,38 @@ Everything else keeps the parent it resolved. Two cases are worth knowing:
 ### `<shae-prop>`
 
 Declaratively sets properties on the parent `<shae-ent>`.
+
+#### Finding the Host Entity
+
+The element binds to the closest entity above it, measured on the flattened tree — the tree as the
+page renders it. The search goes through shadow roots, follows slot projections to the entity that
+holds the `<slot>`, and crosses closed shadow boundaries just as well.
+
+The lookup runs when the element enters the tree and every time it is moved. It does not run again
+while the element stays where it is: an entity that appears above it afterwards — a custom element
+registered late, a shadow root attached later, a slot re-assigned — does not take the property over,
+and an entity that leaves the tree is not replaced by the next one up. Moving the element re-decides
+the question; if nothing above it answers then, it has no host and the property is taken off the
+entity it left.
+
+The namespace plays no part in it: what counts is proximity, not membership. A `<shae-prop>` under
+a `<shae-ent ns="hud">` inside a `<shae-ent>` of the global namespace belongs to the `hud` entity,
+because that is the closest one.
+
+A `<shae-prop>` nested in another `<shae-prop>` passes through to the entity — only a `<shae-ent>`
+can host a property.
+
+```html
+<shae-ent id="host" token="player">
+  <div id="widget"></div>
+</shae-ent>
+
+<script>
+  // the property lands on #host, across the shadow boundary
+  document.getElementById('widget').attachShadow({mode: 'open'}).innerHTML =
+    '<shae-prop name="score" value="100" type="int"></shae-prop>';
+</script>
+```
 
 #### Attributes
 

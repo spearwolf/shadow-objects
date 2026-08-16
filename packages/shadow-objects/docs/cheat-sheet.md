@@ -236,6 +236,10 @@ ent.addEventListener('login-success', (e) => console.log(e.detail.user));
 | `type` | see below | Type cast for the value attribute |
 | `no-trim` | boolean (presence) | Preserve whitespace in string values; without it `value="   "` trims down to `''` |
 
+The host is the closest entity above the element in the flattened tree — through shadow roots,
+along slot projections, across closed boundaries — regardless of its namespace. It is decided when
+the element enters the tree and re-decided when it moves, not while it stays put.
+
 Removing the element, renaming it, or moving it to another entity clears the property it declared.
 A move within a single tick is a move, not a removal — the property travels with the element.
 

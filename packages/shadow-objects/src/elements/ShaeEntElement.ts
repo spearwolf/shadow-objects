@@ -5,6 +5,7 @@ import {ComponentContext} from '../view/ComponentContext.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
 import {ViewComponent} from '../view/ViewComponent.js';
 import {ATTR_FORWARD_CUSTOM_EVENTS, ATTR_TOKEN, RequestEntParentEventName, ReRequestEntParentEventName} from './constants.js';
+import {type EntAncestorRequest, requestEntAncestor} from './requestEntAncestor.js';
 import {ShaeElement} from './ShaeElement.js';
 
 /**
@@ -460,14 +461,8 @@ export class ShaeEntElement extends ShaeElement {
   }
 
   #dispatchRequestParent() {
-    // https://pm.dartus.fr/blog/a-complete-guide-on-shadow-dom-and-event-propagation/
-    this.dispatchEvent(
-      new CustomEvent(RequestEntParentEventName, {
-        bubbles: true,
-        composed: true,
-        detail: {requester: this},
-      }),
-    );
+    // an entity takes only an ancestor from its own namespace as a parent
+    requestEntAncestor(this, {ns: this.ns, answer: (entNode) => this.#setParent(entNode)});
   }
 
   #unsubscribeFromParent?: () => void;
@@ -541,16 +536,23 @@ export class ShaeEntElement extends ShaeElement {
     }
   };
 
-  #onRequestParent = (event: CustomEvent) => {
-    const requester = event.detail?.requester as ShaeEntElement | undefined;
+  #onRequestParent = (event: CustomEvent<EntAncestorRequest>) => {
+    const request = event.detail;
 
-    if (requester === this) return;
-    if (!requester?.isShaeEntElement) return;
-    if (requester.ns !== this.ns) return;
+    // a request has to name its sender, or this element could end up answering itself
+    if (request?.requester == null || request.requester === this) return;
+    // only a request built by `requestEntAncestor` carries a way to answer it
+    if (typeof request.answer !== 'function') return;
+
+    // an ancestor in another namespace *skips* the request, it does not block it: the `return`
+    // stands before the `stopPropagation()` so the event keeps travelling to the next one.
+    // A request without a namespace takes the closest ancestor the DOM shows — that is how a
+    // property asks
+    if (request.ns !== undefined && request.ns !== this.ns) return;
 
     event.stopPropagation();
 
-    requester.#setParent(this);
+    request.answer(this);
   };
 
   #updateTokenValue() {

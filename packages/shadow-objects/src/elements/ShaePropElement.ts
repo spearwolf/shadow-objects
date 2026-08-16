@@ -4,18 +4,8 @@ import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {TRUTHY_VALUES} from '../utils/constants.js';
 import type {ViewComponent} from '../view/ViewComponent.js';
 import {ATTR_NAME, ATTR_NO_TRIM, ATTR_TYPE, ATTR_VALUE} from './constants.js';
+import {requestEntAncestor} from './requestEntAncestor.js';
 import type {ShaeEntElement} from './ShaeEntElement.js';
-
-const findEntNode = (start: HTMLElement): ShaeEntElement | undefined => {
-  let el: HTMLElement | null = start.parentElement;
-  while (el) {
-    if ((el as ShaeEntElement).isShaeEntElement) {
-      return el as ShaeEntElement;
-    }
-    el = el.parentElement;
-  }
-  return undefined;
-};
 
 /**
  * How many `<shae-prop>` elements declare a given name on a given view component right now.
@@ -444,8 +434,18 @@ export class ShaePropElement extends HTMLElement {
     this.#disconnectFromEntNode();
   }
 
+  // Determines the host from where the element stands right now. The request runs *without* a
+  // namespace: a property belongs to the closest entity above it, whatever namespace that entity
+  // is in.
+  //
+  // Nobody answering means there is no entity above this position, and the element says so — it
+  // has just arrived where it is, and a binding it brought along belongs to a place it left. The
+  // cleanup on `entNode$` then takes the property off the entity that no longer holds it, instead
+  // of leaving the element writing into an entity it does not sit under any more.
   #findEntNode = () => {
-    this.entNode$.set(findEntNode(this));
+    let found: ShaeEntElement | undefined;
+    requestEntAncestor(this, {answer: (entNode) => (found = entNode)});
+    this.entNode$.set(found);
   };
 
   #disconnectFromEntNode = () => {

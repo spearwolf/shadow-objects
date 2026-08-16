@@ -32,12 +32,17 @@ import {mount, unmountAll} from '../src/mount.js';
 const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 /**
- * Counts the parent requests travelling through the document while `action` runs, then keeps
- * counting for three more turns and returns both numbers.
+ * Counts the parent requests of entities travelling through the document while `action` runs, then
+ * keeps counting for three more turns and returns both numbers.
+ *
+ * A `<shae-prop>` sends the same request under the same event name, so the requester decides what
+ * is counted here — otherwise a case that adds a property to its markup silently changes the
+ * numbers this file asserts.
  */
 const countRequestsWhile = async (action) => {
   let requests = 0;
-  const listener = () => {
+  const listener = (event) => {
+    if (event.detail?.requester?.isShaeEntElement !== true) return;
     requests += 1;
   };
   document.addEventListener(RequestEntParentEventName, listener, {capture: true});
@@ -363,7 +368,9 @@ describe('shae-ent and a namespace change', () => {
     });
 
     expect(afterwards, 'the requests stop instead of feeding themselves').to.equal(settled);
-    expect(settled, 'and the whole exchange is a handful of events').to.be.at.most(2);
+    // both bounds: an upper one alone is vacuously true for a counter that never counts, and the
+    // filter in `countRequestsWhile` is one changed `detail` shape away from being exactly that
+    expect(settled, 'and the whole exchange is a handful of events').to.be.within(1, 2);
     expect(kid.entParentNode?.id, 'the binding stands where it was').to.equal('gp-na');
     expect(kid.viewComponent.parent, 'and the entity has no parent to show for it').to.be.undefined;
   });
@@ -383,7 +390,9 @@ describe('shae-ent and a namespace change', () => {
     });
 
     expect(afterwards, 'the requests stop instead of feeding themselves').to.equal(settled);
-    expect(settled, 'and the whole exchange is a handful of events').to.be.at.most(2);
+    // both bounds: an upper one alone is vacuously true for a counter that never counts, and the
+    // filter in `countRequestsWhile` is one changed `detail` shape away from being exactly that
+    expect(settled, 'and the whole exchange is a handful of events').to.be.within(1, 2);
     expect(kid.entParentNode?.id, 'the binding stands where it was').to.equal('gp-nb');
     expect(kid.viewComponent.parent, 'and the entity has no parent to show for it').to.be.undefined;
   });

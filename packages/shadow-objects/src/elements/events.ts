@@ -1,10 +1,9 @@
 import type {RequestEntParentEventName, ReRequestEntParentEventName} from './constants.js';
+import type {EntAncestorRequest} from './requestEntAncestor.js';
 import type {ShaeEntElement} from './ShaeEntElement.js';
 
 export interface RequestEntParentEvent extends CustomEvent {
-  detail: {
-    requester: ShaeEntElement;
-  };
+  detail: EntAncestorRequest;
 }
 
 export interface ReRequestEntParentEvent extends CustomEvent {
