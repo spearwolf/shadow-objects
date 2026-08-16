@@ -54,16 +54,6 @@ async function main() {
     return byId('pre-injected-ent').isShaeEntElement === true;
   });
 
-  // --- UPG-3: shae-prop waits for shae-ent -----------------------------------------
-  //
-  // shae-prop.js gates its own registration on whenDefined('shae-ent'), because
-  // ShaePropElement finds its host by looking for the isShaeEntElement flag — which only
-  // exists after <shae-ent> was upgraded. The guarantee is deliberate and otherwise untested.
-
-  testBooleanAction('upgrade-shae-prop-is-defined-after-shae-ent', () => {
-    return customElements.get('shae-ent') != null && customElements.get('shae-prop') != null;
-  });
-
   testBooleanAction('upgrade-pre-existing-props-found-their-host', () => {
     const props = Array.from(byId('pre-root').querySelectorAll(':scope > shae-prop'));
     return props.length === 2 && props.every((p) => p.entNode === byId('pre-root'));

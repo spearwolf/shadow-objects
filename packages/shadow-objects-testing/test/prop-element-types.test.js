@@ -8,10 +8,11 @@ import {mount as mountHtml, unmountAll} from '../src/mount.js';
 import {withSwallowedErrors} from '../src/withSwallowedErrors.js';
 
 /**
- * `ShaePropElement` converts its `value` attribute through a `switch` keyed by `type`, entirely
- * inside the custom element's markup-driven upgrade path — there is no conversion function
- * exported to call in isolation. This spec drives every branch through real attribute parsing
- * in Chromium, because happy-dom does not reproduce Custom Elements upgrade timing reliably.
+ * `ShaePropElement` converts its `value` attribute through `propValueConverters`, a table keyed
+ * by `type` — that table has its own unit spec, `elements/propValueConverters.spec.ts`. This spec
+ * drives every branch through the element's markup-driven upgrade path instead, with real
+ * attribute parsing in Chromium, because happy-dom does not reproduce Custom Elements upgrade
+ * timing reliably.
  */
 
 const esc = (value) => String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');

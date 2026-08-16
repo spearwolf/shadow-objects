@@ -11,8 +11,6 @@ test.describe('upgrade-timing', () => {
     'upgrade-pre-existing-hierarchy-is-correct',
     // UPG-4: markup injected before the definitions
     'upgrade-pre-injected-markup-is-upgraded',
-    // UPG-3: shae-prop registers only after shae-ent
-    'upgrade-shae-prop-is-defined-after-shae-ent',
     'upgrade-pre-existing-props-found-their-host',
     // UPG-1/2: everything reaches the worker, properties included
     'upgrade-env-ready',

@@ -1,5 +1,6 @@
 export * from './constants.js';
 export * from './elements/constants.js';
+export type * from './elements/events.js';
 export * from './elements/requestEntAncestor.js';
 export * from './elements/ShaeElement.js';
 export * from './elements/ShaeEntElement.js';

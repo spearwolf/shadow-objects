@@ -169,13 +169,15 @@ export class ShaeEntElement extends ShaeElement {
     createEffect(() => {
       const vc = this.viewComponent$.get();
       if (vc) {
-        const unsubcribe = on(vc, ComponentContext.ReRequestParentRoots, () => this.#reRequestParentAsRoot());
+        const unsubscribeReRequestParentRoots = on(vc, ComponentContext.ReRequestParentRoots, () =>
+          this.#reRequestParentAsRoot(),
+        );
         const unsubscribeReRequestParent = on(vc, ComponentContext.ReRequestParent, (data?: ReRequestParentData) =>
           this.#reRequestParent(data?.newAncestor),
         );
         const oldNs = vc.context?.ns;
         return () => {
-          unsubcribe();
+          unsubscribeReRequestParentRoots();
           unsubscribeReRequestParent();
           vc.destroy();
           if (oldNs && oldNs !== this.ns) {
