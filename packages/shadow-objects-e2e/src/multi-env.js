@@ -253,11 +253,10 @@ async function main() {
 
   // --- MULTI-8: a namespace change at runtime --------------------------------------
   //
-  // What is asserted here is the hierarchy and the arrival: that the entity leaves one
-  // environment, turns up in the other, and that the DOM view and the entity tree tell the same
-  // story on both sides. What the entity carries with it is a separate question — it arrives in
-  // the new environment without its properties, and the case for that belongs with the property
-  // lifecycle, not here.
+  // Asserted here: the hierarchy, the arrival, and what the entity brings along. It leaves one
+  // environment, turns up in the other, the DOM view and the entity tree tell the same story on
+  // both sides — and the properties make the trip, so the shadow object in the new environment
+  // knows which entity it belongs to.
 
   const switchMe = byId('switch-me');
   const switchOuter = byId('switch-outer');
@@ -276,6 +275,10 @@ async function main() {
       () => switchRecords['switch-me'].created.length === 2 && switchRecords['switch-me'].created[1].hasParent === false,
     ),
   );
+
+  testBooleanAction('multi-env-ns-switch-kept-its-properties', () => {
+    return switchRecords['switch-me'].created[1]?.envName === 'switch-me';
+  });
 
   testBooleanAction('multi-env-ns-switch-view-matches-tree', () => {
     return switchMe.entParentNode == null && switchMe.viewComponent.parent == null;

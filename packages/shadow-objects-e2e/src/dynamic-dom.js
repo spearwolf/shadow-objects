@@ -198,6 +198,36 @@ async function main() {
     return find(snap, 'dyn-1')?.extra == null;
   });
 
+  // --- DOM-7: move a property element to another entity ----------------------------
+  //
+  // The move happens in a single tick: `append` disconnects the element and reconnects it under
+  // the new host before the microtask checkpoint that would call it gone. Both entities have to
+  // agree about the result — the one it left as much as the one it reached.
+
+  const propTarget = appendEnt(byId('host-b'), 'dyn-2');
+  dyn1.insertAdjacentHTML('beforeend', '<shae-prop name="extra" value="moved-here"></shae-prop>');
+
+  await testAsyncAction('dynamic-dom-moved-prop-syncs', async () => {
+    // a move has to start somewhere: the property is on dyn-1 first, and asserting that it left
+    // is only meaningful once it has been there
+    snap = await snapshot();
+    if (find(snap, 'dyn-1')?.extra !== 'moved-here') {
+      throw new Error(`the property never reached dyn-1, it reads ${JSON.stringify(find(snap, 'dyn-1')?.extra)}`);
+    }
+
+    propTarget.append(dyn1.querySelector('shae-prop[name="extra"]'));
+
+    snap = await snapshot();
+  });
+
+  testBooleanAction('dynamic-dom-moved-prop-left-the-old-entity', () => {
+    return find(snap, 'dyn-1')?.extra == null;
+  });
+
+  testBooleanAction('dynamic-dom-moved-prop-arrived-at-the-new-entity', () => {
+    return find(snap, 'dyn-2')?.extra === 'moved-here';
+  });
+
   // --- DOM-4: remove an entity ------------------------------------------------------
 
   const removedUuid = dyn1.uuid;
@@ -257,5 +287,11 @@ async function main() {
 
   testBooleanAction('dynamic-dom-flicker-keeps-its-uuid', () => {
     return flicker.uuid === flickerUuidBefore;
+  });
+
+  testBooleanAction('dynamic-dom-flicker-kept-its-property', () => {
+    // the `<shae-prop>` inside goes through the same disconnect and reconnect. Its property has to
+    // read the same afterwards as before — a flicker is not a declaration being taken back
+    return snap.entities.find((e) => e.uuid === flicker.uuid)?.label === 'flicker';
   });
 }

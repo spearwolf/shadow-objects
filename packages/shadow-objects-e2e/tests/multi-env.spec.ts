@@ -39,6 +39,7 @@ test.describe('multi-env', () => {
     'multi-env-ns-switch-syncs',
     'multi-env-ns-switch-left-the-old-env',
     'multi-env-ns-switch-joined-the-new-env',
+    'multi-env-ns-switch-kept-its-properties',
     'multi-env-ns-switch-view-matches-tree',
     'multi-env-ns-switch-back-restores-the-tree',
   ]);

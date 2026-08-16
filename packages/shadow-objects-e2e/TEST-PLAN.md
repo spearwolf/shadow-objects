@@ -197,7 +197,7 @@ namespace back to the view, so a message arriving in the wrong context is immedi
 | MULTI-5 | P1 | `dispatchMessageToView` from the `beta` worker is delivered to the `beta` view component only; `alpha`/`gamma` listeners are not invoked. |
 | MULTI-6 | P1 | Two shadow objects registered under the **same token** in `alpha` and `beta` receive different property values and stay independent. |
 | MULTI-7 | P1 | `<shae-ent ns="beta">` nested inside `<shae-ent ns="alpha">` becomes a root entity in `beta` — it has no parent, and the `alpha` entity has no child. (The `bundle.html` shape, finally asserted.) |
-| MULTI-8 | P2 | **Implemented** — `multi-env-ns-switch-*` on `pages/multi-env.html`. Changing `ns` on a live `<shae-ent>` from `alpha` to `beta` and back: the entity leaves the `alpha` context, arrives in `beta` as a root, the DOM view and the entity tree agree on both sides, and the way back restores the parent link. **Still open:** properties do not survive the move — the entity arrives in the new environment as a bare token. That belongs to the property lifecycle and is tracked with it. |
+| MULTI-8 | P2 | **Implemented** — `multi-env-ns-switch-*` on `pages/multi-env.html`. Changing `ns` on a live `<shae-ent>` from `alpha` to `beta` and back: the entity leaves the `alpha` context, arrives in `beta` as a root, the DOM view and the entity tree agree on both sides, and the way back restores the parent link. The properties survive the move (`multi-env-ns-switch-kept-its-properties`). |
 | MULTI-9 | P2 | A round-trip in `alpha` (property in → message out) while `beta` is mid-sync: both complete, neither observes the other's change trail. |
 | MULTI-10 | P2 | `ShadowEnv.destroy()` on `beta`: `alpha` and `gamma` stay ready and still round-trip. Pending `beta` promises reject with `ShadowEnvDestroyedError`. |
 | MULTI-11 | P2 | `ComponentContext.dispose()` on `gamma` releases the namespace; a fresh `ComponentContext.get('gamma')` returns a new, usable context while `alpha`/`beta` are untouched. |
@@ -217,8 +217,8 @@ changes and property values back to the view.
 | DOM-3 | P1 | Moving a live `<shae-ent>` to a different parent element re-parents the entity in the worker; it is not destroyed and recreated, and its properties survive. |
 | DOM-4 | P1 | `element.remove()` destroys the entity in the worker. |
 | DOM-5 | P1 | Removing a subtree root with `autoDestructionOnParentRemoval` set on children: flagged children cascade, unflagged ones are promoted to root. (The `auto-destruct` scenario, driven from the DOM instead of the kernel API.) |
-| DOM-6 | P2 | Adding a `<shae-prop>` to a live `<shae-ent>` sets the property; removing it removes the property. |
-| DOM-7 | P2 | Moving a `<shae-prop>` from one `<shae-ent>` to another within the same tick: the property leaves the first entity and lands on the second, and the deferred `#disconnectFromEntNode` does not drop it. |
+| DOM-6 | P2 | **Implemented** — `dynamic-dom-added-prop-*`, `dynamic-dom-changed-prop-*`, `dynamic-dom-removed-prop-*` on `pages/dynamic-dom.html`. Adding a `<shae-prop>` to a live `<shae-ent>` sets the property; removing it removes the property. |
+| DOM-7 | P2 | **Implemented** — `dynamic-dom-moved-prop-syncs`, `dynamic-dom-moved-prop-left-the-old-entity`, `dynamic-dom-moved-prop-arrived-at-the-new-entity`. Moving a `<shae-prop>` from one `<shae-ent>` to another within the same tick: the property leaves the first entity and lands on the second, and the deferred `#disconnectFromEntNode` does not drop it. |
 | DOM-8 | P2 | Remove and re-append the same `<shae-ent>` within one microtask: assert the documented outcome explicitly (this is the `#deferDestroy` contract). |
 | DOM-9 | P2 | Inserting a child `<shae-ent>` *before* its parent element is connected: once the parent connects, the child re-requests and finds it. |
 | DOM-10 | P2 | Reordering siblings via the `order` property after insertion produces the expected child order in the kernel. |

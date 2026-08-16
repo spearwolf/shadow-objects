@@ -236,6 +236,9 @@ ent.addEventListener('login-success', (e) => console.log(e.detail.user));
 | `type` | see below | Type cast for the value attribute |
 | `no-trim` | boolean (presence) | Preserve whitespace in string values; without it `value="   "` trims down to `''` |
 
+Removing the element, renaming it, or moving it to another entity clears the property it declared.
+A move within a single tick is a move, not a removal — the property travels with the element.
+
 **`type` values for `<shae-prop>`:**
 
 | Type | Result |
@@ -264,8 +267,8 @@ Inside a Shadow Object, `entity` gives you access to the underlying entity insta
 | `entity.hasParent` | `boolean` | Whether this entity has a parent |
 | `entity.parent` | `EntityApi or undefined` | Parent entity reference |
 | `entity.children` | `readonly EntityApi[]` | Child entities |
-| `entity.propKeys` | `string[]` | All property keys currently set |
-| `entity.propEntries` | `[string, unknown][]` | All key-value property pairs |
+| `entity.propKeys` | `string[]` | Every key the entity has ever been given, including cleared ones |
+| `entity.propEntries` | `[string, unknown][]` | The same keys with their values; a cleared property reads `undefined` |
 | `entity.traverse(cb)` | `void` | Walk entity and all descendants |
 
 ```typescript

@@ -81,6 +81,8 @@ export class ViewComponent {
       );
     }
 
+    const previousContext = this.#context;
+
     if (this.#context) {
       this.destroy();
     }
@@ -94,6 +96,14 @@ export class ViewComponent {
       // took it in — every later mutation would silently go nowhere while `isDestroyed` lies
       this.#context = undefined;
       throw error;
+    }
+
+    // after the join, not before it: `addComponent` is what creates the ComponentChanges the
+    // properties are written into, so they end up in the same CreateEntities change as the token
+    // and the parent rather than in a separate one behind it. A move to no context carries
+    // nothing — there is no receiver for it
+    if (next != null && previousContext != null) {
+      previousContext.transferPropertiesTo(this, next);
     }
   }
 

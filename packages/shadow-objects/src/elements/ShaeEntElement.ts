@@ -100,6 +100,7 @@ export class ShaeEntElement extends ShaeElement {
       // is about to leave it. `this.ns` already carries the new value at this point, so a child
       // that asks again right away is turned away by #onRequestParent
       const previousContext = this.componentContext;
+      const previousNs = previousContext?.ns;
       const previousViewComponent = this.viewComponent;
       if (previousContext != null && previousViewComponent != null) {
         previousContext.dispatchReRequestParentChildren(previousViewComponent);
@@ -116,6 +117,14 @@ export class ShaeEntElement extends ShaeElement {
         // ...and this element may well be the closest ancestor for entities that were already
         // there when it arrived in this namespace
         this.#askPeersToReRequestParent();
+      }
+
+      // the environment it leaves holds the destruction of this entity and hears about it from
+      // nobody else: `syncShadowObjects()` without an argument reads `this.ns`, which carries the
+      // new value by now. The call is cheap — the namespaces are collected in a set and worked
+      // through in one microtask
+      if (previousNs != null && previousNs !== ns) {
+        this.syncShadowObjectsOf(previousNs);
       }
     });
 

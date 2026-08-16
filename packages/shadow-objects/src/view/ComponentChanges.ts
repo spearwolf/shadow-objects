@@ -157,6 +157,31 @@ export class ComponentChanges {
     }
   }
 
+  /**
+   * The properties this component holds at this moment: the ones a change trail has already
+   * carried, overlaid with everything that has accrued since.
+   *
+   * The overlay is what makes the result the current state instead of the state of the last
+   * trail — `#properties` is only written forward while a trail is being built
+   * ({@link ComponentChanges.makeCreateEntityChange}, {@link ComponentChanges.makeChangePropertyChange}).
+   * A key whose accrued value is `undefined` and a key queued for change without an accrued value
+   * are both removals, and neither appears in the result.
+   */
+  getProperties(): Map<string, unknown> {
+    const properties = new Map(this.#properties);
+
+    for (const key of this.#propsChangeOrder) {
+      const value = this.#nextProperties.get(key);
+      if (value === undefined) {
+        properties.delete(key);
+      } else {
+        properties.set(key, value);
+      }
+    }
+
+    return properties;
+  }
+
   #events: IComponentEvent[] = [];
   #transferables = new Set<Transferable>();
 

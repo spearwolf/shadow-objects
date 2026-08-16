@@ -17,6 +17,43 @@ const findEntNode = (start: HTMLElement): ShaeEntElement | undefined => {
   return undefined;
 };
 
+/**
+ * How many `<shae-prop>` elements declare a given name on a given view component right now.
+ *
+ * A property belongs to the entity, not to the element that wrote it last: two elements may
+ * declare the same name, and the entity keeps the property until the last of them lets go. The
+ * count is keyed the way the binding is — (view component, name) — and lives beside the elements
+ * because no single one of them can answer the question.
+ */
+const declarantsPerComponent = new WeakMap<ViewComponent, Map<string, number>>();
+
+const addDeclarant = (vc: ViewComponent, name: string) => {
+  let names = declarantsPerComponent.get(vc);
+  if (names == null) {
+    names = new Map();
+    declarantsPerComponent.set(vc, names);
+  }
+  names.set(name, (names.get(name) ?? 0) + 1);
+};
+
+/** @returns `true` if this was the last element declaring `name` on `vc`. */
+const removeDeclarant = (vc: ViewComponent, name: string): boolean => {
+  const names = declarantsPerComponent.get(vc);
+  if (names == null) return true;
+
+  const remaining = (names.get(name) ?? 1) - 1;
+  if (remaining > 0) {
+    names.set(name, remaining);
+    return false;
+  }
+
+  names.delete(name);
+  if (names.size === 0) {
+    declarantsPerComponent.delete(vc);
+  }
+  return true;
+};
+
 const TYPES = new Set([
   'string',
   'text',
@@ -132,6 +169,42 @@ export class ShaePropElement extends HTMLElement {
     //     });
     //   }
     // });
+
+    // The binding this element holds is the pair (view component, name). It ends in three ways —
+    // the element leaves the tree, its name changes, or it moves to another entity — and each of
+    // them moves one of these two signals. The cleanup takes the property back for exactly the
+    // binding that ended, which is why the three need no code of their own.
+    //
+    // `valueOut$` is deliberately not read here: a value change would otherwise run a removal
+    // against a set of the same key on every keystroke.
+    //
+    // Standing before the value effect is a matter of reading order, not of behaviour: the order a
+    // rename ends up with in the trail is decided in `ComponentChanges.#propsChangeOrder`, where
+    // `appendToEnd` moves a key that is already queued to the back. Measured both ways, the trail
+    // reads `[['x', undefined], ['y', 7]]` either way.
+    createEffect(() => {
+      const vc = this.viewComponent$.get();
+      const name = this.name$.get();
+
+      if (vc == null || !name) return;
+
+      // untracked on purpose: the host is where the sync has to go, not something this binding
+      // depends on
+      const entNode = this.entNode$.value;
+
+      addDeclarant(vc, name);
+
+      return () => {
+        // only the last declarant clears the property — another element may be holding the same
+        // name on the same entity, and the entity is what the property belongs to
+        if (removeDeclarant(vc, name)) {
+          vc.removeProperty(name);
+          // no `isConnected` guard, unlike the value effect below: an element that is no longer
+          // connected is precisely the case this has to reach
+          entNode?.syncShadowObjects();
+        }
+      };
+    });
 
     createEffect(() => {
       const vc = this.viewComponent$.get();

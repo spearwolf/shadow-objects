@@ -291,18 +291,15 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 
 ### 4.4 Konkrete Test-Lücken (ticket-fertig)
 
-> **E2E im Detail:** [`packages/shadow-objects-e2e/TEST-PLAN.md`](packages/shadow-objects-e2e/TEST-PLAN.md) (2026-08-02) analysiert die Playwright-Suite einzeln und listet 50 benannte Testfälle mit Seiten, Fixtures und Priorität. **Umgesetzt am 2026-08-02:** Harness-Reparatur, `multi-env`, `dynamic-dom`, `upgrade-timing`, `async-events`, `create-element` und der Umbau von `bundle.html` — die Suite ging von 44 auf 298 Tests. Dabei sind zwei Framework-Defekte aufgefallen, siehe unten und [`KNOWN-DEFECTS.md`](packages/shadow-objects-e2e/KNOWN-DEFECTS.md). Die folgende Liste bleibt der ebenen-übergreifende Überblick.
+> **E2E im Detail:** [`packages/shadow-objects-e2e/TEST-PLAN.md`](packages/shadow-objects-e2e/TEST-PLAN.md) (2026-08-02) analysiert die Playwright-Suite einzeln und listet 50 benannte Testfälle mit Seiten, Fixtures und Priorität. **Umgesetzt am 2026-08-02:** Harness-Reparatur, `multi-env`, `dynamic-dom`, `upgrade-timing`, `async-events`, `create-element` und der Umbau von `bundle.html` — die Suite ging von 44 auf 298 Tests. Dabei sind zwei Framework-Defekte aufgefallen; einer davon steht noch offen, siehe unten und [`KNOWN-DEFECTS.md`](packages/shadow-objects-e2e/KNOWN-DEFECTS.md). Die folgende Liste bleibt der ebenen-übergreifende Überblick.
 
 **[ELEM-1] `document.createElement()` erzeugt keine funktionsfähigen shae-Elemente.** Alle drei Custom Elements setzen im Konstruktor Attribute (`style.display = 'contents'`, `setAttribute('ns')`, `removeAttribute('token')`), was die Custom-Elements-Spec verbietet. Chromium und Firefox brechen das Upgrade ab und liefern ein `HTMLUnknownElement` — ohne `viewComponent`, ohne `uuid`, ohne Verbindung zum Environment. Über `innerHTML` funktioniert es, weshalb der Defekt bisher unsichtbar blieb: alle Testseiten benutzten parser-erzeugtes Markup. **Tragweite:** jede React-/Vue-/Svelte-Integration und jeder eigene Wrapper erzeugt Elemente programmatisch. **Fix:** Attribut- und Style-Zuweisungen aus den Konstruktoren in `connectedCallback` verschieben; `display: contents` als Stylesheet-Regel statt Inline-Style.
-
-**[ELEM-2] Das Entfernen eines `<shae-prop>` entfernt die Property nicht.** `ShaePropElement.disconnectedCallback` löst nur die Verbindung zur `ViewComponent`; `ViewComponent.removeProperty()` existiert, wird von der Element-Ebene aber nie aufgerufen. Der zuletzt gesetzte Wert bleibt im Kernel stehen, obwohl das deklarierende Element weg ist. Beim Fix die bestehende Microtask-Verzögerung in `#disconnectFromEntNode` erhalten — sie unterscheidet ein Verschieben innerhalb eines Ticks von einem echten Entfernen.
 
 **[ELEM-3] `autoDestructionOnParentRemoval` ist über `<shae-ent>` nicht erreichbar.** Kein Attribut, und `ShaeEntElement` erzeugt seine `ViewComponent` ohne die Option — das Feature ist nur über die programmatische API nutzbar. Ein DOM-seitiger Test der Kaskade ist deshalb derzeit nicht möglich.
 
 - Worker-Init-Failure (`Worker`-Konstruktor mit kaputter URL).
 - `destroy()` mitten im Sync — ein ausstehendes `applyChangeTrail` läuft in den `WorkerChangeTrailTimeout`, statt abgewickelt zu werden. *(VIEW-1)*
 - `ShadowEnv.envProxy`-Swap zur Laufzeit von `LocalShadowObjectEnv` auf `RemoteWorkerEnv` (die Gegenrichtung und Remote → Remote sind abgedeckt).
-- `<shae-prop>` Tests (Property-Bindung, DOM-Verschiebung).
 - `<shae-ent>`-`attributeChangedCallback` für `token` / `parent-id` / `forward-custom-events` (Re-Set auf leer).
 - `<shae-worker>`-`src`-Wechsel nach `start()` (Re-Import-Pfad).
 - `Transferables` über echten Worker (nicht nur In-Process).

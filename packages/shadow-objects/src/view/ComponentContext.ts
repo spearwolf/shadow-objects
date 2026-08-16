@@ -265,6 +265,51 @@ export class ComponentContext {
     this.#components.get(component.uuid)?.changes.removeProperty(propKey);
   }
 
+  /**
+   * Hand the properties of `component` over to the context it has just joined.
+   *
+   * Called by the {@link ViewComponent#context} setter, and by nothing else. It reads the state
+   * this context still holds for the component: leaving a context destroys it, but the entry
+   * survives until the next {@link ComponentContext.buildChangeTrails}, so the properties are
+   * still there to be read once the join has happened.
+   *
+   * The equality function travels with each property, because it is a rule about the key and not
+   * about the value — the same key means the same notion of "unchanged" wherever it lives. It does
+   * not get to decide about the arrival, though: the target holds nothing for the key yet, so it
+   * would be asked whether the value equals `undefined`, and a function that says yes would drop
+   * the property instead of carrying it over. The value is therefore written first and the rule
+   * registered after it — the other way round, the write would delete the entry it just made,
+   * because {@link ComponentContext.setProperty} keeps only what its caller passes.
+   *
+   * What the registered rule is for: {@link ComponentContext.reCreateChanges} is its one reader,
+   * and it compares with it when it rebuilds a component from the memory. A later
+   * {@link ComponentContext.setProperty} does not consult it — it uses its own argument, or none.
+   *
+   * Built like {@link ComponentChanges.transferEventsTo}, with one difference: the properties are
+   * copied, not moved. What stays behind goes down with the entity in this context.
+   */
+  transferPropertiesTo(component: ViewComponent, target: ComponentContext) {
+    const vi = this.#components.get(component.uuid);
+    if (vi === undefined) return;
+
+    for (const [key, value] of vi.changes.getProperties()) {
+      target.setProperty(component, key, value);
+
+      const isEqual = vi.propIsEqual?.get(key);
+      if (isEqual != null) {
+        target.#registerPropIsEqual(component, key, isEqual);
+      }
+    }
+  }
+
+  #registerPropIsEqual(component: ViewComponent, propKey: string, isEqual: (a: any, b: any) => boolean) {
+    const vi = this.#components.get(component.uuid);
+    if (vi === undefined) return;
+
+    vi.propIsEqual ??= new Map();
+    vi.propIsEqual.set(propKey, isEqual);
+  }
+
   changeOrder(component: ViewComponent) {
     // a component this context does not (or no longer) hold must never be re-inserted into an
     // ordered list — clear() and dispose() both leave live components pointing back at us

@@ -1203,6 +1203,11 @@ A change of `ns` at runtime takes the entity along into the other environment: i
 resolved again in both directions — for the element itself, and for the entities that hung on it,
 which look for the closest ancestor answering in their own namespace.
 
+The entity keeps its uuid, its token, its order and its properties on the way over, so the shadow
+object created for it in the other environment starts from the state the view holds. Events
+already dispatched do not travel: they are delivered in the environment they were addressed to,
+which is the one the entity still lives in at that moment.
+
 Everything else keeps the parent it resolved. Two cases are worth knowing:
 
 - A `<shae-prop>` resolves its host entity once and keeps it, so a property does not follow a late
@@ -1264,6 +1269,31 @@ yield `NaN`, the typed arrays yield a filled array.
   <shae-prop name="position" value="10 20 30" type="float32array"></shae-prop>
 </shae-ent>
 ```
+
+#### Lifecycle
+
+The element declares a property for as long as it stands where it stands under the name it has.
+Three things end that, and all three clear the property on the entity that held it:
+
+- **The element leaves the tree.** Removing a `<shae-prop>` removes its property.
+- **The `name` attribute changes.** The old name is cleared and the new one takes the value.
+- **The element moves to another entity.** The entity it left loses the property, the entity it
+  reaches gets it.
+
+Removing an element and putting it back within the same tick is none of these — a move through
+`append` or `insertBefore` keeps the property, it does not drop and re-add it.
+
+Removing the whole entity is a different matter and writes no property change: the entity goes,
+and its properties go with it.
+
+Two elements may declare the same name on the same entity. The one that writes last decides the
+value, and the property is cleared only once the last of them lets go. Nothing is re-read when one
+of them goes: the value stays where it was, even if the element that wrote it is the one that left.
+If you need a defined winner, give each declaration its own name.
+
+On the Shadow Object side, a cleared property reads `undefined` — the key itself stays visible in
+`propKeys()` and `propEntries()`. A reader taken from `useProperty()` keeps working across the
+whole lifecycle and simply reports `undefined` once the property is gone.
 
 ---
 

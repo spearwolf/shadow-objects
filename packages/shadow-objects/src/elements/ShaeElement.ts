@@ -71,4 +71,14 @@ export class ShaeElement extends HTMLElement {
   syncShadowObjects() {
     syncShadowObjects(this.ns);
   }
+
+  /**
+   * Sync the environment of `ns` instead of the one this element sits in right now.
+   *
+   * For the moment an element changes namespaces: the environment it leaves has a change trail
+   * waiting for it, and `this.ns` no longer points at it.
+   */
+  protected syncShadowObjectsOf(ns: NamespaceType) {
+    syncShadowObjects(ns);
+  }
 }

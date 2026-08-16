@@ -2,6 +2,8 @@ import {expect} from '@esm-bundle/chai';
 import {on} from '@spearwolf/eventize';
 import {ComponentContext, RequestEntParentEventName, ShaeEntElement, ViewComponent} from '@spearwolf/shadow-objects';
 import '@spearwolf/shadow-objects/shae-ent.js';
+import '@spearwolf/shadow-objects/shae-prop.js';
+import '@spearwolf/shadow-objects/shae-worker.js';
 import {mount, unmountAll} from '../src/mount.js';
 
 /**
@@ -384,5 +386,63 @@ describe('shae-ent and a namespace change', () => {
     expect(settled, 'and the whole exchange is a handful of events').to.be.at.most(2);
     expect(kid.entParentNode?.id, 'the binding stands where it was').to.equal('gp-nb');
     expect(kid.viewComponent.parent, 'and the entity has no parent to show for it').to.be.undefined;
+  });
+});
+
+describe('namespace change and properties', () => {
+  it('a shae-prop value arrives in the new namespace', async () => {
+    const container = mount(
+      '<shae-ent id="p-nc1" ns="ns-nc1a" token="probe"><shae-prop name="x" value="7" type="number"></shae-prop></shae-ent>',
+    );
+    await customElements.whenDefined('shae-prop');
+
+    const p = container.querySelector('#p-nc1');
+
+    ComponentContext.get('ns-nc1a').buildChangeTrails();
+
+    p.ns = 'ns-nc1b';
+    await nextTask();
+
+    const trail = ComponentContext.get('ns-nc1b').buildChangeTrails();
+
+    expect(
+      trail.find((entry) => entry.uuid === p.uuid)?.properties,
+      'the entity is created in the new namespace with the value it had',
+    ).to.deep.equal([['x', 7]]);
+  });
+
+  it('the environment of the namespace it leaves is told to sync', async () => {
+    // the entity has no children on purpose: everything else about the change reaches the old
+    // environment through one of them. Without a sync the destruction sits in the old context
+    // until something unrelated happens to flush it
+    const container = mount(
+      '<shae-worker id="wa-nc2" local auto-sync="off" ns="ns-nc2a"></shae-worker>' +
+        '<shae-worker id="wb-nc2" local auto-sync="off" ns="ns-nc2b"></shae-worker>' +
+        '<shae-ent id="p-nc2" ns="ns-nc2a" token="probe"></shae-ent>',
+    );
+    await Promise.all(['shae-worker', 'shae-ent'].map((name) => customElements.whenDefined(name)));
+    await nextTask();
+
+    const synced = [];
+    for (const [name, id] of [
+      ['a', '#wa-nc2'],
+      ['b', '#wb-nc2'],
+    ]) {
+      const env = container.querySelector(id).shadowEnv;
+      const sync = env.sync.bind(env);
+      env.sync = (...args) => {
+        synced.push(name);
+        return sync(...args);
+      };
+    }
+
+    container.querySelector('#p-nc2').ns = 'ns-nc2b';
+    await nextTask();
+
+    // the order is not asserted: the collecting microtask works through both namespaces in one go
+    expect(Array.from(new Set(synced)), 'both environments are told, the one it leaves included').to.have.same.members([
+      'a',
+      'b',
+    ]);
   });
 });
