@@ -1,6 +1,7 @@
 import {expect} from '@esm-bundle/chai';
 import {ComponentContext, LocalShadowObjectEnv, ShaeWorkerElement} from '@spearwolf/shadow-objects';
 import {ConsoleLogger} from '@spearwolf/shadow-objects/ConsoleLogger.js';
+import '@spearwolf/shadow-objects/shae-ent.js';
 import '@spearwolf/shadow-objects/shae-worker.js';
 import {mount, unmountAll} from '../src/mount.js';
 import {withSwallowedErrors} from '../src/withSwallowedErrors.js';
@@ -401,7 +402,8 @@ describe('shae-worker lifecycle', () => {
 
   it('removing the element flips isConnected$ immediately, tears the envProxy down after a microtask', async () => {
     // the teardown is deferred by one microtask so a same-task reconnect is not torn down —
-    // this pins the delay, not the reconnect case itself.
+    // this case pins the delay for an element that stays out of the tree, the cases below take
+    // the reconnect from both sides.
     const container = mount(`<shae-worker local auto-sync="no" ns="${nextNs()}"></shae-worker>`);
     const el = container.querySelector('shae-worker');
 
@@ -433,6 +435,82 @@ describe('shae-worker lifecycle', () => {
     await el.start();
 
     el.destroy();
+  });
+
+  it('the entities survive a reconnect within the same task', async () => {
+    const ns = nextNs();
+    const container = mount(
+      `<shae-worker local auto-sync="no" ns="${ns}"></shae-worker><shae-ent ns="${ns}" token="probe"></shae-ent>`,
+    );
+    await Promise.all(['shae-worker', 'shae-ent'].map((name) => customElements.whenDefined(name)));
+
+    const el = container.querySelector('shae-worker');
+    const ent = container.querySelector('shae-ent');
+
+    await el.shadowEnv.ready();
+    await el.shadowEnv.syncWait();
+
+    const kernel = el.shadowEnv.envProxy.kernel;
+    const entity = kernel.getEntity(ent.uuid);
+
+    el.remove();
+    container.append(el);
+
+    await nextTask();
+
+    expect(el.shadowEnv.isDestroyed, 'the premise: the teardown was called off').to.be.false;
+    expect(el.shadowEnv.envProxy.kernel, 'the kernel is the one from before').to.equal(kernel);
+    expect(kernel.getEntity(ent.uuid), 'and it holds the very same entity').to.equal(entity);
+    expect(ComponentContext.get(ns).hasComponent(ent.viewComponent), 'the view side never let go either').to.be.true;
+
+    // a cycle after the move: the environment is usable, not merely undestroyed
+    await el.shadowEnv.syncWait();
+
+    el.destroy();
+  });
+
+  it('a reconnect after the teardown does not bring the entities back', async () => {
+    const ns = nextNs();
+    const container = mount(
+      `<shae-worker local auto-sync="no" ns="${ns}"></shae-worker><shae-ent ns="${ns}" token="probe"></shae-ent>`,
+    );
+    await Promise.all(['shae-worker', 'shae-ent'].map((name) => customElements.whenDefined(name)));
+
+    const el = container.querySelector('shae-worker');
+    const ent = container.querySelector('shae-ent');
+
+    await el.shadowEnv.ready();
+    await el.shadowEnv.syncWait();
+
+    const kernel = el.shadowEnv.envProxy.kernel;
+    expect(kernel.hasEntity(ent.uuid), 'the premise: the entity reached the kernel').to.be.true;
+
+    el.remove();
+    await nextTask();
+
+    expect(el.shadowEnv.isDestroyed, 'one task out of the tree is enough').to.be.true;
+    expect(kernel.hasEntity(ent.uuid), 'and the entities go with the kernel').to.be.false;
+    expect(() => kernel.getEntity(ent.uuid), 'asking for one names the uuid').to.throw(
+      `entity with uuid "${ent.uuid}" not found!`,
+    );
+
+    container.append(el);
+
+    expect(el.shadowEnv.envProxy, 'putting the element back starts nothing').to.be.undefined;
+    expect(kernel.hasEntity(ent.uuid), 'and brings no entity back').to.be.false;
+
+    let caught;
+    try {
+      await el.start();
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught?.name, 'a caller who waits for it is told').to.equal('ShadowEnvDestroyedError');
+
+    expect(
+      ComponentContext.get(ns).hasComponent(ent.viewComponent),
+      'the view side keeps its entity — only the environment behind it is gone',
+    ).to.be.true;
   });
 
   it('a remove, append and remove within the same task tears down exactly once', async () => {

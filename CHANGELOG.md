@@ -11,6 +11,16 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 - **`packages/shadow-objects-testing/test/ComponentContext.test.js`:** the shared `ComponentContext` is cleared between cases through `afterEach(() => unmountAll())`, the same pattern every other spec in the package follows.
 - **`packages/shadow-objects-testing/package.json`:** `test` and `watch` clear `test/__screenshots__` before running, matching the `test-results` cleanup `packages/shadow-objects-e2e/package.json` does for Playwright. `devDependencies` lists `"rimraf": "catalog:"`.
 - **`packages/shadow-objects-e2e/src/test-helpers/waitUntil.js`:** the default `timeout` is 4000 ms, below `testAsyncAction`'s default, so the inner deadline fires first and the report names the condition instead of the enclosing action.
+- **`packages/shadow-objects-testing/test/worker-element-attributes.test.js`:** two cases for the
+  deferred teardown of `<shae-worker>` on the entity level — one reconnects the element while it is
+  still inside the deferral microtask and finds the kernel, the `Entity` instance and the
+  `ViewComponent` unchanged, the other lets the task boundary pass and finds the entities gone with
+  the kernel: `hasEntity()` false, `getEntity()` throws, reconnecting brings nothing back, `start()`
+  rejects with `ShadowEnvDestroyedError` — while the `ComponentContext` on the view side keeps its
+  entity. `packages/shadow-objects-e2e/TEST-PLAN.md` now lists only the equivalent against a real
+  worker as open on this axis. Integration package case count: 312 → 314.
+- **`Backlog.md` §4.1:** the vitest inventory counts 15 files and 349 cases and names
+  `ConsoleLogger.storage.spec.ts`.
 
 ## 2026-08-16 — exclude generated audit reports and clear stale Playwright artifacts
 
