@@ -1083,21 +1083,38 @@ The root of any Shadow Objects application. Initializes the Shadow Environment (
 
 | Attribute | Description |
 | :--- | :--- |
-| `src` | URL of the JavaScript file with your Shadow Object definitions. Required for the declarative approach. |
-| `local` | If present, runs logic on the Main Thread instead of a Web Worker. Default: Worker mode. |
+| `src` | URL of the JavaScript file with your Shadow Object definitions. Required for the declarative approach. The value is trimmed. Changing it once the environment is ready imports the new module into it. |
+| `local` | Runs logic on the Main Thread instead of a Web Worker. Read as a truthy value, not as a presence — see below. Default: Worker mode. |
 | `auto-sync` | Controls sync frequency. See values below. |
 | `ns` | Namespace (Component Context). Defaults to the Global Context. |
-| `no-structured-clone` | Only valid with `local`. Disables `structuredClone` for a performance boost. Objects are passed by reference. Use with caution. |
-| `no-autostart` | If present, the element does not create the Shadow Environment on connect. Call `start()` yourself. |
+| `no-structured-clone` | Presence attribute. Disables `structuredClone` for a performance boost. Objects are passed by reference. Use with caution. Only takes effect together with `local`; without it, it is silently ignored. |
+| `no-autostart` | Keeps the element from creating the Shadow Environment on connect. Call `start()` yourself. Read as a truthy value, not as a presence — see below. |
 
-**`auto-sync` values:**
+**Truthy attributes are not presence attributes.** `local` and `no-autostart` read their value:
+the attribute counts as set when it carries `on`, `true`, `yes`, `local` or `1` (case-insensitive,
+surrounding whitespace ignored) — or when it stands there bare, `local` and `local=""` alike.
+Every other value counts as unset, so `local="false"` stays in Worker mode and `no-autostart="0"`
+autostarts. `no-structured-clone` is the odd one out and asks only whether the attribute exists at
+all: `no-structured-clone="false"` disables `structuredClone` just as the bare attribute does.
+
+`no-autostart` is not observed and is read exactly once, when the element connects. Setting or
+removing it afterwards changes nothing.
+
+Changing `local` after the environment has been created is refused. The attribute callback throws,
+and a throw from a Custom Elements reaction does not reach the caller of `setAttribute` — the
+browser reports it to the global `error` event instead.
+
+**`auto-sync` values:** the value is trimmed and lower-cased before it is read.
 
 | Value | Behavior |
 | :--- | :--- |
-| `"frame"` / `"on"` / `"yes"` | Syncs every animation frame via `requestAnimationFrame`. (Default) |
-| `"60fps"` or any `Nfps` | Syncs at the targeted frame rate. |
-| A number (e.g., `"100"`) | Syncs every N milliseconds. |
-| `"no"` / `"off"` | Disables auto-sync. Call `.syncShadowObjects()` manually. |
+| `"frame"` / `"on"` / `"yes"` / `"true"` / `"auto-sync"` | Syncs every animation frame via `requestAnimationFrame`. (Default) |
+| `auto-sync=""`, or the attribute removed | Falls back to `"frame"`. |
+| `"60fps"` or any `Nfps` with N greater than 0 | Syncs every `Math.floor(1000 / N)` milliseconds. |
+| `"0fps"` or any `Nfps` with N of 0 or less | Reports through `logger.warn` and syncs not at all. |
+| A number (e.g., `"100"`) | Syncs every N milliseconds. A number of 0 or less switches syncing off without a report. |
+| `"no"` / `"off"` / `"false"` | Disables auto-sync. Call `.syncShadowObjects()` manually. |
+| Anything else | Reports through `logger.error` and switches syncing off. |
 
 ```html
 <!-- Worker mode (default) -->
@@ -1113,23 +1130,50 @@ The root of any Shadow Objects application. Initializes the Shadow Environment (
 <shae-worker src="./kernel.js" auto-sync="off"></shae-worker>
 ```
 
-#### Methods
+#### JavaScript API
 
 | Method | Description |
 | :--- | :--- |
 | `start()` | Creates the Shadow Environment and waits until it is ready. The element calls it on connect by itself, unless `no-autostart` is set. |
-| `importScript(src)` | Waits for the environment and imports a shadow objects module into it. Rejects with a `ShadowEnvDestroyedError` when the environment is torn down before the import begins. |
-| `syncShadowObjects()` | Pushes the pending changes to the Shadow Environment. Needed with `auto-sync="off"`. |
+| `importScript(src)` | Waits for the environment and imports a shadow objects module into it. Rejects with a `ShadowEnvDestroyedError` when the environment is torn down before the import begins. A blank `src` rejects with `Error('src is blank')` — the method is `async`, so nothing is thrown at the call site and a `try`/`catch` around it catches nothing; use `await` or `.catch()`. |
+| `syncShadowObjects()` | Hands the environment of this element's namespace to the next sync. The call is collected per namespace and carried out one microtask later, so calling it more than once in a task costs one sync. Needed with `auto-sync="off"`. Inherited from `ShaeElement`, which means `<shae-ent>` has it too. |
+| `destroy()` | Tears down the environment, its proxy and the element's signals. Called by the element itself one microtask after it leaves the tree. |
+
+| Property | Description |
+| :--- | :--- |
+| `shadowEnv` | The `ShadowEnv` this element owns, read-only. Available before the environment is started. |
+| `logger` | The `ConsoleLogger` this element reports through, read-only. |
+| `autostart` | Whether the element may start on connect. Writable, defaults to `true`; the `no-autostart` attribute is the declarative half of the same decision. |
+| `shouldAutostart` | Read-only: `autostart` and the `no-autostart` attribute taken together. This is what the element asks when it connects. |
+| `autoSync` | The current `auto-sync` value. **Writing takes strings only:** any other value is read as a flag — a truthy one becomes `"frame"`, a falsy one `"no"`. `el.autoSync = 30` therefore syncs every frame, while `auto-sync="30"` is a 30-millisecond interval. Every value other than the frame default is reflected into the attribute; the frame default is written only when the attribute is already there. |
+| `frameLoop` | The `FrameLoop` driving the frame-based sync, taken on first read. There is one per process — every element that reads it gets the same instance. |
+| `ns` | The namespace, get and set, inherited from `ShaeElement`. Writing trims the value and reflects it back into the `ns` attribute; an empty value removes the attribute and returns the element to the Global Context. |
+| `isShaeWorkerElement` | `true`. `isShaeElement` is `true` as well, inherited from `ShaeElement`. |
+| `ShaeWorkerElement.DefaultAutoSync` | Static, `"frame"` — what an empty `auto-sync`, a removed one and any truthy non-string assignment fall back to. An unreadable value does *not* come here; it is reported and switches syncing off. |
+| `ShaeWorkerElement.observedAttributes` | Static: `ns`, `local`, `src`, `no-structured-clone`, `auto-sync`. `no-autostart` is deliberately not among them. |
+
+The four signals `isConnected$`, `autoSync$`, `src$` and the inherited `ns$` are part of the
+surface as well: read them with `.value` or subscribe to them. They are what the attributes feed —
+`src$` carries the trimmed `src`, `autoSync$` the value behind `autoSync`, `isConnected$` whether
+the element sits in the tree.
+
+`[FrameLoop.OnFrame]` is the method the frame loop calls; it syncs. The inherited
+`syncShadowObjectsOf()` is `protected` and meant for subclasses. The Custom Elements callbacks —
+`connectedCallback`, `disconnectedCallback`, `attributeChangedCallback` — are implemented; a
+subclass that overrides one has to call `super`.
 
 #### DOM Events
 
-The element mirrors the `ShadowEnv` events onto itself as `CustomEvent`s, so the declarative setup has the same information available as the programmatic one. The names are lower-cased; `detail` always carries `shadowEnv`.
+The element mirrors three of the `ShadowEnv` events onto itself as `CustomEvent`s, so the declarative setup has the same information available as the programmatic one. The names are lower-cased; `detail` always carries `shadowEnv`. `ShadowEnv.AfterSync` is *not* among them — it stays on the `ShadowEnv`.
 
 | Event | `detail` | When |
 | :--- | :--- | :--- |
 | `contextcreated` | `{shadowEnv}` | The environment became ready. |
 | `contextlost` | `{shadowEnv}` | The environment lost its connection. |
 | `proxyfailed` | `{shadowEnv, reason}` | The proxy lost the Shadow Environment it stands for. `contextlost` follows. |
+
+All three are dispatched with `bubbles: false` and without `composed`, so they are only heard on
+the element itself — there is no delegation to an ancestor and none across a shadow boundary.
 
 ```javascript
 const worker = document.querySelector('shae-worker');
@@ -1159,6 +1203,15 @@ Represents an Entity (game object) in the Shadow Environment. Corresponds to a `
 <shae-ent token="my-player"></shae-ent>
 ```
 
+Both `ns` and `token` are also readable and writable from JavaScript, and the two differ in what
+that does to the markup. `ns` is normalized on the way in: `el.ns = '  hud  '` leaves `ns="hud"` in
+the DOM, and an empty namespace removes the attribute and returns the element to the Global
+Context. The `token` attribute is trimmed when it is read, and markup the element was upgraded from
+keeps what it says — `<shae-ent token="  x  ">` still reads `token="  x  "` while `el.token` reads
+`x`. From then on the reflection writes back: on a live element both `el.token = '  x  '` and
+`setAttribute('token', '  x  ')` end at `token="x"`, and `el.token = undefined` removes the
+attribute.
+
 **Forwarding events example:**
 
 ```html
@@ -1176,6 +1229,47 @@ Represents an Entity (game object) in the Shadow Environment. Corresponds to a `
 <shae-ent token="game-level" forward-custom-events="score-changed,level-complete"></shae-ent>
 ```
 
+Two events are never forwarded, not even without a filter list:
+`ComponentContext.ReRequestParentRoots` and `ComponentContext.ReRequestParent`. They are the
+internal signals of the parent resolution and stay on the view side.
+
+#### JavaScript API
+
+| Member | Description |
+| :--- | :--- |
+| `token` | The Token, get and set. Writing reflects into the `token` attribute; `undefined` removes it. |
+| `ns` | The namespace, get and set, inherited from `ShaeElement`. Writing trims and reflects; an empty value removes the attribute and returns the element to the Global Context. |
+| `uuid` | The uuid of the `ViewComponent`, read-only. `undefined` while the element has none. |
+| `viewComponent` | The `ViewComponent` this element stands for, read-only. |
+| `componentContext` | The `ComponentContext` of its namespace, read-only. |
+| `entParentNode` | The `<shae-ent>` this entity hangs on — the resolved entity ancestor, which is not the DOM parent node. A writable field; the next lookup decides it again. |
+| `isShaeEntElement` | `true`. `isShaeElement` is `true` as well, inherited from `ShaeElement`. |
+| `findShadowRootHost()` | The host element of the shadow root this element sits in, or `undefined` outside one. |
+| `onParentChanged(newParent, oldParent)` | Called when the element leaves its parent node. Re-resolves the entity ancestor; an extension point for subclasses, which have to call `super`. |
+| `syncShadowObjects()` | Hands the environment of this element's namespace to the next sync, one microtask later. Inherited from `ShaeElement`. |
+| `ShaeEntElement.observedAttributes` | Static: `ns`, `token`, `forward-custom-events`. |
+
+The signals `token$`, `viewComponent$`, `componentContext$`, `forwardCustomEvents$` and the
+inherited `ns$` are public, not `protected` — read them with `.value` or subscribe to them.
+`forwardCustomEvents$` matters twice over: there is no `forwardCustomEvents` accessor, so the
+signal is the only way to set the filter from JavaScript. It reflects into the attribute:
+`false` and an empty `Set` remove it, a `Set` writes the comma-separated list, and `true` sets it
+to the empty string — as long as the attribute is not already there. A filter list standing in the
+markup is left as it is when the signal is set to `true`, and the attribute then says less than the
+element does.
+
+```javascript
+const ent = document.querySelector('shae-ent');
+
+ent.forwardCustomEvents$.set(true);                       // forward-custom-events=""
+ent.forwardCustomEvents$.set(new Set(['score-changed'])); // forward-custom-events="score-changed"
+ent.forwardCustomEvents$.set(false);                      // attribute removed
+```
+
+`getParentNodeForObserver()` and the inherited `syncShadowObjectsOf()` are `protected` and meant
+for subclasses. The Custom Elements callbacks — `connectedCallback`, `disconnectedCallback`,
+`attributeChangedCallback` — are implemented; a subclass that overrides one has to call `super`.
+
 #### Entity Hierarchy
 
 Nesting `<shae-ent>` elements creates parent-child relationships in the Shadow Environment.
@@ -1190,6 +1284,20 @@ Nesting `<shae-ent>` elements creates parent-child relationships in the Shadow E
 
 The parent is resolved when an element connects: it is the closest `<shae-ent>` on the ancestor
 path that answers at that moment, across shadow boundaries and slot projections.
+
+**An entity takes its parent from its own namespace only.** The request an element sends out names
+the namespace it stands in, and an entity of another one lets that request pass instead of
+answering it — a `<shae-ent ns="hud">` between a child and its parent entity is not there as far as
+that binding is concerned, and it does not stop it either. This is the opposite of the rule
+`<shae-prop>` follows, where proximity decides and membership does not count for anything; see
+[Finding the Host Entity](#finding-the-host-entity).
+
+An answer is not the same thing as a parent link. An ancestor whose entity sits in a different
+`ComponentContext` answers the request and becomes this element's `entParentNode`, but the entity
+tree does not follow: `viewComponent.parent` stays empty. The request goes out once more a microtask
+later, gets the same answer, and the matter rests there — the element keeps its `entParentNode` and
+its entity keeps no parent, without the two feeding each other. No attribute leads into that state;
+it takes writing `viewComponent$` from outside.
 
 Three things happen after that and are picked up on their own: an element that is itself an entity —
 a subclass of `ShaeEntElement`, say, loaded from a lazy module — and that is registered with
@@ -1213,11 +1321,75 @@ element attached to the same parent node — a container inserted between it and
 unseen. A move that takes it out of its parent node is noticed, whether the element runs through
 disconnect and reconnect on the way or is watched across the move.
 
+#### Driving the Lookup by Hand
+
+Both elements find the entity above them by asking for it. The question travels as a bubbling,
+composed `CustomEvent`, and the ascent of a composed event *is* the ascent through the flattened
+tree — which is why the lookup sees slot projections and closed shadow boundaries. The request is
+exported, so an element of your own can ask the same question.
+
+```javascript
+import {requestEntAncestor} from '@spearwolf/shadow-objects';
+
+class MyWidget extends HTMLElement {
+  connectedCallback() {
+    requestEntAncestor(this, {
+      answer: (entNode) => {
+        this.entNode = entNode;
+      },
+    });
+  }
+}
+```
+
+`requestEntAncestor(requester, request)` takes everything of an `EntAncestorRequest` except the
+`requester` — the sender is set by the function and cannot be overwritten by the caller.
+
+| `EntAncestorRequest` | Description |
+| :--- | :--- |
+| `requester` | The element asking. Set by `requestEntAncestor`. |
+| `ns` | Optional. With it, only an entity of that namespace answers; without it, the closest entity answers whatever namespace it is in. `<shae-ent>` sends its own namespace, `<shae-prop>` sends none. |
+| `answer(entNode)` | Called by the first ancestor that matches. It stops the event right afterwards, so the answer comes from the closest match and never twice. |
+
+An event built by hand is only answered when its `detail` carries an `answer` function. Without
+one it passes every entity untouched and is not stopped — the entity has no way to reply, so it
+does not treat the event as a request at all.
+
+Three event names are exported, together with the event types and the event map that puts them
+into `HTMLElementEventMap` — an `addEventListener` for any of them is typed without a cast:
+
+| Constant | Value | Sent by |
+| :--- | :--- | :--- |
+| `RequestEntParentEventName` | `'shaeRequestEntParent'` | Anyone looking for the entity above them. Type: `RequestEntParentEvent`. |
+| `ReRequestEntParentEventName` | `'shaeReRequestEntParent'` | A `<shae-ent>` inside a shadow root whose slot assignment changed. Type: `ReRequestEntParentEvent`. |
+| `ReRequestEntHostEventName` | `'shaeReRequestEntHost'` | A `<shae-ent>` that starts or stops answering host requests. `<shae-prop>` listens for it and asks again. Type: `ReRequestEntHostEvent`. |
+
+```typescript
+import type {ShadowEntsEventMap} from '@spearwolf/shadow-objects';
+
+const keys: (keyof ShadowEntsEventMap)[] = ['shaeRequestEntParent'];
+```
+
+**Registration order does not matter.** The three registration modules are independent and can be
+imported one at a time:
+
+```javascript
+import '@spearwolf/shadow-objects/shae-prop.js';
+import '@spearwolf/shadow-objects/shae-ent.js';
+import '@spearwolf/shadow-objects/shae-worker.js';
+```
+
+An element that becomes an entity while the markup around it already stands announces itself to
+everything below it: entities look for their parent once more, properties for their host. The same
+holds for a subclass of `ShaeEntElement` registered from a lazily loaded module. The entities below
+have re-bound by the time `customElements.define()` returns; the properties follow one microtask
+later, because their channel waits for the tree to stop moving.
+
 ---
 
 ### `<shae-prop>`
 
-Declaratively sets properties on the parent `<shae-ent>`.
+Declaratively sets properties on the entity above it.
 
 #### Finding the Host Entity
 
@@ -1239,16 +1411,25 @@ is not.
 
 The timing is worth knowing, because the code does not show it: a re-binding takes effect one
 microtask after the change, not in the same step. Rebuild the tree and read `entNode` right
-afterwards and you read the state from before.
+afterwards and you read the state from before. This is the timing of the re-request channel — of
+every message that says "something above you changed". The first lookup, the one the element makes
+when it enters the tree, is synchronous, and letting go when the element leaves runs in a microtask
+of its own.
 
 A `<shae-prop>` with no entity anywhere above it sets its property nowhere and reports that once
-through the `ConsoleLogger`. The report is a `warn` and therefore gated behind
-`ConsoleLogger.sharedConfig.enable`, which defaults to "the page is served from localhost" — off a
-localhost page the case is silent.
+through the `ConsoleLogger`. Once means once per element, not once per lookup: the re-request
+channel repeats the same question every time anything above the element changes, and only the
+first unanswered lookup is reported. An element on its way out of the tree reports nothing — the
+report needs the element to be connected, because a departing element is not one that is missing a
+host. The report is a `warn` and therefore gated behind `ConsoleLogger.sharedConfig.enable`, which
+defaults to "the page is served from localhost" — off a localhost page the case is silent.
 
 The namespace plays no part in it: what counts is proximity, not membership. A `<shae-prop>` under
 a `<shae-ent ns="hud">` inside a `<shae-ent>` of the global namespace belongs to the `hud` entity,
-because that is the closest one.
+because that is the closest one. Entities bind by the opposite rule — a `<shae-ent>` takes its
+parent from its own namespace only, and an entity of another one is invisible to it; see
+[Entity Hierarchy](#entity-hierarchy). Both rules run on the same request, which is described
+under [Driving the Lookup by Hand](#driving-the-lookup-by-hand).
 
 A `<shae-prop>` nested in another `<shae-prop>` passes through to the entity — only a `<shae-ent>`
 can host a property.
@@ -1269,10 +1450,10 @@ can host a property.
 
 | Attribute | Description |
 | :--- | :--- |
-| `name` | Property name to set on the Shadow Object. |
+| `name` | Property name to set on the Shadow Object. The value is trimmed; an empty or whitespace-only `name` binds nothing. |
 | `value` | Property value. Always a string in HTML; use `type` to cast it. An empty attribute (`value=""`) counts as a missing one and sets no property at all. |
-| `type` | Casts the string value to a JavaScript type. See supported types below. |
-| `no-trim` | Preserves leading/trailing whitespace. By default string values are trimmed — a whitespace-only value therefore becomes the empty string, and `type` converts it from there (`type="number" value="   "` is `0`). |
+| `type` | Casts the string value to a JavaScript type. See supported types below. An unknown type name is reported and leaves the value a string. |
+| `no-trim` | Preserves leading/trailing whitespace. Read as a truthy value, not as a presence: `no-trim="false"` and `no-trim="0"` still trim, while `no-trim`, `no-trim=""`, `no-trim="true"`, `on`, `yes`, `local` and `1` keep the whitespace. By default string values are trimmed — a whitespace-only value therefore becomes the empty string, and `type` converts it from there (`type="number" value="   "` is `0`). |
 
 **Supported `type` values:**
 
@@ -1293,13 +1474,27 @@ can host a property.
 | `float32array`, `float64array` | Splits on whitespace only, like the numeric array types above. |
 | `int8array`, `uint8array`, `uint8clampedarray`, `int16array`, `uint16array`, `int32array`, `uint32array`, `bigint64array`, `biguint64array` | Splits on any run of non-word characters, like the string/hex/oct/bin/bool array types above. |
 
+`boolean` and `bool` recognize exactly five spellings of truth, case-insensitively: `on`, `true`,
+`yes`, `local` and `1`. Everything else is `false` — `value="0"` and `value="2"` alike. The same
+five apply per element to `bool[]` and `boolean[]`.
+
 #### JavaScript API
 
 | Member | Description |
 | :--- | :--- |
-| `name` | The property name, read-only. Mirrors the `name` attribute. |
+| `name` | The property name, read-only. Mirrors the `name` attribute, trimmed. |
 | `value` | Reads the converted value. Writing bypasses the `value` attribute and feeds the conversion directly — the attribute keeps whatever it had. `0`, `false` and `''` are values and are set as such; `null` and `undefined` clear the property (see `ViewComponent.setProperty` above). A value that is not a string passes through untouched, even with a `type` set, because the conversion only applies to strings. |
 | `shouldTrim` | Whether string values are trimmed, read-only. The inverse of the `no-trim` attribute. |
+| `entNode` | The host entity, get and set. Writing it binds the property to that entity by hand — the next lookup decides again from where the element stands. |
+| `viewComponent` | The `ViewComponent` of the host entity, read-only. Follows `entNode` and is `undefined` without a host. |
+| `isShaePropElement` | `true`. This element does not extend `ShaeElement`, so there is no `isShaeElement` and no `ns` on it. |
+| `ShaePropElement.observedAttributes` | Static: `name`, `value`, `type`, `no-trim`. |
+
+Unlike the two other elements, `<shae-prop>` keeps its signals to itself: `entNode$`,
+`viewComponent$`, `name$`, `valueIn$`, `valueOut$`, `type$`, `shouldTrim$` and `logger` are
+`protected` and only reachable from a subclass. The Custom Elements callbacks —
+`connectedCallback`, `disconnectedCallback`, `attributeChangedCallback` — are implemented; a
+subclass that overrides one has to call `super`.
 
 #### Invalid Values
 
@@ -1310,6 +1505,13 @@ and the JavaScript property; neither throws. The report goes out at error level,
 logger does not gate behind `ConsoleLogger.sharedConfig.enable`, so it reaches the console on
 any host. Every other type is lenient by construction and reports nothing: the numeric ones
 yield `NaN`, the typed arrays yield a filled array.
+
+An unknown *type name* is a different case from an unconvertible value, and it is reported
+differently. `type="whatever"` names no conversion, so the element reports the name through
+`logger.warn` and lets the string through untouched — trimmed, unless `no-trim` says otherwise,
+and otherwise exactly as written. Nothing is cleared and nothing throws. Being a `warn`, that
+report *is* gated behind `ConsoleLogger.sharedConfig.enable` and stays silent off a localhost
+page, where the `error` of an unconvertible value is not.
 
 ```html
 <shae-ent token="player">

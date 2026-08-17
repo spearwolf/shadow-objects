@@ -213,36 +213,47 @@ ent.addEventListener('login-success', (e) => console.log(e.detail.user));
 
 | Attribute | Values | Description |
 |---|---|---|
-| `src` | URL string | Path to the Shadow Object Registry module. Required. |
-| `local` | boolean (presence) | Run Kernel on main thread instead of web worker |
+| `src` | URL string | Path to the Shadow Object Registry module. Required for the declarative approach, not for `start()`. Trimmed; a change at runtime re-imports. |
+| `local` | truthy value | Run Kernel on main thread instead of web worker. `local="false"` stays in worker mode — see below |
 | `ns` | string | Namespace for the Component Context |
-| `auto-sync` | `"frame"` / `"60fps"` / `"100"` / `"off"` | Sync frequency. Default: `"frame"` |
-| `no-structured-clone` | boolean (presence) | Skip data cloning (local only, performance opt) |
+| `auto-sync` | `"frame"`/`"on"`/`"yes"`/`"true"`/`"auto-sync"`, `"60fps"`, `"100"`, `"no"`/`"off"`/`"false"` | Sync frequency. Default and fallback for an empty value: `"frame"`. `Nfps` with N ≤ 0 warns and does not sync; anything unreadable logs an error and switches off |
+| `no-structured-clone` | boolean (presence) | Skip data cloning (local only, performance opt); silently without effect when `local` is missing |
+| `no-autostart` | truthy value | Do not create the environment on connect, call `start()` yourself. Not observed: read once, at connect |
+
+**Truthy value ≠ presence.** `local`, `no-autostart` and `no-trim` count as set for `on`, `true`,
+`yes`, `local`, `1` (case-insensitive) or for the bare attribute — and as unset for everything
+else, `="false"` and `="0"` included. Of the boolean-looking attributes, only
+`no-structured-clone` asks for presence alone.
 
 ### `<shae-ent>`
 
 | Attribute | Values | Description |
 |---|---|---|
 | `token` | string | Token (Component Tag) matching a Registry entry. Optional; without it the entity carries `#void`. |
-| `ns` | string | Connect to a named Component Context |
+| `ns` | string | Connect to a named Component Context. A change at runtime takes the entity **and its properties** into the other environment — see `docs/api-reference.md`, "Entity Hierarchy" |
 | `forward-custom-events` | absent, empty/whitespace, or comma-list | Re-dispatch Shadow Object events as DOM CustomEvents. Empty or whitespace-only: every event. A list: only the types it names. Absent, or a list with no entries: nothing. |
+
+An entity takes its parent from its **own** namespace only; a `<shae-ent>` of another namespace in
+between is invisible to that binding and does not block it. A `<shae-prop>` binds by the opposite
+rule — proximity, no namespace.
 
 ### `<shae-prop>`
 
 | Attribute | Values | Description |
 |---|---|---|
-| `name` | string | Property name to set on the parent entity |
+| `name` | string | Property name to set on the host entity. Trimmed; empty or whitespace-only binds nothing |
 | `value` | string | The value (cast according to `type`); `value=""` counts as no value |
-| `type` | see below | Type cast for the value attribute |
-| `no-trim` | boolean (presence) | Preserve whitespace in string values; without it `value="   "` trims down to `''` |
+| `type` | see below | Type cast for the value attribute; an unknown name is reported and the string passes through |
+| `no-trim` | truthy value | Preserve whitespace in string values; `no-trim="false"` still trims. Without it `value="   "` trims down to `''`, and with `type="number"` that is `0` |
 
 The host is the closest entity above the element in the flattened tree — through shadow roots,
 along slot projections, across closed boundaries — regardless of its namespace. It is re-decided
 whenever the element moves and whenever something above it changes: a tag registered late, a shadow
 root attached afterwards, a changed slot assignment, a host that leaves the tree. Moving the
-`<slot>` element itself into another entity is the one case that is not followed. The new binding
-takes effect one microtask later. With no entity above it at all, the property is set nowhere and
-reported once through the `ConsoleLogger` at warn level.
+`<slot>` element itself into another entity is the one case that is not followed. A move binds anew
+right away; a change above the element takes effect one microtask later. With no entity above it at
+all, the property is set nowhere and reported once per element through the `ConsoleLogger` at warn
+level.
 
 Removing the element, renaming it, or moving it to another entity clears the property it declared.
 A move within a single tick is a move, not a removal — the property travels with the element.
@@ -266,7 +277,13 @@ A move within a single tick is a move, not a removal — the property travels wi
 | `float32array`, `float64array` | Typed array, split on whitespace only |
 | `int8array`, `uint8array`, `bigint64array`, etc. | Typed array, split on any run of non-word characters |
 
-A value that does not convert is reported through the `ConsoleLogger` at error level and leaves the property `undefined` -- nothing throws.
+`boolean`/`bool` — and each element of `bool[]`/`boolean[]` — is `true` only for `on`, `true`,
+`yes`, `local` and `1`, case-insensitively. `value="0"` and `value="2"` are both `false`.
+
+Two failures, two channels. A value that does not convert is reported through the `ConsoleLogger`
+at **error** level and leaves the property `undefined` -- nothing throws. An unknown **type name**
+is reported at **warn** level and the string passes through unconverted; `warn` is gated behind
+`ConsoleLogger.sharedConfig.enable`, `error` is not.
 Via the `el.value` property, `0`, `false` and `''` are values and reach the entity; only `null` and `undefined` clear it.
 
 ---
