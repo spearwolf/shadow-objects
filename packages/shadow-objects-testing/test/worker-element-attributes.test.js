@@ -413,6 +413,81 @@ describe('shae-worker lifecycle', () => {
     expect(el.shadowEnv.envProxy).to.be.undefined;
   });
 
+  it('a reconnect within the same task calls the deferred teardown off', async () => {
+    const container = mount(`<shae-worker local auto-sync="no" ns="${nextNs()}"></shae-worker>`);
+    const el = container.querySelector('shae-worker');
+
+    await el.shadowEnv.ready();
+    const envProxy = el.shadowEnv.envProxy;
+
+    el.remove();
+    container.append(el);
+
+    await nextTask();
+
+    expect(el.shadowEnv.isDestroyed, 'the element is back in the tree, so nothing was torn down').to.be.false;
+    expect(el.shadowEnv.envProxy, 'and it is the very same proxy').to.equal(envProxy);
+    expect(el.shadowEnv.isReady, 'the environment is usable without a restart').to.be.true;
+
+    // the environment survived, so this resolves instead of rejecting with a ShadowEnvDestroyedError
+    await el.start();
+
+    el.destroy();
+  });
+
+  it('a remove, append and remove within the same task tears down exactly once', async () => {
+    const container = mount(`<shae-worker local auto-sync="no" ns="${nextNs()}"></shae-worker>`);
+    const el = container.querySelector('shae-worker');
+
+    await el.shadowEnv.ready();
+
+    let destroyCount = 0;
+    const destroy = el.destroy.bind(el);
+    el.destroy = () => {
+      destroyCount += 1;
+      destroy();
+    };
+
+    el.remove();
+    container.append(el);
+    el.remove();
+
+    await nextTask();
+
+    expect(destroyCount, 'the element ends up out of the tree, so it is torn down — once').to.equal(1);
+    expect(el.shadowEnv.isDestroyed, 'and it is gone').to.be.true;
+  });
+
+  it('a departure after the teardown has already run does not tear down a second time', async () => {
+    const container = mount(`<shae-worker local auto-sync="no" ns="${nextNs()}"></shae-worker>`);
+    const el = container.querySelector('shae-worker');
+
+    await el.shadowEnv.ready();
+
+    // counts how often the teardown reaches the environment, which is as far as `destroy()` gets
+    // once it is past its own guard
+    let teardownCount = 0;
+    const envDestroy = el.shadowEnv.destroy.bind(el.shadowEnv);
+    el.shadowEnv.destroy = () => {
+      teardownCount += 1;
+      envDestroy();
+    };
+
+    el.remove();
+    await nextTask();
+
+    // the deferral window closed on an element that was out of the tree, so what follows is a
+    // fresh departure and not a second one inside the same window
+    expect(teardownCount, 'the first departure tears the environment down').to.equal(1);
+    expect(el.shadowEnv.isDestroyed, 'and it is gone').to.be.true;
+
+    container.append(el);
+    el.remove();
+    await nextTask();
+
+    expect(teardownCount, 'the second departure finds nothing left to tear down').to.equal(1);
+  });
+
   it('destroy() a second time does not throw', () => {
     const container = mount(`<shae-worker local no-autostart ns="${nextNs()}"></shae-worker>`);
     const el = container.querySelector('shae-worker');

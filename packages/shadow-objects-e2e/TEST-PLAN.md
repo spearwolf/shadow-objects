@@ -82,11 +82,10 @@ What is left on this axis:
 
 - `ShaeEntElement.#setParent` and its re-request microtask (`ShaeEntElement.ts:527-536`) — reached
   when a child is inserted before its parent is ready. DOM-9.
-- `ShaeWorkerElement.#deferDestroy` (`ShaeWorkerElement.ts:237`) — the comment states that a
-  reconnect inside the same microtask *cannot* stop the teardown. The integration suite pins the
-  one-microtask delay and says so explicitly
-  (`shadow-objects-testing/test/worker-element-attributes.test.js:402-404`: "this pins the delay,
-  not the reconnect case itself"). The documented outcome of the reconnect has no test at any level.
+- `ShaeWorkerElement.#deferDestroy` (`ShaeWorkerElement.ts:238`) — a reconnect within the
+  deferral microtask calls the teardown off, and the integration suite pins that
+  (`shadow-objects-testing/test/worker-element-attributes.test.js`, `shae-worker lifecycle`).
+  What is left is the equivalent against a real worker.
 - Sibling reordering through `order` (DOM-10), a large batch in one tick (DOM-11), and a shadow root
   attached at runtime whose slot projects an entity (DOM-12).
 

@@ -1424,7 +1424,17 @@ browser reports it to the global `error` event instead.
 | `start()` | Creates the Shadow Environment and waits until it is ready. The element calls it on connect by itself, unless `no-autostart` is set. |
 | `importScript(src)` | Waits for the environment and imports a shadow objects module into it. Rejects with a `ShadowEnvDestroyedError` when the environment is torn down before the import begins. A blank `src` rejects with `Error('src is blank')` — the method is `async`, so nothing is thrown at the call site and a `try`/`catch` around it catches nothing; use `await` or `.catch()`. |
 | `syncShadowObjects()` | Hands the environment of this element's namespace to the next sync. The call is collected per namespace and carried out one microtask later, so calling it more than once in a task costs one sync. Needed with `auto-sync="off"`. Inherited from `ShaeElement`, which means `<shae-ent>` has it too. |
-| `destroy()` | Tears down the environment, its proxy and the element's signals. Called by the element itself one microtask after it leaves the tree. |
+| `destroy()` | Tears down the environment, its proxy and the element's signals. Called by the element itself one microtask after it leaves the tree, unless it is back in the tree by then. It counts once: every call after the first finds nothing left to do and changes nothing. |
+
+**Leaving the tree and coming back.** The teardown waits one microtask. An element that is
+back in the document before that microtask runs keeps everything it had: the same
+`ShadowEnv`, the same proxy, the same entities in it, and `start()` resolves as before — a
+re-render that removes and re-inserts the element within one task costs nothing. An element
+still out of the tree when the microtask runs is destroyed, and destroyed for good:
+`shadowEnv.isDestroyed` is `true`, `shadowEnv.envProxy` is gone, and a later `start()`
+rejects with a `ShadowEnvDestroyedError`. Putting that element back into the document does
+not revive it — build a new one. `<shae-ent>` elements of the same namespace keep their
+`ViewComponent`s either way; what goes is the environment behind them.
 
 | Property | Description |
 | :--- | :--- |

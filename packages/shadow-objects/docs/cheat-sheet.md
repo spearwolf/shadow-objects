@@ -231,6 +231,9 @@ ent.addEventListener('login-success', (e) => console.log(e.detail.user));
 else, `="false"` and `="0"` included. Of the boolean-looking attributes, only
 `no-structured-clone` asks for presence alone.
 
+**Teardown.** Leaving the tree destroys the environment one microtask later, for good. Back in
+the tree before that microtask — a re-render within one task — and nothing is torn down.
+
 ### `<shae-ent>`
 
 | Attribute | Values | Description |

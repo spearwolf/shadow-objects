@@ -33,7 +33,12 @@ export class ShaeWorkerElement extends ShaeElement {
   autoSync$ = createSignal(ShaeWorkerElement.DefaultAutoSync);
   src$ = createSignal('');
 
+  // whether the element is out of the tree — written by the two Custom Elements callbacks
   #shouldDestroy = false;
+  // whether a teardown microtask is already queued
+  #destroyPending = false;
+  // whether the teardown has already run — it runs once and for all
+  #destroyed = false;
   #started = false;
 
   #frameLoop?: FrameLoop;
@@ -165,6 +170,9 @@ export class ShaeWorkerElement extends ShaeElement {
   }
 
   connectedCallback() {
+    // being in the tree is the condition the deferred teardown waits on, so a reconnect before
+    // its microtask runs calls it off
+    this.#shouldDestroy = false;
     batch(() => {
       const autoSync = this.getAttribute(ATTR_AUTO_SYNC);
       if (autoSync != null) {
@@ -179,6 +187,7 @@ export class ShaeWorkerElement extends ShaeElement {
 
   disconnectedCallback() {
     this.isConnected$.set(false);
+    this.#shouldDestroy = true;
     this.#deferDestroy();
   }
 
@@ -210,8 +219,6 @@ export class ShaeWorkerElement extends ShaeElement {
 
   start(): Promise<ShadowEnv> {
     if (!this.#started) {
-      this.#shouldDestroy = false;
-
       this.shadowEnv.view ??= ComponentContext.get(this.ns);
 
       if (this.shadowEnv.envProxy == null) {
@@ -227,6 +234,11 @@ export class ShaeWorkerElement extends ShaeElement {
   }
 
   destroy() {
+    // the effects and signals below belong to the element alone, so the element is what decides
+    // whether they have already been released — a second call finds nothing left to do
+    if (this.#destroyed) return;
+    this.#destroyed = true;
+
     this.#autoSync?.destroy();
     this.#importScript?.destroy();
     destroySignal(this.isConnected$, this.autoSync$, this.src$);
@@ -235,11 +247,17 @@ export class ShaeWorkerElement extends ShaeElement {
   }
 
   #deferDestroy() {
-    // NOTE The destruction is halted until the next microtask—but a reconnect (adding the element back to the DOM before the next microtask)
-    //  cannot stop this process, and that's okay. Once destroyed, it's destroyed forever.
-    if (!this.#shouldDestroy) {
-      this.#shouldDestroy = true;
+    // The teardown waits for the next microtask and then asks where the element stands: whoever
+    // moved it in the meantime has left the answer in `#shouldDestroy`, and being back in the tree
+    // calls the teardown off. That window is the one a re-render lives in — the element leaves the
+    // tree and is back in it within the same task — and the environment, its proxy and every
+    // entity in it stay untouched across the move. However often the element is moved inside that
+    // one window, only the first move queues a microtask, so the answer is read once. An element
+    // that is out of the tree when the microtask runs is destroyed for good.
+    if (!this.#destroyPending) {
+      this.#destroyPending = true;
       queueMicrotask(() => {
+        this.#destroyPending = false;
         if (this.#shouldDestroy) {
           this.destroy();
         }
