@@ -9,7 +9,7 @@ export * from './elements/ShaeWorkerElement.js';
 export type * from './types.js';
 export * from './utils/toNamespace.js';
 export * from './view/ComponentContext.js';
-export * from './view/ComponentMemory.js';
+export type * from './view/ComponentMemory.js';
 export type * from './view/IShadowObjectEnvProxy.js';
 export * from './view/LocalShadowObjectEnv.js';
 export * from './view/RemoteWorkerEnv.js';

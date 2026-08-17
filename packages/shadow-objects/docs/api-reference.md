@@ -1672,6 +1672,8 @@ holds for a subclass of `ShaeEntElement` registered from a lazily loaded module.
 have re-bound by the time `customElements.define()` returns; the properties follow one microtask
 later, because their channel waits for the tree to stop moving.
 
+Wrapping the built-in elements in tags of your own is walked through in [Guides → Registering Your Own Entity Elements](./guides.md#registering-your-own-entity-elements).
+
 ---
 
 ### `<shae-prop>`
@@ -1840,6 +1842,8 @@ whole lifecycle and simply reports `undefined` once the property is gone.
 
 Shadow Objects supports running multiple isolated environments on the same page. This is handled via Component Contexts identified by a namespace string (`ns`).
 
+This section is the declarative view: two environments standing side by side as markup. The constant the Default Global Context is registered under, and the normalization every namespace goes through, are in [ComponentContext → Namespacing](#namespacing).
+
 #### The Default Context
 
 If you omit the `ns` attribute, components attach to the Default Global Context. This is sufficient for most single-app pages.
@@ -1865,8 +1869,10 @@ Use the `ns` attribute to run independent environments on the same page.
 
 #### JavaScript Access
 
+The same two environments, reached from script. `ComponentContext.get(name)` returns the one context registered under that name, creating it on first ask; calling it again with the same name returns the same instance.
+
 ```typescript
-import { ComponentContext } from '@spearwolf/shadow-objects/view';
+import { ComponentContext } from '@spearwolf/shadow-objects';
 
 const ctxA = ComponentContext.get('world-A');
 const defaultCtx = ComponentContext.get();
@@ -1880,6 +1886,8 @@ The `Kernel` is the core engine that manages Entities and Shadow Objects. It pro
 
 Direct Kernel usage is rarely needed. The framework manages the Kernel automatically through `ShadowEnv` and the Web Components. These APIs are here for framework integrators and advanced debugging.
 
+Everything in this section is imported from `@spearwolf/shadow-objects/shadow-objects.js`. That is the entry point for the Shadow Environment side, which usually runs in a worker: the root entry `@spearwolf/shadow-objects` pulls the custom elements along with it and needs a DOM to load at all.
+
 ```typescript
 import { Kernel, Registry } from '@spearwolf/shadow-objects/shadow-objects.js';
 
@@ -1888,33 +1896,42 @@ const kernel = new Kernel();
 
 // Create with a custom registry
 const customRegistry = new Registry();
-const kernel = new Kernel(customRegistry);
+const customKernel = new Kernel(customRegistry);
 ```
 
 ### Properties
 
 | Property | Type | Description |
 | :--- | :--- | :--- |
-| `registry` | `Registry` | The Registry instance used by this Kernel. |
-| `logger` | `ConsoleLogger` | Logger for debugging. |
+| `registry` | `Registry` | The Registry instance used by this Kernel. Writable: a Registry assigned here decides the resolution from the next lookup on, and `upgradeEntities()` is what applies it to the Entities that already exist. |
+| `logger` | `ConsoleLogger` (readonly) | Logger for debugging, see [Console Logger](#console-logger). |
 
 ### Methods
 
 #### `run(event)`
 
-Processes a sync event containing change trails from the View Layer.
+Processes a sync event containing change trails from the View Layer. Each entry of the trail is dispatched to one of the seven writing methods below.
+
+- **Signature:** `run(event: SyncEvent): void`
 
 ```typescript
-kernel.run({
+import { ComponentChangeType } from '@spearwolf/shadow-objects/shadow-objects.js';
+import type { SyncEvent } from '@spearwolf/shadow-objects/shadow-objects.js';
+
+const event: SyncEvent = {
   changeTrail: [
-    { type: ComponentChangeType.CreateEntities, uuid: '...', token: 'player', ... },
-  ]
-});
+    { type: ComponentChangeType.CreateEntities, uuid: 'abc-123', token: 'player' },
+  ],
+};
+
+kernel.run(event);
 ```
 
 #### `getEntity(uuid)`
 
-Retrieves an Entity by UUID.
+Retrieves an Entity by UUID. The return type is `Entity`, never `undefined`: an unknown UUID throws `entity with uuid "..." not found!`. Use `hasEntity` when you are not sure.
+
+- **Signature:** `getEntity(uuid: string): Entity`
 
 ```typescript
 const entity = kernel.getEntity('abc-123');
@@ -1924,13 +1941,20 @@ const entity = kernel.getEntity('abc-123');
 
 Checks whether an Entity exists.
 
+- **Signature:** `hasEntity(uuid: string): boolean`
+
 ```typescript
-if (kernel.hasEntity('abc-123')) { ... }
+if (kernel.hasEntity('abc-123')) {
+  const entity = kernel.getEntity('abc-123');
+  console.log(entity.uuid);
+}
 ```
 
 #### `traverseLevelOrderBFS(reverse?)`
 
-Returns all Entities in breadth-first order. Pass `true` to reverse (leaves to root, useful for cleanup).
+Returns all Entities in breadth-first order. Pass `true` to reverse (leaves to root, useful for cleanup). The array is the Kernel's own cache, not a copy -- sort, splice or push it in place and you have changed what the Kernel hands out next.
+
+- **Signature:** `traverseLevelOrderBFS(reverse?: boolean): Entity[]`
 
 ```typescript
 const entities = kernel.traverseLevelOrderBFS();
@@ -1939,7 +1963,9 @@ const reversed = kernel.traverseLevelOrderBFS(true);
 
 #### `getEntityGraph()`
 
-Returns the complete Entity tree as a hierarchical structure. Each node contains `token`, `entity`, `props`, and `children`. Useful for debugging.
+Returns the Entity tree as a hierarchical structure, starting at the root Entities -- those without a parent. Each node contains `token`, `entity`, `props`, and `children`; a node the Kernel no longer holds drops out. Useful for debugging.
+
+- **Signature:** `getEntityGraph(): EntityGraphNode[]`
 
 ```typescript
 const graph = kernel.getEntityGraph();
@@ -1950,6 +1976,10 @@ console.log(JSON.stringify(graph, null, 2));
 
 Re-evaluates all Entities against the current Registry. Call this after dynamically adding new Shadow Object definitions.
 
+Only the difference is acted on. A constructor that was in an Entity's set before and is in it afterwards is left alone: its Shadow Object is neither destroyed nor built a second time. Constructors that dropped out are destroyed first, walking the tree from the leaves, then the new ones are created walking it from the root.
+
+- **Signature:** `upgradeEntities(): void`
+
 ```typescript
 shadowObjects.define('new-feature', NewFeature);
 kernel.upgradeEntities();
@@ -1959,13 +1989,43 @@ kernel.upgradeEntities();
 
 Returns all Shadow Object instances currently attached to an Entity.
 
+- **Signature:** `findShadowObjects(uuid: string): ShadowObjectType[]`
+
 ```typescript
-const shadowObjects = kernel.findShadowObjects('abc-123');
+const attached = kernel.findShadowObjects('abc-123');
 ```
+
+#### Applying a Change Trail by Hand
+
+`run()` is the front door; these seven methods are what it dispatches to. Call them directly and you are writing a change trail entry yourself, without the envelope.
+
+| Method | Signature | Description |
+| :--- | :--- | :--- |
+| `createEntity` | `(uuid, token, parentUuid?, order?, properties?, autoDestructionOnParentRemoval?)` | Creates an Entity and its Shadow Objects. `properties` is a list of `[name, value]` pairs. |
+| `destroyEntity` | `(uuid: string)` | Destroys the Entity, its Shadow Objects and its children. |
+| `setParent` | `(uuid, parentUuid?, order?)` | Moves the Entity under a new parent, or makes it a root when `parentUuid` is omitted. An absent `order` keeps the current one -- it is not a reset to `0`. |
+| `updateOrder` | `(uuid: string, order: number)` | Sets the sort order among siblings. |
+| `changeProperties` | `(uuid: string, properties: [string, unknown][])` | Writes property values; every reader bound to one of the names sees the new value. |
+| `changeToken` | `(uuid: string, token: string)` | Replaces the Entity's token, which re-resolves its Shadow Objects the same way `upgradeEntities()` does. |
+| `dispatchEventsToEntity` | `(uuid: string, events: IComponentEvent[])` | Delivers View Layer events to the Entity, where every attached Shadow Object receives them as `onViewEvent`. |
+
+#### `dispatchMessageToView(message)`
+
+Sends a message the other way, from the Shadow Environment back to the View Layer. This is what the creation API's `dispatchMessageToView` ends up calling. The Kernel emits it as the `MessageToView` event one microtask later, not during the call.
+
+- **Signature:** `dispatchMessageToView(message: MessageToViewEvent): void`
+
+#### `findOrCreateRootContext(name)`
+
+Returns the root of the Entity Context tree for a context name, creating it on first ask. This is the top of the chain that `provideGlobalContext` writes to and `useContext` reads from when no Entity above provides the name.
+
+- **Signature:** `findOrCreateRootContext(name: string | symbol): SignalsPath`
 
 #### `destroy()`
 
 Destroys the Kernel and all its Entities.
+
+- **Signature:** `destroy(): void`
 
 ### Kernel Events
 
@@ -1975,7 +2035,7 @@ Destroys the Kernel and all its Entities.
 
 ```typescript
 import { on } from '@spearwolf/eventize';
-import { MessageToView } from '@spearwolf/shadow-objects';
+import { MessageToView } from '@spearwolf/shadow-objects/shadow-objects.js';
 
 on(kernel, MessageToView, (message) => {
   console.log('Message to view:', message);
@@ -1992,33 +2052,32 @@ on(kernel, MessageToView, (message) => {
 
 Registers a Shadow Object constructor with a token at runtime. An alternative to the module `define` object.
 
+The `shadowObjects` imported here is a helper object with a single method, exported by the library. It is not the named export a registry module declares under the same name -- that one is a [module descriptor](#registry-component-manifest) the loader reads. Same word, two things.
+
 ```typescript
 import { shadowObjects } from '@spearwolf/shadow-objects/shadow-objects.js';
+import type { ShadowObjectCreationAPI } from '@spearwolf/shadow-objects/shadow-objects.js';
 
-function MyLogic({ useProperty, createEffect }: ShadowObjectCreationAPI) {
-  // ...
+class MyLogic {
+  constructor({ useProperty, createEffect }: ShadowObjectCreationAPI) {
+    // ...
+  }
 }
 
 shadowObjects.define('my-token', MyLogic);
 ```
 
-**Signature:**
-
-```typescript
-shadowObjects.define(
-  token: string,
-  constructor: ShadowObjectConstructor,
-  registry?: Registry
-): void
-```
+- **Signature:** `shadowObjects.define(token: string, constructor: ShadowObjectConstructor, registry?: Registry): void`
 
 **Parameters:**
 
 | Parameter | Type | Description |
 | :--- | :--- | :--- |
 | `token` | `string` | The token to associate with this constructor. |
-| `constructor` | `ShadowObjectConstructor` | A function or class. |
+| `constructor` | `ShadowObjectConstructor` | A class -- something callable with `new`. |
 | `registry` | `Registry` (optional) | Custom Registry instance. Defaults to the global registry. |
+
+`shadowObjects.define()` and `registry.define()` take a `ShadowObjectConstructor`, which is the class form. The module `define: { ... }` object is wider and accepts a plain function as well. The Kernel builds every Shadow Object with `new`, so a function works there at runtime -- these two entry points just do not promise it.
 
 Common use cases:
 
@@ -2043,7 +2102,7 @@ A declarative way to register class-based Shadow Objects. Automatically register
 
 ```typescript
 import { ShadowObject } from '@spearwolf/shadow-objects/shadow-objects.js';
-import type { ShadowObjectCreationAPI, OnCreate, OnDestroy } from '@spearwolf/shadow-objects/shadow-objects.js';
+import type { EntityApi, ShadowObjectCreationAPI, OnCreate, OnDestroy } from '@spearwolf/shadow-objects/shadow-objects.js';
 import { onCreate, onDestroy } from '@spearwolf/shadow-objects/shadow-objects.js';
 
 @ShadowObject({ token: 'player-controller' })
@@ -2056,11 +2115,11 @@ export class PlayerController implements OnCreate, OnDestroy {
     });
   }
 
-  [onCreate](entity) {
+  [onCreate](entity: EntityApi) {
     console.log('Player created:', entity.uuid);
   }
 
-  [onDestroy](entity) {
+  [onDestroy](entity: EntityApi) {
     console.log('Player destroyed:', entity.uuid);
   }
 }
@@ -2074,6 +2133,8 @@ export class PlayerController implements OnCreate, OnDestroy {
 | `registry` | `Registry` (optional) | Custom Registry instance. |
 
 The decorator automatically calls `eventize(this)` on the instance, making it compatible with the event system. You do not need to call `eventize` manually.
+
+What the decorator returns is a subclass of the decorated class, and that subclass is what goes into the Registry. Instances still pass `instanceof` against your class, but `constructor.name` reads `__ShadowObject` -- worth knowing when a log line or a stack trace is what you are reading.
 
 ---
 
@@ -2114,9 +2175,25 @@ Removes a routing rule.
 registry.clearRoute('game-object');
 ```
 
-#### `registry.findConstructors(token, truthyProps?)`
+#### `registry.findTokensByRoute(route, truthyProps?)`
 
-Resolves all constructors for a token, including all routed tokens.
+Resolves a route to the set of tokens it stands for, and this is where the resolution rule lives. The starting token is part of its own result, the walk is breadth-first, and each token appears once however many routes lead to it. Pass the names of the currently truthy properties as `truthyProps` to bring property routes into the walk.
+
+- **Signature:** `findTokensByRoute(route: string, truthyProps?: Set<string>): Set<string>`
+
+```typescript
+registry.appendRoute('game-object', ['physics', 'renderer']);
+registry.appendRoute('@debug', ['debug-overlay']);
+
+registry.findTokensByRoute('game-object', new Set(['debug']));
+// Set { 'game-object', 'physics', 'renderer', 'debug-overlay' }
+```
+
+#### `registry.findConstructors(route, truthyProps?)`
+
+Resolves all constructors for a route, including all routed tokens. Returns `undefined` when the resolution yields no registered constructor at all -- not an empty array.
+
+- **Signature:** `findConstructors(route: string, truthyProps?: Set<string>): ShadowObjectConstructor[] | undefined`
 
 ```typescript
 const constructors = registry.findConstructors('game-object', new Set(['debug']));
@@ -2129,7 +2206,7 @@ Checks if a token is registered.
 
 #### `registry.hasRoute(route)`
 
-Checks if a route exists.
+Checks if a token route exists. Property routes -- the `@name` form that `appendRoute` also accepts -- are not answered here and read as `false` even while they resolve.
 
 #### `registry.clear()`
 
@@ -2156,8 +2233,12 @@ import {
 | :--- | :--- | :--- |
 | `onCreate` | `OnCreate` | Called after the Shadow Object is fully initialized. |
 | `onDestroy` | `OnDestroy` | Called before the Shadow Object is destroyed. |
-| `onParentChanged` | `OnParentChangedEvent` | Called when the Entity's parent changes. |
+| `onParentChanged` | `OnParentChangedEvent` | Called when the Entity's parent changes -- one microtask after the change, not during it. A Shadow Object cannot assume this has run by the time `kernel.run()` returns; `await Promise.resolve()` first. |
 | `onViewEvent` | `OnViewEvent` | Called when the View Layer dispatches an event to this entity. |
+
+Three of the four are called on the Shadow Object as the change happens. `onParentChanged` is the exception: its channel waits for the tree to stop moving.
+
+The `onDestroy` symbol above is the class-side hook. The creation API has a callback of the same name for the function style -- see [`onDestroy(callback)`](#ondestroycallback), which also lists the two paths a Shadow Object reaches its end on.
 
 **Full lifecycle example:**
 
@@ -2171,6 +2252,7 @@ import {
   type OnDestroy,
   type OnParentChangedEvent,
   type OnViewEvent,
+  type EntityApi,
   type ShadowObjectCreationAPI,
 } from '@spearwolf/shadow-objects/shadow-objects.js';
 
@@ -2179,15 +2261,15 @@ export class FullLifecycleExample implements OnCreate, OnDestroy, OnParentChange
     // Setup phase: call api methods here
   }
 
-  [onCreate](entity) {
+  [onCreate](entity: EntityApi) {
     console.log('Created and attached to entity:', entity.uuid);
   }
 
-  [onDestroy](entity) {
+  [onDestroy](entity: EntityApi) {
     console.log('About to be destroyed');
   }
 
-  [onParentChanged](entity) {
+  [onParentChanged](entity: EntityApi) {
     console.log('Parent changed, new parent:', entity.parent?.uuid);
   }
 
@@ -2203,10 +2285,31 @@ export class FullLifecycleExample implements OnCreate, OnDestroy, OnParentChange
 
 #### Console Logger
 
+There is no log level to set. Logging is decided by four independent switches shared by every logger in the thread, and one flag per instance.
+
+| Where | Field | Default |
+| :--- | :--- | :--- |
+| `ConsoleLogger.sharedConfig` | `enable` | on for `localhost` only |
+| `ConsoleLogger.sharedConfig` | `debug` | off |
+| `ConsoleLogger.sharedConfig` | `info`, `warn` | on |
+| the instance | `enable` | `true` |
+
+`isEnabled` combines the two `enable` flags: the instance's own and the shared one. The other three getters take `isEnabled` and add the switch for their level, so `debug` is the one that needs turning on before anything else matters.
+
 ```typescript
-kernel.logger.enabled = true;
-kernel.logger.logLevel = 'debug'; // 'debug' | 'info' | 'warn' | 'error'
+import { ConsoleLogger } from '@spearwolf/shadow-objects/ConsoleLogger.js';
+
+ConsoleLogger.sharedConfig.enable = true;
+ConsoleLogger.sharedConfig.debug = true;
+
+if (kernel.logger.isDebug) {
+  kernel.logger.debug('entity graph', kernel.getEntityGraph());
+}
 ```
+
+**The getters are the caller's job.** `logger.debug(...)` prints unconditionally -- it does not consult `isDebug` itself. Ask first, as the Kernel does, or the message goes to the console whatever the switches say.
+
+In the browser this is reachable without a rebuild: on first use the logger installs a live config object at `globalThis.ConsoleLogger` whose setters write through to `localStorage`, so `ConsoleLogger.debug = true` typed into the console survives a reload.
 
 #### Entity Graph Inspection
 
@@ -2220,5 +2323,8 @@ const graph = kernel.getEntityGraph();
 // - props: Record<string, unknown>
 // - children: EntityGraphNode[]
 
+// The entity keeps its state in private fields, so it serializes as `{}`.
+// Read token, props and children from the snapshot; reach for the entity itself
+// through the node, not through the JSON.
 console.log(JSON.stringify(graph, null, 2));
 ```
