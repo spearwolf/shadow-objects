@@ -132,8 +132,8 @@ ComponentContext│  ─ Destroy
 **[VIEW-2]** ~~Keine `error`/`messageerror`-Handler auf dem Worker.~~ **✅ Behoben** — beide werden abonniert, bevor der Load-Handshake beginnt. Ein Ausfall terminiert den Worker, setzt `isDestroyed` und meldet sich als `RemoteWorkerEnv.WorkerFailed` und `ShadowEnv.ProxyFailed` (samt `proxyfailed`-DOM-Event auf `<shae-worker>`). Der Weg zurück ist ein neuer `envProxy`: sobald er bereit ist, baut die View ihre Änderungen aus der Component Memory neu auf, und der nächste Sync stellt die Entities in der neuen Umgebung her.
 
 **[VIEW-3]** `MessageRouter` schluckt Fehler durch doppeltes `AppliedChangeTrail`.
-*Ort:* `MessageRouter.ts:84–97`.
-Im Catch-Block wird zuerst `{type: AppliedChangeTrail, serial, error}` gepostet, dann fällt der Code in den Block bei Zeile 94 und postet erneut `{type: AppliedChangeTrail, serial}` **ohne** error-Feld. Die zweite Nachricht erfüllt das `serial`-Match in `RemoteWorkerEnv.ts:114` und der Konsument bekommt einen False-Positive.
+*Ort:* `MessageRouter.ts:86–98`.
+Im Catch-Block wird zuerst `{type: AppliedChangeTrail, serial, error}` gepostet (`:93`), dann fällt der Code in den Block bei Zeile 96 und postet erneut `{type: AppliedChangeTrail, serial}` **ohne** error-Feld. Die zweite Nachricht erfüllt das `serial`-Match in `RemoteWorkerEnv.ts:236` und der Konsument bekommt einen False-Positive.
 *Fix:* `return` nach dem Catch-Post oder Flag setzen.
 
 **[VIEW-4]** Listener-Leak bei verwaisten Eltern-Knoten im DOM.
@@ -192,6 +192,18 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 *Ort:* `ComponentContext.ts`.
 `destroyComponent()` ist public und löst die Komponente nicht von ihrem Vater; nach `destroyComponent(c); buildChangeTrails(); c.destroy();` warf der Teardown einen `TypeError`. Ein Kind, das der Context nicht mehr hält, wird jetzt ignoriert — analog zu den Geschwister-Pfaden.
 
+**`RemoteWorkerEnv.destroy()` greift nicht ohne Worker, und ein Abbau während `start()` hängt.**
+*Ort:* `RemoteWorkerEnv.ts:266-267` gegen `:272`, und `:266-279` gegen `:111-139`.
+Der Early Return steht **vor** `this.#isDestroyed = true`: `new RemoteWorkerEnv(); destroy(); start();` startet einen Worker, und `isDestroyed` meldet dazwischen `false`. Und ein `destroy()` während eines laufenden `start()` bricht den `#workerFailure`-Controller nicht ab — `abort()` steht ausschließlich in `handleWorkerFailure` (`:305`) — und emittiert kein `WorkerLoaded`, also bleibt `workerLoaded` für immer pending. `ShadowEnv.destroy()` zieht diese Linie ausdrücklich anders. Ein `destroy()`, das nicht greift, und eine Promise, die nie settelt, sind Korrektheitsfehler, keine Doku-Frage.
+
+**`ComponentContext.clear()` und `.destroyComponent()` lassen lebende `ViewComponent`s zurück.**
+*Ort:* `ComponentContext.ts:505-520` und `:158`, gegen `dispose()` bei `:536-541`.
+Nach `ctx.clear()` beziehungsweise `ctx.destroyComponent(vc)` meldet der Component `isDestroyed === false`, sein `context` zeigt weiter auf den Context, und jedes `setProperty` gibt `false` zurück und schreibt nichts. `dispose()` macht es richtig und zerstört die Components, solange der Context noch lebt. Der Code kennt die Lage und arbeitet um sie herum (`:314-315`, `changeOrder`-Guard). Ob `clear()` seine Components ablösen soll, ist eine Verhaltensänderung an der öffentlichen API — deshalb hier und nicht als Bugfix.
+
+**Der `forward-custom-events`-Patch überlebt ein Wiedereinhängen mit der alten Einstellung.**
+*Ort:* `ShaeEntElement.ts:195-241` (Patch-Effect), `:327` (`connectedCallback`).
+`forwardCustomEvents$.set(true)` installiert den Patch, der jedes Ereignis in den DOM schiebt. Ein Ab- und Wiedereinhängen liest das Attribut in `connectedCallback` unter `beQuiet` zurück, der Effect läuft dabei nicht erneut, und `viewComponent$` ändert sich nicht. Danach steht das Signal auf `false` (bei `forward-custom-events=","`) beziehungsweise auf `Set('a')` (bei `="a"`), während der unter `true` installierte Patch weiter alles weiterleitet. In Chromium gemessen.
+
 **[ELEM-1]** ~~`<shae-worker>` erzeugt eine unbehandelte Promise-Rejection beim Teardown im selben Task.~~ **✅ Behoben**
 *Ort:* `ShaeWorkerElement.ts`.
 `connectedCallback()` startet per `start()` automatisch, der `src`-Effekt ruft `importScript()`; beide warten auf `ShadowEnv.ready()`, das seit VIEW-8 mit einem `ShadowEnvDestroyedError` ablehnt — und niemand beobachtete diese Promises. Connect und Disconnect im selben Task (was `#deferDestroy` ausdrücklich vorsieht) ergab damit pro Element eine unbehandelte Rejection. Beide Aufrufstellen fangen jetzt ab: ein Teardown ist still, alles andere wird geloggt. Für Aufrufer, die tatsächlich warten, lehnen `start()` und `importScript()` unverändert ab.
@@ -210,8 +222,14 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 | ~~**KERN-5**~~ | ~~`Entity.parentUuid`-Setter ruft `removeFromParent()` *vor* dem Resolven des neuen Vaters; wirft `getEntity` einen Fehler, ist die Entity verwaist.~~ **✅ Behoben** — `getEntity` wird *vor* dem Detach aufgerufen; `Kernel.setParent` validiert die neue UUID vorab. | `Entity.ts`, `Kernel.ts` |
 | ~~**KERN-6**~~ | ~~`Registry.clear()` löscht `#truthyPropRoutes` nicht — Test-Pollution + Akkumulation in langlebigen Registries.~~ **✅ Behoben** — `clear()` räumt auch die Prop-basierten Routen ab. | `Registry.ts` |
 | ~~**KERN-7**~~ | ~~`useContext`/`useParentContext`/`useProperty` ignorieren `options` bei Cache-Hit (z. B. `compare`). Der erste Aufrufer „gewinnt", was leise zu falschen Equality-Vergleichen führen kann.~~ **✅ Behoben** — bei Cache-Hit mit abweichender `compare`-Funktion wird ein `console.warn` emittiert; das alte Reader-Objekt bleibt aus Kompatibilitätsgründen erhalten. | `Kernel.ts` |
-| **VIEW-12** | `ShaePropElement` parst numerische Attribute ohne Warnung — `Number("foo")` → `NaN` propagiert. | `ShaePropElement.ts:177–205` |
-| **VIEW-13** | `ShaeEntElement.#dispatchRequestParent`-Microtask prüft `isConnected` nicht; nach Disconnect bubbelt ein Streu-Event. | `ShaeEntElement.ts:419–423` |
+| **VIEW-12** | `ShaePropElement` parst numerische Attribute ohne Warnung — `Number("foo")` → `NaN` propagiert. Der `try`/`catch` um die Konvertierung meldet nur, was wirft; ein Konverter, der `NaN` zurückgibt, gilt als Erfolg. | `ShaePropElement.ts:205–240`, `propValueConverters.ts:24`, `:38`, `:47` |
+| **VIEW-13** | `ShaeEntElement.#dispatchRequestParent`-Microtask prüft `isConnected` nicht; nach Disconnect bubbelt ein Streu-Event. | `ShaeEntElement.ts:527–536` |
+
+Ohne ID, nach der Analyse vom 2026-05-09 gefunden:
+
+- **Ein verschobener `<slot>` benachrichtigt die Entity nicht, die er verlässt.** `slotchange` feuert erst nach dem Umzug und damit am neuen Ort; `#onSlotChange` (`ShaeEntElement.ts:550-566`) läuft dort und die alte Entity hört nichts. Betrifft beide Kanäle: die Property bleibt an ihrer alten Host-Entity hängen, und `entParentNode` eines projizierten `<shae-ent>` bleibt stehen. Die einzige verbliebene Lücke in der Regel »jeder Weg, antwortender Vorfahre zu werden oder aufzuhören es zu sein, nimmt die Aufforderung mit«.
+- **`applyPropsChanges` schreibt bereits ausgelieferte Change Trails fort.** `utils/props-utils.ts:19-27` übernimmt die Tupel der Änderungen per Referenz und schreibt sie später mit `entry[1] = value` weiter. Ein Trail, den ein Konsument aufgezeichnet hat, ändert sich damit nachträglich unter der Hand. Sichtbar über `ComponentMemory.createEntity`.
+- **`forwardCustomEvents$.set(true)` normalisiert ein vorhandenes Filter-Attribut nicht.** Bei `<shae-ent forward-custom-events="a,b">` steht das Signal danach auf `true` und leitet alles weiter, während das Attribut weiter `a,b` zeigt: der `true`-Zweig schreibt nur, wenn das Attribut ganz fehlt (`ShaeEntElement.ts:157-170`). Geschwisterfall des Patch-Befunds in §3.2, in Chromium gemessen.
 
 ### 3.4 LOW (Auswahl)
 
@@ -233,6 +251,8 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 | **`Transferables` nur bei `SendEvents`** — große `ArrayBuffer` in `ChangeProperties` werden strukturell kopiert, nicht transferiert. | Property-API für Transferables fehlt. |
 | **`ContextLost`-Replay** (`reCreateChanges`): bei N Entities × M Props ein voller Re-Build inkl. allen `postMessage`. | Akzeptabel für Recovery, aber teuer; sollte bewusst getriggert werden. |
 | **`Registry.findTokensByRoute`** ist O(tokens × props × tokens) pro Pass. | Bei tiefen Routen-Graphen messbar; akzeptabel für typische Größenordnungen. |
+| **Der Vorfahren-Aufstieg `isBelow`** (`ShaeEntElement.ts:25-30`) bleibt n²/2 mit sehr kleiner Konstante: er filtert die Kandidaten einer Re-Request-Runde, und jeder Kandidat steigt für sich auf. | Gemessen mit 1200 kinderlosen Geschwistern unter einem Elternteil: 251 ms gegen 57 ms im Vergleichslauf ohne die Filterfrage. Unkritisch in dieser Größenordnung, bei einigen tausend Geschwistern unter einem Elternteil wieder sichtbar. |
+| **`ComponentContext.dispatchReRequestParentRoots()`** (`ComponentContext.ts:365-371`) kennt keinen Absender und kann deshalb nicht filtern; ein `ns`-Wechsel kostet N+1 Nachrichten bei N Wurzeln im Ziel-Namespace. | Ein Absender allein reicht nicht: `#reRequestParentAsRoot` (`ShaeEntElement.ts:449-453`) löst die Bindung bedingungslos, ein Filter bräuchte denselben `isBelow`-Aufstieg, der an geschlossenen Shadow-Grenzen ausfällt (`ShaeEntElement.ts:486`). Beides gehört in einen Zug. |
 
 ### 3.6 API-/Design-Smells
 
@@ -243,6 +263,8 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 - `Kernel.parse()` (privat) und die public Kernel-Methoden divergieren leise (z. B. der nicht-durchgereichte Auto-Destroy-Parameter).
 - `ShaeElement.syncShadowObjects` (Methode) vs. modul-private Funktion gleichen Namens — verwirrend.
 - Worker-Timeouts sind feste Konstanten (5 s / 60 s), nicht überschreibbar — Tests warten potenziell eine Minute auf einen kaputten Worker.
+- `ShadowEnv.ns$` (`ShadowEnv.ts:46`) ist die einzige Fundstelle im Code — sonst steht der Name nur noch in der Zeichnung `view/ClassGraphOverview.drawio:334`: das Signal wird nie geschrieben und liest auch nach `ready()` `undefined`. Ein öffentlicher Slot mit einer Zusage ohne Inhalt — verdrahten oder entfernen, beides eine API-Entscheidung. `api-reference.md:1056` benennt den Zustand inzwischen ehrlich, der Code bleibt schuldig.
+- `ViewComponentError` ist nicht exportiert (`ViewComponent.ts:6`, kein `export`; `index.ts:17` reicht nur die Modul-Exporte weiter), wird aber als Fangobjekt dokumentiert. Ein `instanceof` ist für Konsumenten unmöglich; als Ausweg bleibt `error.name`. Die Klasse zu exportieren ist eine API-Änderung.
 
 ---
 
@@ -250,12 +272,12 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 
 ### 4.1 Inventar
 
-**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 13 Dateien):
-`Kernel.spec.ts` (1549 LoC), `Registry.spec.ts`, `ShadowObject.spec.ts`, `SignalsPath.spec.ts`, `ShadowEnv.spec.ts`, `LocalShadowObjectEnv.spec.ts`, `RemoteWorkerEnv.spec.ts`, `ViewComponent.spec.ts`, `ComponentContext.spec.ts`, `ComponentChanges.spec.ts`, `ComponentMemory.spec.ts`, `props-utils.spec.ts`, `ConsoleLogger.spec.ts`.
+**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 14 Dateien, 327 Fälle):
+`Kernel.spec.ts` (1602 LoC), `Registry.spec.ts`, `ShadowObject.spec.ts`, `SignalsPath.spec.ts`, `ShadowEnv.spec.ts`, `LocalShadowObjectEnv.spec.ts`, `RemoteWorkerEnv.spec.ts`, `ViewComponent.spec.ts`, `ComponentContext.spec.ts`, `ComponentChanges.spec.ts`, `ComponentMemory.spec.ts`, `props-utils.spec.ts`, `ConsoleLogger.spec.ts`, `elements/propValueConverters.spec.ts`.
 
-**`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 12 Dateien — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `ent-element-teardown`, `forward-custom-events`, `local-env-entities`, `prop-element-host`, `remove-and-append-e`, `send-events`, `worker-element-teardown`, `emit-helper/emit-helper`.
+**`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 21 Dateien, 309 Fälle — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `ent-element-attributes`, `ent-element-events`, `ent-element-namespace`, `ent-element-teardown`, `ent-element-upgrade`, `forward-custom-events`, `local-env-entities`, `prop-element-host`, `prop-element-lifecycle`, `prop-element-registration-order`, `prop-element-types`, `remove-and-append-e`, `send-events`, `view-component-context-switch`, `worker-element-attributes`, `worker-element-teardown`, `emit-helper/emit-helper`.
 
-**`shadow-objects-e2e/`** (Playwright, Chromium + Firefox): 10 Dateien — `async-events`, `auto-destruct`, `bundle`, `create-element`, `dynamic-dom`, `multi-env`, `remote-worker-env`, `shae-worker`, `upgrade-timing`, `worker-failure`. Assertions liegen in den Test-Pages, der gemeinsame `runPageTests`-Helper macht daraus je einen Playwright-Test pro `data-testresult`.
+**`shadow-objects-e2e/`** (Playwright, Chromium + Firefox): 10 Dateien, 201 Fälle je Projekt und damit 402 insgesamt — `async-events`, `auto-destruct`, `bundle`, `create-element`, `dynamic-dom`, `multi-env`, `remote-worker-env`, `shae-worker`, `upgrade-timing`, `worker-failure`. Assertions liegen in den Test-Pages, der gemeinsame `runPageTests`-Helper macht daraus je einen Playwright-Test pro `data-testresult`.
 
 ### 4.2 Coverage-Heuristik
 
@@ -276,21 +298,24 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 | `RemoteWorkerEnv` | ✅ **gründlich** — `RemoteWorkerEnv.spec.ts` (19 Fälle über einen Worker-Doppelgänger) deckt Ausfall, Termination, Ablehnung des Ausstehenden und des Nachgereichten, `destroy()`-Kontrakt; E2E-Seite `worker-failure` fährt denselben Weg über echtes `postMessage` inklusive Erholung. Nicht abgedeckt: ein `applyChangeTrail`, das beim `destroy()` schon unterwegs ist (VIEW-1) |
 | `MessageRouter` | ❌ keine direkten Tests |
 | `WorkerRuntime` | ❌ keine direkten Tests |
-| Custom Elements (`<shae-prop>`!) | ✅ **gründlich** — Host-Suche (`prop-element-host.test.js`), Markup-Upgrade-Pfad (E2E) und das Typ-Parsing tabellengetrieben über alle 42 Typnamen, beide Trennmuster, die fehlertoleranten und die vier fehlschlagenden Eingaben, `no-trim`, die Falsy-Werte über beide Pfade und den Change Trail (`prop-element-types.test.js`) |
+| Custom Elements — `<shae-prop>` | ✅ **gründlich** — Host-Suche und Nachjustierung (`prop-element-host.test.js`), das Ende einer Bindung (`prop-element-lifecycle.test.js`), die unabhängige Registrierung (`prop-element-registration-order.test.js`), Markup-Upgrade-Pfad (E2E) und das Typ-Parsing tabellengetrieben über alle 42 Typnamen, beide Trennmuster, die fehlertoleranten und die vier fehlschlagenden Eingaben, `no-trim`, die Falsy-Werte über beide Pfade und den Change Trail (`prop-element-types.test.js`, dazu `propValueConverters.spec.ts` für die Tabelle ohne DOM) |
+| Custom Elements — `<shae-ent>`, `ShaeElement`, `<shae-worker>` | ✅ **gründlich** — Attribut-, Ereignis-, Namespace- und Upgrade-Pfade in `ent-element-attributes`, `ent-element-events`, `ent-element-namespace`, `ent-element-upgrade`, `ent-element-teardown`, `worker-element-attributes` und `worker-element-teardown`; die Entsprechungen über echte Worker in den e2e-Seiten `upgrade-timing`, `multi-env` und `dynamic-dom` |
 | Utils | 🟡 `props-utils.spec.ts` und `ConsoleLogger.spec.ts` — `FrameLoop`, `waitForMessageOfType`, `cloneChangeTrail`, `attr-utils`, `array-utils`, `generateUUID`, `toNamespace`, `toUrlString`, `importModule` haben keine eigenen Tests. `array-utils` wird indirekt über `ComponentContext.spec.ts` und `ComponentChanges.spec.ts` mitgeprüft, `waitForMessageOfType` über `RemoteWorkerEnv.spec.ts` |
 | Worker-Init-Failure / Terminate / Message-Race | 🟡 **partiell** — ein Ausfall während des Load-Handshakes, `terminate()` beim Ausfall, verspätete Nachrichten nach `destroy()` und der doppelte Ausfall sind abgedeckt; ein `Worker`-Konstruktor, der an einer kaputten URL selbst wirft, ist es nicht |
 
 ### 4.3 Qualität
 
 - Generell sehr lesbar, deklarative Assertions mit Kontext-Labels.
-- Konsequentes `Registry.get().clear()` / `ComponentContext.get().clear()` in `afterEach`.
+- `Registry.get().clear()` / `ComponentContext.get().clear()` beziehungsweise `unmountAll()` in `afterEach` — mit einer Ausnahme, siehe unten.
 - Keine `.only` oder skipped Tests; Playwright-Konfig setzt `forbidOnly: true` für CI.
 - **Flake-Risiko:** `ShadowEnv.spec.ts` enthält an zwei Stellen `await new Promise(r => setTimeout(r, 50))` — magische 50 ms statt deterministischer Microtask-Drains. Die neuen `syncWait`-Fälle warten stattdessen auf `AfterSync` und benutzen ein Timeout nur als Fehlerabbruch.
 - E2E-Pattern (Page schreibt `data-testresult`) ist konzise, erschwert aber Debugging — Assertions liegen außerhalb des Spec-Files.
+- **Geteilte 5000-ms-Vorgabe im e2e-Harness:** `packages/shadow-objects-e2e/src/test-helpers/waitUntil.js:9` und `test-helpers/testAsyncAction.js:3` haben beide 5000 ms. Und `waitUntil` steht praktisch immer in einer `testAsyncAction`: sieben der zehn Seitenmodule rufen es an 20 Stellen, 16 davon unmittelbar in einer `testAsyncAction`, die übrigen vier in Seiten-Helfern (`snapshot()`, `drainAllEntities()`), die von dort gerufen werden. Die äußere Frist läuft dann zuerst ab und der Bericht sagt »did not settle within 5000ms« statt der Bedingung, an der es hing. Kein Testergebnis ändert sich dadurch, nur die Diagnose: wer die Helfer anfasst, gibt der inneren Frist einen kleineren Wert mit.
+- **`ComponentContext.test.js` teilt einen einzigen Context über alle Fälle** (`packages/shadow-objects-testing/test/ComponentContext.test.js:6-10`): `ComponentContext.get()` auf Modulebene, geleert nur in einem `after()`. Jeder Fall, der ohne `buildChangeTrails()` endet, hinterlässt seine Änderungen im nächsten. Die jüngeren Specs im Paket räumen dagegen in `afterEach` über `unmountAll()` auf.
 
 ### 4.4 Konkrete Test-Lücken (ticket-fertig)
 
-> **E2E im Detail:** [`packages/shadow-objects-e2e/TEST-PLAN.md`](packages/shadow-objects-e2e/TEST-PLAN.md) (2026-08-02) analysiert die Playwright-Suite einzeln und listet 50 benannte Testfälle mit Seiten, Fixtures und Priorität. **Umgesetzt am 2026-08-02:** Harness-Reparatur, `multi-env`, `dynamic-dom`, `upgrade-timing`, `async-events`, `create-element` und der Umbau von `bundle.html` — die Suite ging von 44 auf 298 Tests. Dabei sind zwei Framework-Defekte aufgefallen; einer davon steht noch offen, siehe unten und [`KNOWN-DEFECTS.md`](packages/shadow-objects-e2e/KNOWN-DEFECTS.md). Die folgende Liste bleibt der ebenen-übergreifende Überblick.
+> **E2E im Detail:** [`packages/shadow-objects-e2e/TEST-PLAN.md`](packages/shadow-objects-e2e/TEST-PLAN.md) analysiert die Playwright-Suite einzeln, listet je Spec-Datei was sie prüft und führt die benannten Testfälle mit Seiten, Fixtures und Priorität — samt der Kennungen, die noch offen sind. Stand: 402 Tests, 201 je Projekt. Ein Framework-Defekt steht offen, siehe unten und [`KNOWN-DEFECTS.md`](packages/shadow-objects-e2e/KNOWN-DEFECTS.md). Die folgende Liste bleibt der ebenen-übergreifende Überblick.
 
 **[ELEM-1] `document.createElement()` erzeugt keine funktionsfähigen shae-Elemente.** Alle drei Custom Elements setzen im Konstruktor Attribute (`style.display = 'contents'`, `setAttribute('ns')`, `removeAttribute('token')`), was die Custom-Elements-Spec verbietet. Chromium und Firefox brechen das Upgrade ab und liefern ein `HTMLUnknownElement` — ohne `viewComponent`, ohne `uuid`, ohne Verbindung zum Environment. Über `innerHTML` funktioniert es, weshalb der Defekt bisher unsichtbar blieb: alle Testseiten benutzten parser-erzeugtes Markup. **Tragweite:** jede React-/Vue-/Svelte-Integration und jeder eigene Wrapper erzeugt Elemente programmatisch. **Fix:** Attribut- und Style-Zuweisungen aus den Konstruktoren in `connectedCallback` verschieben; `display: contents` als Stylesheet-Regel statt Inline-Style.
 
@@ -299,7 +324,7 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 - Worker-Init-Failure (`Worker`-Konstruktor mit kaputter URL).
 - `destroy()` mitten im Sync — ein ausstehendes `applyChangeTrail` läuft in den `WorkerChangeTrailTimeout`, statt abgewickelt zu werden. *(VIEW-1)*
 - `ShadowEnv.envProxy`-Swap zur Laufzeit von `LocalShadowObjectEnv` auf `RemoteWorkerEnv` (die Gegenrichtung und Remote → Remote sind abgedeckt).
-- `<shae-ent>`-`attributeChangedCallback` für `token` / `parent-id` / `forward-custom-events` (Re-Set auf leer).
+- `<shae-ent>`-`attributeChangedCallback` für die drei Attribute, die es beobachtet (`ns`, `token`, `forward-custom-events`, `ShaeEntElement.ts:56`), jeweils beim Re-Set auf leer: im Integrationspaket abgedeckt (`ent-element-attributes.test.js`), über einen echten Worker nicht.
 - `<shae-worker>`-`src`-Wechsel nach `start()` (Re-Import-Pfad).
 - `Transferables` über echten Worker (nicht nur In-Process).
 - `provideContext` → Provider-Entity stirbt vor Consumer — `useContext`-Effect-Cleanup.
@@ -309,9 +334,9 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 ### 4.5 Empfehlungen (priorisiert)
 
 1. **Magische Timeouts in `ShadowEnv.spec.ts` durch deterministische Drains ersetzen** — eliminiert das einzige offensichtliche Flake-Risiko.
-2. **`<shae-prop>` end-to-end testen** — öffentliches Element ohne direkte Tests.
-3. **Nicht-triviale Utils specifizieren** — vor allem `FrameLoop`, `cloneChangeTrail` (Worker-Boundary).
-4. **`<shae-worker>` re-import-Test und der `envProxy`-Swap Local → Remote** — beide rühren an den aktuell ungetesteten `MessageRouter`/`WorkerRuntime`.
+2. **Nicht-triviale Utils specifizieren** — vor allem `FrameLoop`, `cloneChangeTrail` (Worker-Boundary).
+3. **`<shae-worker>` re-import-Test und der `envProxy`-Swap Local → Remote** — beide rühren an den aktuell ungetesteten `MessageRouter`/`WorkerRuntime`.
+4. **`ComponentContext.test.js` pro Fall aufräumen** — der geteilte Context ist die letzte Stelle im Integrationspaket ohne `afterEach` (§4.3).
 
 ---
 
@@ -345,12 +370,14 @@ Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements
 - Biome-Root deaktiviert (analog zur alten ESLint-Config) `noExplicitAny`, `noTsIgnore`, `noNonNullAssertion`, `noImplicitAnyLet`. Bewusste Lockerung; `noNonNullAssertion` wiegt am schwersten, weil ein `!` die eingeschaltete Null-Prüfung wieder aushebelt.
 - `any`-Hotspots (heuristisch): `ConsoleLogger.ts` (~20), `Kernel.ts` (~11), `ShadowObject.ts` (~4).
 - Biome meldet aktuell ~30 Warnings im Source (z. B. `useIterableCallbackReturn`, `noShadowRestrictedNames`, `useNodejsImportProtocol`). Schrittweise abarbeiten oder bewusst weiter unterdrücken.
+- `pnpm lint` endet mit rc=0 und zwei Infos zu `biome.json` selbst: `biome.json:2` hält `$schema` auf 2.4.14, installiert ist Biome 2.5.8, und `biome.json:59` benutzt das deprecated `linter.rules.recommended` (Nachfolger: `preset`). Beides hebt ein `biome migrate` — das dabei aber den wirksamen Regelsatz anfassen kann und deshalb einen eigenen, geprüften Lauf braucht, keinen Beifang.
 
 ### 5.4 Sonstige Stolperfallen auf frischer Maschine
 
 - `pnpm install` installiert keine Playwright-Browser — manuelles `pnpm exec playwright install chromium firefox` nötig (wird in CLAUDE.md erwähnt).
 - `engines.node: ">=24.13.0"` blockiert Mitwirkende auf Node 22.x. Hinweis: Node 24+ ships eine inerte `localStorage`-Stub auf `globalThis`; für Tests gefixt durch `packages/shadow-objects/vitest.setup.ts`.
 - `make:todo` ist Honor-System (kein Pre-Commit-Hook, kein CI-Check).
+- `packages/shadow-objects-testing/test/__screenshots__/` sammelt die Fehler-Screenshots des Vitest-Browser-Modus und wird von keinem Skript geleert — `packages/shadow-objects-testing/package.json:13-17` hat kein `pretest`. Ein Screenshot mit frischem Zeitstempel aus einem längst grünen Fall sieht aus wie ein aktueller Fehler; dieselbe Falle, die `packages/shadow-objects-e2e/package.json` für die Playwright-Ausgabe abgestellt hat. Das Verzeichnis ist gitignored und liegt gerade nicht im Baum, entsteht aber beim ersten roten Fall neu.
 - Manuelles `CHANGELOG.md`-Pflegen ohne Changesets/release-please.
 - **npm-Publish läuft über OIDC Trusted Publishing**, nicht über ein `NPM_TOKEN`-Secret. Einmalig auf npmjs.com je Paket einzutragen (GitHub Actions, Repo `spearwolf/shadow-objects`, Workflow `deploy.yml`); ohne diesen Eintrag bricht `deploy.yml` beim OIDC-Austausch ab. `turbo` läuft im Strict-Env-Mode — wer dem Publish-Pfad eine neue Umgebungsvariable gibt, muss sie in `turbo.json#tasks.publishNpmPkg.passThroughEnv` eintragen, sonst kommt sie im Skript nie an.
 - **`deploy.yml` darf nicht umbenannt und nicht in einen `workflow_call`-Reusable verschoben werden.** npm prüft den OIDC-Claim gegen den registrierten Dateinamen und validiert dabei den *aufrufenden* Workflow — aus `ci.yml` heraus aufgerufen käme der Publish als `ci.yml` an und der Trusted-Publisher-Eintrag würde nicht mehr greifen. Deshalb bleibt das Gating bei `workflow_run`; der Checkout ist seit 2026-08-15 auf `github.event.workflow_run.head_sha` gepinnt, sonst publiziert der Job den Default-Branch-HEAD statt des von der CI geprüften Commits.
@@ -390,26 +417,30 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 
 7. **DOM-In-Place-Re-Parenting beobachten** — `MutationObserver(subtree:true)` auf einer höheren Ebene, damit ein zwischengeschobener Container gesehen wird. *(VIEW-6)*
 8. **`ShadowEnv.envProxy`-Swap-Sicherheit:** Closure-Identitätscheck vor `proxyReady`-Toggle. *(VIEW-7)*
-9. **`syncWait()` muss nach `destroy()` rejecten.** *(VIEW-8)*
-10. **`LocalShadowObjectEnv.applyChangeTrail`** muss `MessageToView`-Reihenfolge zur Remote-Variante symmetrisch halten. *(VIEW-10)*
-11. **Test-Lücken schließen** — Reihenfolge in §4.5.
-12. **`Registry.clear()`** muss `#truthyPropRoutes` mitlöschen. *(KERN-6)*
-13. **Magische `setTimeout(50)`-Waits** in `ShadowEnv.spec.ts` durch deterministische Drains ersetzen.
+9. **`LocalShadowObjectEnv.applyChangeTrail`** muss `MessageToView`-Reihenfolge zur Remote-Variante symmetrisch halten. *(VIEW-10)*
+10. **Test-Lücken schließen** — Reihenfolge in §4.5.
+11. **`Registry.clear()`** muss `#truthyPropRoutes` mitlöschen. *(KERN-6)*
+12. **Magische `setTimeout(50)`-Waits** in `ShadowEnv.spec.ts` durch deterministische Drains ersetzen.
 
 ### 7.3 Mittelfristig
 
-14. ~~**`strictNullChecks: true`** schrittweise einschalten — größter Hebel für Typensicherheit.~~ ✅ Erledigt — in drei Etappen (utils/worker/registry, view/elements, `Kernel`), das Flag steht in der Wurzel-`tsconfig.json`.
-15. **`exports`-Konditionen umsortieren** (`types` vor `import`) für strikte Node-ESM-Konsumenten.
-16. **`peerDependencies` für `@spearwolf/eventize`/`signalize`** dokumentiert beschließen.
-17. **API-Aufräumen:** `appendRoute` aufteilen, `onDestroy`-Tripel-Bedeutung dokumentieren oder trennen, `IShadowObjectEnvProxy.isDestroyed`/`error`-Surface ergänzen, Worker-Timeouts konfigurierbar machen.
-18. **Performance-Knopf:** `disableStructuredClone` als Default für `LocalShadowObjectEnv`; optionales RAF-Coalescing bei hoher Update-Frequenz.
-19. **`sideEffects`-Listen konsolidieren:** `package.json` und `package.override.json` haben noch tote `build/src/...`-Einträge aus der alten Build-Pipeline — auf `dist/src/...` reduzieren.
-20. **Biome-Warnings abarbeiten** (~30 Stück): `useIterableCallbackReturn`, `noShadowRestrictedNames` etc. — entweder fixen oder Regel bewusst abschalten.
+13. ~~**`strictNullChecks: true`** schrittweise einschalten — größter Hebel für Typensicherheit.~~ ✅ Erledigt — in drei Etappen (utils/worker/registry, view/elements, `Kernel`), das Flag steht in der Wurzel-`tsconfig.json`.
+14. **`exports`-Konditionen umsortieren** (`types` vor `import`) für strikte Node-ESM-Konsumenten.
+15. **`peerDependencies` für `@spearwolf/eventize`/`signalize`** dokumentiert beschließen.
+16. **API-Aufräumen:** `appendRoute` aufteilen, `onDestroy`-Tripel-Bedeutung dokumentieren oder trennen, `IShadowObjectEnvProxy.isDestroyed`/`error`-Surface ergänzen, Worker-Timeouts konfigurierbar machen.
+17. **Performance-Knopf:** `disableStructuredClone` als Default für `LocalShadowObjectEnv`; optionales RAF-Coalescing bei hoher Update-Frequenz.
+18. **`sideEffects`-Listen konsolidieren:** `package.json` und `package.override.json` haben noch tote `build/src/...`-Einträge aus der alten Build-Pipeline — auf `dist/src/...` reduzieren.
+19. **Biome-Warnings abarbeiten** (~30 Stück): `useIterableCallbackReturn`, `noShadowRestrictedNames` etc. — entweder fixen oder Regel bewusst abschalten.
+20. **`ComponentMemory`-Re-Export aus `index.ts` streichen** (`index.ts:12`). Die Klasse trägt `@internal` (`view/ComponentMemory.ts:22-27`) und die Wurzel-`tsconfig.json:33` setzt `stripInternal: true`, also enthält `dist/src/view/ComponentMemory.d.ts` nur `export interface ComponentState`: `import {ComponentMemory} from '@spearwolf/shadow-objects'` ist für einen TypeScript-Konsumenten ein Fehler und löst zur Laufzeit trotzdem auf. Der Typ hat nie existiert — der Wegfall ist als Breaking Change zu verbuchen.
 
 ### 7.4 Beispiel-App / Dokumentation
 
 21. **Transferable-API** (`dispatchShadowObjectsEvent(type, payload, [transferable])`) in `guides.md` an einem echten Beispiel zeigen — `OffscreenCanvas` aus der Demo. Der Sync-Takt-Teil dieses Punktes ist erledigt (2026-08-02).
 22. **Demo-`console.debug`-Statement** entfernen.
+23. **Vier Abschnitte von `docs/api-reference.md` sind nie gegen den Code gehalten worden:** §Shadow Object Creation API (`:40`–`:411`), §Registry (`:412`–`:566`), §Kernel (`:1846`–`:1955`) und §Advanced (`:1956`–`:2193`) — zusammen 875 der 2193 Zeilen. Dazu der Unterabschnitt `### Namespacing and Contexts` (`:1808`–`:1845`), der innerhalb von §Web Components liegt. Sie beschreiben die Shadow-Environment-Seite; jedes Beispiel darin ist gegen den Code zu halten und, wo möglich, auszuführen.
+24. **Die fünfzehn Element-Konstanten stehen in keiner Referenz.** `SHAE_ENT`, `SHAE_PROP`, `SHAE_WORKER` und die zwölf `ATTR_*` aus `elements/constants.ts` sind über `index.ts:2` öffentlich; `grep` über `docs/api-reference.md` und `docs/cheat-sheet.md` liefert für alle fünfzehn null Treffer. Die drei Ereignisnamen aus derselben Datei sind dokumentiert (`api-reference.md:1617-1621`) — entweder folgen die Tag- und Attributnamen dorthin, oder sie verlassen `index.ts`.
+25. **Neun Wertexporte aus `constants.ts` ohne jede Doku-Zeile:** `ChangeTrailPhase`, `Configure`, `ChangeTrail`, `Destroy`, `Loaded`, `AppliedChangeTrail`, `ImportedModule`, `Destroyed`, `ShadowObjectsExport` (`src/constants.ts:3`, `:29-36`, `:48`, über `index.ts:1` öffentlich). Es sind Worker-Protokoll-Symbole; die Frage ist nicht, wie sie dokumentiert werden, sondern ob sie öffentlich sein sollen.
+26. **Der Gloss »(Component Tag)« steht an neun Stellen**, während die Begriffstabelle in `AGENTS.md:83` »Token« bindet und »Component Tag« nur noch als Doku-Gloss vermerkt: `docs/getting-started.md:50`, `docs/cheat-sheet.md:238`, `docs/guides.md:143`, `:331`, `docs/concepts.md:43`, `docs/api-reference.md:414`, `:442`, `:1454` — und `AGENTS.md:18` selbst, fünfundsechzig Zeilen über der Tabelle. Entweder fällt der Gloss an allen neun Stellen, oder die Tabelle sagt, dass er bleiben darf; die Hälfte ist schlimmer als keine.
 
 ---
 
