@@ -234,9 +234,16 @@ Shadow Objects communicate via an event system that mirrors standard DOM events 
 Listens for an event on a source. Subscriptions created via `on()` are automatically removed when the Shadow Object is destroyed.
 
 - **Signatures:**
-  - `on(source: object, event: string, callback: () => any): void`
-  - `on(event: string | symbol | (string|symbol)[], callback: () => any): void` (implicitly uses `entity` as source)
+  - `on(source: object, event: string, callback: () => any): () => void`
+  - `on(event: string | symbol | (string|symbol)[], callback: () => any): () => void` (implicitly uses `entity` as source)
   - All other argument forms from the [@spearwolf/eventize](https://github.com/spearwolf/eventize) package are also supported.
+
+The return value is the unsubscribe function. Calling it early is the way to end a subscription before the Shadow Object is destroyed; ignoring it is fine, since the automatic cleanup still applies.
+
+```typescript
+const stop = on('player-ready', () => { /* … */ });
+stop(); // done listening
+```
 
 #### Listening to View Layer Events
 
@@ -263,7 +270,7 @@ function MyBehavior({ on, onViewEvent }: ShadowObjectCreationAPI) {
 
 #### `once(source, eventName, callback)`
 
-Same as `on`, but the listener is removed automatically after the first trigger.
+Same as `on`, including the unsubscribe function it returns, but the listener is removed automatically after the first trigger.
 
 #### `emit(eventNames, ...eventArgs)`
 
@@ -368,12 +375,15 @@ The API provides direct access to the underlying `EntityApi` instance via the `e
 | `entity.hasParent` | `boolean` (readonly) | Whether this Entity has a parent in the Entity tree. |
 | `entity.parent` | `EntityApi \| undefined` (readonly) | Reference to the parent Entity, if any. |
 | `entity.children` | `readonly EntityApi[]` (readonly) | Array of child Entities. |
-| `entity.propKeys` | `string[]` (readonly) | All property keys currently set on this Entity. |
-| `entity.propEntries` | `[string, unknown][]` (readonly) | Key-value pairs for all properties on this Entity. |
+| `entity.propKeys()` | `() => string[]` | Every key the Entity has ever been given, cleared ones included. |
+| `entity.propEntries()` | `() => [string, unknown][]` | The same keys with their values; a cleared property reads `undefined`. |
+| `entity.kernel` | `Kernel` (readonly) | The Kernel this Entity lives in. |
+
+`propKeys` and `propEntries` are **methods**, not properties -- call them. They also do not shrink: a property that was cleared keeps its key and reads `undefined`, which is what lets a `useProperty()` reader survive the whole lifecycle.
 
 ```typescript
 createEffect(() => {
-    for (const [key, value] of entity.propEntries) {
+    for (const [key, value] of entity.propEntries()) {
         console.log(`${key} = ${value}`);
     }
 });
@@ -567,26 +577,69 @@ import { ViewComponent } from '@spearwolf/shadow-objects';
 new ViewComponent(token: string, options?: ViewComponentOptions)
 ```
 
+`token` is the first positional parameter, not a member of `options`: the identifier string matching a Registry entry. It falls back to `VoidToken` (`'#void'`) when omitted.
+
 | Option | Description |
 | :--- | :--- |
-| `token` | The identifier string matching a Registry entry. Falls back to `#void` when omitted. |
-| `context` | (Optional) The `ComponentContext` instance this component belongs to. |
+| `context` | (Optional) The `ComponentContext` instance this component belongs to. Defaults to `ComponentContext.get()`, the Default Global Context. |
 | `parent` | (Optional) The parent `ViewComponent`. Must belong to the same context and must not be destroyed. |
 | `order` | (Optional) Initial sort order (number). Default is `0`. |
 | `uuid` | (Optional) Explicit unique identifier. If omitted, one is generated automatically. |
 | `autoDestructionOnParentRemoval` | (Optional) Whether the corresponding Entity is destroyed together with its parent. Default is `false`, which promotes the Entity to a root Entity instead. Immutable after creation. |
 
+A `ViewComponent` passed in place of `options` is read as `{parent: thatComponent}`. It carries no `context` with it, so the new component joins the Default Global Context -- which makes the shorthand work only when the parent lives there too. A parent in a named context makes the constructor throw, because the child would be joining a different context than its parent:
+
+```typescript
+const child = new ViewComponent('child', parent);      // fine while parent is in the default context
+
+const scoped = new ViewComponent('p', { context: ComponentContext.get('level-1') });
+new ViewComponent('child', scoped);                    // throws: cannot add a child from another context
+new ViewComponent('child', { parent: scoped, context: ComponentContext.get('level-1') }); // the explicit form
+```
+
 ### Properties
 
 | Property | Description |
 | :--- | :--- |
-| `token` | The token string. Assigning `undefined` resets it to `#void`. |
+| `token` | The token string. Assigning `undefined` resets it to `VoidToken`, exported as `'#void'`. |
 | `uuid` | Unique identifier (read-only). Matches `entity.uuid` in the Shadow Environment. |
 | `parent` | Reference to the parent component. Assigning `undefined` detaches the component to the root level. |
-| `context` | Reference to the managing context. |
+| `context` | The managing context. Assignable in both directions -- see below. |
 | `order` | Numeric sort order within the parent's children list. Useful for controlling execution order or canvas layers. |
 | `isDestroyed` | (read-only) Whether the component has been detached from its context. See [The destroyed state](#the-destroyed-state). |
 | `autoDestructionOnParentRemoval` | (read-only) The constructor option of the same name. |
+
+#### Assigning a context
+
+Assigning `null` or `undefined` to `context` **destroys** the component: it leaves the context it was in, `isDestroyed` reports `true`, and the corresponding Entity goes away. It is the same teardown `destroy()` performs.
+
+Assigning a *different* context moves the component, and it does not travel empty. Its properties are carried over into the new context along with the equality function registered for each key, so the Entity arrives in the other environment with the state it had, not as a bare token. The `token`, the `order` and `autoDestructionOnParentRemoval` come along too.
+
+**The parent link does not.** Leaving a context detaches the component from its parent first, so it arrives in the new context as a root and `parent` reads `undefined` afterwards. Assigning `context` by hand, with nothing re-attaching it, is also what the change trail then reports: no `parentUuid`. Moving a whole subtree that way therefore means re-establishing the hierarchy on the far side:
+
+```typescript
+const level2 = ComponentContext.get('level-2');
+
+const root = new ViewComponent('root', { context: ComponentContext.get('level-1') });
+const vc = new ViewComponent('player', { parent: root, context: ComponentContext.get('level-1') });
+vc.setProperty('score', 1000);
+
+root.context = level2;
+vc.context = level2;    // score travels along
+
+vc.parent;              // undefined -- the hierarchy did not
+root.addChild(vc);      // re-attach it on the far side
+
+vc.context = null;      // destroyed
+vc.isDestroyed;         // true
+```
+
+A component that leaves its context without joining another carries nothing -- there is no receiver for it.
+
+Two paths do keep the hierarchy, and neither does it by carrying the link:
+
+- **A `<shae-ent>` that changes its `ns`.** The element asks for an ancestor again in the new namespace and re-binds the same `ViewComponent` from the element tree, before the next trail is built -- so that trail does carry the `parentUuid`. The hierarchy is intact afterwards whenever an ancestor answers there, and the entity arrives as a root when none does, which is what happens if the ancestor stayed behind in the old namespace.
+- **Recovery after a `ProxyFailed`.** `reCreateChanges()` rebuilds each component from the Component Memory, and that memory holds `parentUuid`.
 
 #### Sort order
 
@@ -639,9 +692,37 @@ parent.addChild(parent);      // throws: would create a cycle
 child.addChild(parent);       // throws: parent is an ancestor of child
 ```
 
+The error class itself is **not** exported, so `instanceof` is not available to you. Match on the name instead:
+
+```typescript
+try {
+  parent.addChild(parent);
+} catch (error) {
+  if (error instanceof Error && error.name === 'ViewComponentError') {
+    // …
+  }
+}
+```
+
 #### `removeFromParent()`
 
 Detaches the component from its parent and promotes it to a root component. Does nothing when the component has no parent or is destroyed.
+
+#### `isChildOf(parent)`
+
+Whether `parent` is this component's direct parent. A shallow check, not an ancestor walk.
+
+```typescript
+child.isChildOf(parent);     // true right after parent.addChild(child)
+```
+
+#### `dispatchEvent(type, data, traverseChildren)`
+
+Delivers an event to this component's own listeners, and with `traverseChildren` to all its descendants as well. This stays in the View Layer -- use `dispatchShadowObjectsEvent()` to reach a Shadow Object. It is the method the framework itself uses to hand a message coming back from the Shadow Environment to a component.
+
+```typescript
+component.dispatchEvent('reset', { hard: true }, true); // this component and every descendant
+```
 
 #### `dispatchShadowObjectsEvent(type, data, transferables?)`
 
@@ -651,15 +732,40 @@ Sends a custom event to the Shadow Object running in the Shadow Environment. Sin
 component.dispatchShadowObjectsEvent('playerJump', { force: 5.0 });
 ```
 
-#### `on(type, listener)`
+#### Receiving Events
 
-`ViewComponent` is an eventized object (via [@spearwolf/eventize](https://github.com/spearwolf/eventize)). Use `on()` to listen for events sent from Shadow Objects back to the View Layer.
+A `ViewComponent` is an eventized object (via [@spearwolf/eventize](https://github.com/spearwolf/eventize)), which is how events sent from Shadow Objects back to the View Layer reach you. The eventize surface is reached through that package's **free functions** -- `on`, `once`, `off`, `emit` -- with the component as their first argument. `ViewComponent` carries no methods of those names.
+
+```typescript
+import { on, off } from '@spearwolf/eventize';
+
+const unsubscribe = on(component, 'msg-from-shadow', (data) => {
+  console.log('Received:', data);
+});
+
+unsubscribe();      // or off(component, 'msg-from-shadow')
+```
+
+Three events arrive from the framework itself rather than from a Shadow Object:
+
+| Event | When |
+| :--- | :--- |
+| `ComponentContext.ReRequestParentRoots` | The component should drop its parent and ask for one again. |
+| `ComponentContext.ReRequestParent` | The component should ask for a parent again and keep the one it has until a different answer arrives. Receives the sender's identity as `data`. |
+| `ContextLost` | The context rebuilt its changes from the Component Memory, so everything the component sent before is on its way again. Broadcast by `ComponentContext.reCreateChanges()`. |
+
+`ContextLost` is exported from `@spearwolf/shadow-objects` as a standalone constant, and its value -- `'contextLost'` -- is the **same string** as `ShadowEnv.ContextLost`. Two names, one value, two different senders: this one is broadcast to every `ViewComponent` in a context, the other is emitted by a `ShadowEnv`. A listener registered on the wrong object hears nothing; one registered on the right object hears only its own sender.
 
 ```typescript
 import { on } from '@spearwolf/eventize';
+import { ContextLost, ComponentContext } from '@spearwolf/shadow-objects';
 
-on(component, 'msg-from-shadow', (data) => {
-  console.log('Received:', data);
+on(component, ContextLost, () => {
+  console.log('the change trail is being rebuilt');
+});
+
+on(component, ComponentContext.ReRequestParentRoots, () => {
+  // re-resolve the parent
 });
 ```
 
@@ -680,7 +786,9 @@ After `destroy()` the component is detached from its `ComponentContext`: it no l
 | `removeFromParent`, `destroy` | Ignored |
 | `addChild`, `parent = …` | Throws a `ViewComponentError` |
 
-The split is deliberate: operations that only concern the component itself are absorbed, because a renderer may still be flushing state at teardown. Operations that would tie a second, live component to a dead one throw, because silently ignoring them would leave the caller with a wrong picture of the entity tree.
+The split is deliberate: operations that only concern the component itself are absorbed, because a renderer may still be flushing state at teardown. Operations that would tie a second, live component to a dead one throw, because silently ignoring them would leave the caller with a wrong picture of the entity tree. As above, catch that throw by narrowing to `Error` and reading `error.name` -- the class is not exported.
+
+Note what "absorbed" means for `token` and `order`: the assignment does take effect locally, so reading the property back gives you the value you wrote. What is dropped is the message to the context.
 
 Assigning a `context` revives the component under the same uuid:
 
@@ -730,12 +838,30 @@ class GameEntity {
 
 ## ComponentContext
 
-The orchestrator. It manages a group of `ViewComponent`s and handles the communication channel (Worker or Local) to the Kernel. Multiple independent Shadow Environments can coexist on the same page through namespacing.
+The View-Layer state of a group of `ViewComponent`s, and the source of the change trails that travel to the Shadow Environment. It holds the components, their hierarchy and their properties, and summarizes every change since the last trail into the next one. Multiple independent Shadow Environments can coexist on the same page through namespacing.
+
+Carrying the trail across to the Kernel is not its job. A `ShadowEnv` reads the trails from here and hands them to its `envProxy` -- that is where the choice between a worker and the main thread is made.
 
 > **Not to be confused with [Entity Context](#2-entity-context-dependency-injection).** `ComponentContext` lives in the View Layer and answers "which Shadow Environment does this ViewComponent belong to?". Entity Context lives inside the Shadow Environment and answers "which values does this Entity inherit from its ancestors?". The names are similar; the concepts are unrelated.
 
 ```typescript
 import { ComponentContext } from '@spearwolf/shadow-objects';
+```
+
+Most of the surface below is driven by `ViewComponent`: creating a component, assigning a `parent`, writing a property or calling `destroy()` all land here. Reach for these methods directly when you drive a context by hand -- a custom element, a framework binding, a test harness.
+
+### Constructor
+
+```typescript
+new ComponentContext(namespace?: NamespaceType)
+```
+
+A context is a singleton per namespace, and the constructor honours that: when the namespace is already taken it hands back the **existing** instance instead of a second one. `ComponentContext.get()` says the same thing more plainly and is the preferred spelling.
+
+```typescript
+const first = new ComponentContext('level-1');
+const second = new ComponentContext('level-1');
+second === first; // true
 ```
 
 ### Static Methods
@@ -749,18 +875,101 @@ const defaultCtx = ComponentContext.get();
 const level1Ctx = ComponentContext.get('level-1');
 ```
 
+#### `ComponentContext.getContextsMap()`
+
+The `Map` of every context by namespace, created on first access. This is the live registry, not a copy -- reading it is fine, writing to it is not.
+
+```typescript
+ComponentContext.getContextsMap().size;
+```
+
+### Static Event Names
+
+Two event names the context sends to its components. Both arrive as ordinary events on a `ViewComponent`; see [Receiving Events](#receiving-events) for how to listen.
+
+| Name | Value | Meaning |
+| :--- | :--- | :--- |
+| `ComponentContext.ReRequestParentRoots` | `'re-request-parent-roots'` | Drop your parent and ask for one again. |
+| `ComponentContext.ReRequestParent` | `'re-request-parent'` | Ask again, and keep what you have until a different answer arrives. |
+
 ### Properties
 
 | Property | Description |
 | :--- | :--- |
-| `ns` | The namespace this context is registered under. |
+| `ns` | The namespace this context is registered under. Set when the context is created. |
 | `isDisposed` | (read-only) Whether the context has been torn down by `dispose()`. |
 
 ### Methods
 
+#### Components and hierarchy
+
+| Method | Description |
+| :--- | :--- |
+| `addComponent(component)` | Take a component in and write a `CreateEntities` change for it. Throws a `ComponentContextDisposedError` on a disposed context. Called by the `ViewComponent` `context` setter. |
+| `hasComponent(component)` | Whether this context holds a component with that uuid. |
+| `hasComponents()` | Whether it holds any component at all. |
+| `isRootComponent(component)` | Whether the component is a root, i.e. has no parent in this context. |
+| `isChildOf(child, parent)` | Whether `child` currently sits in the children list of `parent`. |
+| `getChildren(component)` | The children of a component, in sort order. A fresh array each call. |
+| `traverseLevelOrderBFS()` | Every component in the context, breadth-first from the roots. |
+| `destroyComponent(component)` | Write the destroy change for a component and promote its children to roots. |
+| `addToChildren(parent, child)` | Insert `child` into the children of `parent`. Throws a plain `Error` when the context does not hold `parent`. |
+| `removeFromParent(childUuid, parent)` | Detach a child from that parent and make it a root. Note the asymmetry: the child is named by uuid, the parent by instance. |
+| `moveToRoot(childUuid)` | Make a component a root without naming its previous parent. |
+| `removeSubTree(uuid)` | Destroy a component and all its descendants **without** writing anything to a change trail. |
+| `changeToken(component, token?)` | Record a token change for a component. |
+| `changeOrder(component)` | Re-sort a component among its siblings after its `order` changed, and record the new value. A component this context does not hold is ignored. |
+
+`destroyComponent()` writes the change, and nothing more: the `ViewComponent` you pass keeps pointing at this context and still reports `isDestroyed === false`. Releasing the binding is what `ViewComponent.destroy()` does, and that is the call an application makes.
+
+#### Properties
+
+| Method | Description |
+| :--- | :--- |
+| `setProperty(component, propKey, value, isEqual?)` | Write a property. Returns `true` when the value differs from the last one written to a change trail. An `isEqual` function is remembered for that key; omitting it forgets a previously registered one. |
+| `removeProperty(component, propKey)` | Remove a property. |
+| `transferPropertiesTo(component, target)` | Hand the properties this context holds for `component` over to the context it has just joined. |
+
+`transferPropertiesTo()` is why a namespace change carries the properties along. The `ViewComponent` `context` setter calls it after the join, so the values land in the same `CreateEntities` change as the token and the order. Each value is written first and its equality function registered afterwards -- the other way round, the target would be asked whether the incoming value equals the `undefined` it still holds, and a function that says yes would drop the property instead of carrying it over. The properties are copied, not moved; what stays behind goes down with the entity in this context.
+
+#### Events
+
+| Method | Description |
+| :--- | :--- |
+| `dispatchShadowObjectsEvent(component, type, data, transferables?)` | Queue an event for the Shadow Objects of one component. It travels with the next change trail. |
+| `broadcastEvent(type, data?)` | Deliver an event to every `ViewComponent` in this context, breadth-first. Stays in the View Layer. |
+| `dispatchMessage(uuid, type, data?, traverseChildren?)` | Deliver an event to one component by uuid, optionally to its descendants too. This is the path a message coming back from the Shadow Environment takes. |
+| `dispatchReRequestParentRoots()` | Send `ReRequestParentRoots` to every root component. |
+| `dispatchReRequestParentChildren(component)` | Send `ReRequestParentRoots` to the components currently hanging on `component`. |
+| `dispatchReRequestParentSiblings(component, data?)` | Send `ReRequestParent` to the siblings of `component`, with `data` carrying the sender's identity. |
+
+`dispatchReRequestParentSiblings()` has one fallback worth knowing: a component with no parent of its own has no siblings to narrow down to, so the call becomes `dispatchReRequestParentRoots()` -- every root is asked, and asked with `ReRequestParentRoots` rather than `ReRequestParent`.
+
+#### Change trails
+
+| Method | Description |
+| :--- | :--- |
+| `buildChangeTrails(clearChanges = true)` | The changes since the previous call, as a `ChangeTrailType`. Returns an empty array when the context holds no components. Also writes the Component Memory. |
+| `reCreateChanges()` | Rebuild every component from the Component Memory, so that the next trail re-creates all of them. This is how a fresh proxy is brought up to the state the view is already in. |
+
+`reCreateChanges()` announces itself: it broadcasts the `ContextLost` event to every `ViewComponent` in the context, parents and children alike. It returns immediately when the memory is empty -- after a `clear()`, for instance, there is nothing left to recover.
+
 #### `clear()`
 
 Removes all components without writing anything to a change trail. The context stays registered under its namespace and can be used again afterwards. This is the reset you want between tests or when swapping a whole scene.
+
+What the caller still holds is not destroyed by this, it is deaf: a `ViewComponent` that was in the context keeps reporting `isDestroyed === false` and keeps pointing at it, while every `setProperty` returns `false` and writes nothing.
+
+There is no way to put such a component back to work in the same context. Assigning the context it already names -- the obvious move, since `vc.context` still points there -- is a no-op: the setter returns early when the value does not change, so the component stays outside. Only a *different* context takes it in again. Build fresh components after a `clear()`, or reach for `dispose()`, which destroys the old ones first so that `isDestroyed` tells the truth.
+
+```typescript
+ctx.clear();
+
+vc.isDestroyed;          // false -- and misleading
+vc.context = ctx;        // no-op: the value did not change
+ctx.hasComponent(vc);    // false
+vc.setProperty('a', 1);  // false, nothing written
+```
 
 #### `dispose()`
 
@@ -798,6 +1007,24 @@ A Context represents an isolated instance of a Shadow Environment (Kernel + Enti
 
 Each `ViewComponent` belongs to exactly one Context.
 
+A namespace is a string or a symbol. Two exports name the machinery behind that:
+
+| Export | Description |
+| :--- | :--- |
+| `GlobalNS` | The symbol the Default Global Context is registered under -- what `ComponentContext.get()` resolves to when you pass nothing. |
+| `toNamespace(namespace?)` | The normalization every namespace goes through: a string is trimmed, a symbol is taken as it is, and anything empty or missing becomes `GlobalNS`. |
+
+```typescript
+import { ComponentContext, GlobalNS, toNamespace } from '@spearwolf/shadow-objects';
+
+toNamespace();          // GlobalNS
+toNamespace('  ');      // GlobalNS -- a blank name is no name
+toNamespace(' ui  ');   // 'ui'
+
+ComponentContext.get().ns === GlobalNS;              // true
+ComponentContext.get(' ui ') === ComponentContext.get('ui'); // true
+```
+
 ---
 
 ## ShadowEnv
@@ -822,8 +1049,16 @@ const env = new ShadowEnv();
 | :--- | :--- | :--- |
 | `view` | `ComponentContext` | The `ComponentContext` instance to observe. |
 | `envProxy` | `IShadowObjectEnvProxy` | The environment proxy connecting to the Shadow Environment implementation. |
-| `isReady` | `boolean` (read-only) | `true` when both view and proxy are ready and the environment is not destroyed. |
+| `isReady` | `boolean` (read-only) | `true` when a `view` and an `envProxy` are set, the proxy has started, and the environment is not destroyed. |
 | `isDestroyed` | `boolean` (read-only) | `true` if the environment has been destroyed. |
+| `logger` | `ConsoleLogger` (read-only) | The logger this environment reports through. |
+| `ns$` | `Signal<NamespaceType \| undefined>` (read-only) | A signal slot the environment itself never writes -- it reads `undefined` for the whole lifetime of a `ShadowEnv`. Read the namespace from `env.view.ns`. |
+| `viewReady` | `boolean` | Set by the `view` setter to reflect whether a context is attached. |
+| `proxyReady` | `boolean` | Set to `true` once `envProxy.start()` has resolved, and back to `false` when the proxy fails. |
+
+`viewReady` and `proxyReady` are writable signal accessors, and together they are the input of the effect that emits `ContextCreated` and `ContextLost`. Assigning them by hand drives those events -- setting `proxyReady = false` is what a proxy failure does internally.
+
+They are *not*, however, what `isReady` reads. It asks whether a `view` and an `envProxy` are actually set, whether `proxyReady` holds, and whether the environment is still alive; `viewReady` does not enter that calculation. Assigning `viewReady = false` therefore leaves `isReady` reporting `true`. Ask `isReady` when you want to know whether the environment can sync, and treat the two flags as the wiring behind the events rather than as its ingredients.
 
 ### Static Methods
 
@@ -841,8 +1076,8 @@ const env = ShadowEnv.get('my-game');
 
 | Event | Description |
 | :--- | :--- |
-| `ShadowEnv.ContextCreated` | Fired when the environment becomes ready (view and proxy both connected). |
-| `ShadowEnv.ContextLost` | Fired when the environment loses its connection. |
+| `ShadowEnv.ContextCreated` | Fired when the environment becomes ready (view and proxy both connected). Receives the `ShadowEnv`. Retained, so a listener registered afterwards still gets it. |
+| `ShadowEnv.ContextLost` | Fired when the environment loses its connection. Receives the `ShadowEnv`. Clears the retained `ContextCreated`, so a listener registered after the loss gets nothing until the environment becomes ready again. |
 | `ShadowEnv.AfterSync` | Fired after each synchronization cycle, including cycles with nothing to send. Receives the `ChangeTrailType` data, which is an empty array when nothing changed. |
 | `ShadowEnv.ProxyFailed` | Fired when the proxy loses the Shadow Environment it stands for. Receives the reason and the `ShadowEnv`. `ContextLost` follows, because the environment stops being ready. |
 
@@ -946,9 +1181,18 @@ animate();
 
 ## Environment Proxies
 
-The `envProxy` property accepts any implementation of `IShadowObjectEnvProxy`. Two implementations ship out of the box.
+The `envProxy` property accepts any implementation of `IShadowObjectEnvProxy`. Two implementations ship out of the box; writing a third is a matter of these six members.
 
-`ShadowEnv` installs two callbacks on the proxy it is given: `onMessageToView` for messages coming out of the Shadow Environment, and `onProxyFailed` for the loss of that environment. Both are optional -- an implementation only serves the ones it can serve.
+| Member | Signature | Required |
+| :--- | :--- | :--- |
+| `start` | `() => Promise<void>` | yes |
+| `importScript` | `(url: URL \| string) => Promise<void>` | yes |
+| `applyChangeTrail` | `(data: ChangeTrailType, waitForConfirmation: boolean) => Promise<void>` | yes |
+| `destroy` | `() => void` | yes |
+| `onMessageToView` | `(event: Omit<MessageToViewEvent, 'transferables'>) => any` | no |
+| `onProxyFailed` | `(reason: unknown) => any` | no |
+
+The last two are callbacks rather than calls: `ShadowEnv` installs both on every proxy it is given -- `onMessageToView` for messages coming out of the Shadow Environment, `onProxyFailed` for the loss of that environment. An implementation that cannot fail simply never calls the latter.
 
 ### `LocalShadowObjectEnv`
 
@@ -982,6 +1226,9 @@ const scopedEnv = new LocalShadowObjectEnv(new Registry());
 
 | Method | Description |
 | :--- | :--- |
+| `constructor(registry?)` | Without an argument the environment uses the default registry; pass a `Registry` to isolate it. See the example above. |
+| `start()` | Resolves immediately -- there is no thread to bring up. |
+| `applyChangeTrail(data, waitForConfirmation)` | Run a change trail through the Kernel. `waitForConfirmation` is ignored: the run is synchronous, and the returned promise is already settled when you get it. |
 | `importScript(url)` | Import a shadow objects module from a URL. |
 | `importModule(module)` | Import a shadow objects module directly. |
 | `destroy()` | Tears the environment down: the Kernel is destroyed and the set of imported modules is forgotten. The `Registry` in use is cleared too, unless it is the default registry — that one is shared with every other environment in the thread and stays untouched. |
@@ -1005,6 +1252,7 @@ const remoteEnv = new RemoteWorkerEnv();
 | :--- | :--- |
 | `isDestroyed` | `boolean` (read-only). Also `true` once the worker has failed. |
 | `workerLoaded` | Promise that resolves once the worker is ready and rejects with a `WorkerFailedError` when it fails. Every read hands out a promise that can reject, so attach a `catch()` even when you do not await it -- otherwise a failure surfaces as an unhandled rejection. |
+| `logger` | `ConsoleLogger` (read-only). The logger this environment reports through. Its enabled state travels into the worker together with the shared logger configuration when the worker starts. |
 
 **Methods:**
 
@@ -1035,6 +1283,13 @@ const remoteEnv = new RemoteWorkerEnv();
 A failure is final for this environment: the worker is terminated, `isDestroyed` becomes `true`, and everything still waiting for a reply -- along with every later `applyChangeTrail()`, `importScript()`, `start()` and `workerLoaded` -- is rejected with the `WorkerFailedError` right away instead of running into its timeout.
 
 The two ends are told apart by the error they hand out: a worker that broke down reports a `WorkerFailedError`, a deliberate `destroy()` a `WorkerDestroyedError`. Both are final for that environment -- carry on with a fresh `RemoteWorkerEnv`. Both classes are exported from `@spearwolf/shadow-objects`.
+
+**Two known limits of `destroy()`.** Both are about a teardown that arrives before the worker is up, and both are worth designing around rather than relying on:
+
+- `destroy()` on an environment that never spawned a worker does nothing at all -- `isDestroyed` stays `false`, and a later `start()` spawns a worker as if the call had not happened. The `WorkerDestroyedError` the three methods above promise therefore only follows a `destroy()` that had a worker to tear down.
+- `destroy()` **during** a `start()` that is still waiting for the load handshake leaves `workerLoaded` pending forever: nothing rejects it and no `WorkerLoaded` follows. The `start()` promise is better behaved, and which way it settles depends on the worker. If the worker completes its handshake after the `destroy()` -- the common case, since `destroy()` waits for the worker's acknowledgement or `WorkerDestroyTimeout` before terminating it -- `start()` rejects right away with a `WorkerDestroyedError`. If the worker never answers at all, `start()` waits out `WorkerLoadTimeout` and rejects with a timeout error. Either way, await `start()` rather than `workerLoaded`, and race whatever you await against a timeout of your own.
+
+`ShadowEnv.destroy()` draws the opposite line and rejects everything still waiting on it; do not carry the expectation across.
 
 ```typescript
 import { on } from '@spearwolf/eventize';

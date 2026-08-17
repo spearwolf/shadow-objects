@@ -3,7 +3,7 @@
 ## If you remember nothing else, remember this
 
 - Entities are lightweight game objects. Shadow Objects are ECS components that attach behavior to them.
-- The setup function runs once per entity. Everything reactive goes inside it.
+- The setup function runs once per shadow object, and an entity can carry several. It runs again whenever the set of shadow objects on that entity changes. Everything reactive goes inside it.
 - `useProperty` reads from the view. `dispatchMessageToView` writes back. Events connect them.
 - Local = main thread (webgl/webgpu apps, non-cloneable data, debugging). Remote = web worker (parallel execution). Both are first-class.
 - The change trail is batched and clocked, not immediate. Expecting a synchronous pass-through builds race conditions.
@@ -27,21 +27,25 @@ Details in [concepts.md](./concepts.md#5-invariants).
 ## Defining a Shadow Object
 
 ```typescript
+import type { EntityApi, ShadowObjectCreationAPI } from '@spearwolf/shadow-objects';
+// the lifecycle symbols live in the shadow-objects entry, not the main one
+import { onCreate, onDestroy } from '@spearwolf/shadow-objects/shadow-objects.js';
+
 // Functional (recommended)
-export function MyLogic({ useProperty, createEffect, onDestroy }: ShadowObjectCreationAPI) {
+export function MyLogic({ useProperty, createEffect, onDestroy: whenDestroyed }: ShadowObjectCreationAPI) {
   const speed = useProperty('speed');
   createEffect(() => console.log('speed:', speed()));
-  onDestroy(() => console.log('cleanup'));
+  whenDestroyed(() => console.log('cleanup'));
 }
 
 // Class-based
-export class MyLogic {
+export class MyOtherLogic {
   constructor({ useProperty, createEffect }: ShadowObjectCreationAPI) {
     const speed = useProperty('speed');
     createEffect(() => console.log('speed:', speed()));
   }
-  [onCreate](entity) { /* after attach */ }
-  [onDestroy](entity) { /* before destroy */ }
+  [onCreate](entity: EntityApi) { /* after attach */ }
+  [onDestroy](entity: EntityApi) { /* before destroy */ }
 }
 ```
 
@@ -59,18 +63,18 @@ export default {
 
 | Method | Signature | Description |
 |---|---|---|
-| `useProperty` | `(name) => SignalReader` | Reactive read of a view-layer property |
-| `useProperties` | `(map) => { [key]: SignalReader }` | Batch property readers |
-| `useContext` | `(name) => SignalReader` | Read context from nearest ancestor entity |
-| `useParentContext` | `(name) => SignalReader` | Read context starting from parent (skip self) |
-| `provideContext` | `(name, value?) => Signal` | Provide value to all descendant entities |
-| `provideGlobalContext` | `(name, value?) => Signal` | Provide value to all entities everywhere |
+| `useProperty` | `(name, options?) => SignalReader<Maybe<T>>` | Reactive read of a view-layer property |
+| `useProperties` | `(map) => { [key]: SignalReader<Maybe<T>> }` | Batch property readers; the only one of these without an `options` parameter |
+| `useContext` | `(name, options?) => SignalReader<Maybe<T>>` | Read context from nearest ancestor entity |
+| `useParentContext` | `(name, options?) => SignalReader<Maybe<T>>` | Read context starting from parent (skip self) |
+| `provideContext` | `(name, value?, options?) => Signal<Maybe<T>>` | Provide value to all descendant entities |
+| `provideGlobalContext` | `(name, value?, options?) => Signal<Maybe<T>>` | Provide value to all entities everywhere |
 | `createSignal` | `(initial) => Signal`, `() => Signal<T \| undefined>`, `(factory, {lazy: true}) => Signal` | Create local reactive state |
 | `createMemo` | `(fn) => SignalReader` | Derived/computed value, re-evaluates when deps change |
 | `createEffect` | `(fn, options?) => Effect` | Run side effect, re-runs when deps change |
 | `createResource` | `(factory, cleanup?) => Signal` | Manage external resources with auto teardown |
-| `on` | `(source?, event, cb) => void` | Subscribe to an event (auto-cleaned on destroy) |
-| `once` | `(source?, event, cb) => void` | Subscribe once, auto-removed after first fire |
+| `on` | `(source?, event, cb) => () => void` | Subscribe to an event (auto-cleaned on destroy); returns the unsubscribe function |
+| `once` | `(source?, event, cb) => () => void` | Subscribe once, auto-removed after first fire; returns the unsubscribe function |
 | `emit` | `(target?, event, ...args) => void` | Emit event on entity (or a target) |
 | `onViewEvent` | `(cb) => void` | Shorthand: listen for events from the view layer |
 | `dispatchMessageToView` | `(type, data?, transferables?, children?) => void` | Send event to the view layer |
@@ -117,11 +121,13 @@ createResource(
 
 | Hook | When it fires |
 |---|---|
-| `constructor` / function body | Once, when the entity is first created. Build your reactive graph here. |
+| `constructor` / function body | Once per Shadow Object, when it is attached to an entity. Build your reactive graph here. |
 | `[onCreate](entity)` | After the Shadow Object is fully attached to the entity. Class-based only. |
-| `[onDestroy](entity)` | Just before the entity is destroyed. Class-based only. |
+| `[onDestroy](entity)` | When the Shadow Object is about to go away -- which includes, but is not limited to, the entity being destroyed. Class-based only. |
 | `onDestroy(fn)` | Same as above but callable from the functional API. |
 | `createEffect(fn)` | Immediately on setup, then again whenever any signal it reads changes. |
+
+**The Shadow Object lifecycle is not the entity lifecycle.** An entity carries whatever Shadow Objects its token and its truthy properties currently route to, and that set is re-resolved on every token change and on every property change. A constructor that drops out of the set has its Shadow Object destroyed -- `[onDestroy]` runs -- while the entity lives on; a constructor that joins gets a fresh setup run on an entity that has been around for a while. Both directions happen without an entity being created or destroyed.
 
 ---
 
@@ -299,8 +305,9 @@ Inside a Shadow Object, `entity` gives you access to the underlying entity insta
 | `entity.hasParent` | `boolean` | Whether this entity has a parent |
 | `entity.parent` | `EntityApi or undefined` | Parent entity reference |
 | `entity.children` | `readonly EntityApi[]` | Child entities |
-| `entity.propKeys` | `string[]` | Every key the entity has ever been given, including cleared ones |
-| `entity.propEntries` | `[string, unknown][]` | The same keys with their values; a cleared property reads `undefined` |
+| `entity.kernel` | `Kernel` | The Kernel this entity lives in |
+| `entity.propKeys()` | `string[]` | Every key the entity has ever been given, including cleared ones |
+| `entity.propEntries()` | `[string, unknown][]` | The same keys with their values; a cleared property reads `undefined` |
 | `entity.traverse(cb)` | `void` | Walk entity and all descendants |
 
 ```typescript
@@ -337,9 +344,10 @@ vc.context = ctx;          // revives the component under the same uuid
 
 | After `destroy()` | Behaviour |
 |---|---|
-| `token`, `order`, `setProperty`, `removeProperty`, `dispatchShadowObjectsEvent`, `removeFromParent`, `destroy` | Ignored |
+| `token`, `order` | Assignment updates the local value, nothing is sent |
+| `setProperty`, `removeProperty`, `dispatchShadowObjectsEvent`, `removeFromParent`, `destroy` | Ignored |
 | `dispatchEvent` | Own listeners still fire, children are not traversed |
-| `addChild`, `parent = …` | Throws `ViewComponentError` |
+| `addChild`, `parent = …` | Throws an error with `name === 'ViewComponentError'` (the class is not exported) |
 
 Siblings sort by ascending `order`; equal values keep their insertion order.
 
@@ -390,5 +398,7 @@ ctx.dispose();   // final: components destroyed, namespace released, ctx.isDispo
 ComponentContext.get(ns);                  // a fresh context
 new ViewComponent('a', {context: ctx});    // throws ComponentContextDisposedError
 ```
+
+`clear()` does not destroy the components you still hold — they report `isDestroyed === false` and go deaf. `dispose()` destroys them first.
 
 Tear down in this order: `env.destroy()`, then `ctx.dispose()`.
