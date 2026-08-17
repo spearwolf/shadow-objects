@@ -198,15 +198,15 @@ create -> mount -> active -> destroy
 
 **create:** The View Layer sends a message to the Kernel: "Create an entity with this Token." The Kernel creates an Entity node in the entity tree.
 
-**mount:** The Kernel resolves the Token against the Registry and instantiates the associated Shadow Objects. Each Shadow Object function runs once. This is the setup phase -- you define your reactive graph, subscribe to properties, listen for events, and register cleanup callbacks.
+**mount:** The Kernel resolves the Token against the Registry and instantiates the associated Shadow Objects. Each Shadow Object function runs once per shadow object, and an entity can carry several. This is the setup phase -- you define your reactive graph, subscribe to properties, listen for events, and register cleanup callbacks.
 
-**active:** The Shadow Object is alive. It does not re-run its main function. Instead it reacts: property signals update when the View sends new data, effects re-run when their dependencies change, events arrive from the View or from sibling/child entities.
+**active:** The Shadow Object is alive. Its main function does not run again while the set of shadow objects on its entity stays the same. Instead it reacts: property signals update when the View sends new data, effects re-run when their dependencies change, events arrive from the View or from sibling/child entities. Change that set -- a new token, or a property that switches a `'@propName'` route -- and the Kernel goes through mount and destroy again for the shadow objects that came or went.
 
-**destroy:** The View Component is unmounted (the `<shae-ent>` element disconnects from the DOM, or you call `component.destroy()` manually). The Kernel destroys the Entity and tears down all associated Shadow Objects. Framework-managed signals, effects, and event listeners are disposed automatically.
+**destroy:** The View Component is unmounted (the `<shae-ent>` element disconnects from the DOM, or you call `component.destroy()` manually), or the entity keeps living and this one shadow object drops out of its set. Either way the Kernel tears the shadow object down; unmounting the View Component destroys the Entity with it. Framework-managed signals, effects, and event listeners are disposed automatically.
 
 ### Shadow Object Setup
 
-The body of your Shadow Object function runs once during mount. Use it to define your reactive graph:
+The body of your Shadow Object function runs once during mount and does not run again for as long as this shadow object stays on its entity. Use it to define your reactive graph:
 
 ```typescript
 export function MyLogic({
@@ -282,7 +282,8 @@ Every `<shae-ent>` element in your View corresponds to one Entity in the Shadow 
 Shadow Objects are not nodes in this tree. They are ECS components attached to Entity nodes.
 
 - An Entity can have multiple Shadow Objects (via routing rules in the Registry).
-- All Shadow Objects attached to the same Entity share the same properties and lifecycle.
+- All Shadow Objects attached to the same Entity share its properties, its contexts and its event bus.
+- They do not share a lifecycle. When a token change or a route switch drops one constructor from the set, only that one Shadow Object is torn down; the others on the entity keep running untouched.
 
 ### Entity Context (Dependency Injection)
 

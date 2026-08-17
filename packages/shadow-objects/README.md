@@ -31,7 +31,8 @@ npm install @spearwolf/shadow-objects
 
 ```javascript
 // my-logic.js -- runs in the shadow environment
-// A shadow object is an ECS component: its body runs once, then it just reacts.
+// A shadow object is an ECS component: the body is the setup phase, after that it only reacts.
+// It runs once, for as long as this shadow object stays on the entity.
 function MyComponent({useProperty, createSignal, onViewEvent, dispatchMessageToView}) {
   const step = useProperty('step');
   const count = createSignal(0);
@@ -44,16 +45,17 @@ function MyComponent({useProperty, createSignal, onViewEvent, dispatchMessageToV
   });
 }
 
-// The module default export is the registry (component manifest):
-// a view node with the token 'my-component' gets this shadow object.
-export default {
+// The module exports the registry (component manifest) under the name `shadowObjects` --
+// the loader reads exactly that named export. A view node with the token 'my-component'
+// gets this shadow object.
+export const shadowObjects = {
   define: {
     'my-component': MyComponent,
   },
 };
 ```
 
-Need to register a shadow object at runtime instead? Use `shadowObjects.define(token, constructor)` from `@spearwolf/shadow-objects/shadow-objects.js`.
+Need to register a shadow object at runtime instead? `@spearwolf/shadow-objects/shadow-objects.js` exports a helper object of the same name for that, with a `define(token, constructor)` method. It is a separate thing from the registry a module exports: the helper writes into a `Registry`, the export declares one.
 
 ## The Five Domains
 

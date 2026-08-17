@@ -2,7 +2,7 @@
 
 Shadow Objects is an Entity Component System (ECS) for the browser platform. Entities live in a Shadow Environment on the main thread or in a web worker, Shadow Objects attach behavior to them, and your View -- React, Vue, Svelte, plain DOM -- owns the structure and renders the result.
 
-If you have not read it yet, the [project README](https://github.com/spearwolf/shadow-objects#what-it-is) has the full introduction: the five domains, the three data flows, and the invariants that hold them together. Everything below goes into detail.
+If you have not read it yet, the [project README](https://github.com/spearwolf/shadow-objects#the-five-domains) has the full introduction: the five domains, the three data flows, and the invariants that hold them together. Everything below goes into detail.
 
 ## Where to Start
 

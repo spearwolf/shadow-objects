@@ -34,7 +34,7 @@ In your HTML file, use the Shadow Objects web components to bootstrap the enviro
     <title>Shadow Objects Hello World</title>
     <script type="module">
         // Import the built-in Web Components
-        import "@spearwolf/shadow-objects/elements";
+        import "@spearwolf/shadow-objects/elements.js";
     </script>
 </head>
 <body>
@@ -50,8 +50,10 @@ In your HTML file, use the Shadow Objects web components to bootstrap the enviro
       token: Matches a definition in your logic module (Component Tag)
     -->
     <shae-ent token="counter-component">
-        <!-- Initial property value, synced into the Shadow Environment -->
-        <shae-prop name="count" value="0"></shae-prop>
+        <!-- Declares the 'count' property for as long as this element stands here,
+             and writes every change through into the Shadow Environment.
+             See api-reference.md, <shae-prop> -> Lifecycle. -->
+        <shae-prop name="count" value="0" type="number"></shae-prop>
 
         <!-- The UI the user sees and interacts with -->
         <button id="btn">Click me</button>
@@ -75,6 +77,8 @@ In your HTML file, use the Shadow Objects web components to bootstrap the enviro
 
 > **Note:** Under the hood, `<shae-ent>` creates a **ViewComponent** and registers it with the **ComponentContext** provided by `<shae-worker>`. The ViewComponent is the bridge between the DOM and the Shadow Environment.
 
+`<shae-prop>` is a live binding, not a one-time seed: it keeps writing while it stands there, and the property is cleared when the binding ends. The three things that end it are listed in [`<shae-prop>` → Lifecycle](./api-reference.md#lifecycle). The `type` attribute decides what arrives on the other side -- without it the value stays the string it is in the attribute.
+
 ## 3. Creating the Shadow Logic
 
 Now create the logic module that runs inside the Shadow Environment. This is where your ECS components (Shadow Objects) live.
@@ -92,7 +96,8 @@ function CounterLogic({ useProperty, createEffect, createSignal, onViewEvent }) 
     const countProp = useProperty('count');
 
     // 2. Create local reactive state, seeded from the property
-    const count = createSignal(countProp() || 0);
+    //    ?? and not || -- with type="number" a count of 0 is a valid seed
+    const count = createSignal(countProp() ?? 0);
 
     // 3. React to state changes
     createEffect(() => {
@@ -108,10 +113,11 @@ function CounterLogic({ useProperty, createEffect, createSignal, onViewEvent }) 
 }
 
 /**
- * The module export maps Token (Component Tags) to Shadow Objects (ECS components).
- * This is the Registry (Component Manifest) for this module.
+ * The named export `shadowObjects` maps Token (Component Tags) to Shadow Objects
+ * (ECS components). This is the Registry (Component Manifest) for this module, and
+ * `shadowObjects` is the one name the loader looks for.
  */
-export default {
+export const shadowObjects = {
     define: {
         "counter-component": CounterLogic
     }
@@ -147,7 +153,14 @@ ent.viewComponent.setProperty('count', 42);
 // The shadow object has not seen 42 yet. Not even in a local environment.
 ```
 
-If you need to wait for it, use `await env.syncWait()`. Inside Shadow Objects you rarely have to think about this, because everything there reacts anyway. In imperative glue code and in tests, it bites. See [the change trail and the sync tempo](./concepts.md#the-change-trail-and-the-sync-tempo).
+If you need to wait for it, ask the environment. In this declarative setup it hangs on the `<shae-worker>` element:
+
+```javascript
+await document.querySelector('shae-worker').shadowEnv.syncWait();
+// now the shadow object has seen 42
+```
+
+Inside Shadow Objects you rarely have to think about this, because everything there reacts anyway. In imperative glue code and in tests, it bites. See [the change trail and the sync tempo](./concepts.md#the-change-trail-and-the-sync-tempo).
 
 ## Local vs. Remote Environments
 

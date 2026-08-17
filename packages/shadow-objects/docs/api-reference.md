@@ -250,7 +250,8 @@ stop(); // done listening
 To receive events dispatched from the DOM (View Layer), listen to the special `onViewEvent` symbol on the entity.
 
 ```typescript
-import { ShadowObjectCreationAPI, onViewEvent as viewEvent } from "@spearwolf/shadow-objects";
+import type { ShadowObjectCreationAPI } from "@spearwolf/shadow-objects";
+import { onViewEvent as viewEvent } from "@spearwolf/shadow-objects/shadow-objects.js";
 
 function MyBehavior({ on, onViewEvent }: ShadowObjectCreationAPI) {
 
@@ -322,7 +323,7 @@ Shadow Objects can push messages directly to the View Layer (the DOM) by dispatc
 
 #### `dispatchMessageToView(type, data?, transferables?, traverseChildren?)`
 
-Sends a message from the Shadow Environment to the View Layer. The corresponding `<shae-ent>` DOM element will dispatch a `CustomEvent`.
+Sends a message from the Shadow Environment to the View Layer. It always arrives on the `ViewComponent` as an eventize event. The corresponding `<shae-ent>` DOM element additionally dispatches it as a `CustomEvent`, but only if the element carries `forward-custom-events` and the type passes its allow list — without the attribute no DOM event is dispatched at all.
 
 - **Signature:** `dispatchMessageToView(type: string, data?: unknown, transferables?: Transferable[], traverseChildren?: boolean): void`
 
@@ -330,7 +331,7 @@ Sends a message from the Shadow Environment to the View Layer. The corresponding
 
 | Parameter | Description |
 | :--- | :--- |
-| `type` | The name of the custom event dispatched on the `<shae-ent>` element. |
+| `type` | The event name on the `ViewComponent`, and the name of the `CustomEvent` on the `<shae-ent>` element where `forward-custom-events` is in play. |
 | `data` | (Optional) Sent as `event.detail`. |
 | `transferables` | (Optional) Array of transferable objects (e.g., `ArrayBuffer`, `MessagePort`) to transfer ownership rather than clone. |
 | `traverseChildren` | (Optional) If `true`, the event is dispatched to the view component and all its descendants. Defaults to `false`. |
@@ -423,7 +424,7 @@ A module is a plain JavaScript object. It is the entry point referenced by the `
 import { MyCounter } from './MyCounter.js';
 import { Analytics } from './Analytics.js';
 
-export default {
+export const shadowObjects = {
     define: {
         'counter': MyCounter,
         'analytics': Analytics,
@@ -525,7 +526,7 @@ Includes other modules. Essential for modular architecture -- split configuratio
 ```javascript
 import { CoreModule } from './core-module.js';
 
-export default {
+export const shadowObjects = {
     extends: [CoreModule],
     define: {
         'my-feature': MyFeature,
@@ -545,7 +546,7 @@ Useful for:
 - Initializing global services or connections.
 
 ```javascript
-export default {
+export const shadowObjects = {
     async initialize({ define, kernel, registry }) {
         const config = await fetchConfig();
         if (config.featureEnabled) {

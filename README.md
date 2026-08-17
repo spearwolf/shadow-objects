@@ -51,22 +51,24 @@ More details are in [concepts.md](packages/shadow-objects/docs/concepts.md#1-the
 
 ```javascript
 // my-logic.js -- runs in the shadow environment
-// A shadow object is an ECS component: its body runs once, then it just reacts.
+// A shadow object is an ECS component: the body is the setup phase, after that it only reacts.
+// It runs once, for as long as this shadow object stays on the entity.
 function MyComponent({useProperty, createSignal, onViewEvent, dispatchMessageToView}) {
   const step = useProperty('step');
   const count = createSignal(0);
 
   onViewEvent((type) => {
     if (type === 'increment') {
-      count.set(count() + (step() ?? 1));
-      dispatchMessageToView('count-changed', {value: count()});
+      count.set(count.value + (step() ?? 1));
+      dispatchMessageToView('count-changed', {value: count.value});
     }
   });
 }
 
-// The module default export is the registry (component manifest):
-// a view node with the token 'my-component' gets this shadow object.
-export default {
+// The module exports the registry (component manifest) under the name `shadowObjects` --
+// the loader reads exactly that named export. A view node with the token 'my-component'
+// gets this shadow object.
+export const shadowObjects = {
   define: {
     'my-component': MyComponent,
   },
@@ -178,7 +180,7 @@ This is where your application lives.
 
 **Does not own:** its own existence and its own lifecycle.
 
-A Shadow Object is a function or a class. The body runs exactly once at `mount` and builds the reactive graph. After that nothing runs top to bottom any more, it only reacts. The `ShadowObjectCreationAPI` hands you four toolboxes for that:
+A Shadow Object is a function or a class. The body runs once per shadow object at `mount` and builds the reactive graph. After that nothing runs top to bottom any more, it only reacts. A token change or a `'@propName'` route switch sets up only the shadow objects that arrive on the entity and tears down only the ones that leave; the rest keep running untouched. The `ShadowObjectCreationAPI` hands you four toolboxes for that:
 
 | Toolbox    | Tools                                                                      | What for                                                                     |
 | ---------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |

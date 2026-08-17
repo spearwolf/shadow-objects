@@ -6,10 +6,10 @@ Shadow Objects is the logic layer of your application. Entities are lightweight 
 
 ## 1. Writing Shadow Objects (Functional Style)
 
-The recommended way to define a Shadow Object is a plain function. It runs exactly once per entity instance as a setup phase. Inside that function you declare your reactive graph, and the framework takes it from there.
+The recommended way to define a Shadow Object is a plain function. It runs once as a setup phase, and not a second time for as long as this shadow object stays on its entity. An entity can carry several: a token change or a `'@propName'` route switch sets up only the ones that arrive and tears down only the ones that leave, and the rest are untouched. Inside that function you declare your reactive graph, and the framework takes it from there.
 
 ```typescript
-import { ShadowObjectCreationAPI } from "@spearwolf/shadow-objects/shadow-objects.js";
+import type { ShadowObjectCreationAPI } from "@spearwolf/shadow-objects/shadow-objects.js";
 
 export function UserProfileLogic({
   useProperty,
@@ -98,13 +98,19 @@ export function CounterLogic({ createSignal, createEffect, dispatchMessageToView
 }
 ```
 
-On the view side, you listen on the `<shae-ent>` element:
+On the view side you listen on the `<shae-ent>` element -- but only if the element asks for it. Without the `forward-custom-events` attribute no DOM event is dispatched at all, and the listener below never fires:
+
+```html
+<shae-ent token="counter" forward-custom-events></shae-ent>
+```
 
 ```javascript
 el.addEventListener('count-changed', (e) => {
   document.getElementById('display').innerText = e.detail.value;
 });
 ```
+
+The attribute takes a comma-separated allow list too; empty means all types. Without the attribute the message still arrives on the ViewComponent as an eventize event -- see [Sending and Receiving Events via JavaScript](#sending-and-receiving-events-via-javascript).
 
 ### Listening to View Events
 
@@ -140,12 +146,14 @@ Map your logic to a Token (Component Tag) in a module file:
 // my-module.js
 import { UserProfileLogic } from './UserProfileLogic.js';
 
-export default {
+export const shadowObjects = {
   define: {
     'user-profile': UserProfileLogic
   }
 };
 ```
+
+The export has to be named `shadowObjects`. That is the one name the loader reads out of the module.
 
 ### Composing Behavior with Routes
 
@@ -155,7 +163,7 @@ Say profile entities should also get logging and analytics, and anything carryin
 
 ```javascript
 // my-module.js
-export default {
+export const shadowObjects = {
   define: {
     'user-profile': UserProfileLogic,
     'logging': LoggingLogic,
@@ -229,7 +237,7 @@ The real advantage of classes is automatic event binding. If your class defines 
 Handle view events with an `[onViewEvent]` method:
 
 ```typescript
-import { onViewEvent } from '@spearwolf/shadow-objects';
+import { onViewEvent } from '@spearwolf/shadow-objects/shadow-objects.js';
 
 export class MyShadowObject {
   [onViewEvent](type: string, data: any) {
@@ -299,11 +307,14 @@ This element owns the Shadow Environment. It initializes the Kernel (ECS System 
 
 | Attribute | Description |
 |---|---|
-| `src` | Path to the module exporting your Shadow Object Registry (Component Manifest) |
+| `src` | Path to the module whose `shadowObjects` export is your Registry (Component Manifest) |
 | `ns` | Optional namespace for the Component Context |
 | `local` | Run the Kernel on the main thread instead of a web worker |
-| `auto-sync` | Sync frequency: `"frame"` (default), `"60fps"`, `"100"` (ms), or `"off"` |
+| `no-autostart` | Do not create the Shadow Environment on connect -- call `start()` yourself |
+| `auto-sync` | Sync frequency: every animation frame (`"frame"`, the default, also `"on"`/`"yes"`/`"true"`/`"auto-sync"`), every `1000/N` ms (`"60fps"`), every N ms (`"100"`), or off (`"off"`/`"no"`/`"false"`) |
 | `no-structured-clone` | Disable cloning for local environments (performance optimization, local only) |
+
+The full rules -- which of these read a truthy value rather than mere presence, and what an unparseable `auto-sync` does -- are in the [`<shae-worker>` reference](./api-reference.md#shae-worker).
 
 **`<shae-ent>` -- The Entity**
 
@@ -333,7 +344,7 @@ Entities do not need to be inside the `<shae-worker>` in the DOM. They connect v
 
 **`<shae-prop>` -- Property Binder**
 
-Declaratively set properties on the parent entity:
+Declaratively set properties on the closest entity above it. That is the closest `<shae-ent>` in the flattened tree, regardless of namespace, so a `<shae-prop>` may sit arbitrarily deep and still find its host -- through shadow roots, slot projections and closed boundaries alike. See [`<shae-prop>` → Finding the Host Entity](./api-reference.md#finding-the-host-entity).
 
 ```html
 <shae-ent token="player">
@@ -344,9 +355,21 @@ Declaratively set properties on the parent entity:
 </shae-ent>
 ```
 
-Supported `type` values: `string`, `number`, `float`, `int`, `boolean`, `json`, `number[]`, `string[]`, `float32array`, `uint8array`, and more.
+Every supported `type` name, what it maps onto, and what `no-trim` does are listed once in the [`<shae-prop>` reference](./api-reference.md#shae-prop) and in the [cheat sheet](./cheat-sheet.md). Without a `type` the value arrives as the string it is in the attribute.
 
-A value that cannot be converted into the requested type -- malformed JSON, for instance -- arrives as an error in the console and leaves the property empty.
+A missing or empty `value` attribute counts as no value at all: no property is set, and the name never appears on the entity. Whitespace is not nothing, though -- it survives into the converter and comes out of the trim as the empty string, so `type="number"` turns `value=" "` into `0`.
+
+A value that cannot be converted into the requested type -- malformed JSON, for instance -- arrives as an error in the console and clears the property. Clearing is not the same as never setting it: the name stays visible in `propKeys()` and reads `undefined` from there on.
+
+### Registering Your Own Entity Elements
+
+Sooner or later you wrap the built-in elements in one of your own: a subclass of `ShaeEntElement` that carries a token of its own, or a component with a shadow root that is no entity at all but has `<shae-ent>` and `<shae-prop>` inside it. Both arrive through `customElements.define()`, and both arrive late -- after your markup already stands, out of a lazily loaded chunk.
+
+**The order you register your tags in does not decide the shape of the Entity Tree.** An element that becomes an entity while the markup around it already stands announces itself to everything below it: `<shae-ent>` children look for their parent once more, `<shae-prop>` children for their host. The answer they get is the tree as it is now, not the tree as it was when they first asked. So a wrapper defined after its contents ends up with the same Entity Tree as one defined before -- and a wrapper that is not an entity is simply skipped on the way up.
+
+**The one thing to know is that the timing is split.** The entities below have re-bound by the time `customElements.define()` returns -- that channel is a synchronous event. The properties follow one microtask later, because their channel waits for the tree to stop moving before it looks again. If you assert on an entity's properties right after registering a tag, `await Promise.resolve()` first.
+
+The registration modules themselves are independent and can be imported one at a time; the mechanics of the lookup, the exported request function, and the three event names are in [`<shae-ent>` → Driving the Lookup by Hand](./api-reference.md#driving-the-lookup-by-hand).
 
 ### Sending and Receiving Events via JavaScript
 

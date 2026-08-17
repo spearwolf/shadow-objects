@@ -50,16 +50,17 @@ Avoid scattering raw context key strings throughout your codebase. If the key ch
 **Avoid this:**
 ```typescript
 // Consumer.ts
-const scene = useContext("three-scene"); // magic string, no type info
+const getScene = useContext("three-scene"); // magic string, no type info
 ```
 
 **Do this instead:**
 
 ```typescript
 // three-scene.context.ts
+import type { ShadowObjectCreationAPI } from "@spearwolf/shadow-objects/shadow-objects.js";
 import type { Scene } from "three";
 
-export const ThreeSceneContext = (useContext: ContextReaders) =>
+export const ThreeSceneContext = (useContext: ShadowObjectCreationAPI["useContext"]) =>
   useContext<Scene>("three-scene");
 ```
 
@@ -200,17 +201,20 @@ Entities are lightweight game objects. Shadow Objects are ECS components that at
 
 ### One Entity, Multiple Behaviors
 
-Register multiple tokens pointing at different Shadow Objects, then compose them on a single entity using the HTML structure or by choosing a "composite" token:
+Register multiple tokens pointing at different Shadow Objects, then compose them on a single entity with a `routes` entry. `define` maps one token to exactly one constructor; composition is what `routes` is for:
 
 ```javascript
 // my-module.js
-export default {
+export const shadowObjects = {
   define: {
     'physics-body': PhysicsBodyLogic,
     'health-component': HealthLogic,
     'render-mesh': RenderLogic,
-    // Composite: creates all three
-    'player': [PhysicsBodyLogic, HealthLogic, RenderLogic]
+  },
+  routes: {
+    // Composite: a 'player' entity gets all three. 'player' needs no
+    // define entry of its own -- the route is the whole definition.
+    'player': ['physics-body', 'health-component', 'render-mesh'],
   }
 };
 ```
@@ -255,8 +259,10 @@ export function GameRoot({ provideContext }: ShadowObjectCreationAPI) {
 }
 
 export function RigidBody({ useContext }: ShadowObjectCreationAPI) {
-  const world = useContext('physicsWorld');
-  // world is the same instance for all children
+  const getWorld = useContext('physicsWorld');
+  // useContext hands back a signal reader, so call it: getWorld() is the
+  // same instance for all children, and reading it inside an effect or a
+  // memo tracks the dependency
 }
 ```
 

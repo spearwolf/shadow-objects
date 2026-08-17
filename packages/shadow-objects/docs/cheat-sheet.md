@@ -3,7 +3,7 @@
 ## If you remember nothing else, remember this
 
 - Entities are lightweight game objects. Shadow Objects are ECS components that attach behavior to them.
-- The setup function runs once per shadow object, and an entity can carry several. It runs again whenever the set of shadow objects on that entity changes. Everything reactive goes inside it.
+- The setup function runs once per shadow object, and an entity can carry several. A token change or a `'@propName'` route switch sets up only the shadow objects that arrive and tears down only the ones that leave; the rest keep running untouched. Everything reactive goes inside it.
 - `useProperty` reads from the view. `dispatchMessageToView` writes back. Events connect them.
 - Local = main thread (webgl/webgpu apps, non-cloneable data, debugging). Remote = web worker (parallel execution). Both are first-class.
 - The change trail is batched and clocked, not immediate. Expecting a synchronous pass-through builds race conditions.
@@ -52,7 +52,7 @@ export class MyOtherLogic {
 Register in your module file (the Registry / Component Manifest):
 
 ```javascript
-export default {
+export const shadowObjects = {
   define: { 'my-token': MyLogic }
 };
 ```
