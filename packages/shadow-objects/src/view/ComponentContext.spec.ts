@@ -234,6 +234,18 @@ describe('ComponentContext', () => {
         {type: ComponentChangeType.ChangeProperties, uuid: a.uuid, properties: [['foo', 'bar']]},
       ]);
     });
+
+    it('leaves a change trail it has already handed out untouched', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx});
+      a.setProperty('foo', 'bar');
+      const first = ctx.buildChangeTrails();
+
+      a.setProperty('foo', 'baz');
+      ctx.buildChangeTrails();
+
+      expect(first).toEqual([{type: ComponentChangeType.CreateEntities, uuid: a.uuid, token: 'a', properties: [['foo', 'bar']]}]);
+    });
   });
 
   describe('dispose', () => {

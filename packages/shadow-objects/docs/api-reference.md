@@ -987,6 +987,8 @@ Two event names the context sends to its components. Both arrive as ordinary eve
 | `buildChangeTrails(clearChanges = true)` | The changes since the previous call, as a `ChangeTrailType`. Returns an empty array when the context holds no components. Also writes the Component Memory. |
 | `reCreateChanges()` | Rebuild every component from the Component Memory, so that the next trail re-creates all of them. This is how a fresh proxy is brought up to the state the view is already in. |
 
+A change trail returned by `buildChangeTrails()` is a snapshot: nothing in the library writes to it again, not even the property tuples of its entries. This holds for anything derived from it too, including the value `ShadowEnv.syncWait()` resolves with and the payload of `ShadowEnv.AfterSync`.
+
 `reCreateChanges()` announces itself: it broadcasts the `ContextLost` event to every `ViewComponent` in the context, parents and children alike. It returns immediately when the memory is empty -- after a `clear()`, for instance, there is nothing left to recover.
 
 #### `clear()`

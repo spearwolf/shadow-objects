@@ -226,7 +226,6 @@ Nach `ctx.clear()` beziehungsweise `ctx.destroyComponent(vc)` meldet der Compone
 Ohne ID, nach der Analyse vom 2026-05-09 gefunden:
 
 - **Ein verschobener `<slot>` benachrichtigt die Entity nicht, die er verlässt.** `slotchange` feuert erst nach dem Umzug und damit am neuen Ort; `#onSlotChange` (`ShaeEntElement.ts:550-566`) läuft dort und die alte Entity hört nichts. Betrifft beide Kanäle: die Property bleibt an ihrer alten Host-Entity hängen, und `entParentNode` eines projizierten `<shae-ent>` bleibt stehen. Die einzige verbliebene Lücke in der Regel »jeder Weg, antwortender Vorfahre zu werden oder aufzuhören es zu sein, nimmt die Aufforderung mit«.
-- **`applyPropsChanges` schreibt bereits ausgelieferte Change Trails fort.** `utils/props-utils.ts:19-27` übernimmt die Tupel der Änderungen per Referenz und schreibt sie später mit `entry[1] = value` weiter. Ein Trail, den ein Konsument aufgezeichnet hat, ändert sich damit nachträglich unter der Hand. Sichtbar über `ComponentMemory.createEntity`.
 - **`forwardCustomEvents$.set(true)` normalisiert ein vorhandenes Filter-Attribut nicht.** Bei `<shae-ent forward-custom-events="a,b">` steht das Signal danach auf `true` und leitet alles weiter, während das Attribut weiter `a,b` zeigt: der `true`-Zweig schreibt nur, wenn das Attribut ganz fehlt (`ShaeEntElement.ts:157-170`). Geschwisterfall des Patch-Befunds in §3.2, in Chromium gemessen.
 
 ### 3.4 LOW (Auswahl)
@@ -270,7 +269,7 @@ Ohne ID, nach der Analyse vom 2026-05-09 gefunden:
 
 ### 4.1 Inventar
 
-**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 15 Dateien, 355 Fälle):
+**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 15 Dateien, 358 Fälle):
 `Kernel.spec.ts` (1602 LoC), `Registry.spec.ts`, `ShadowObject.spec.ts`, `SignalsPath.spec.ts`, `ShadowEnv.spec.ts`, `LocalShadowObjectEnv.spec.ts`, `RemoteWorkerEnv.spec.ts`, `ViewComponent.spec.ts`, `ComponentContext.spec.ts`, `ComponentChanges.spec.ts`, `ComponentMemory.spec.ts`, `props-utils.spec.ts`, `ConsoleLogger.spec.ts`, `ConsoleLogger.storage.spec.ts`, `elements/propValueConverters.spec.ts`.
 
 **`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 21 Dateien, 314 Fälle — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `ent-element-attributes`, `ent-element-events`, `ent-element-namespace`, `ent-element-teardown`, `ent-element-upgrade`, `forward-custom-events`, `local-env-entities`, `prop-element-host`, `prop-element-lifecycle`, `prop-element-registration-order`, `prop-element-types`, `remove-and-append-e`, `send-events`, `view-component-context-switch`, `worker-element-attributes`, `worker-element-teardown`, `emit-helper/emit-helper`.

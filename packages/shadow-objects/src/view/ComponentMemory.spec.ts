@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {ComponentChangeType, VoidToken} from '../constants.js';
-import type {IComponentChange} from '../types.js';
+import type {ComponentPropertiesType, IComponentChange} from '../types.js';
 import {ComponentMemory} from './ComponentMemory.js';
 
 const UUID = 'c-1';
@@ -161,6 +161,16 @@ describe('ComponentMemory', () => {
         ['foo', 'baz'],
         ['num', 42],
       ]);
+    });
+
+    it('leaves a change it has already written untouched', () => {
+      const properties: ComponentPropertiesType = [['foo', 'bar']];
+      const memory = withComponent({properties});
+
+      memory.write([{type: ComponentChangeType.ChangeProperties, uuid: UUID, properties: [['foo', 'baz']]} as IComponentChange]);
+
+      expect(properties).toEqual([['foo', 'bar']]);
+      expect(memory.getComponentState(UUID)!.properties).toEqual([['foo', 'baz']]);
     });
 
     it('removes a property that is changed to undefined', () => {

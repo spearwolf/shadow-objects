@@ -7,6 +7,7 @@ export const filterUndefinedProps = (props: ComponentPropertiesType | undefined)
 
 /**
  * Maybe `curProps` will be modified and returned. But it can also return a newly created array. `changes` will never be modified.
+ * The result never shares a tuple with `changes` — except when `curProps === changes`, where `changes`, tuples included, comes back as-is.
  */
 export const applyPropsChanges = (
   curProps: ComponentPropertiesType | undefined,
@@ -14,7 +15,10 @@ export const applyPropsChanges = (
 ): ComponentPropertiesType | undefined => {
   if (curProps === changes) return curProps;
   if (changes === undefined) return curProps;
-  if (curProps === undefined) return filterUndefinedProps(changes);
+  // the tuples belong to `changes` — a change trail that has been handed out is a value, and
+  // the loop below writes through `entry[1] = value` on every later call
+  if (curProps === undefined)
+    return filterUndefinedProps(changes)?.map((entry) => entry.slice()) as ComponentPropertiesType | undefined;
 
   for (const [key, value] of changes) {
     const entry = curProps.find(([k]) => k === key);

@@ -73,6 +73,16 @@ describe('props-utils', () => {
         ['plah', 'xyz'],
       ]);
     });
+
+    it('leaves the tuples of changes to their owner', () => {
+      const changes: ComponentPropertiesType = [['foo', 'bar']];
+      const props = applyPropsChanges(undefined, changes)!;
+
+      applyPropsChanges(props, [['foo', 'baz']]);
+
+      expect(changes).toEqual([['foo', 'bar']]);
+      expect(props[0]).not.toBe(changes[0]);
+    });
   });
 
   describe('propsEqual', () => {
