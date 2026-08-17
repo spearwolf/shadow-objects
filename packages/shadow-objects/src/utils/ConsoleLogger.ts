@@ -5,7 +5,35 @@ export const CONSOLE_LOGGER_STORAGE = `${CONSOLE_LOGGER}Storage`;
 
 const IS_LOCALHOST = Boolean(globalThis.location?.host?.startsWith('localhost') ?? false);
 
-const HAS_LOCAL_STORAGE = 'localStorage' in globalThis;
+// The name `localStorage` says nothing about a usable Storage behind it: node defines an inert
+// object on `globalThis`, and a browser with disabled cookies throws a `SecurityError` -- on the
+// property access or on the first write. So the capability is probed, not looked up, and the
+// storage that passes is kept by reference. Whatever fails here falls back to the plain object
+// under `globalThis[CONSOLE_LOGGER_STORAGE]`.
+const gLocalStorage: Storage | undefined = (() => {
+  try {
+    const storage = (globalThis as {localStorage?: Storage}).localStorage;
+    if (
+      typeof storage?.getItem !== 'function' ||
+      typeof storage.setItem !== 'function' ||
+      typeof storage.removeItem !== 'function'
+    ) {
+      return undefined;
+    }
+    // The write is what separates a Storage that only looks usable from one that is: cookies
+    // may be off, or the quota full. It costs one `storage` event pair for the other tabs of
+    // this origin, and a full quota sends an otherwise readable Storage into the fallback --
+    // both accepted, because every logger writes its own `enable` key in its constructor anyway.
+    const probeKey = `${CONSOLE_LOGGER}.probe`;
+    storage.setItem(probeKey, probeKey);
+    storage.removeItem(probeKey);
+    return storage;
+  } catch {
+    return undefined;
+  }
+})();
+
+const HAS_LOCAL_STORAGE = gLocalStorage != null;
 
 const ConsoleLogger$ = Symbol.for(CONSOLE_LOGGER);
 
@@ -29,15 +57,15 @@ const getKeyPath = (key: string | string[]): string =>
 function loadConfigValue<T>(key: string | string[], as: ((val: string) => T) | undefined, defaultValue: T): T {
   const _key = getKeyPath(key);
   // @ts-ignore
-  const value = HAS_LOCAL_STORAGE ? localStorage.getItem(_key) : globalThis[CONSOLE_LOGGER_STORAGE]?.[_key];
+  const value = gLocalStorage ? gLocalStorage.getItem(_key) : globalThis[CONSOLE_LOGGER_STORAGE]?.[_key];
   if (value == undefined) return defaultValue;
   // without a converter the stored value is the value: that is how the styles are read
   return as ? as(value) : (value as T);
 }
 
 function saveConfigValue(key: string | string[], val: any) {
-  if (HAS_LOCAL_STORAGE) {
-    localStorage.setItem(getKeyPath(key), val);
+  if (gLocalStorage) {
+    gLocalStorage.setItem(getKeyPath(key), val);
   } else {
     // @ts-ignore
     if (globalThis[CONSOLE_LOGGER_STORAGE] == undefined) {
