@@ -85,6 +85,21 @@ export class Kernel {
 
   #rootContexts: Map<string | symbol, SignalsPath> = new Map();
 
+  /**
+   * The teardown of a shadow-object, keyed by the shadow-object itself.
+   *
+   * `constructShadowObject()` builds the teardown as a closure over everything the creation API
+   * handed out; `destroyShadowObject()` needs to reach it from the outside when a shadow-object
+   * leaves the constructor set of an entity that stays alive. The teardown removes its own entry,
+   * so nothing here outlives the shadow-object it belongs to.
+   *
+   * The key is the shadow-object instance, which assumes one instance per construction. A
+   * constructor handing out the same instance twice — to a second entity, or to the same one
+   * under another token — leaves only the later teardown reachable from here; the earlier one
+   * still runs when its entity is destroyed.
+   */
+  readonly #shadowObjectTearDowns = new WeakMap<object, () => void>();
+
   constructor(registry?: Registry) {
     eventize(this);
     this.registry = Registry.get(registry);
@@ -738,7 +753,20 @@ export class Kernel {
       this.logger.info('create shadow-object', getDisplayName(construct), {shadowObject, entity: entry.entity});
     }
 
-    once(entry.entity, onDestroy, Priority.Low, () => {
+    // A shadow-object reaches its end on two independent paths: the entity is destroyed, or the
+    // shadow-object leaves the constructor set of a still living entity (token or route change).
+    // Both run the same teardown, and each path reaches it through a handle of its own.
+    let unsubscribeFromEntityDestroy: (() => void) | undefined;
+
+    const tearDown = () => {
+      // Both handles on this closure are released before anything else runs, which is what makes
+      // the teardown a one-time act: a destroy callback reaching back into the kernel finds no way
+      // to start it a second time. Releasing them also ends the retention in both directions --
+      // the map entry points from the shadow-object to a closure holding the entity, and the
+      // subscription points from the entity to the same closure.
+      this.#shadowObjectTearDowns.delete(shadowObject);
+      unsubscribeFromEntityDestroy?.();
+
       if (this.logger.isInfo) {
         this.logger.info('destroy shadow-object', getDisplayName(construct), {shadowObject, entity: entry.entity});
       }
@@ -786,7 +814,11 @@ export class Kernel {
           entry.usedConstructors.delete(construct);
         }
       }
-    });
+    };
+
+    unsubscribeFromEntityDestroy = once(entry.entity, onDestroy, Priority.Low, tearDown);
+
+    this.#shadowObjectTearDowns.set(shadowObject, tearDown);
 
     // We want to keep track which shadow-objects are created by which constructors.
     // This will all
@@ -836,6 +868,10 @@ export class Kernel {
     }
 
     emit(shadowObject, onDestroy, entity);
+
+    // The teardown runs after the destroy notifications, so a shadow-object that reacts to its own
+    // end still sees the signals, contexts and subscriptions the creation API gave it.
+    this.#shadowObjectTearDowns.get(shadowObject)?.();
 
     off(entity, shadowObject);
   }

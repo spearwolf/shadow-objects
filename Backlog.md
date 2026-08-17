@@ -102,7 +102,7 @@ ComponentContext│  ─ Destroy
 4. Microtask: `ShadowEnv.sync()` baut den `ChangeTrail` (BFS, drei Phasen: Strukturell → Properties → Destroy) und schickt ihn via `applyChangeTrail` auf die Schattenseite.
 5. `Kernel.run()` parst die Einträge im `batch()`, ruft `createEntity`, `setParent`, `updateProperties`, `createShadowObjects`.
 6. Shadow-Objects werden mit dem `ShadowObjectCreationAPI`-Closure instanziiert (Signals/Effects, Cleanup-Sets).
-7. Auf `destroyEntity`: `[onDestroy]`-Symbol-Methode + `onDestroy`-Event mit verschiedenen Prioritäten räumen Properties, Kontexte, Signals, Effects auf.
+7. Auf `destroyEntity`: `[onDestroy]`-Symbol-Methode + `onDestroy`-Event mit verschiedenen Prioritäten räumen Properties, Kontexte, Signals, Effects auf. Derselbe Teardown läuft, wenn ein Shadow-Object durch Token- oder Route-Wechsel die Konstruktorenmenge einer weiterlebenden Entity verlässt (`destroyShadowObject`) — je Shadow-Object genau einmal.
 
 ---
 

@@ -127,7 +127,7 @@ createResource(
 | `onDestroy(fn)` | Same as above but callable from the functional API. |
 | `createEffect(fn)` | Immediately on setup, then again whenever any signal it reads changes. |
 
-**The Shadow Object lifecycle is not the entity lifecycle.** An entity carries whatever Shadow Objects its token and its truthy properties currently route to, and that set is re-resolved on every token change and on every property change. A constructor that drops out of the set has its Shadow Object destroyed -- `[onDestroy]` runs -- while the entity lives on; a constructor that joins gets a fresh setup run on an entity that has been around for a while. Both directions happen without an entity being created or destroyed.
+**The Shadow Object lifecycle is not the entity lifecycle.** An entity carries whatever Shadow Objects its token and its truthy properties currently route to, and that set is re-resolved on every token change and on every property change. A constructor that drops out of the set has its Shadow Object destroyed -- `[onDestroy]` and every `onDestroy(fn)` callback run, and everything the creation API handed out is disposed -- while the entity lives on; a constructor that joins gets a fresh setup run on an entity that has been around for a while. Both directions happen without an entity being created or destroyed.
 
 ---
 

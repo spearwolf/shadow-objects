@@ -1,4 +1,4 @@
-import {emit, on} from '@spearwolf/eventize';
+import {emit, getSubscriptionCount, on} from '@spearwolf/eventize';
 import {createSignal, type Signal, type SignalReader, value} from '@spearwolf/signalize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {ChangeTrailPhase, ComponentChangeType, MessageToView} from '../constants.js';
@@ -979,6 +979,238 @@ describe('Kernel', () => {
         expect(callOrder).toContain(1);
         expect(callOrder).toContain(2);
         expect(callOrder).toContain(3);
+      });
+
+      it('should call onDestroy callback when the shadow-object leaves the set on a route change', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const destroyCallback = vi.fn();
+
+        @ShadowObject({registry, token: 'routeHost'})
+        class RouteHost {}
+
+        @ShadowObject({registry, token: 'routedByFlag'})
+        class RoutedByFlag {
+          constructor({onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
+            registerDestroy(destroyCallback);
+          }
+        }
+
+        expect(RouteHost).toBeDefined();
+        expect(RoutedByFlag).toBeDefined();
+
+        registry.appendRoute('@flag', ['routedByFlag']);
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'routeHost', undefined, 0, [['flag', true]]);
+
+        expect(kernel.findShadowObjects(uuid)).toHaveLength(2);
+        expect(destroyCallback).not.toHaveBeenCalled();
+
+        kernel.changeProperties(uuid, [['flag', false]]);
+
+        expect(kernel.findShadowObjects(uuid)).toHaveLength(1);
+        expect(destroyCallback).toHaveBeenCalledTimes(1);
+      });
+
+      it('should call onDestroy callback when the shadow-object leaves the set on a token change', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const destroyCallback = vi.fn();
+
+        @ShadowObject({registry, token: 'tokenBefore'})
+        class TokenBefore {
+          constructor({onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
+            registerDestroy(destroyCallback);
+          }
+        }
+
+        @ShadowObject({registry, token: 'tokenAfter'})
+        class TokenAfter {}
+
+        expect(TokenBefore).toBeDefined();
+        expect(TokenAfter).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'tokenBefore');
+
+        expect(destroyCallback).not.toHaveBeenCalled();
+
+        kernel.changeToken(uuid, 'tokenAfter');
+
+        expect(destroyCallback).toHaveBeenCalledTimes(1);
+      });
+
+      it('should unsubscribe the creation-API listeners when the shadow-object leaves the set', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const eventHandler = vi.fn();
+        const emitter = {};
+
+        @ShadowObject({registry, token: 'listenerBefore'})
+        class ListenerBefore {
+          constructor({on: subscribe}: ShadowObjectCreationAPI) {
+            subscribe(emitter, 'ping', eventHandler);
+          }
+        }
+
+        @ShadowObject({registry, token: 'listenerAfter'})
+        class ListenerAfter {}
+
+        expect(ListenerBefore).toBeDefined();
+        expect(ListenerAfter).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'listenerBefore');
+
+        emit(emitter, 'ping');
+        expect(eventHandler).toHaveBeenCalledTimes(1);
+
+        kernel.changeToken(uuid, 'listenerAfter');
+        eventHandler.mockClear();
+
+        emit(emitter, 'ping');
+        expect(eventHandler).not.toHaveBeenCalled();
+      });
+
+      it('should call onDestroy exactly once when the constructor leaves the set and enters it again', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const constructions: object[] = [];
+        const destroyed: object[] = [];
+
+        @ShadowObject({registry, token: 'toggleHost'})
+        class ToggleHost {}
+
+        @ShadowObject({registry, token: 'toggled'})
+        class Toggled {
+          constructor({onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
+            constructions.push(this);
+            registerDestroy(() => destroyed.push(this));
+          }
+        }
+
+        expect(ToggleHost).toBeDefined();
+        expect(Toggled).toBeDefined();
+
+        registry.appendRoute('@flag', ['toggled']);
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'toggleHost', undefined, 0, [['flag', true]]);
+
+        expect(constructions).toHaveLength(1);
+
+        kernel.changeProperties(uuid, [['flag', false]]);
+        kernel.changeProperties(uuid, [['flag', true]]);
+
+        // the second run is a new instance -- the first one must have been torn down once,
+        // and the fresh one must still be alive
+        expect(constructions).toHaveLength(2);
+        expect(constructions[0]).not.toBe(constructions[1]);
+        expect(destroyed).toEqual([constructions[0]]);
+      });
+
+      it('should call onDestroy exactly once when the entity is destroyed after the shadow-object already left the set', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const destroyCallback = vi.fn();
+
+        @ShadowObject({registry, token: 'leaveThenDestroyHost'})
+        class LeaveThenDestroyHost {}
+
+        @ShadowObject({registry, token: 'leaveThenDestroy'})
+        class LeaveThenDestroy {
+          constructor({onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
+            registerDestroy(destroyCallback);
+          }
+        }
+
+        expect(LeaveThenDestroyHost).toBeDefined();
+        expect(LeaveThenDestroy).toBeDefined();
+
+        registry.appendRoute('@flag', ['leaveThenDestroy']);
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'leaveThenDestroyHost', undefined, 0, [['flag', true]]);
+
+        kernel.changeProperties(uuid, [['flag', false]]);
+        expect(destroyCallback).toHaveBeenCalledTimes(1);
+
+        kernel.destroyEntity(uuid);
+
+        expect(destroyCallback).toHaveBeenCalledTimes(1);
+      });
+
+      it('should leave no subscription on the entity behind when the shadow-object leaves the set', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        @ShadowObject({registry, token: 'subscriptionHost'})
+        class SubscriptionHost {}
+
+        @ShadowObject({registry, token: 'subscriptionGuest'})
+        class SubscriptionGuest {
+          constructor({onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
+            registerDestroy(() => {});
+          }
+        }
+
+        expect(SubscriptionHost).toBeDefined();
+        expect(SubscriptionGuest).toBeDefined();
+
+        registry.appendRoute('@flag', ['subscriptionGuest']);
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'subscriptionHost');
+        const entity = kernel.getEntity(uuid);
+
+        const baseline = getSubscriptionCount(entity);
+
+        kernel.changeProperties(uuid, [['flag', true]]);
+        expect(getSubscriptionCount(entity)).toBeGreaterThan(baseline);
+
+        kernel.changeProperties(uuid, [['flag', false]]);
+
+        expect(getSubscriptionCount(entity)).toBe(baseline);
+      });
+
+      it('should call onDestroy only once when the callback itself drops the shadow-object during entity destruction', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const uuid = generateUUID();
+        let calls = 0;
+
+        @ShadowObject({registry, token: 'reentrantBefore'})
+        class ReentrantBefore {
+          constructor({onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
+            registerDestroy(() => {
+              calls += 1;
+              // Reaching back into the kernel from a destroy callback finds the shadow-object still
+              // listed for its constructor -- the entry is cleaned up after the callbacks have run.
+              if (calls === 1) {
+                kernel.changeToken(uuid, 'reentrantAfter');
+              }
+            });
+          }
+        }
+
+        @ShadowObject({registry, token: 'reentrantAfter'})
+        class ReentrantAfter {}
+
+        expect(ReentrantBefore).toBeDefined();
+        expect(ReentrantAfter).toBeDefined();
+
+        kernel.createEntity(uuid, 'reentrantBefore');
+
+        kernel.destroyEntity(uuid);
+
+        expect(calls).toBe(1);
       });
     });
   });
