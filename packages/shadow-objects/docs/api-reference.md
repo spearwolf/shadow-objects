@@ -60,9 +60,12 @@ These methods let the Shadow Object read data flowing in from the View Layer -- 
 
 Creates a reactive signal that tracks the value of a specific property on the Entity.
 
-- **Signature:** `useProperty<T>(name: string, options?): SignalReader<T | undefined>`
+- **Signature:** `useProperty<T>(name: string, options?: SignalValueOptions<T> | CompareFunc<T | undefined>): SignalReader<Maybe<T>>`
 - **Returns:** A signal reader function (getter). Calling it returns the current value, or `undefined` while the View has not set the property.
 - **Reactivity:** When the property changes in the View, any effect or computed value reading this signal will re-run.
+- **Options:** `SignalValueOptions<T>` is `{compare?: CompareFunc<T | undefined>}` — the equality check that decides whether a write counts as a change. A bare comparison function in place of the options object still works and logs a deprecation warning.
+
+The reader is cached per name and per Shadow Object: a second `useProperty('title')` hands back the very same reader, and the `compare` of that second call is ignored with a message on the console. Pass options on the first call for a given name.
 
 ```typescript
 const title = useProperty('title');
@@ -72,12 +75,13 @@ createEffect(() => {
 });
 ```
 
-#### `useProperties(map)`
+#### `useProperties(props)`
 
 A convenience helper to create multiple property signals at once.
 
-- **Signature:** `useProperties<T extends Record<string, unknown>>(map: {[K in keyof T]: string}): {[K in keyof T]: SignalReader<Maybe<T[K]>>}`
-- **Returns:** An object where keys match the input map, and values are signal readers.
+- **Signature:** `useProperties<T extends Record<string, unknown>>(props: {[K in keyof T]: string}): {[K in keyof T]: SignalReader<Maybe<T[K]>>}`
+- **Returns:** An object where keys match the input object, and values are signal readers.
+- **Options:** none — every reader is created as if by `useProperty(name)` without options.
 
 ```typescript
 const { x, y, title } = useProperties<{ x: number; y: number; title: string }>({
@@ -103,29 +107,36 @@ Both the consumer and the provider side work with signals, so a value that chang
 
 Consumes a context value provided by the nearest ancestor Entity that has it.
 
-- **Signature:** `useContext<T>(name: string | symbol, options?): SignalReader<T | undefined>`
+- **Signature:** `useContext<T>(name: string | symbol, options?: SignalValueOptions<T> | CompareFunc<T | undefined>): SignalReader<Maybe<T>>`
 - **Returns:** A signal reader. Call it to get the current value: `const scene = useContext<Scene>('three-scene'); scene();`
 - **Reactivity:** Reading it inside an effect or memo tracks the dependency automatically. The value is `undefined` until some ancestor provides it.
+
+Like `useProperty`, the reader is cached per name and per Shadow Object, and a `compare` passed on a later call for the same name is ignored with a message on the console.
 
 #### `useParentContext(name, options?)`
 
 Like `useContext`, but skips the current Entity and starts searching from the parent. Useful for "middleware" components that want to wrap or extend a context value that shares the same name.
 
-- **Signature:** `useParentContext<T>(name: string | symbol, options?): SignalReader<T | undefined>`
+- **Signature:** `useParentContext<T>(name: string | symbol, options?: SignalValueOptions<T> | CompareFunc<T | undefined>): SignalReader<Maybe<T>>`
+- **Caching:** same as `useContext` — one reader per name and Shadow Object.
 
 #### `provideContext(name, sourceOrInitialValue?, options?)`
 
 Makes a value available to all descendant Entities in the subtree, and to all other Shadow Objects on the same Entity.
 
-- **Signature:** `provideContext<T>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>, options?): Signal<T | undefined>`
+- **Signature:** `provideContext<T>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>, options?: ProvideContextOptions<T> | CompareFunc<T | undefined>): Signal<Maybe<T>>`
 - **Returns:** The context signal. Write to it with `.set(...)` to push a new value to all consumers.
 - **Note:** Pass a signal as the source to keep the context in sync with existing reactive state.
+- **Options:** `ProvideContextOptions<T>` adds `clearOnDestroy?: boolean` to the `compare` of `SignalValueOptions<T>`. It defaults to `true`: when the Shadow Object goes away, the context is set to `undefined` and every consumer sees that.
+
+The signal is cached per name and per Shadow Object like the readers above, and here the second call is silent about it: it hands back the first signal and drops both the `sourceOrInitialValue` and the `compare` it was given, with nothing on the console. `clearOnDestroy` is the exception — it is read on every call, so one call asking for it is enough to have the context cleared.
 
 #### `provideGlobalContext(name, sourceOrInitialValue?, options?)`
 
 Makes a value available to all Entities in the entire Shadow Environment, regardless of hierarchy position.
 
-- **Signature:** `provideGlobalContext<T>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>, options?): Signal<T | undefined>`
+- **Signature:** `provideGlobalContext<T>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>, options?: ProvideContextOptions<T> | CompareFunc<T | undefined>): Signal<Maybe<T>>`
+- **Options:** the same as `provideContext`, `clearOnDestroy` included — and the same caching, one signal per name and Shadow Object, with a second call dropping its value and `compare` just as silently.
 
 ---
 
@@ -139,7 +150,7 @@ Creates a local reactive state value.
 
 - **Signatures:**
   - `createSignal<T>(initial: T, params?): Signal<T>`
-  - `createSignal<T>(params?): Signal<T | undefined>` (no initial value)
+  - `createSignal<T>(initial?: undefined, params?): Signal<T | undefined>` (no initial value)
   - `createSignal<T>(factory: () => T, params: {lazy: true}): Signal<T>` (evaluated on the first read)
 - **Returns:** A `Signal` object. It is *not* callable — read it via `count.get()` or `count.value`, write it via `count.set(val)`.
 
@@ -159,7 +170,9 @@ name.value;                          // undefined
 name.set('spearwolf');
 ```
 
-Need the value computed on demand instead of up front? Pass a factory with `{lazy: true}`. Without that flag a function argument is stored as the value, so the flag is required rather than optional:
+`params` keeps its second position here: to pass options without an initial value, write the `undefined` out — `createSignal<string>(undefined, {compare})`.
+
+Need the value computed on demand instead of up front? Pass a factory with `{lazy: true}`. Without that flag, `createSignal<T>(fn)` with an explicit type parameter lands on no overload at all and is rejected; only the inferred form `createSignal(fn)` compiles, and it stores the function itself as the value (`Signal<() => R>`). Either way the flag is required rather than optional:
 
 ```typescript
 const expensive = createSignal(() => buildLookupTable(), {lazy: true});
@@ -175,7 +188,10 @@ The callable form belongs to `SignalReader`, which is what `useProperty()` and `
 
 Runs a side effect immediately, then re-runs it whenever any signal accessed inside it changes.
 
-- **Signature:** `createEffect(fn: EffectCallback, options?): Effect`
+- **Signatures:**
+  - `createEffect(fn: EffectCallback, options?): Effect`
+  - `createEffect(fn: EffectCallback, dependencies: SignalLikeDeps, options?): Effect` (shorthand for `{dependencies}`)
+  - A dependency may also be a name (`string` or `symbol`) rather than a signal. Such a name is looked up in a group, so those two forms require `attach` — see [@spearwolf/signalize](https://github.com/spearwolf/signalize).
 - **Returns:** The `Effect` handle. You rarely need it — the effect is destroyed automatically with the shadow object.
 
 The callback may return a cleanup function, which runs before every re-run and on destruction:
@@ -201,17 +217,20 @@ effect.run(); // opt in to an initial pass
 
 Creates a derived signal (computed value). It only re-evaluates when its dependencies change.
 
-- **Signature:** `createMemo<T>(fn: () => T): () => T`
+- **Signature:** `createMemo<T>(fn: () => T, options?: CreateMemoOptions): SignalReader<T>`
+- **Options:** `attach`, `name`, `lazy`, `priority`, `batchWrites` — see [@spearwolf/signalize](https://github.com/spearwolf/signalize).
 
 ```typescript
-const doubleCount = createMemo(() => count() * 2);
+const doubleCount = createMemo(() => count.get() * 2);
 ```
 
 #### `createResource(factory, cleanup?)`
 
 Advanced primitive for managing external resources (Three.js objects, subscriptions, GPU buffers) that depend on reactive state. When dependencies in the factory change, the cleanup function is called for the previous resource, then factory is called to create a new one.
 
-- **Signature:** `createResource((val) => Resource, (val, resource) => void)`
+- **Signature:** `createResource<T>(factory: () => T | undefined, cleanup?: (resource: NonNullable<T>) => unknown): Signal<Maybe<T>>`
+- **Returns:** A `Signal` holding the current resource — `.value` reads it without subscribing, `.get()` subscribes. This is the only way to reach the resource from outside the factory.
+- **Arguments:** the factory is called with **none** and tracks whatever signals it reads; the cleanup is called with **one**, the resource it is retiring. While no resource exists the signal holds `undefined`.
 
 ```typescript
 createResource(() => {
@@ -248,6 +267,9 @@ stop(); // done listening
 #### Listening to View Layer Events
 
 To receive events dispatched from the DOM (View Layer), listen to the special `onViewEvent` symbol on the entity.
+
+- **Signature:** `onViewEvent(callback: (type: string, data: unknown) => any): void`
+- **Returns:** nothing. Unlike `on()` there is no unsubscribe function — the listener ends with the Shadow Object.
 
 ```typescript
 import type { ShadowObjectCreationAPI } from "@spearwolf/shadow-objects";
@@ -299,10 +321,14 @@ export function GameUI({ on }: ShadowObjectCreationAPI) {
 
 Emits an event on a specific target object instead of the current entity.
 
-- **Signature:** `emit(target: object, eventNames: string | symbol | (string|symbol)[], ...eventArgs: any[]): void`
+- **Signature:** `emit(target: EventizedObject, eventNames: string | symbol | (string|symbol)[], ...eventArgs: any[]): void`
+
+The target has to be an eventized object. An `EntityApi` — what `entity.children` and `entity.parent` hand back — is one at runtime, but its type does not carry the eventize markers, so TypeScript turns it down here. Address another Entity through `emit` from `@spearwolf/eventize`, which takes any object:
 
 ```typescript
-export function ParentController({ entity, emit }: ShadowObjectCreationAPI) {
+import { emit } from '@spearwolf/eventize';
+
+export function ParentController({ entity }: ShadowObjectCreationAPI) {
     const child = entity.children[0];
     if (child) {
         emit(child, 'parent-command', { action: 'move' });
@@ -341,7 +367,7 @@ Sends a message from the Shadow Environment to the View Layer. It always arrives
 dispatchMessageToView('login-success', { user: 'Alice' });
 
 // View Layer (DOM)
-el.addEventListener('login-success', (e) => console.log(e.detail.user));
+el.addEventListener('login-success', (e) => console.log((e as CustomEvent).detail.user));
 ```
 
 > `dispatchMessageToView` is a top-level method on the API object. It is not available on the `entity` instance.
@@ -353,6 +379,8 @@ el.addEventListener('login-success', (e) => console.log(e.detail.user));
 #### `onDestroy(callback)`
 
 Registers a cleanup function that runs when the Shadow Object is destroyed. Critical for preventing memory leaks with non-framework resources like timers, WebSocket connections, or GPU resources.
+
+A Shadow Object reaches that point on two paths: its Entity is destroyed, or it leaves the constructor set of an Entity that lives on — a token change or a route that stops resolving to it. The callback runs on both, exactly once.
 
 - **Signature:** `onDestroy(fn: () => void): void`
 
@@ -444,6 +472,8 @@ Maps Token (Component Tag) strings to Shadow Object constructors.
 - **Key:** The token string (e.g., `'my-button'`). This matches the `token` attribute on `<shae-ent>`.
 - **Value:** A Shadow Object definition (function or class).
 
+A token can carry more than one definition: defining the same token again in another module appends the constructor instead of replacing it, and an Entity with that token gets all of them. The same constructor registered twice is kept once.
+
 ```javascript
 define: {
     'hero-section': HeroLogic,
@@ -498,7 +528,7 @@ routes: {
 ```javascript
 routes: {
     // Only a game-canvas with a truthy "debug" property gets the overlay.
-    // A <shae-ent token="user-profile" debug> does not.
+    // A user-profile carrying the same <shae-prop name="debug"> does not.
     'game-canvas@debug': ['debug-overlay'],
 }
 ```
@@ -514,14 +544,18 @@ routes: {
     'page': ['header', 'footer'],
     'header': ['menu', 'logo'],
 }
-// 'page' resolves to: ['header', 'menu', 'logo', 'footer']
+// 'page' resolves to: ['page', 'header', 'footer', 'menu', 'logo']
 ```
+
+The starting token is part of its own resolution, and the walk is breadth-first: everything one hop away comes before anything two hops away. Each token appears once, however many routes lead to it.
 
 ---
 
 ### `extends`
 
 Includes other modules. Essential for modular architecture -- split configuration across files, share common configs, or import third-party module libraries.
+
+A module that two `extends` chains have in common is imported once; the second attempt is skipped and reported on the console. Sub-modules are imported first and do not upgrade any Entities on their own — the outer module triggers the upgrade once everything is registered.
 
 ```javascript
 import { CoreModule } from './core-module.js';

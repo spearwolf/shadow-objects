@@ -544,7 +544,7 @@ The typical integration looks like this:
 3. Property changes flow in via `setProperty`.
 4. Events come back from the Shadow Object and update local state, triggering a re-render.
 
-```javascript
+```jsx
 // React example (conceptual)
 function PlayerCard({ userId }) {
   const [score, setScore] = useState(0);

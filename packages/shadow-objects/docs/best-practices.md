@@ -314,27 +314,27 @@ import { expect, test, vi } from 'vitest';
 import { PlayerLogic } from './PlayerLogic';
 
 function makeMockApi(overrides = {}) {
-  const signals = {};
-  const effects = [];
-  const destroyCallbacks = [];
+  const signals: Record<string, { value: unknown }> = {};
+  const effects: Array<() => void> = [];
+  const destroyCallbacks: Array<() => void> = [];
 
   return {
-    useProperty: (name) => {
+    useProperty: (name: string) => {
       signals[name] = signals[name] ?? { value: undefined };
       return () => signals[name].value;
     },
     // Mirror the real Signal: an object, not callable, and set() stores
     // whatever it is given -- it never treats a function as an updater.
-    createSignal: (initial) => {
+    createSignal: (initial: unknown) => {
       let val = initial;
       return {
         get: () => val,
         get value() { return val; },
-        set: (next) => { val = next; },
+        set: (next: unknown) => { val = next; },
       };
     },
-    createEffect: (fn) => { effects.push(fn); fn(); },
-    onDestroy: (fn) => destroyCallbacks.push(fn),
+    createEffect: (fn: () => void) => { effects.push(fn); fn(); },
+    onDestroy: (fn: () => void) => destroyCallbacks.push(fn),
     dispatchMessageToView: vi.fn(),
     onViewEvent: vi.fn(),
     emit: vi.fn(),
