@@ -1,12 +1,13 @@
 import {expect} from '@esm-bundle/chai';
 import {on} from '@spearwolf/eventize';
 import {ComponentChangeType, ComponentContext, ViewComponent} from '@spearwolf/shadow-objects';
+import {unmountAll} from '../src/mount.js';
 
 describe('ComponentContext', () => {
   const cc = ComponentContext.get();
 
-  after(() => {
-    cc.clear();
+  afterEach(() => {
+    unmountAll();
   });
 
   it('should be defined', () => {

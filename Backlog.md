@@ -304,12 +304,10 @@ Ohne ID, nach der Analyse vom 2026-05-09 gefunden:
 ### 4.3 Qualität
 
 - Generell sehr lesbar, deklarative Assertions mit Kontext-Labels.
-- `Registry.get().clear()` / `ComponentContext.get().clear()` beziehungsweise `unmountAll()` in `afterEach` — mit einer Ausnahme, siehe unten.
+- `Registry.get().clear()` / `ComponentContext.get().clear()` beziehungsweise `unmountAll()` in `afterEach`.
 - Keine `.only` oder skipped Tests; Playwright-Konfig setzt `forbidOnly: true` für CI.
 - **Flake-Risiko:** `ShadowEnv.spec.ts` enthält an zwei Stellen `await new Promise(r => setTimeout(r, 50))` — magische 50 ms statt deterministischer Microtask-Drains. Die neuen `syncWait`-Fälle warten stattdessen auf `AfterSync` und benutzen ein Timeout nur als Fehlerabbruch.
 - E2E-Pattern (Page schreibt `data-testresult`) ist konzise, erschwert aber Debugging — Assertions liegen außerhalb des Spec-Files.
-- **Geteilte 5000-ms-Vorgabe im e2e-Harness:** `packages/shadow-objects-e2e/src/test-helpers/waitUntil.js:9` und `test-helpers/testAsyncAction.js:3` haben beide 5000 ms. Und `waitUntil` steht praktisch immer in einer `testAsyncAction`: sieben der zehn Seitenmodule rufen es an 20 Stellen, 16 davon unmittelbar in einer `testAsyncAction`, die übrigen vier in Seiten-Helfern (`snapshot()`, `drainAllEntities()`), die von dort gerufen werden. Die äußere Frist läuft dann zuerst ab und der Bericht sagt »did not settle within 5000ms« statt der Bedingung, an der es hing. Kein Testergebnis ändert sich dadurch, nur die Diagnose: wer die Helfer anfasst, gibt der inneren Frist einen kleineren Wert mit.
-- **`ComponentContext.test.js` teilt einen einzigen Context über alle Fälle** (`packages/shadow-objects-testing/test/ComponentContext.test.js:6-10`): `ComponentContext.get()` auf Modulebene, geleert nur in einem `after()`. Jeder Fall, der ohne `buildChangeTrails()` endet, hinterlässt seine Änderungen im nächsten. Die jüngeren Specs im Paket räumen dagegen in `afterEach` über `unmountAll()` auf.
 
 ### 4.4 Konkrete Test-Lücken (ticket-fertig)
 
@@ -333,7 +331,6 @@ Ohne ID, nach der Analyse vom 2026-05-09 gefunden:
 1. **Magische Timeouts in `ShadowEnv.spec.ts` durch deterministische Drains ersetzen** — eliminiert das einzige offensichtliche Flake-Risiko.
 2. **Nicht-triviale Utils specifizieren** — vor allem `FrameLoop`, `cloneChangeTrail` (Worker-Boundary).
 3. **`<shae-worker>` re-import-Test und der `envProxy`-Swap Local → Remote** — beide rühren an den aktuell ungetesteten `MessageRouter`/`WorkerRuntime`.
-4. **`ComponentContext.test.js` pro Fall aufräumen** — der geteilte Context ist die letzte Stelle im Integrationspaket ohne `afterEach` (§4.3).
 
 ---
 
@@ -374,7 +371,6 @@ Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements
 - `pnpm install` installiert keine Playwright-Browser — manuelles `pnpm exec playwright install chromium firefox` nötig (wird in CLAUDE.md erwähnt).
 - `engines.node: ">=24.13.0"` blockiert Mitwirkende auf Node 22.x. Hinweis: Node 24+ stellt eine inerte `localStorage`-Stub auf `globalThis`. Der `ConsoleLogger` verträgt sie seit der Fähigkeitsprüfung in `ConsoleLogger.ts` selbst. `packages/shadow-objects/vitest.setup.ts` ersetzt sie trotzdem weiter, aus zwei gemessenen Gründen: `RemoteWorkerEnv.ts:337` liest `localStorage.getItem` ungeschützt (ohne die Ersetzung fallen 17 Tests in `RemoteWorkerEnv.spec.ts`), und zwei Wächter prüfen echtes Storage-Verhalten und brauchen dafür eine funktionierende Storage.
 - `make:todo` ist Honor-System (kein Pre-Commit-Hook, kein CI-Check).
-- `packages/shadow-objects-testing/test/__screenshots__/` sammelt die Fehler-Screenshots des Vitest-Browser-Modus und wird von keinem Skript geleert — `packages/shadow-objects-testing/package.json:13-17` hat kein `pretest`. Ein Screenshot mit frischem Zeitstempel aus einem längst grünen Fall sieht aus wie ein aktueller Fehler; dieselbe Falle, die `packages/shadow-objects-e2e/package.json` für die Playwright-Ausgabe abgestellt hat. Das Verzeichnis ist gitignored und liegt gerade nicht im Baum, entsteht aber beim ersten roten Fall neu.
 - Manuelles `CHANGELOG.md`-Pflegen ohne Changesets/release-please.
 - **npm-Publish läuft über OIDC Trusted Publishing**, nicht über ein `NPM_TOKEN`-Secret. Einmalig auf npmjs.com je Paket einzutragen (GitHub Actions, Repo `spearwolf/shadow-objects`, Workflow `deploy.yml`); ohne diesen Eintrag bricht `deploy.yml` beim OIDC-Austausch ab. `turbo` läuft im Strict-Env-Mode — wer dem Publish-Pfad eine neue Umgebungsvariable gibt, muss sie in `turbo.json#tasks.publishNpmPkg.passThroughEnv` eintragen, sonst kommt sie im Skript nie an.
 - **`deploy.yml` darf nicht umbenannt und nicht in einen `workflow_call`-Reusable verschoben werden.** npm prüft den OIDC-Claim gegen den registrierten Dateinamen und validiert dabei den *aufrufenden* Workflow — aus `ci.yml` heraus aufgerufen käme der Publish als `ci.yml` an und der Trusted-Publisher-Eintrag würde nicht mehr greifen. Deshalb bleibt das Gating bei `workflow_run`; der Checkout ist seit 2026-08-15 auf `github.event.workflow_run.head_sha` gepinnt, sonst publiziert der Job den Default-Branch-HEAD statt des von der CI geprüften Commits.

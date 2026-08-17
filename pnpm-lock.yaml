@@ -173,6 +173,9 @@ importers:
       lit-html:
         specifier: 'catalog:'
         version: 3.3.3
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.3
       sinon:
         specifier: 'catalog:'
         version: 22.1.0
