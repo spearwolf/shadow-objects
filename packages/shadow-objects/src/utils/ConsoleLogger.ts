@@ -79,6 +79,20 @@ function saveConfigValue(key: string | string[], val: any) {
   }
 }
 
+/**
+ * The key a config value is stored under. Prefixed with {@link CONSOLE_LOGGER} when it goes
+ * into a real Storage, where it shares the namespace with everything else on this origin.
+ */
+export const consoleLoggerConfigKey = (key: string | string[]): string => getKeyPath(key);
+
+/**
+ * Reads a raw config value through whatever storage the capability probe accepted, or from the
+ * fallback object store when none did. The way to reach the config from outside this module:
+ * `globalThis.localStorage` may be missing, inert or hostile, and asking it directly throws.
+ */
+export const loadConsoleLoggerConfig = (key: string | string[], defaultValue: string): string =>
+  loadConfigValue(key, undefined, defaultValue);
+
 export class ConsoleLogger {
   namespace?: string;
 

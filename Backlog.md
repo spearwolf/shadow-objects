@@ -35,7 +35,7 @@
 - Sehr gute Abdeckung des wichtigsten Anwender-Kontrakts (`ShadowObjectCreationAPI`, Kontext-Vererbung, Lifecycle).
 
 **Hauptrisiken:**
-1. ~~**Worker-Fehlerpfade unter-implementiert** — keine `error`/`messageerror`-Handler, keine Reconnect-Logik, ausstehende Promises hängen nach Worker-Tod ewig (oder bis 5–60 s Timeout).~~ **Weitgehend behoben (VIEW-1, VIEW-2)** — `error` und `messageerror` werden vor dem Load-Handshake abonniert, ein Ausfall terminiert den Worker und lehnt alles Ausstehende mit `WorkerFailedError` ab; `ShadowEnv.ProxyFailed` meldet ihn nach außen, ein neuer `envProxy` ist der Weg zurück. Offen bleibt der gewollte Abbau: ein `applyChangeTrail`, das beim `destroy()` schon unterwegs ist, läuft in seinen 5-Sekunden-Timeout (VIEW-1).
+1. ~~**Worker-Fehlerpfade unter-implementiert** — keine `error`/`messageerror`-Handler, keine Reconnect-Logik, ausstehende Promises hängen nach Worker-Tod ewig (oder bis 5–60 s Timeout).~~ **Weitgehend behoben (VIEW-1, VIEW-2)** — `error` und `messageerror` werden vor dem Load-Handshake abonniert, ein Ausfall terminiert den Worker und lehnt alles Ausstehende mit `WorkerFailedError` ab; `ShadowEnv.ProxyFailed` meldet ihn nach außen, ein neuer `envProxy` ist der Weg zurück. Der gewollte Abbau zieht gleich: `destroy()` bricht den Controller ebenfalls ab und lehnt jede laufende Anfrage sofort mit `WorkerDestroyedError` ab (VIEW-1).
 2. ~~**Neues Feature „auto destruction on parent removal" (Commit 89c59c2) ist im Datenpfad nicht erreichbar** und behandelt Re-Parenting nicht.~~ **Behoben (KERN-1, KERN-2)** — Flag fließt jetzt durch `ICreateEntitiesChange` → `ComponentChanges.create()` → `parse()`; Subscription wird bei Re-Parent neu verdrahtet.
 3. ~~**`destroyEntity` rekursiert nicht über Kinder** — bei Eltern-Destruktion bleiben Nicht-Auto-Kinder als verwaiste Einträge im Kernel.~~ **Behoben (KERN-3)** — Variante C: Flagged-Kinder kaskadieren, ungeflaggte werden zu Roots befördert.
 4. **DOM-In-Place-Re-Parenting wird nur teilweise beobachtet** — bei `<shae-ent>` folgt die Beobachtung dem Element an seine neue Position, sieht aber einen zwischengeschobenen Container nicht (`subtree: false`, VIEW-6).
@@ -124,10 +124,8 @@ ComponentContext│  ─ Destroy
 
 ### 3.2 HIGH — View / Worker
 
-**[VIEW-1]** ~~`RemoteWorkerEnv.applyChangeTrail` hängt unbegrenzt, wenn der Worker stirbt.~~ **🟡 Behoben für den Ausfall, offen für den Teardown.**
-*Ausfall — erledigt:* ein `AbortController` trägt den Ausfallzustand: `waitForMessageOfType` nimmt ihn als Abbruch-Kanal entgegen, jedes ausstehende Promise wird im Moment des Ausfalls mit `WorkerFailedError` abgelehnt, jeder spätere Aufruf sofort. Die Timeouts sind auf diesem Weg der letzte Ausweg statt des einzigen.
-*Teardown — offen:* `#workerFailure.abort()` steht ausschließlich in `handleWorkerFailure` (`RemoteWorkerEnv.ts:305`); `destroy()` (`:266–279`) rührt den Controller bewusst nicht an, damit der eigene `Destroyed`-Wartelauf seinen Timeout behält und die beiden Ablehnungsgründe nicht durcheinandergeraten. Ein `applyChangeTrail`, das beim Abbau schon unterwegs ist, wird deshalb nicht abgewickelt: sein `message`-Hörer und sein Timer überleben den Teardown bis zum 5-Sekunden-`WorkerChangeTrailTimeout`. Konsumenten der `ShadowEnv` merken davon nichts — `destroy()` lehnt dort `ready()` und `syncWait()` mit `ShadowEnvDestroyedError` ab —, wer den Proxy direkt fährt, wartet die vollen fünf Sekunden.
-*Ungetestet:* `RemoteWorkerEnv.spec.ts:126` deckt das Ausstehende beim **Ausfall** ab, `:286`/`:292` die Aufrufe **nach** `destroy()`; den Sync **während** des Teardowns trifft kein Fall.
+**[VIEW-1]** ~~`RemoteWorkerEnv.applyChangeTrail` hängt unbegrenzt, wenn der Worker stirbt.~~ **✅ Behoben**
+Ein `AbortController` trägt beide Enden dieser Umgebung: `waitForMessageOfType` nimmt ihn als Abbruch-Kanal entgegen, und sowohl der Ausfall (`handleWorkerFailure`, `WorkerFailedError`) als auch der gewollte Abbau (`destroy()`, `WorkerDestroyedError`) brechen ihn ab. Jedes ausstehende Promise wird in diesem Moment abgelehnt, jeder spätere Aufruf sofort; die Timeouts sind der letzte Ausweg statt des einzigen. Der `Destroyed`-Wartelauf von `destroy()` selbst hängt nicht am Controller und behält seinen eigenen Timeout.
 
 **[VIEW-2]** ~~Keine `error`/`messageerror`-Handler auf dem Worker.~~ **✅ Behoben** — beide werden abonniert, bevor der Load-Handshake beginnt. Ein Ausfall terminiert den Worker, setzt `isDestroyed` und meldet sich als `RemoteWorkerEnv.WorkerFailed` und `ShadowEnv.ProxyFailed` (samt `proxyfailed`-DOM-Event auf `<shae-worker>`). Der Weg zurück ist ein neuer `envProxy`: sobald er bereit ist, baut die View ihre Änderungen aus der Component Memory neu auf, und der nächste Sync stellt die Entities in der neuen Umgebung her.
 
@@ -192,9 +190,9 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 *Ort:* `ComponentContext.ts`.
 `destroyComponent()` ist public und löst die Komponente nicht von ihrem Vater; nach `destroyComponent(c); buildChangeTrails(); c.destroy();` warf der Teardown einen `TypeError`. Ein Kind, das der Context nicht mehr hält, wird jetzt ignoriert — analog zu den Geschwister-Pfaden.
 
-**`RemoteWorkerEnv.destroy()` greift nicht ohne Worker, und ein Abbau während `start()` hängt.**
-*Ort:* `RemoteWorkerEnv.ts:266-267` gegen `:272`, und `:266-279` gegen `:111-139`.
-Der Early Return steht **vor** `this.#isDestroyed = true`: `new RemoteWorkerEnv(); destroy(); start();` startet einen Worker, und `isDestroyed` meldet dazwischen `false`. Und ein `destroy()` während eines laufenden `start()` bricht den `#workerFailure`-Controller nicht ab — `abort()` steht ausschließlich in `handleWorkerFailure` (`:305`) — und emittiert kein `WorkerLoaded`, also bleibt `workerLoaded` für immer pending. `ShadowEnv.destroy()` zieht diese Linie ausdrücklich anders. Ein `destroy()`, das nicht greift, und eine Promise, die nie settelt, sind Korrektheitsfehler, keine Doku-Frage.
+**Ein Worker, der beim Abbau schweigt, hinterlässt eine unbehandelte Rejection.**
+*Ort:* `RemoteWorkerEnv.ts:287` (`destroy()`).
+Der Abschluss-Wartelauf hängt ein `.finally()` an `waitForMessageOfType(worker, Destroyed, WorkerDestroyTimeout)` und sonst nichts. `.finally()` reicht die Ablehnung weiter, also endet ein Worker, der den `Destroyed`-Reply schuldig bleibt, fünf Sekunden nach dem Abbau in einer unbehandelten `Timeout waiting for message of type: Destroyed`. Der `terminate()`-Aufruf läuft dabei korrekt — es fehlt nur der Abschluss der Kette. Die Specs weichen dem aus, indem sie den Reply zustellen (`RemoteWorkerEnv.spec.ts`, Kommentar »settles the Destroyed handshake so its 5s timer does not stay open past the case«). Vorbestehend.
 
 **`ComponentContext.clear()` und `.destroyComponent()` lassen lebende `ViewComponent`s zurück.**
 *Ort:* `ComponentContext.ts:505-520` und `:158`, gegen `dispose()` bei `:536-541`.
@@ -295,7 +293,7 @@ Ohne ID, nach der Analyse vom 2026-05-09 gefunden:
 | `ComponentChanges` / `ComponentMemory` (Unit) | ✅ **gründlich** — eigene Specs, vorher nur indirekt über Trail-Vergleiche |
 | `ShadowEnv` Setup/Teardown | ✅ **gründlich** — `syncWait()`/`AfterSync`, der `destroy()`-Kontrakt, `ProxyFailed` und der `envProxy`-Swap zur Laufzeit samt Wiederherstellung der Entities aus der Component Memory. Gefahren werden Doppelgänger → Doppelgänger und Doppelgänger → `LocalShadowObjectEnv` (`ShadowEnv.spec.ts:521`, `:536`) sowie Remote → Remote in der E2E-Seite `worker-failure`; Local → Remote fährt kein Fall |
 | `LocalShadowObjectEnv` | 🟡 **partiell** — Smoke + 1 Sync; `destroy()`-Registry-Kontrakt (geteilte Default-Registry vs. eigene Registry) jetzt gründlich getestet |
-| `RemoteWorkerEnv` | ✅ **gründlich** — `RemoteWorkerEnv.spec.ts` (19 Fälle über einen Worker-Doppelgänger) deckt Ausfall, Termination, Ablehnung des Ausstehenden und des Nachgereichten, `destroy()`-Kontrakt; E2E-Seite `worker-failure` fährt denselben Weg über echtes `postMessage` inklusive Erholung. Nicht abgedeckt: ein `applyChangeTrail`, das beim `destroy()` schon unterwegs ist (VIEW-1) |
+| `RemoteWorkerEnv` | ✅ **gründlich** — `RemoteWorkerEnv.spec.ts` (29 Fälle über einen Worker-Doppelgänger) deckt Ausfall, Termination, Ablehnung des Ausstehenden und des Nachgereichten, den `destroy()`-Kontrakt samt Abbau während `start()` und die Logger-Konfiguration ohne benutzbare Storage; E2E-Seite `worker-failure` fährt denselben Weg über echtes `postMessage` inklusive Erholung. |
 | `MessageRouter` | ❌ keine direkten Tests |
 | `WorkerRuntime` | ❌ keine direkten Tests |
 | Custom Elements — `<shae-prop>` | ✅ **gründlich** — Host-Suche und Nachjustierung (`prop-element-host.test.js`), das Ende einer Bindung (`prop-element-lifecycle.test.js`), die unabhängige Registrierung (`prop-element-registration-order.test.js`), Markup-Upgrade-Pfad (E2E) und das Typ-Parsing tabellengetrieben über alle 42 Typnamen, beide Trennmuster, die fehlertoleranten und die vier fehlschlagenden Eingaben, `no-trim`, die Falsy-Werte über beide Pfade und den Change Trail (`prop-element-types.test.js`, dazu `propValueConverters.spec.ts` für die Tabelle ohne DOM) |
@@ -322,7 +320,6 @@ Ohne ID, nach der Analyse vom 2026-05-09 gefunden:
 **[ELEM-3] `autoDestructionOnParentRemoval` ist über `<shae-ent>` nicht erreichbar.** Kein Attribut, und `ShaeEntElement` erzeugt seine `ViewComponent` ohne die Option — das Feature ist nur über die programmatische API nutzbar. Ein DOM-seitiger Test der Kaskade ist deshalb derzeit nicht möglich.
 
 - Worker-Init-Failure (`Worker`-Konstruktor mit kaputter URL).
-- `destroy()` mitten im Sync — ein ausstehendes `applyChangeTrail` läuft in den `WorkerChangeTrailTimeout`, statt abgewickelt zu werden. *(VIEW-1)*
 - `ShadowEnv.envProxy`-Swap zur Laufzeit von `LocalShadowObjectEnv` auf `RemoteWorkerEnv` (die Gegenrichtung und Remote → Remote sind abgedeckt).
 - `<shae-ent>`-`attributeChangedCallback` für die drei Attribute, die es beobachtet (`ns`, `token`, `forward-custom-events`, `ShaeEntElement.ts:56`), jeweils beim Re-Set auf leer: im Integrationspaket abgedeckt (`ent-element-attributes.test.js`), über einen echten Worker nicht.
 - `<shae-worker>`-`src`-Wechsel nach `start()` (Re-Import-Pfad).
@@ -409,7 +406,7 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 1. ~~**Auto-Destroy-Feature komplett verdrahten** — Feld in `ICreateEntitiesChange`, durchreichen in `parse()`, Re-Parenting-Subscription pflegen, E2E-Test mit Worker. *(KERN-1, KERN-2)*~~ ✅ Erledigt (Kernel- und ViewComponent-Specs sowie Playwright-E2E `auto-destruct.spec.ts` mit echtem `RemoteWorkerEnv`).
 2. ~~**`destroyEntity` rekursiv über Kinder** — Politik definieren (kaskadieren oder zu Root befördern). *(KERN-3)*~~ ✅ Erledigt (Variante C).
 3. **`MessageRouter`-Doppel-Confirm im Catch-Pfad fixen.** *(VIEW-3)*
-4. **Worker-Fehlerpfade härten:** ~~`error`/`messageerror`-Handler~~, ausstehende Promises bei `destroy()` rejecten, ~~expliziter `terminated`-Status~~. *(VIEW-1, VIEW-2)* — 🟡 Handler, `WorkerFailedError`/`WorkerDestroyedError`, `isDestroyed`, `RemoteWorkerEnv.WorkerFailed` und `ShadowEnv.ProxyFailed` stehen; `destroy()` bricht das Ausstehende weiterhin nicht ab (VIEW-1).
+4. ~~**Worker-Fehlerpfade härten:** `error`/`messageerror`-Handler, ausstehende Promises bei `destroy()` rejecten, expliziter `terminated`-Status.~~ *(VIEW-1, VIEW-2)* — ✅ Handler, `WorkerFailedError`/`WorkerDestroyedError`, `isDestroyed`, `RemoteWorkerEnv.WorkerFailed` und `ShadowEnv.ProxyFailed` stehen, und `destroy()` bricht das Ausstehende ab.
 5. ~~**CI lässt E2E nicht aus** — Playwright-Browser im CI-Image installieren, `test:ci` umstellen oder zweiten Job ergänzen.~~ ✅ Erledigt — eigener Job `e2e`, Chromium und Firefox, vor dem npm-Publish.
 6. ~~**Cache-Invalidierung von `traverseLevelOrderBFS` bei programmatischer Destruktion.** *(KERN-4)*~~ ✅ Erledigt.
 
@@ -448,8 +445,8 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 
 `shadow-objects` ist konzeptionell ausgereift und kompakt: das ECS-Modell, die View/Worker-Spiegelung über ein 4-Methoden-Proxy und das `ShadowObjectCreationAPI` bilden ein in sich konsistentes, gut testbares Framework. Der Code ist überwiegend klar geschrieben, das Reaktivitätsmodell stützt sich konsequent auf zwei eigene, aktiv gepflegte Bibliotheken.
 
-Die größten Risiken liegen weniger in der Architektur als in den **Fehler- und Lebenszyklus-Pfaden**: der `MessageRouter` schluckt Exceptions, und `MessageRouter`/`WorkerRuntime` haben nach wie vor keine eigenen Tests. Die Lebenszyklus-Punkte sind abgearbeitet, der Worker-Ausfall ebenso, die E2E-Suite läuft in CI; offen bleibt der gewollte Abbau, der ausstehende Anfragen in ihren Timeout laufen lässt (VIEW-1).
+Die größten Risiken liegen weniger in der Architektur als in den **Fehler- und Lebenszyklus-Pfaden**: der `MessageRouter` schluckt Exceptions, und `MessageRouter`/`WorkerRuntime` haben nach wie vor keine eigenen Tests. Die Lebenszyklus-Punkte sind abgearbeitet, Worker-Ausfall und gewollter Abbau ebenso, die E2E-Suite läuft in CI.
 
-Die empfohlene Reihenfolge ist: erst die verbliebenen **Muss-Punkte aus §7.1** angehen (`MessageRouter`-Doppel-Confirm und der Teardown-Rest von VIEW-1), dann die **Test-Lücken aus §4.5/§7.2** schließen, dann die **Tooling-Modernisierung aus §7.3** in Angriff nehmen.
+Die empfohlene Reihenfolge ist: erst die verbliebenen **Muss-Punkte aus §7.1** angehen (`MessageRouter`-Doppel-Confirm), dann die **Test-Lücken aus §4.5/§7.2** schließen, dann die **Tooling-Modernisierung aus §7.3** in Angriff nehmen.
 
 In der jetzigen Version (0.30.2) ist das Framework für Demos, Spielwiesen und kleine Anwendungen einsetzbar; vor einem produktiven 1.0-Stempel sollte zumindest die §7.1-Liste abgearbeitet sein.

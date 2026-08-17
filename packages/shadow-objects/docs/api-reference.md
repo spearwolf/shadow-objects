@@ -1252,7 +1252,7 @@ const remoteEnv = new RemoteWorkerEnv();
 | Property | Description |
 | :--- | :--- |
 | `isDestroyed` | `boolean` (read-only). Also `true` once the worker has failed. |
-| `workerLoaded` | Promise that resolves once the worker is ready and rejects with a `WorkerFailedError` when it fails. Every read hands out a promise that can reject, so attach a `catch()` even when you do not await it -- otherwise a failure surfaces as an unhandled rejection. |
+| `workerLoaded` | Promise that resolves once the worker is ready. It rejects with a `WorkerFailedError` when the worker fails and with a `WorkerDestroyedError` when the environment is torn down. Every read hands out a promise that can reject, so attach a `catch()` even when you do not await it -- otherwise the rejection surfaces as an unhandled one. |
 | `logger` | `ConsoleLogger` (read-only). The logger this environment reports through. Its enabled state travels into the worker together with the shared logger configuration when the worker starts. |
 
 **Methods:**
@@ -1262,7 +1262,7 @@ const remoteEnv = new RemoteWorkerEnv();
 | `importScript(url)` | Import a shadow objects module inside the worker. Rejects with a `WorkerDestroyedError` after `destroy()`. |
 | `applyChangeTrail(changeTrail, waitForConfirmation)` | Send a change trail to the worker; with `waitForConfirmation` the promise resolves once the worker has applied it. Rejects with a `WorkerDestroyedError` after `destroy()`. |
 | `start()` | Spawn the worker and wait for the load handshake. Rejects with a `WorkerDestroyedError` after `destroy()`. |
-| `destroy()` | Tears the environment down and terminates the worker — once it has acknowledged, or after `WorkerDestroyTimeout` if it stays silent. |
+| `destroy()` | Tears the environment down and terminates the worker — once it has acknowledged, or after `WorkerDestroyTimeout` if it stays silent. Takes effect whether or not a worker was ever spawned. |
 
 **Events:**
 
@@ -1285,12 +1285,9 @@ A failure is final for this environment: the worker is terminated, `isDestroyed`
 
 The two ends are told apart by the error they hand out: a worker that broke down reports a `WorkerFailedError`, a deliberate `destroy()` a `WorkerDestroyedError`. Both are final for that environment -- carry on with a fresh `RemoteWorkerEnv`. Both classes are exported from `@spearwolf/shadow-objects`.
 
-**Two known limits of `destroy()`.** Both are about a teardown that arrives before the worker is up, and both are worth designing around rather than relying on:
+**`destroy()` counts once, and it counts always.** It marks the environment destroyed whether or not a worker was ever spawned, so the `WorkerDestroyedError` the three methods above promise follows any teardown. Calling it a second time finds nothing left to do: no second `Destroy` goes out, and no worker is terminated twice.
 
-- `destroy()` on an environment that never spawned a worker does nothing at all -- `isDestroyed` stays `false`, and a later `start()` spawns a worker as if the call had not happened. The `WorkerDestroyedError` the three methods above promise therefore only follows a `destroy()` that had a worker to tear down.
-- `destroy()` **during** a `start()` that is still waiting for the load handshake leaves `workerLoaded` pending forever: nothing rejects it and no `WorkerLoaded` follows. The `start()` promise is better behaved, and which way it settles depends on the worker. If the worker completes its handshake after the `destroy()` -- the common case, since `destroy()` waits for the worker's acknowledgement or `WorkerDestroyTimeout` before terminating it -- `start()` rejects right away with a `WorkerDestroyedError`. If the worker never answers at all, `start()` waits out `WorkerLoadTimeout` and rejects with a timeout error. Either way, await `start()` rather than `workerLoaded`, and race whatever you await against a timeout of your own.
-
-`ShadowEnv.destroy()` draws the opposite line and rejects everything still waiting on it; do not carry the expectation across.
+A teardown settles what is still waiting. A `start()` caught in the middle of its load handshake rejects with a `WorkerDestroyedError` right away -- whether the worker was still coming up, went on to complete the handshake afterwards, or never answered at all; nothing sits out `WorkerLoadTimeout` for a reply that has nowhere left to go. An `applyChangeTrail()` or `importScript()` already on the wire goes the same way, and that cuts a real window: `destroy()` waits for the worker's `Destroyed` reply or `WorkerDestroyTimeout`, so the worker may well finish the change trail in the meantime and confirm it. That confirmation no longer reaches the caller -- the request is rejected at the moment of the teardown, whether it was going to succeed or run into its timeout. Send what has to arrive before you tear the environment down. `workerLoaded` follows the same rule: every promise of it that has not already resolved rejects, and so does every read after the teardown.
 
 ```typescript
 import { on } from '@spearwolf/eventize';

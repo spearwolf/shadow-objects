@@ -15,7 +15,7 @@ import {
 } from '../constants.js';
 import createWorker from '../create-worker.js';
 import type {AppliedChangeTrailEvent, ChangeTrailType, ImportedModuleEvent, TransferablesType} from '../types.js';
-import {CONSOLE_LOGGER, ConsoleLogger} from '../utils/ConsoleLogger.js';
+import {CONSOLE_LOGGER, ConsoleLogger, consoleLoggerConfigKey, loadConsoleLoggerConfig} from '../utils/ConsoleLogger.js';
 import {toUrlString} from '../utils/toUrlString.js';
 import {waitForMessageOfType} from '../utils/waitForMessageOfType.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
@@ -88,7 +88,9 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   #changeTrailSerial = 0;
 
   /**
-   * Aborted exactly once, with the {@link WorkerFailedError} that describes the failure.
+   * Aborted exactly once, with the error that ends this environment: a {@link WorkerFailedError}
+   * when the worker broke down, a {@link WorkerDestroyedError} when it was torn down. Whichever
+   * comes first keeps the signal, so a teardown never buries the failure that provoked it.
    * It settles every request already waiting for a reply and turns away every later one.
    */
   readonly #workerFailure = new AbortController();
@@ -107,6 +109,8 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
    * `catch()` — otherwise a worker failure surfaces as an unhandled rejection.
    *
    * @throws {WorkerFailedError} if the worker fails before or after that happens
+   * @throws {WorkerDestroyedError} once the environment has been torn down — including every
+   *   read after a load that had already succeeded, because there is no environment left to hand out
    */
   get workerLoaded(): Promise<RemoteWorkerEnv> {
     const {signal} = this.#workerFailure;
@@ -145,15 +149,11 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   }
 
   async start(): Promise<void> {
-    // both guards are needed, and in this order: a failure aborts the signal *and* marks the
-    // environment destroyed, so asking about the teardown first would bury the more precise
-    // reason — while a teardown leaves the signal untouched and would slip past it
+    // both endings of this environment abort the signal, and it keeps the reason of whichever
+    // came first. A finished environment must not spawn a worker: nothing would ever reach it,
+    // and nothing would ever shut it down again
     const {signal} = this.#workerFailure;
     if (signal.aborted) throw signal.reason;
-
-    // a torn-down environment must not spawn a worker: nothing would ever reach it, and
-    // nothing would ever shut it down again
-    if (this.#isDestroyed) throw new WorkerDestroyedError();
 
     if (this.#worker) {
       if (this.logger.isWarn) {
@@ -179,8 +179,11 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     try {
       await waitForMessageOfType(worker, Loaded, WorkerLoadTimeout, undefined, signal);
 
+      // the handshake completed but the environment ended while its reply was on the way here.
+      // The reason of that ending is what the caller gets — a fresh error of our own would read
+      // as a start that went wrong, and the catch below would report it as one
       if (this.isDestroyed) {
-        throw new WorkerDestroyedError();
+        throw signal.aborted ? signal.reason : new WorkerDestroyedError();
       }
 
       worker.addEventListener('message', this.onMessageFromWorker.bind(this));
@@ -264,12 +267,20 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   }
 
   destroy(): void {
-    if (!this.#worker) return;
+    // the teardown counts even when there is no worker to tear down: everything that comes
+    // afterwards has to meet an environment that is gone
+    this.#isDestroyed = true;
 
+    // releasing the reference here is what makes the teardown idempotent: a repeated call finds
+    // nothing left, sends no second Destroy and terminates nothing twice
     const worker = this.#worker;
     this.#worker = undefined;
 
-    this.#isDestroyed = true;
+    // settles everything still waiting for a reply: a start() in the middle of its load handshake
+    // would otherwise sit out WorkerLoadTimeout, and workerLoaded would never hear anything again
+    this.#workerFailure.abort(new WorkerDestroyedError());
+
+    if (worker == null) return;
 
     worker.postMessage({type: Destroy});
 
@@ -333,11 +344,11 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   }
 
   private configureConsoleLogger(worker: Worker) {
-    const workerConfigKey = `${CONSOLE_LOGGER}.RemoteWorkerEnv.workerConfig`;
-    const workerConfig = JSON.parse(localStorage.getItem(workerConfigKey) ?? '{}');
+    const configKey = ['RemoteWorkerEnv', 'workerConfig'];
+    const workerConfig = JSON.parse(loadConsoleLoggerConfig(configKey, '{}'));
 
     if (this.logger.isInfo) {
-      this.logger.info('load console-logger worker config', {localStorageKey: workerConfigKey, workerConfig});
+      this.logger.info('load console-logger worker config', {storageKey: consoleLoggerConfigKey(configKey), workerConfig});
     }
 
     worker.postMessage({

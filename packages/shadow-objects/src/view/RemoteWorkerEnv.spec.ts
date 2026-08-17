@@ -1,6 +1,7 @@
 import {on} from '@spearwolf/eventize';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {Destroy, Destroyed, Loaded} from '../constants.js';
+import {CONSOLE_LOGGER, CONSOLE_LOGGER_STORAGE} from '../utils/ConsoleLogger.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 import {RemoteWorkerEnv} from './RemoteWorkerEnv.js';
 
@@ -272,6 +273,57 @@ describe('RemoteWorkerEnv', () => {
 
       expect(worker.terminateCount).toBe(1);
     });
+
+    it('rejects a start() the teardown overtakes while the worker stays silent', async () => {
+      const env = new RemoteWorkerEnv();
+      const started = env.start();
+
+      // no reply from this worker, ever — without the teardown settling it, the call would
+      // sit out WorkerLoadTimeout and then report a timeout instead of the actual reason
+      env.destroy();
+
+      await expectWorkerDestroyedRejection(started);
+    });
+
+    it('rejects a workerLoaded the teardown overtakes while the worker stays silent', async () => {
+      const env = new RemoteWorkerEnv();
+      const started = env.start();
+      const pending = env.workerLoaded;
+
+      env.destroy();
+
+      await expectWorkerDestroyedRejection(pending);
+      await expectWorkerDestroyedRejection(started);
+    });
+
+    it('rejects a workerLoaded whose worker answers only after the teardown', async () => {
+      const env = new RemoteWorkerEnv();
+      const started = env.start();
+      const worker = workers.at(-1)!;
+      const pending = env.workerLoaded;
+
+      env.destroy();
+      worker.reply({type: Loaded});
+      worker.reply({type: Destroyed});
+
+      // the load handshake completed, but nobody hands out an environment that is gone
+      await expectWorkerDestroyedRejection(started);
+      await expectWorkerDestroyedRejection(pending);
+    });
+
+    it('rejects a start() torn down after the load reply but before it settles', async () => {
+      const env = new RemoteWorkerEnv();
+      const started = env.start();
+      const worker = workers.at(-1)!;
+
+      // the reply is in, so the handshake no longer listens for the teardown — the check that
+      // catches this one sits between the handshake and the WorkerLoaded event
+      worker.reply({type: Loaded});
+      env.destroy();
+      worker.reply({type: Destroyed});
+
+      await expectWorkerDestroyedRejection(started);
+    });
   });
 
   describe('after destroy', () => {
@@ -293,6 +345,20 @@ describe('RemoteWorkerEnv', () => {
       const {env} = await destroyed();
 
       await expectWorkerDestroyedRejection(env.importScript('./late.js'));
+    });
+
+    it('settles the requests that were in flight when the teardown arrived', async () => {
+      const {env, worker} = await startEnv();
+
+      const pendingChangeTrail = env.applyChangeTrail([], true);
+      const pendingImport = env.importScript('./in-flight.js');
+
+      env.destroy();
+      worker.reply({type: Destroyed});
+
+      // their replies can no longer arrive, so neither of them waits out its own timeout
+      await expectWorkerDestroyedRejection(pendingChangeTrail);
+      await expectWorkerDestroyedRejection(pendingImport);
     });
 
     it('turns a start() away instead of spawning a worker nobody can reach', async () => {
@@ -334,7 +400,112 @@ describe('RemoteWorkerEnv', () => {
 
       worker.fail();
 
+      // the teardown comes second and must not put its own reason over the failure that caused it
+      env.destroy();
+      env.destroy();
+
       await expectWorkerFailedRejection(env.start());
+      await expectWorkerFailedRejection(env.workerLoaded);
+      await expectWorkerFailedRejection(env.applyChangeTrail([], true));
+      await expectWorkerFailedRejection(env.importScript('./late.js'));
+    });
+
+    it('counts as destroyed even when no worker was ever spawned', async () => {
+      const env = new RemoteWorkerEnv();
+
+      env.destroy();
+
+      expect(env.isDestroyed).toBe(true);
+      await expectWorkerDestroyedRejection(env.start());
+      expect(workers.length, 'workers created after the teardown').toBe(0);
+    });
+
+    it('tears down once, however often destroy() is called', async () => {
+      const {env, worker} = await startEnv();
+
+      env.destroy();
+      env.destroy();
+
+      expect(worker.posted.filter((message) => message.type === Destroy)).toHaveLength(1);
+
+      worker.reply({type: Destroyed});
+      await flushMicrotasks();
+
+      expect(worker.terminateCount).toBe(1);
+    });
+  });
+
+  describe('console-logger config for the worker', () => {
+    const localStorageDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')!;
+
+    const withLocalStorage = async (descriptor: PropertyDescriptor, run: () => Promise<void>) => {
+      Object.defineProperty(globalThis, 'localStorage', {configurable: true, ...descriptor});
+      try {
+        await run();
+      } finally {
+        Object.defineProperty(globalThis, 'localStorage', localStorageDescriptor);
+      }
+    };
+
+    it('reads the worker config from its key below the ConsoleLogger namespace', async () => {
+      const key = `${CONSOLE_LOGGER}.RemoteWorkerEnv.workerConfig`;
+      localStorage.setItem(key, JSON.stringify({debug: true}));
+      try {
+        const {env, worker} = await startEnv();
+
+        expect(worker.posted[0].config.debug, 'the stored config overrides the shared one').toBe(true);
+
+        env.destroy();
+        worker.reply({type: Destroyed});
+      } finally {
+        localStorage.removeItem(key);
+      }
+    });
+
+    it('starts when reading globalThis.localStorage throws', async () => {
+      // a browser with cookies disabled: the property access itself is a SecurityError
+      await withLocalStorage(
+        {
+          get() {
+            throw new Error('SecurityError: access to localStorage is denied for this document');
+          },
+        },
+        async () => {
+          const {env, worker} = await startEnv();
+
+          expect(worker.posted[0].type, 'the worker is configured before the handshake').toBe(CONSOLE_LOGGER);
+
+          env.destroy();
+          worker.reply({type: Destroyed});
+        },
+      );
+    });
+
+    it('configures the worker from the fallback store when no Storage is usable', async () => {
+      // the capability is probed while the module evaluates, so the hostile global has to be in
+      // place before the import — this is the inert object node puts on globalThis
+      await withLocalStorage({value: {}}, async () => {
+        vi.resetModules();
+        try {
+          const {RemoteWorkerEnv: FreshRemoteWorkerEnv} = await import('./RemoteWorkerEnv.js');
+
+          const env = new FreshRemoteWorkerEnv();
+          const started = env.start();
+          const worker = workers.at(-1)!;
+          worker.reply({type: Loaded});
+          await started;
+
+          expect(worker.posted[0].type).toBe(CONSOLE_LOGGER);
+          expect(worker.posted[0].config).toBeTypeOf('object');
+
+          env.destroy();
+          worker.reply({type: Destroyed});
+        } finally {
+          delete (globalThis as unknown as Record<string, unknown>)[CONSOLE_LOGGER];
+          delete (globalThis as unknown as Record<string, unknown>)[CONSOLE_LOGGER_STORAGE];
+          vi.resetModules();
+        }
+      });
     });
   });
 });
