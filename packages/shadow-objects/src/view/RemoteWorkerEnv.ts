@@ -345,10 +345,11 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
 
   private configureConsoleLogger(worker: Worker) {
     const configKey = ['RemoteWorkerEnv', 'workerConfig'];
-    const workerConfig = JSON.parse(loadConsoleLoggerConfig(configKey, '{}'));
+    const storageKey = consoleLoggerConfigKey(configKey);
+    const workerConfig = this.readWorkerConfig(configKey, storageKey);
 
     if (this.logger.isInfo) {
-      this.logger.info('load console-logger worker config', {storageKey: consoleLoggerConfigKey(configKey), workerConfig});
+      this.logger.info('load console-logger worker config', {storageKey, workerConfig});
     }
 
     worker.postMessage({
@@ -360,5 +361,33 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
         ...(ConsoleLogger.isEnabled ? {} : {enable: false}),
       },
     });
+  }
+
+  /**
+   * The console-logger config for the worker, read from the storage key this environment
+   * announces. The key is a diagnostic switch, set by hand and sharing its namespace with
+   * everything else on this origin, so its content decides nothing about whether the worker
+   * comes up: anything that is not a plain JSON object counts as no config at all, exactly
+   * like an absent key.
+   */
+  private readWorkerConfig(configKey: string[], storageKey: string): Record<string, unknown> {
+    const stored = loadConsoleLoggerConfig(configKey, '{}');
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(stored);
+    } catch (error) {
+      // ungated, like the error reports above: whoever writes this key wants the worker to talk,
+      // and a silent fallback would send them looking for the reason inside the worker
+      this.logger.warn(`ignoring the unreadable console-logger worker config at "${storageKey}"`, stored, error);
+      return {};
+    }
+
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      this.logger.warn(`ignoring the console-logger worker config at "${storageKey}": expected a JSON object`, stored);
+      return {};
+    }
+
+    return parsed as Record<string, unknown>;
   }
 }

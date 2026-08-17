@@ -1287,7 +1287,7 @@ const remoteEnv = new RemoteWorkerEnv();
 | :--- | :--- |
 | `isDestroyed` | `boolean` (read-only). Also `true` once the worker has failed. |
 | `workerLoaded` | Promise that resolves once the worker is ready. It rejects with a `WorkerFailedError` when the worker fails and with a `WorkerDestroyedError` when the environment is torn down. Every read hands out a promise that can reject, so attach a `catch()` even when you do not await it -- otherwise the rejection surfaces as an unhandled one. |
-| `logger` | `ConsoleLogger` (read-only). The logger this environment reports through. Its enabled state travels into the worker together with the shared logger configuration when the worker starts. |
+| `logger` | `ConsoleLogger` (read-only). The logger this environment reports through. Its enabled state travels into the worker together with the shared logger configuration when the worker starts. A JSON object stored under `ConsoleLogger.RemoteWorkerEnv.workerConfig` is merged on top of that configuration; see [Console Logger](#console-logger). |
 
 **Methods:**
 
@@ -2320,6 +2320,8 @@ if (kernel.logger.isDebug) {
 **The getters are the caller's job.** `logger.debug(...)` prints unconditionally -- it does not consult `isDebug` itself. Ask first, as the Kernel does, or the message goes to the console whatever the switches say.
 
 In the browser this is reachable without a rebuild: on first use the logger installs a live config object at `globalThis.ConsoleLogger` whose setters write through to `localStorage`, so `ConsoleLogger.debug = true` typed into the console survives a reload.
+
+The worker of a `RemoteWorkerEnv` is configured from the same origin: a JSON object stored under `ConsoleLogger.RemoteWorkerEnv.workerConfig` is merged on top of the shared config when the worker starts, so the second thread can be made talkative without touching the code that spawns it. The key is read, not trusted -- a value that does not parse to a plain JSON object counts as no config at all, and the key is named once through `remoteEnv.logger.warn`, which is not gated behind `ConsoleLogger.sharedConfig.enable`.
 
 #### Entity Graph Inspection
 

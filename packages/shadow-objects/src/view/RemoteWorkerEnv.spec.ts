@@ -462,6 +462,84 @@ describe('RemoteWorkerEnv', () => {
       }
     });
 
+    it('starts when the stored worker config is not readable as JSON', async () => {
+      const key = `${CONSOLE_LOGGER}.RemoteWorkerEnv.workerConfig`;
+      localStorage.setItem(key, '{"debug": true');
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      try {
+        const {env, worker} = await startEnv();
+
+        expect(worker.posted[0].type, 'the worker is configured before the handshake').toBe(CONSOLE_LOGGER);
+        expect(worker.posted[0].config.debug, 'an unusable value counts as no config at all').toBe(false);
+        expect(
+          warn.mock.calls.some((args) => args.some((arg) => typeof arg === 'string' && arg.includes(key))),
+          'the warning names the storage key',
+        ).toBe(true);
+
+        env.destroy();
+        worker.reply({type: Destroyed});
+      } finally {
+        warn.mockRestore();
+        localStorage.removeItem(key);
+      }
+    });
+
+    it('starts when the stored worker config is not a JSON object', async () => {
+      const key = `${CONSOLE_LOGGER}.RemoteWorkerEnv.workerConfig`;
+      localStorage.setItem(key, '"debug"');
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      try {
+        const {env, worker} = await startEnv();
+
+        expect(worker.posted[0].config, 'a string does not spread into the config').not.toHaveProperty('0');
+        expect(
+          warn.mock.calls.some((args) => args.some((arg) => typeof arg === 'string' && arg.includes(key))),
+          'the warning names the storage key',
+        ).toBe(true);
+
+        env.destroy();
+        worker.reply({type: Destroyed});
+      } finally {
+        warn.mockRestore();
+        localStorage.removeItem(key);
+      }
+    });
+
+    it.each([
+      ['[1,2]', 'an array'],
+      ['null', 'null'],
+      ['0', 'a number'],
+      ['"debug"', 'a string'],
+    ])('treats a stored config of %s (%s) like a missing one', async (stored) => {
+      const key = `${CONSOLE_LOGGER}.RemoteWorkerEnv.workerConfig`;
+
+      // the config the worker gets with no key set at all is the yardstick every one of these
+      // values has to match: valid JSON that is not a plain object contributes nothing, exactly
+      // like an absent key would
+      const {env: referenceEnv, worker: referenceWorker} = await startEnv();
+      const baseline = referenceWorker.posted[0].config;
+      referenceEnv.destroy();
+      referenceWorker.reply({type: Destroyed});
+
+      localStorage.setItem(key, stored);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      try {
+        const {env, worker} = await startEnv();
+
+        expect(worker.posted[0].config, 'contributes nothing beyond the shared config').toEqual(baseline);
+        expect(
+          warn.mock.calls.some((args) => args.some((arg) => typeof arg === 'string' && arg.includes(key))),
+          'the warning names the storage key',
+        ).toBe(true);
+
+        env.destroy();
+        worker.reply({type: Destroyed});
+      } finally {
+        warn.mockRestore();
+        localStorage.removeItem(key);
+      }
+    });
+
     it('starts when reading globalThis.localStorage throws', async () => {
       // a browser with cookies disabled: the property access itself is a SecurityError
       await withLocalStorage(
