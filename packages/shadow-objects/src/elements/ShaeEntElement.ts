@@ -2,7 +2,6 @@ import {on} from '@spearwolf/eventize';
 import {beQuiet, createEffect, createSignal} from '@spearwolf/signalize';
 import {VoidToken} from '../constants.js';
 import {ComponentContext} from '../view/ComponentContext.js';
-import {ShadowEnv} from '../view/ShadowEnv.js';
 import {ViewComponent} from '../view/ViewComponent.js';
 import {
   ATTR_FORWARD_CUSTOM_EVENTS,
@@ -178,6 +177,33 @@ export class ShaeEntElement extends ShaeElement {
 
   #parentObserver?: MutationObserver;
 
+  /**
+   * Bumped whenever the subscriptions this element holds on its component have to be set up again.
+   *
+   * Ending a component takes every subscription off it, this element's among them, and the
+   * component itself stays where it is — so nothing about `viewComponent$` changes and the effects
+   * below have no reason of their own to run again. This signal is that reason.
+   */
+  readonly #reSubscribe$ = createSignal(0);
+
+  #reSubscribePending = false;
+
+  /**
+   * The wait for the next microtask is the point, not a detail: the subscriptions come off right
+   * behind the announcement, so a listener set up inside the handler would be taken off with them.
+   * And a context tearing itself down walks its own set of instances — the element stays out of
+   * that walk and comes back once it is over. However many announcements arrive in one task, one
+   * round of setting up answers them all.
+   */
+  #reSubscribeToViewComponent() {
+    if (this.#reSubscribePending) return;
+    this.#reSubscribePending = true;
+    queueMicrotask(() => {
+      this.#reSubscribePending = false;
+      this.#reSubscribe$.set(this.#reSubscribe$.value + 1);
+    });
+  }
+
   constructor() {
     super();
 
@@ -253,31 +279,30 @@ export class ShaeEntElement extends ShaeElement {
 
     createEffect(() => {
       const vc = this.viewComponent$.get();
-      if (vc) {
-        const unsubscribeReRequestParentRoots = on(vc, ComponentContext.ReRequestParentRoots, () =>
-          this.#reRequestParentAsRoot(),
-        );
-        const unsubscribeReRequestParent = on(vc, ComponentContext.ReRequestParent, (data?: ReRequestParentData) =>
-          this.#reRequestParent(data?.newAncestor),
-        );
-        const unsubscribeReRequestEntHost = on(vc, ComponentContext.ReRequestEntHost, () => this.#askPropertiesToReRequestHost());
-        const oldNs = vc.context?.ns;
-        return () => {
-          unsubscribeReRequestParentRoots();
-          unsubscribeReRequestParent();
-          unsubscribeReRequestEntHost();
-          vc.destroy();
-          if (oldNs && oldNs !== this.ns) {
-            ShadowEnv.get(oldNs)?.sync();
-          } else {
-            this.syncShadowObjects();
-          }
-        };
-      }
+      // both reads stand before the early return, otherwise the dependency on the re-subscribe
+      // signal would hang on there being a component at the moment the effect first runs
+      this.#reSubscribe$.get();
+      if (!vc) return;
+
+      const unsubscribe = [
+        on(vc, ComponentContext.ReRequestParentRoots, () => this.#reRequestParentAsRoot()),
+        on(vc, ComponentContext.ReRequestParent, (data?: ReRequestParentData) => this.#reRequestParent(data?.newAncestor)),
+        on(vc, ComponentContext.ReRequestEntHost, () => this.#askPropertiesToReRequestHost()),
+        // this one hangs on the same component as the three above and comes off with them, which
+        // is exactly why it belongs in the same effect: it is what puts all four back
+        on(vc, ViewComponent.Destroyed, () => this.#reSubscribeToViewComponent()),
+      ];
+
+      return () => {
+        for (const un of unsubscribe) un();
+      };
     });
 
     createEffect(() => {
       const vc = this.viewComponent$.get();
+      // the teardown of a component drops an own `dispatchEvent` along with the subscriptions, so
+      // the patch is set again on the same signal that puts those back
+      this.#reSubscribe$.get();
       if (!vc) return;
 
       // Make sure we are patching the instance method, not the prototype
@@ -530,9 +555,10 @@ export class ShaeEntElement extends ShaeElement {
 
     // an entity that hung on this element can outlive its departure: it stays connected whenever
     // only the way between them is cut, which is what happens to everything projected into a slot
-    // this element holds. Leaving the context destroys the ViewComponent and promotes those
-    // entities to roots, so they have to look for an ancestor again — and this element is past
-    // answering by now, its listener came off a few lines above. An entity that leaves the tree
+    // this element holds. Leaving the context detaches the ViewComponent — it keeps everything on
+    // it and can be taken back in — and promotes those entities to roots, so they have to look for
+    // an ancestor again; this element is past answering by now, its listener came off a few lines
+    // above. An entity that leaves the tree
     // along with this one is not affected: it turns the message down while disconnected
     const vc = this.viewComponent;
     if (vc != null) {

@@ -24,6 +24,21 @@ function assertUsableAsParent(parent: ViewComponent, childContext: ComponentCont
 }
 
 export class ViewComponent {
+  /**
+   * The last thing a component says before {@link ViewComponent#destroy} takes every subscription
+   * off it. An integration that put something on the instance — event subscriptions, an own
+   * `dispatchEvent` — hears it here and can set that up again on the same component; a context
+   * that takes the component back in (`vc.context = ctx`) revives it under the same uuid.
+   *
+   * It travels via `emit()` rather than {@link ViewComponent#dispatchEvent}, so an own
+   * `dispatchEvent` an integration installed does not see it and cannot carry it further. Leaving
+   * a context says nothing: `vc.context = null` detaches the component and keeps everything on it.
+   *
+   * Not to be confused with the `Destroyed` exported at the top level of the package: that one is
+   * `'destroyed'` and belongs to the worker channel, this one is `'view-component-destroyed'`.
+   */
+  static readonly Destroyed = 'view-component-destroyed';
+
   readonly #uuid: string;
 
   #token: string;
@@ -276,6 +291,10 @@ export class ViewComponent {
    *
    * Calling it more than once is safe. Each call takes off what is on the component at that
    * moment — a subscription made afterwards is heard again.
+   *
+   * {@link ViewComponent.Destroyed} goes out on the component right before the subscriptions come
+   * off, so whoever holds something on it hears it. A listener that wants its subscription back
+   * does not set it up inside the handler — that one would come off with the rest.
    */
   destroy() {
     this.#leaveContext();
@@ -285,6 +304,10 @@ export class ViewComponent {
     if (Object.hasOwn(this, 'dispatchEvent')) {
       delete (this as {dispatchEvent?: ViewComponent['dispatchEvent']}).dispatchEvent;
     }
+
+    // last, and before the subscriptions come off: the component is in its final shape by now, and
+    // whoever hears this still hears it
+    emit(this as ViewComponent, ViewComponent.Destroyed);
 
     off(this);
   }

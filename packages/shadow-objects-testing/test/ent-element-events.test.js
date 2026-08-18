@@ -20,6 +20,9 @@ const fce = (el) => {
 /** The attribute value, or `null` when the attribute is absent. */
 const attrOf = (el) => (el.hasAttribute('forward-custom-events') ? el.getAttribute('forward-custom-events') : null);
 
+/** The element sets the patch up again one microtask after its component announced the teardown. */
+const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 afterEach(() => {
   unmountAll();
 });
@@ -402,6 +405,25 @@ describe('shae-ent the dispatchEvent patch', () => {
     p.addEventListener('foo', (e) => domEvents.push(e));
     p.viewComponent.dispatchEvent('foo', {}, false);
     expect(domEvents).to.have.lengthOf(1);
+  });
+
+  it('forwards custom events again after a context sweep took its component down', async () => {
+    const {p} = mountPK();
+    const vc = p.viewComponent;
+    expect(Object.hasOwn(vc, 'dispatchEvent')).to.be.true;
+
+    const ctx = ComponentContext.get();
+    ctx.clear();
+    expect(Object.hasOwn(vc, 'dispatchEvent'), 'the teardown took the patch with it').to.be.false;
+
+    vc.context = ctx;
+    await nextTask();
+    expect(Object.hasOwn(vc, 'dispatchEvent'), 'the patch is back').to.be.true;
+
+    const domEvents = [];
+    p.addEventListener('foo', (e) => domEvents.push(e));
+    p.viewComponent.dispatchEvent('foo', {}, false);
+    expect(domEvents, 'and it carries again').to.have.lengthOf(1);
   });
 
   it('keeps an eventize listener on its ViewComponent across a remove and a re-append', () => {

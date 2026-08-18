@@ -482,6 +482,57 @@ describe('ViewComponent', () => {
       expect(() => unsubscribe()).not.toThrow();
     });
 
+    it('announces the teardown before it goes silent', () => {
+      const c = new ViewComponent('test');
+      const seen: boolean[] = [];
+      on(c, ViewComponent.Destroyed, () => seen.push(c.isDestroyed));
+
+      ctx.buildChangeTrails();
+      c.destroy();
+
+      expect(seen).toEqual([true]);
+
+      c.dispatchEvent(ViewComponent.Destroyed, undefined, false);
+
+      expect(seen).toEqual([true]);
+    });
+
+    it('announces it again on a second destroy()', () => {
+      const c = makeDestroyed();
+      const spy = vi.fn();
+      on(c, ViewComponent.Destroyed, spy);
+
+      c.destroy();
+
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('says nothing when the component only leaves its context', () => {
+      const c = new ViewComponent('test');
+      const spy = vi.fn();
+      on(c, ViewComponent.Destroyed, spy);
+      ctx.buildChangeTrails();
+
+      c.context = null;
+
+      expect(spy).not.toHaveBeenCalled();
+
+      c.destroy();
+
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('announces the teardown a context sweep runs', () => {
+      const c = new ViewComponent('test');
+      const spy = vi.fn();
+      on(c, ViewComponent.Destroyed, spy);
+      ctx.buildChangeTrails();
+
+      ctx.clear();
+
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
     it('takes the listeners off a component that only left its context', () => {
       const c = new ViewComponent('test');
       const spy = vi.fn();

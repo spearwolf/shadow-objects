@@ -346,6 +346,7 @@ vc.addChild(other);        // throws on a cycle or a foreign ComponentContext
 vc.removeFromParent();     // promotes to a root component
 
 vc.destroy();              // also takes every on(vc, …) off
+                           // announces ViewComponent.Destroyed first
 vc.isDestroyed;            // true
 vc.setProperty('x', 1);    // ignored, returns false
 vc.context = ctx;          // revives the component under the same uuid
@@ -355,11 +356,11 @@ vc.context = ctx;          // revives the component under the same uuid
 |---|---|
 | `token`, `order` | Assignment updates the local value, nothing is sent |
 | `setProperty`, `removeProperty`, `dispatchShadowObjectsEvent`, `removeFromParent` | Ignored |
-| `destroy` | Nothing left to detach, and it takes off whatever lies on the component |
+| `destroy` | Nothing left to detach, it announces `ViewComponent.Destroyed` again, and it takes off whatever lies on the component |
 | `dispatchEvent` | Only listeners registered after the `destroy()` fire, children are not traversed |
 | `addChild`, `parent = …` | Throws an error with `name === 'ViewComponentError'` (the class is not exported) |
 
-`vc.context = null` reports `isDestroyed === true` too, but only detaches: the listeners and an own `dispatchEvent` stay.
+`vc.context = null` reports `isDestroyed === true` too, but only detaches: the listeners and an own `dispatchEvent` stay, and it announces nothing.
 
 Siblings sort by ascending `order`; equal values keep their insertion order.
 
