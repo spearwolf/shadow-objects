@@ -246,7 +246,11 @@ export class ViewComponent {
 
   destroy() {
     this.removeFromParent();
-    this.#context?.destroyComponent(this);
+
+    // the context pointer goes first: destroyComponent() detaches every component that still
+    // names the context, and would call straight back in here otherwise
+    const context = this.#context;
     this.#context = undefined;
+    context?.destroyComponent(this);
   }
 }

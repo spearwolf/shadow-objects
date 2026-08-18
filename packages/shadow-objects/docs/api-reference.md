@@ -811,7 +811,7 @@ Removes the component from the hierarchy and signals destruction to the Shadow E
 
 ### The destroyed state
 
-After `destroy()` the component is detached from its `ComponentContext`: it no longer appears in any change trail and no longer has a corresponding Entity. `isDestroyed` reports `true`. Holding on to a destroyed component is safe, and its behaviour is uniform:
+After `destroy()` the component is detached from its `ComponentContext`: it no longer appears in any change trail and no longer has a corresponding Entity. `isDestroyed` reports `true`. The context reaches the same state from its own side -- `ComponentContext.clear()`, `destroyComponent()`, `removeSubTree()` and `dispose()` leave the components they take down exactly here. The three that sweep the whole context -- `clear()`, `removeSubTree()` and `dispose()` -- reach one component per uuid, so a component whose uuid a later `ViewComponent` has claimed is not among them: it keeps its context and goes on reporting `isDestroyed === false`. `destroyComponent(component)` is the one that takes an instance, and it releases the instance it is given, claimed uuid or not. Holding on to a destroyed component is safe, and its behaviour is uniform:
 
 | Operation | Behaviour while destroyed |
 | :--- | :--- |
@@ -949,15 +949,15 @@ Three event names that arrive as ordinary events on a `ViewComponent`; see [Rece
 | `isChildOf(child, parent)` | Whether `child` currently sits in the children list of `parent`. |
 | `getChildren(component)` | The children of a component, in sort order. A fresh array each call. |
 | `traverseLevelOrderBFS()` | Every component in the context, breadth-first from the roots. |
-| `destroyComponent(component)` | Write the destroy change for a component and promote its children to roots. |
+| `destroyComponent(component)` | Write the destroy change for a component, promote its children to roots and detach the component from this context. |
 | `addToChildren(parent, child)` | Insert `child` into the children of `parent`. Throws a plain `Error` when the context does not hold `parent`. |
 | `removeFromParent(childUuid, parent)` | Detach a child from that parent and make it a root. Note the asymmetry: the child is named by uuid, the parent by instance. |
 | `moveToRoot(childUuid)` | Make a component a root without naming its previous parent. |
-| `removeSubTree(uuid)` | Destroy a component and all its descendants **without** writing anything to a change trail. |
+| `removeSubTree(uuid)` | Destroy a component and all its descendants **without** writing anything to a change trail. Each of them is detached from this context. |
 | `changeToken(component, token?)` | Record a token change for a component. |
 | `changeOrder(component)` | Re-sort a component among its siblings after its `order` changed, and record the new value. A component this context does not hold is ignored. |
 
-`destroyComponent()` writes the change, and nothing more: the `ViewComponent` you pass keeps pointing at this context and still reports `isDestroyed === false`. Releasing the binding is what `ViewComponent.destroy()` does, and that is the call an application makes.
+`destroyComponent()` leaves the `ViewComponent` you pass destroyed: it reports `isDestroyed === true` and holds no context any more. `ViewComponent.destroy()` reaches the same state from the other side, and that is the call an application makes.
 
 #### Properties
 
@@ -997,17 +997,21 @@ A change trail returned by `buildChangeTrails()` is a snapshot: nothing in the l
 
 Removes all components without writing anything to a change trail. The context stays registered under its namespace and can be used again afterwards. This is the reset you want between tests or when swapping a whole scene.
 
-What the caller still holds is not destroyed by this, it is deaf: a `ViewComponent` that was in the context keeps reporting `isDestroyed === false` and keeps pointing at it, while every `setProperty` returns `false` and writes nothing.
+Every `ViewComponent` the context still holds is destroyed on the way out: it reports `isDestroyed === true`, holds no context any more, and every `setProperty` on it returns `false` and writes nothing. See [The destroyed state](#the-destroyed-state) for what such a component still answers. "Still holds" is one component per uuid -- where a second `ViewComponent` has joined under the uuid of an earlier one, the earlier one is not in the context any more and stays as it is.
 
-There is no way to put such a component back to work in the same context. Assigning the context it already names -- the obvious move, since `vc.context` still points there -- is a no-op: the setter returns early when the value does not change, so the component stays outside. Only a *different* context takes it in again. Build fresh components after a `clear()`, or reach for `dispose()`, which destroys the old ones first so that `isDestroyed` tells the truth.
+Assigning the context takes the component back in under the same uuid, with a fresh `CreateEntities` change -- the same revival that follows a `ViewComponent.destroy()`.
 
 ```typescript
 ctx.clear();
 
-vc.isDestroyed;          // false -- and misleading
-vc.context = ctx;        // no-op: the value did not change
+vc.isDestroyed;          // true
+vc.context;              // undefined
 ctx.hasComponent(vc);    // false
 vc.setProperty('a', 1);  // false, nothing written
+
+vc.context = ctx;        // takes it back in, same uuid
+vc.isDestroyed;          // false
+vc.setProperty('a', 1);  // true
 ```
 
 #### `dispose()`

@@ -162,13 +162,18 @@ describe('ComponentContext', () => {
       expect(ctx.traverseLevelOrderBFS().map((c) => c.token)).toEqual(['a', 'mover', 'b', 'c']);
     });
 
-    it('ignores a component the context no longer holds', () => {
+    it('ignores a component whose entry a namesake has taken away', () => {
       ctx = makeContext();
-      const a = new ViewComponent('a', {context: ctx});
+      const a = new ViewComponent('a', {context: ctx, uuid: 'twin'});
+      const b = new ViewComponent('b', {context: ctx, uuid: 'twin'});
 
-      ctx.clear();
-      a.order = 7;
+      // the twins share one entry, and b takes it with it
+      b.destroy();
+      ctx.removeSubTree('twin');
 
+      expect(() => {
+        a.order = 3;
+      }).not.toThrow();
       expect(ctx.hasComponent(a)).toBe(false);
       expect(ctx.isRootComponent(a)).toBe(false);
       // a re-inserted uuid without a view instance makes the next clear() panic
@@ -245,6 +250,89 @@ describe('ComponentContext', () => {
       ctx.buildChangeTrails();
 
       expect(first).toEqual([{type: ComponentChangeType.CreateEntities, uuid: a.uuid, token: 'a', properties: [['foo', 'bar']]}]);
+    });
+  });
+
+  describe('clear', () => {
+    it('detaches every component it held', () => {
+      ctx = makeContext();
+      const root = new ViewComponent('root', {context: ctx});
+      const child = new ViewComponent('child', {context: ctx, parent: root});
+      ctx.buildChangeTrails();
+
+      ctx.clear();
+
+      for (const vc of [root, child]) {
+        expect(vc.isDestroyed, `${vc.token}.isDestroyed`).toBe(true);
+        expect(vc.context, `${vc.token}.context`).toBeUndefined();
+        expect(vc.setProperty('x', 1), `${vc.token}.setProperty()`).toBe(false);
+        expect(ctx.hasComponent(vc), `hasComponent(${vc.token})`).toBe(false);
+      }
+    });
+  });
+
+  describe('destroyComponent', () => {
+    it('detaches the component it destroys', () => {
+      ctx = makeContext();
+      const parent = new ViewComponent('parent', {context: ctx});
+      const child = new ViewComponent('child', {context: ctx, parent});
+      ctx.buildChangeTrails();
+
+      ctx.destroyComponent(child);
+
+      expect(child.isDestroyed).toBe(true);
+      expect(child.context).toBeUndefined();
+      expect(child.setProperty('x', 1)).toBe(false);
+      expect(ctx.getChildren(parent)).toEqual([]);
+      expect(ctx.buildChangeTrails()).toEqual([{type: ComponentChangeType.DestroyEntities, uuid: child.uuid}]);
+    });
+
+    it('destroys an entry only once, so a component that re-joins survives the next trail', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx});
+      ctx.buildChangeTrails();
+
+      ctx.destroyComponent(a);
+      ctx.destroyComponent(a);
+
+      a.context = ctx;
+
+      // a second destroy on the same entry would put the destroy count ahead of the create
+      // count, and the next trail would take the entity down again
+      expect(ctx.buildChangeTrails()).toEqual([]);
+      expect(a.isDestroyed).toBe(false);
+      expect(ctx.hasComponent(a)).toBe(true);
+    });
+
+    it('takes a component back in that re-joins before the next trail', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx});
+      ctx.buildChangeTrails();
+
+      ctx.destroyComponent(a);
+      a.context = ctx;
+
+      expect(a.isDestroyed).toBe(false);
+      expect(ctx.hasComponent(a)).toBe(true);
+      expect(ctx.buildChangeTrails()).toEqual([]);
+    });
+  });
+
+  describe('removeSubTree', () => {
+    it('detaches every component it takes down', () => {
+      ctx = makeContext();
+      const parent = new ViewComponent('parent', {context: ctx});
+      const child = new ViewComponent('child', {context: ctx, parent});
+      ctx.buildChangeTrails();
+
+      ctx.removeSubTree(parent.uuid);
+
+      for (const vc of [parent, child]) {
+        expect(vc.isDestroyed, `${vc.token}.isDestroyed`).toBe(true);
+        expect(vc.context, `${vc.token}.context`).toBeUndefined();
+      }
+      expect(ctx.hasComponents()).toBe(false);
+      expect(ctx.buildChangeTrails()).toEqual([]);
     });
   });
 

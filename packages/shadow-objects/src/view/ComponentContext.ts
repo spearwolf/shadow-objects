@@ -167,13 +167,23 @@ export class ComponentContext {
   }
 
   destroyComponent(component: ViewComponent) {
-    if (this.hasComponent(component)) {
-      const entry = this.#components.get(component.uuid)!;
+    const entry = this.#components.get(component.uuid);
+
+    // destroying an entry twice would put the destroy count ahead of the create count: a
+    // component that joins again afterwards would be destroyed by the very next change trail
+    if (entry !== undefined && !entry.changes.isDestroyed) {
       for (const childUuid of entry.children.slice(0)) {
         this.#components.get(childUuid)?.component.removeFromParent();
       }
       entry.changes.destroy();
       this.#viewInstances = undefined;
+    }
+
+    // a component this context has torn down must not keep pointing at it, otherwise it keeps
+    // reporting itself as alive. ViewComponent.destroy() drops that pointer before it calls
+    // back in here, so this branch is taken at most once
+    if (component.context === this) {
+      component.destroy();
     }
   }
 
@@ -234,6 +244,7 @@ export class ComponentContext {
 
   /**
    * Destroy a component and all its descendants without writing anything to a change trail.
+   * Each of them is detached from this context and reports {@link ViewComponent#isDestroyed}.
    *
    * @see {@link ComponentContext.clear}
    */
@@ -323,7 +334,8 @@ export class ComponentContext {
 
   changeOrder(component: ViewComponent) {
     // a component this context does not (or no longer) hold must never be re-inserted into an
-    // ordered list — clear() and dispose() both leave live components pointing back at us
+    // ordered list — two components sharing one uuid share one entry, and the one that outlives
+    // the entry keeps pointing back at us
     const entry = this.#components.get(component.uuid);
     if (entry === undefined) return;
 
@@ -508,14 +520,23 @@ export class ComponentContext {
   }
 
   /**
-   * Remove all components without writing anything to a change trail. The context stays
-   * registered under its namespace and can be used again afterwards.
+   * Remove all components without writing anything to a change trail. Every
+   * {@link ViewComponent} this context holds is destroyed, so each of them reports
+   * {@link ViewComponent#isDestroyed} and holds no context afterwards. The context itself stays
+   * registered under its namespace and can be used again — assigning it to a component takes
+   * that component back in under the same uuid.
    *
    * @see {@link ComponentContext.dispose} for the final teardown
    */
   clear() {
     this.#viewInstances = undefined;
     this.#componentMemory.clear();
+
+    // destroy first, while the context is still live: a component whose context is gone
+    // would otherwise keep reporting itself as alive
+    for (const {component} of Array.from(this.#components.values())) {
+      component.destroy();
+    }
 
     for (const uuid of this.#rootComponents.slice(0)) {
       this.removeSubTree(uuid);
@@ -544,12 +565,6 @@ export class ComponentContext {
    */
   dispose() {
     if (this.#isDisposed) return;
-
-    // destroy first, while the context is still live: a component whose context is gone
-    // would otherwise keep reporting itself as alive
-    for (const {component} of Array.from(this.#components.values())) {
-      component.destroy();
-    }
 
     this.clear();
 

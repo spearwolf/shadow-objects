@@ -194,10 +194,6 @@ Eine Order-Änderung nach `clear()` schob die uuid zurück in `#rootComponents`,
 *Ort:* `RemoteWorkerEnv.ts:287` (`destroy()`).
 Der Abschluss-Wartelauf hängt ein `.finally()` an `waitForMessageOfType(worker, Destroyed, WorkerDestroyTimeout)` und sonst nichts. `.finally()` reicht die Ablehnung weiter, also endet ein Worker, der den `Destroyed`-Reply schuldig bleibt, fünf Sekunden nach dem Abbau in einer unbehandelten `Timeout waiting for message of type: Destroyed`. Der `terminate()`-Aufruf läuft dabei korrekt — es fehlt nur der Abschluss der Kette. Die Specs weichen dem aus, indem sie den Reply zustellen (`RemoteWorkerEnv.spec.ts`, Kommentar »settles the Destroyed handshake so its 5s timer does not stay open past the case«). Vorbestehend.
 
-**`ComponentContext.clear()` und `.destroyComponent()` lassen lebende `ViewComponent`s zurück.**
-*Ort:* `ComponentContext.ts:505-520` und `:158`, gegen `dispose()` bei `:536-541`.
-Nach `ctx.clear()` beziehungsweise `ctx.destroyComponent(vc)` meldet der Component `isDestroyed === false`, sein `context` zeigt weiter auf den Context, und jedes `setProperty` gibt `false` zurück und schreibt nichts. `dispose()` macht es richtig und zerstört die Components, solange der Context noch lebt. Der Code kennt die Lage und arbeitet um sie herum (`:314-315`, `changeOrder`-Guard). Ob `clear()` seine Components ablösen soll, ist eine Verhaltensänderung an der öffentlichen API — deshalb hier und nicht als Bugfix.
-
 **[ELEM-1]** ~~`<shae-worker>` erzeugt eine unbehandelte Promise-Rejection beim Teardown im selben Task.~~ **✅ Behoben**
 *Ort:* `ShaeWorkerElement.ts`.
 `connectedCallback()` startet per `start()` automatisch, der `src`-Effekt ruft `importScript()`; beide warten auf `ShadowEnv.ready()`, das seit VIEW-8 mit einem `ShadowEnvDestroyedError` ablehnt — und niemand beobachtete diese Promises. Connect und Disconnect im selben Task (was `#deferDestroy` ausdrücklich vorsieht) ergab damit pro Element eine unbehandelte Rejection. Beide Aufrufstellen fangen jetzt ab: ein Teardown ist still, alles andere wird geloggt. Für Aufrufer, die tatsächlich warten, lehnen `start()` und `importScript()` unverändert ab.
@@ -223,6 +219,10 @@ Grenzen des Slot-Umzugs, in Chromium gemessen (2026-08-18, Reviewer 6):
 
 - **Ein `<slot>`, der in einen entitylosen Bereich derselben Shadow Root zieht, meldet sich nirgends.** `slotchange` ist nicht `composed` und endet an der Shadow-Grenze; hört keine Entity derselben Shadow Root zu, bleiben beide Kanäle auf der alten Entity stehen. Dasselbe gilt für das Fenster zwischen `slot.remove()` und dem Wiedereinhängen. Ein Beobachter, der das schließt, ist eine eigene Entscheidung — siehe die drei Wege in `view-layer-remediation-plan-2.md`, Paket 6.
 - **Ein projiziertes `<shae-ent>`, das im Ziel-Namespace keinen antwortenden Vorfahren findet, behält seine alte Bindung.** `broadcastEvent(ComponentContext.ReRequestParent)` heißt »frag noch einmal und behalte, was du hast, bis eine andere Antwort kommt« — ohne Antwort bleiben `entParentNode` und `viewComponent.parent` stehen. Der Property-Kanal ist davon nicht betroffen, er kennt keine Namespaces.
+
+Grenze der Component-Ablösung, gemessen (2026-08-18):
+
+- **Ein `ViewComponent`, dessen uuid ein zweites beansprucht hat, überlebt die flächigen Abbauwege seines Contexts.** `clear()`, `removeSubTree()` und `dispose()` gehen über `#components`, und dort liegt je uuid genau ein Eintrag — der des zuletzt beigetretenen. `destroyComponent(component)` bekommt dagegen eine Instanz genannt und löst genau diese ab, auch die verdrängte. Der Namensvetter behält seinen `context` und meldet weiter `isDestroyed === false`. Die Folge davon fängt der Wächter in `changeOrder()` ab (`ComponentContext.ts:336-340`); die Ablösung selbst ist bewusst nicht auf diesen Weg erweitert.
 
 ### 3.4 LOW (Auswahl)
 
@@ -265,7 +265,7 @@ Grenzen des Slot-Umzugs, in Chromium gemessen (2026-08-18, Reviewer 6):
 
 ### 4.1 Inventar
 
-**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 15 Dateien, 358 Fälle):
+**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 15 Dateien, 364 Fälle):
 `Kernel.spec.ts` (1602 LoC), `Registry.spec.ts`, `ShadowObject.spec.ts`, `SignalsPath.spec.ts`, `ShadowEnv.spec.ts`, `LocalShadowObjectEnv.spec.ts`, `RemoteWorkerEnv.spec.ts`, `ViewComponent.spec.ts`, `ComponentContext.spec.ts`, `ComponentChanges.spec.ts`, `ComponentMemory.spec.ts`, `props-utils.spec.ts`, `ConsoleLogger.spec.ts`, `ConsoleLogger.storage.spec.ts`, `elements/propValueConverters.spec.ts`.
 
 **`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 22 Dateien, 323 Fälle — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `ent-element-attributes`, `ent-element-events`, `ent-element-namespace`, `ent-element-slot-move`, `ent-element-teardown`, `ent-element-upgrade`, `forward-custom-events`, `local-env-entities`, `prop-element-host`, `prop-element-lifecycle`, `prop-element-registration-order`, `prop-element-types`, `remove-and-append-e`, `send-events`, `view-component-context-switch`, `worker-element-attributes`, `worker-element-teardown`, `emit-helper/emit-helper`.

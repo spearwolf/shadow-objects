@@ -456,6 +456,25 @@ describe('ViewComponent', () => {
 
       expect(() => new ViewComponent('child', {parent: destroyed})).toThrow(/destroyed/);
     });
+
+    it('is destroyed by a clear() of its context and can re-join it', () => {
+      const ownCtx = ComponentContext.get('ViewComponent.spec-cleared');
+      const c = new ViewComponent('test', {context: ownCtx});
+      ownCtx.buildChangeTrails();
+
+      ownCtx.clear();
+
+      expect(c.isDestroyed).toBe(true);
+      expect(c.context).toBeUndefined();
+
+      c.context = ownCtx;
+
+      expect(c.isDestroyed).toBe(false);
+      expect(ownCtx.hasComponent(c)).toBe(true);
+      expect(c.setProperty('a', 1)).toBe(true);
+
+      ownCtx.dispose();
+    });
   });
 
   describe('joining a disposed context', () => {

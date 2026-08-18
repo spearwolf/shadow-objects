@@ -401,12 +401,12 @@ await env.ready();      // rejects with ShadowEnvDestroyedError
 `destroy()` rejects every `ready()` and `syncWait()` that is still pending instead of leaving it hanging.
 
 ```typescript
-ctx.clear();     // empty, but reusable under the same namespace
+ctx.clear();     // components destroyed, but reusable under the same namespace
 ctx.dispose();   // final: components destroyed, namespace released, ctx.isDisposed === true
 ComponentContext.get(ns);                  // a fresh context
 new ViewComponent('a', {context: ctx});    // throws ComponentContextDisposedError
 ```
 
-`clear()` does not destroy the components you still hold — they report `isDestroyed === false` and go deaf. `dispose()` destroys them first.
+Both destroy the components they hold — each one reports `isDestroyed === true` afterwards and has no context. The difference is the namespace: `clear()` keeps it and takes components back in (`vc.context = ctx`), `dispose()` releases it and rejects every join.
 
 Tear down in this order: `env.destroy()`, then `ctx.dispose()`.
