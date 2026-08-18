@@ -269,6 +269,31 @@ describe('ComponentContext', () => {
         expect(ctx.hasComponent(vc), `hasComponent(${vc.token})`).toBe(false);
       }
     });
+
+    it('detaches a component whose uuid a namesake has taken away', () => {
+      ctx = makeContext();
+      const displaced = new ViewComponent('displaced', {context: ctx, uuid: 'twin'});
+      const namesake = new ViewComponent('namesake', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      ctx.clear();
+
+      for (const vc of [displaced, namesake]) {
+        expect(vc.isDestroyed, `${vc.token}.isDestroyed`).toBe(true);
+        expect(vc.context, `${vc.token}.context`).toBeUndefined();
+      }
+    });
+
+    it('stays silent on a second call', () => {
+      ctx = makeContext();
+      const root = new ViewComponent('root', {context: ctx});
+      new ViewComponent('child', {context: ctx, parent: root});
+      ctx.buildChangeTrails();
+
+      ctx.clear();
+
+      expect(() => ctx.clear()).not.toThrow();
+    });
   });
 
   describe('destroyComponent', () => {
@@ -315,6 +340,51 @@ describe('ComponentContext', () => {
       expect(a.isDestroyed).toBe(false);
       expect(ctx.hasComponent(a)).toBe(true);
       expect(ctx.buildChangeTrails()).toEqual([]);
+    });
+
+    it('releases a component whose uuid a namesake has taken away without taking the namesake down', () => {
+      ctx = makeContext();
+      const displaced = new ViewComponent('displaced', {context: ctx, uuid: 'twin'});
+      const namesake = new ViewComponent('namesake', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      ctx.destroyComponent(displaced);
+
+      expect(displaced.isDestroyed).toBe(true);
+      expect(ctx.buildChangeTrails()).toEqual([]);
+      expect(namesake.isDestroyed).toBe(false);
+      expect(ctx.hasComponent(namesake)).toBe(true);
+    });
+
+    it('leaves a namesake in place when the component it displaced was a root and the namesake is not', () => {
+      ctx = makeContext();
+      const parent = new ViewComponent('parent', {context: ctx});
+      const displaced = new ViewComponent('displaced', {context: ctx, uuid: 'twin'});
+      const namesake = new ViewComponent('namesake', {context: ctx, uuid: 'twin', parent});
+      ctx.buildChangeTrails();
+
+      ctx.destroyComponent(displaced);
+
+      expect(displaced.isDestroyed).toBe(true);
+      expect(ctx.buildChangeTrails()).toEqual([]);
+      expect(ctx.isRootComponent(namesake)).toBe(false);
+      expect(ctx.getChildren(parent).map((c) => c.token)).toEqual(['namesake']);
+    });
+
+    it('leaves a namesake in place when the component it displaced was itself a child', () => {
+      ctx = makeContext();
+      const oldParent = new ViewComponent('oldParent', {context: ctx});
+      const newParent = new ViewComponent('newParent', {context: ctx});
+      const displaced = new ViewComponent('displaced', {context: ctx, uuid: 'twin', parent: oldParent});
+      const namesake = new ViewComponent('namesake', {context: ctx, uuid: 'twin', parent: newParent});
+      ctx.buildChangeTrails();
+
+      ctx.destroyComponent(displaced);
+
+      expect(displaced.isDestroyed).toBe(true);
+      expect(ctx.buildChangeTrails()).toEqual([]);
+      expect(ctx.isRootComponent(namesake)).toBe(false);
+      expect(ctx.getChildren(newParent).map((c) => c.token)).toEqual(['namesake']);
     });
   });
 
@@ -383,6 +453,20 @@ describe('ComponentContext', () => {
       expect(parent.isDestroyed).toBe(true);
       expect(child.isDestroyed).toBe(true);
       expect(grandChild.isDestroyed).toBe(true);
+    });
+
+    it('destroys a component whose uuid a namesake has taken away', () => {
+      ctx = makeContext();
+      const displaced = new ViewComponent('displaced', {context: ctx, uuid: 'twin'});
+      const namesake = new ViewComponent('namesake', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      ctx.dispose();
+
+      for (const vc of [displaced, namesake]) {
+        expect(vc.isDestroyed, `${vc.token}.isDestroyed`).toBe(true);
+        expect(vc.context, `${vc.token}.context`).toBeUndefined();
+      }
     });
 
     it('holds no components afterwards', () => {

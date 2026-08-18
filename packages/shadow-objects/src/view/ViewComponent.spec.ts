@@ -582,6 +582,23 @@ describe('ViewComponent', () => {
 
       ownCtx.dispose();
     });
+
+    it('takes the listeners off a component whose uuid a namesake has taken away', () => {
+      const ownCtx = ComponentContext.get('ViewComponent.spec-cleared-namesake');
+      const displaced = new ViewComponent('displaced', {context: ownCtx, uuid: 'twin'});
+      new ViewComponent('namesake', {context: ownCtx, uuid: 'twin'});
+      const spy = vi.fn();
+      on(displaced, 'testEvent', spy);
+      ownCtx.buildChangeTrails();
+
+      ownCtx.clear();
+
+      displaced.dispatchEvent('testEvent', 1, false);
+
+      expect(spy).not.toHaveBeenCalled();
+
+      ownCtx.dispose();
+    });
   });
 
   describe('joining a disposed context', () => {

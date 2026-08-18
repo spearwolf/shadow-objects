@@ -815,7 +815,7 @@ This reaches the subscriptions `<shae-ent>` holds on its own component for the t
 
 ### The destroyed state
 
-After `destroy()` the component is detached from its `ComponentContext`: it no longer appears in any change trail and no longer has a corresponding Entity. `isDestroyed` reports `true`. The context reaches the same state from its own side -- `ComponentContext.clear()`, `destroyComponent()`, `removeSubTree()` and `dispose()` leave the components they take down exactly here. The three that sweep the whole context -- `clear()`, `removeSubTree()` and `dispose()` -- reach one component per uuid, so a component whose uuid a later `ViewComponent` has claimed is not among them: it keeps its context and goes on reporting `isDestroyed === false`. `destroyComponent(component)` is the one that takes an instance, and it releases the instance it is given, claimed uuid or not. Holding on to a destroyed component is safe, and its behaviour is uniform. One thing the table below does not cover: `vc.context = null` reaches `isDestroyed === true` as well, and every row holds for it except the one about `dispatchEvent` -- a component that only left its context keeps its subscriptions and an own `dispatchEvent`, because it can be taken back in.
+After `destroy()` the component is detached from its `ComponentContext`: it no longer appears in any change trail and no longer has a corresponding Entity. `isDestroyed` reports `true`. The context reaches the same state from its own side -- `ComponentContext.clear()`, `destroyComponent()`, `removeSubTree()` and `dispose()` leave the components they take down exactly here. `clear()` and `dispose()` reach every component that has joined the context, including one whose uuid a later `ViewComponent` has claimed. `removeSubTree(uuid)` is addressed to an entry: it takes down the instance holding it together with its descendants, and an instance a later join has displaced from that uuid stands in no subtree, so it is left standing. `destroyComponent(component)` releases exactly the instance it is given and leaves the entry -- and with it the entity -- standing when a namesake holds it. Holding on to a destroyed component is safe, and its behaviour is uniform. One thing the table below does not cover: `vc.context = null` reaches `isDestroyed === true` as well, and every row holds for it except the one about `dispatchEvent` -- a component that only left its context keeps its subscriptions and an own `dispatchEvent`, because it can be taken back in.
 
 | Operation | Behaviour while destroyed |
 | :--- | :--- |
@@ -958,13 +958,13 @@ Three event names that arrive as ordinary events on a `ViewComponent`; see [Rece
 | `traverseLevelOrderBFS()` | Every component in the context, breadth-first from the roots. |
 | `destroyComponent(component)` | Write the destroy change for a component, promote its children to roots and detach the component from this context. |
 | `addToChildren(parent, child)` | Insert `child` into the children of `parent`. Throws a plain `Error` when the context does not hold `parent`. |
-| `removeFromParent(childUuid, parent)` | Detach a child from that parent and make it a root. Note the asymmetry: the child is named by uuid, the parent by instance. |
-| `moveToRoot(childUuid)` | Make a component a root without naming its previous parent. |
+| `removeFromParent(component, parent)` | Detach a component from that parent and make it a root. A no-op when a later `ViewComponent` has since claimed `component`'s uuid. |
+| `moveToRoot(component)` | Make a component a root without naming its previous parent. A no-op when a later `ViewComponent` has since claimed `component`'s uuid. |
 | `removeSubTree(uuid)` | Destroy a component and all its descendants **without** writing anything to a change trail. Each of them is detached from this context. |
 | `changeToken(component, token?)` | Record a token change for a component. |
 | `changeOrder(component)` | Re-sort a component among its siblings after its `order` changed, and record the new value. A component this context does not hold is ignored. |
 
-`destroyComponent()` leaves the `ViewComponent` you pass destroyed: it reports `isDestroyed === true` and holds no context any more. `ViewComponent.destroy()` reaches the same state from the other side, and that is the call an application makes.
+`destroyComponent()` leaves the `ViewComponent` you pass destroyed: it reports `isDestroyed === true` and holds no context any more. `ViewComponent.destroy()` reaches the same state from the other side, and that is the call an application makes. It releases exactly the instance named: if a later `ViewComponent` has since claimed the same uuid, that component's entry and entity are unaffected.
 
 #### Properties
 
@@ -1004,7 +1004,7 @@ A change trail returned by `buildChangeTrails()` is a snapshot: nothing in the l
 
 Removes all components without writing anything to a change trail. The context stays registered under its namespace and can be used again afterwards. This is the reset you want between tests or when swapping a whole scene.
 
-Every `ViewComponent` the context still holds is destroyed on the way out: it reports `isDestroyed === true`, holds no context any more, and every `setProperty` on it returns `false` and writes nothing. See [The destroyed state](#the-destroyed-state) for what such a component still answers. "Still holds" is one component per uuid -- where a second `ViewComponent` has joined under the uuid of an earlier one, the earlier one is not in the context any more and stays as it is.
+Every `ViewComponent` that has joined the context is destroyed on the way out, not one per uuid: where a second `ViewComponent` has joined under the uuid of an earlier one, both go down. Each reports `isDestroyed === true`, holds no context any more, and every `setProperty` on it returns `false` and writes nothing. See [The destroyed state](#the-destroyed-state) for what such a component still answers.
 
 Assigning the context takes the component back in under the same uuid, with a fresh `CreateEntities` change -- the same revival that follows a `ViewComponent.destroy()`.
 

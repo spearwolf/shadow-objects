@@ -197,10 +197,10 @@ export class ViewComponent {
 
   removeFromParent() {
     if (this.#parent) {
-      this.#context?.removeFromParent(this.uuid, this.#parent);
+      this.#context?.removeFromParent(this, this.#parent);
       this.#parent = undefined;
     } else {
-      this.#context?.moveToRoot(this.uuid);
+      this.#context?.moveToRoot(this);
     }
   }
 
