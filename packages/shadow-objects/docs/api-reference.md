@@ -646,7 +646,7 @@ new ViewComponent('child', { parent: scoped, context: ComponentContext.get('leve
 
 #### Assigning a context
 
-Assigning `null` or `undefined` to `context` **destroys** the component: it leaves the context it was in, `isDestroyed` reports `true`, and the corresponding Entity goes away. It is the same teardown `destroy()` performs.
+Assigning `null` or `undefined` to `context` **detaches** the component: it leaves the context it was in, it no longer appears in any change trail, `isDestroyed` reports `true`, and the corresponding Entity goes away. The component keeps its event subscriptions and everything an integration installed on the instance, because it can be taken back in. `destroy()` goes one step further and takes both off.
 
 Assigning a *different* context moves the component, and it does not travel empty. Its properties are carried over into the new context along with the equality function registered for each key, so the Entity arrives in the other environment with the state it had, not as a bare token. The `token`, the `order` and `autoDestructionOnParentRemoval` come along too.
 
@@ -665,7 +665,7 @@ vc.context = level2;    // score travels along
 vc.parent;              // undefined -- the hierarchy did not
 root.addChild(vc);      // re-attach it on the far side
 
-vc.context = null;      // destroyed
+vc.context = null;      // detached from the context
 vc.isDestroyed;         // true
 ```
 
@@ -781,6 +781,8 @@ const unsubscribe = on(component, 'msg-from-shadow', (data) => {
 unsubscribe();      // or off(component, 'msg-from-shadow')
 ```
 
+`destroy()` takes every `on()` and `once()` subscription off the component: a listener registered before the call hears no later `dispatchEvent()`, and the unsubscribe function it returned has nothing left to do. A listener registered afterwards is heard as usual -- the call takes off what lies on the component in that moment, it does not seal it, so a component revived through `context` needs its subscriptions again. A promise from `onceAsync()` stays outside this and settles only when the event it waits for arrives. Leaving a context is no teardown in this sense: `vc.context = otherCtx` and `vc.context = null` keep both the subscriptions and an own `dispatchEvent`.
+
 Four events arrive from the framework itself rather than from a Shadow Object:
 
 | Event | When |
@@ -807,19 +809,22 @@ on(component, ComponentContext.ReRequestParentRoots, () => {
 
 #### `destroy()`
 
-Removes the component from the hierarchy and signals destruction to the Shadow Environment. Calling it more than once is safe.
+Removes the component from the hierarchy and signals destruction to the Shadow Environment. It also takes every `on()` and `once()` subscription off the component and drops a `dispatchEvent` an integration installed on the instance, which uncovers the method of the prototype again. Calling it more than once is safe: each call takes off what lies on the component at that moment.
+
+This reaches the subscriptions `<shae-ent>` holds on its own component for the three re-request events, and the element sets them up once. A context that takes its components down as a whole -- `clear()`, `dispose()`, `destroyComponent()`, `removeSubTree()` -- therefore leaves the elements above them deaf to every later re-request round, and a `vc.context = ctx` that revives the component does not bring the subscriptions back. Taking such an element out of the document and putting it back changes nothing about that: it keeps the same component, and the effect holding the subscriptions hangs on a signal that is written once. Only a new `<shae-ent>` in that place answers again.
 
 ### The destroyed state
 
-After `destroy()` the component is detached from its `ComponentContext`: it no longer appears in any change trail and no longer has a corresponding Entity. `isDestroyed` reports `true`. The context reaches the same state from its own side -- `ComponentContext.clear()`, `destroyComponent()`, `removeSubTree()` and `dispose()` leave the components they take down exactly here. The three that sweep the whole context -- `clear()`, `removeSubTree()` and `dispose()` -- reach one component per uuid, so a component whose uuid a later `ViewComponent` has claimed is not among them: it keeps its context and goes on reporting `isDestroyed === false`. `destroyComponent(component)` is the one that takes an instance, and it releases the instance it is given, claimed uuid or not. Holding on to a destroyed component is safe, and its behaviour is uniform:
+After `destroy()` the component is detached from its `ComponentContext`: it no longer appears in any change trail and no longer has a corresponding Entity. `isDestroyed` reports `true`. The context reaches the same state from its own side -- `ComponentContext.clear()`, `destroyComponent()`, `removeSubTree()` and `dispose()` leave the components they take down exactly here. The three that sweep the whole context -- `clear()`, `removeSubTree()` and `dispose()` -- reach one component per uuid, so a component whose uuid a later `ViewComponent` has claimed is not among them: it keeps its context and goes on reporting `isDestroyed === false`. `destroyComponent(component)` is the one that takes an instance, and it releases the instance it is given, claimed uuid or not. Holding on to a destroyed component is safe, and its behaviour is uniform. One thing the table below does not cover: `vc.context = null` reaches `isDestroyed === true` as well, and every row holds for it except the one about `dispatchEvent` -- a component that only left its context keeps its subscriptions and an own `dispatchEvent`, because it can be taken back in.
 
 | Operation | Behaviour while destroyed |
 | :--- | :--- |
 | `token`, `order` | Assignment updates the local value, nothing is sent |
 | `setProperty`, `removeProperty` | Ignored. `setProperty` returns `false` |
 | `dispatchShadowObjectsEvent` | Ignored |
-| `dispatchEvent` | Still notifies the component's own listeners, children are not traversed |
-| `removeFromParent`, `destroy` | Ignored |
+| `dispatchEvent` | Notifies the listeners registered since the `destroy()`, children are not traversed |
+| `removeFromParent` | Ignored |
+| `destroy` | Nothing left to detach, and it takes off whatever lies on the component at that moment |
 | `addChild`, `parent = …` | Throws a `ViewComponentError` |
 
 The split is deliberate: operations that only concern the component itself are absorbed, because a renderer may still be flushing state at teardown. Operations that would tie a second, live component to a dead one throw, because silently ignoring them would leave the caller with a wrong picture of the entity tree. As above, catch that throw by narrowing to `Error` and reading `error.name` -- the class is not exported.
@@ -835,6 +840,8 @@ component.isDestroyed; // true
 component.context = ComponentContext.get();
 component.isDestroyed; // false -- a new Entity is created with the same uuid
 ```
+
+A component revived after a `destroy()` carries no subscription from before it: `on(component, …)` has to be set up again, and an integration that had installed its own `dispatchEvent` has to install it again. One revived after a `vc.context = null` still carries both -- that path detaches the component, it does not silence it.
 
 Assigning a context that has been disposed throws a `ComponentContextDisposedError` and changes nothing: a component that still lives in another context stays there. Leaving the old context is only worth it if the new one can actually be joined.
 

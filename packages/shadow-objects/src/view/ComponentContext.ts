@@ -180,8 +180,8 @@ export class ComponentContext {
     }
 
     // a component this context has torn down must not keep pointing at it, otherwise it keeps
-    // reporting itself as alive. ViewComponent.destroy() drops that pointer before it calls
-    // back in here, so this branch is taken at most once
+    // reporting itself as alive. A component drops that pointer as it leaves its context, before
+    // it calls back in here, so this branch is taken at most once
     if (component.context === this) {
       component.destroy();
     }

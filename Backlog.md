@@ -164,7 +164,7 @@ Die Kinderliste wurde zurückgesetzt, ohne die Kinder zu benachrichtigen: sie ze
 
 **[VIEW-20]** ~~Der zerstörte Zustand von `ViewComponent` ist undefiniert.~~ **✅ Behoben**
 *Ort:* `ViewComponent.ts`.
-Je nachdem, ob eine Aufrufstelle `?.` benutzte, warf dieselbe Situation einen `TypeError`, war ein stiller No-op oder meldete einen falschen fremden Kontext. Jetzt gilt: Mutationen, die nur die Komponente selbst betreffen, werden ignoriert; `dispatchEvent` benachrichtigt weiterhin die eigenen Listener ohne Kinder-Traversierung; `addChild` und der `parent`-Setter werfen einen `ViewComponentError`, der die Zerstörung benennt. Neu: `ViewComponent.isDestroyed`.
+Je nachdem, ob eine Aufrufstelle `?.` benutzte, warf dieselbe Situation einen `TypeError`, war ein stiller No-op oder meldete einen falschen fremden Kontext. Jetzt gilt: Mutationen, die nur die Komponente selbst betreffen, werden ignoriert; `dispatchEvent` benachrichtigt die seit dem Abbau registrierten Listener ohne Kinder-Traversierung; `addChild` und der `parent`-Setter werfen einen `ViewComponentError`, der die Zerstörung benennt. Neu: `ViewComponent.isDestroyed`.
 
 **[VIEW-21]** ~~Token-Normalisierung fehlt in Konstruktor und `changeToken()`.~~ **✅ Behoben**
 *Ort:* `ViewComponent.ts`, `ComponentChanges.ts`.
@@ -222,6 +222,7 @@ Grenze des Slot-Umzugs nach einem Rundlauf des Shadow-Hosts, in Chromium gemesse
 Grenze der Component-Ablösung, gemessen (2026-08-18):
 
 - **Ein `ViewComponent`, dessen uuid ein zweites beansprucht hat, überlebt die flächigen Abbauwege seines Contexts.** `clear()`, `removeSubTree()` und `dispose()` gehen über `#components`, und dort liegt je uuid genau ein Eintrag — der des zuletzt beigetretenen. `destroyComponent(component)` bekommt dagegen eine Instanz genannt und löst genau diese ab, auch die verdrängte. Der Namensvetter behält seinen `context` und meldet weiter `isDestroyed === false`. Die Folge davon fängt der Wächter in `changeOrder()` ab (`ComponentContext.ts:336-340`); die Ablösung selbst ist bewusst nicht auf diesen Weg erweitert.
+- **Ein `<shae-ent>`, dessen `ViewComponent` ein flächiger Abbauweg beendet hat, hört keine Re-Request-Runde mehr.** Das Element abonniert `ReRequestParentRoots`, `ReRequestParent` und `ReRequestEntHost` genau einmal auf seiner Komponente (`ShaeEntElement.ts:257-263`, gespeist aus `viewComponent$`, das einmal geschrieben und nie zurückgesetzt wird). `clear()`, `dispose()`, `destroyComponent(vc)` und `removeSubTree()` laufen über `ViewComponent.destroy()`, das die Abonnements mitnimmt; ein anschließendes `vc.context = ctx` belebt die Komponente, nicht die Abonnements. Gemessen in Chromium (2026-08-18): eine Runde vor dem `clear()` kommt an, dieselbe Runde nach `clear()` und Wiederbelebung nicht. Ein Aus- und Wiedereinhängen des Elements hilft nicht — es behält dieselbe Komponente; nur ein neues `<shae-ent>` an dieser Stelle antwortet wieder (beides in Chromium gemessen). Festgehalten von `ent-element-context-clear.test.js`. **An Paket 4 übergeben** (`view-layer-remediation-plan-3.md`): dort wird entschieden, ob der flächige Abbau über `destroy()` läuft (still, wie jetzt) oder über eine Ablösung, die die Abonnements stehen lässt.
 
 ### 3.4 LOW (Auswahl)
 

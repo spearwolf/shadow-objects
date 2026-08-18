@@ -404,6 +404,24 @@ describe('shae-ent the dispatchEvent patch', () => {
     expect(domEvents).to.have.lengthOf(1);
   });
 
+  it('keeps an eventize listener on its ViewComponent across a remove and a re-append', () => {
+    const {p} = mountPK();
+    const container = p.parentElement;
+    const vc = p.viewComponent;
+
+    const calls = [];
+    on(vc, 'foo', (data) => calls.push(data));
+
+    p.remove();
+    container.append(p);
+
+    expect(p.viewComponent).to.equal(vc);
+
+    p.viewComponent.dispatchEvent('foo', {val: 1}, false);
+
+    expect(calls).to.have.lengthOf(1);
+  });
+
   it('a re-append leaves the signal, the attribute and the patch saying the same thing', () => {
     const {p} = mountPK({pAttrs: 'forward-custom-events=","'});
     const container = p.parentElement;

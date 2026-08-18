@@ -187,6 +187,40 @@ describe('ViewComponent', () => {
     otherCtx.clear();
   });
 
+  it('keeps its listeners when it moves to another context', () => {
+    // a move hands the component on, it does not end it: what a consumer subscribed to keeps
+    // answering at the new place
+    const otherCtx = ComponentContext.get('ViewComponent.spec-move');
+
+    const c = new ViewComponent('test');
+    const spy = vi.fn();
+    on(c, 'testEvent', spy);
+
+    c.context = otherCtx;
+
+    c.dispatchEvent('testEvent', 1, false);
+
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    otherCtx.dispose();
+  });
+
+  it('keeps its listeners when it leaves its context without joining another', () => {
+    // the path a <shae-ent> takes when it leaves the document: the component is handed back and
+    // taken in again on re-append, so everything a consumer put on it has to survive the round
+    const c = new ViewComponent('test');
+    const spy = vi.fn();
+    on(c, 'testEvent', spy);
+
+    c.context = undefined;
+
+    expect(c.isDestroyed).toBe(true);
+
+    c.dispatchEvent('testEvent', 1, false);
+
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
   it('should dispatch event without traverseChildren', () => {
     const parent = new ViewComponent('parent');
     const child = new ViewComponent('child', parent);
@@ -422,7 +456,8 @@ describe('ViewComponent', () => {
       expect(c.isDestroyed).toBe(true);
     });
 
-    it('still notifies its own listeners on dispatchEvent, without traversing children', () => {
+    // the teardown takes off what lies on the component in that moment, it does not seal it
+    it('notifies a listener registered after the teardown, without traversing children', () => {
       const c = makeDestroyed();
       const spy = vi.fn();
       on(c, 'testEvent', spy);
@@ -431,6 +466,47 @@ describe('ViewComponent', () => {
 
       expect(spy).toHaveBeenCalledTimes(1);
       expect(spy).toHaveBeenCalledWith(42);
+    });
+
+    it('takes the listeners a consumer left on it off', () => {
+      const c = new ViewComponent('test');
+      const spy = vi.fn();
+      const unsubscribe = on(c, 'testEvent', spy);
+
+      ctx.buildChangeTrails();
+      c.destroy();
+
+      c.dispatchEvent('testEvent', 42, false);
+
+      expect(spy).not.toHaveBeenCalled();
+      expect(() => unsubscribe()).not.toThrow();
+    });
+
+    it('takes the listeners off a component that only left its context', () => {
+      const c = new ViewComponent('test');
+      const spy = vi.fn();
+      on(c, 'testEvent', spy);
+      ctx.buildChangeTrails();
+
+      c.context = null;
+      c.destroy();
+
+      c.dispatchEvent('testEvent', 1, false);
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('drops a dispatchEvent installed on the instance', () => {
+      const c = new ViewComponent('test');
+
+      // the shape an integration installs it in
+      Object.defineProperty(c, 'dispatchEvent', {value: vi.fn(), writable: true, configurable: true});
+      expect(Object.hasOwn(c, 'dispatchEvent')).toBe(true);
+
+      c.destroy();
+
+      expect(Object.hasOwn(c, 'dispatchEvent')).toBe(false);
+      expect(c.dispatchEvent).toBe(ViewComponent.prototype.dispatchEvent);
     });
 
     it('rejects addChild with an explicit error instead of silently dropping the child', () => {
@@ -472,6 +548,37 @@ describe('ViewComponent', () => {
       expect(c.isDestroyed).toBe(false);
       expect(ownCtx.hasComponent(c)).toBe(true);
       expect(c.setProperty('a', 1)).toBe(true);
+
+      ownCtx.dispose();
+    });
+
+    it('takes off on a second destroy() what has been put on the component since the first', () => {
+      const c = makeDestroyed();
+      const spy = vi.fn();
+      on(c, 'testEvent', spy);
+      Object.defineProperty(c, 'dispatchEvent', {value: vi.fn(), writable: true, configurable: true});
+
+      c.destroy();
+
+      expect(Object.hasOwn(c, 'dispatchEvent')).toBe(false);
+
+      c.dispatchEvent('testEvent', 1, false);
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('takes the listeners off when its context is cleared', () => {
+      const ownCtx = ComponentContext.get('ViewComponent.spec-cleared-listeners');
+      const c = new ViewComponent('test', {context: ownCtx});
+      const spy = vi.fn();
+      on(c, 'testEvent', spy);
+      ownCtx.buildChangeTrails();
+
+      ownCtx.clear();
+
+      c.dispatchEvent('testEvent', 1, false);
+
+      expect(spy).not.toHaveBeenCalled();
 
       ownCtx.dispose();
     });

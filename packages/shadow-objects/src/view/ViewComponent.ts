@@ -1,4 +1,4 @@
-import {emit, eventize} from '@spearwolf/eventize';
+import {emit, eventize, off} from '@spearwolf/eventize';
 import {VoidToken} from '../constants.js';
 import {generateUUID} from '../utils/generateUUID.js';
 import {ComponentContext, ComponentContextDisposedError} from './ComponentContext.js';
@@ -84,7 +84,9 @@ export class ViewComponent {
     const previousContext = this.#context;
 
     if (this.#context) {
-      this.destroy();
+      // leaving, not ending: an element that leaves the document hands its context back and takes
+      // the same component in again when it returns, so the subscriptions on it have to survive
+      this.#leaveContext();
     }
 
     this.#context = next;
@@ -111,10 +113,17 @@ export class ViewComponent {
    * A destroyed component is detached from its {@link ComponentContext}: it no longer appears
    * in any change trail and no longer has a corresponding entity.
    *
-   * Every mutation that only concerns the component itself (`token`, `order`, properties, events,
-   * `removeFromParent`, `destroy`) is silently ignored while destroyed. Operations that would tie
-   * a second, live component to it (`addChild`, the `parent` setter) throw instead, because
-   * ignoring them would leave the caller with a wrong picture of the entity tree.
+   * Every mutation that only concerns the component itself (`token`, `order`, properties,
+   * `removeFromParent`) is silently ignored while destroyed. Operations that would tie a second,
+   * live component to it (`addChild`, the `parent` setter) throw instead, because ignoring them
+   * would leave the caller with a wrong picture of the entity tree.
+   * {@link ViewComponent#destroy} finds nothing left to detach and still takes off whatever lies
+   * on the component at that moment.
+   *
+   * Assigning `null` or `undefined` to {@link ViewComponent#context} reports the same state: it
+   * detaches the component without silencing it, so {@link ViewComponent#dispatchEvent} reaches
+   * every listener on it. After a {@link ViewComponent#destroy} it reaches those registered since.
+   * Children are not traversed either way.
    *
    * Assigning a {@link ViewComponent#context} revives the component under the same uuid.
    */
@@ -244,13 +253,39 @@ export class ViewComponent {
     }
   }
 
-  destroy() {
+  /**
+   * Leave the context without ending the component. What a consumer put on the instance — event
+   * subscriptions, an own `dispatchEvent` — belongs to the component and not to its membership in
+   * a context, so a component that is taken back in keeps answering with all of it.
+   */
+  #leaveContext() {
     this.removeFromParent();
 
     // the context pointer goes first: destroyComponent() detaches every component that still
-    // names the context, and would call straight back in here otherwise
+    // names the context, and would call destroy() on it otherwise
     const context = this.#context;
     this.#context = undefined;
     context?.destroyComponent(this);
+  }
+
+  /**
+   * End the component: it leaves its {@link ComponentContext} and goes silent. Every `on()` and
+   * `once()` subscription made on it is removed, and a `dispatchEvent` an integration installed on
+   * the instance is dropped with them. A promise from `onceAsync()` is not reached and settles
+   * only when the event it waits for arrives.
+   *
+   * Calling it more than once is safe. Each call takes off what is on the component at that
+   * moment — a subscription made afterwards is heard again.
+   */
+  destroy() {
+    this.#leaveContext();
+
+    // an integration may shadow `dispatchEvent` on the instance; dropping the own property
+    // uncovers the method on the prototype again, it does not remove it
+    if (Object.hasOwn(this, 'dispatchEvent')) {
+      delete (this as {dispatchEvent?: ViewComponent['dispatchEvent']}).dispatchEvent;
+    }
+
+    off(this);
   }
 }
