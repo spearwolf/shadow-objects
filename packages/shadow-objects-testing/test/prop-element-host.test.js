@@ -382,6 +382,37 @@ describe('shae-prop follows its host entity', () => {
     expect(prop.entNode?.id, 'the slot takes its projection along').to.equal('sm-to');
     expect(deep.entNode?.id, 'down to the property below the assigned node').to.equal('sm-to');
   });
+
+  // The destination holds no entity, so nothing there can report the move — the entity that gave
+  // the slot away is the only side that still knows about it.
+  it('follows the slot into a place with no entity above it', async () => {
+    const container = mount(
+      '<shae-ent id="sn-outer" token="outer">' +
+        '<div id="sn-div">' +
+        '<shae-prop id="sn-prop" name="x" value="1"></shae-prop>' +
+        '<div id="sn-wrap"><shae-prop id="sn-deep" name="y" value="2"></shae-prop></div>' +
+        '</div>' +
+        '</shae-ent>',
+    );
+    await Promise.all(['shae-ent', 'shae-prop'].map((name) => customElements.whenDefined(name)));
+
+    const shadowRoot = container.querySelector('#sn-div').attachShadow({mode: 'open'});
+    shadowRoot.innerHTML = '<shae-ent id="sn-from" token="from"><slot id="sn-slot"></slot></shae-ent><div id="sn-plain"></div>';
+    await nextTask();
+
+    const prop = container.querySelector('#sn-prop');
+    const deep = container.querySelector('#sn-deep');
+
+    expect(prop.entNode?.id, 'the slot projects the property into the entity holding it').to.equal('sn-from');
+    expect(deep.entNode?.id, 'and the one below the assigned node with it').to.equal('sn-from');
+
+    shadowRoot.getElementById('sn-plain').appendChild(shadowRoot.getElementById('sn-slot'));
+    await nextTask();
+
+    // the ascent leaves the shadow root over its host and arrives at the entity around it
+    expect(prop.entNode?.id, 'no entity stands above the slot any more').to.equal('sn-outer');
+    expect(deep.entNode?.id, 'down to the property below the assigned node').to.equal('sn-outer');
+  });
 });
 
 /**

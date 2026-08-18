@@ -263,11 +263,12 @@ another entity, a host that leaves the tree. A move binds anew right away; a cha
 element takes effect one microtask later. With no entity above it at all, the property is set
 nowhere and reported once per element through the `ConsoleLogger` at warn level.
 
-The one move that is not followed: a `<slot>` that lands in a part of its shadow root with no
-entity above it, `slot.remove()` included. `slotchange` is not `composed`, nobody outside that
-shadow root hears it, and the property keeps the host it had. For a projected `<shae-ent>` there
-is a second one — a slot arriving in an entity whose namespace holds no answering ancestor leaves
-`entParentNode` where it was.
+Every slot move is followed, wherever the slot lands — `slot.remove()` included: the entity giving
+the slot away listens on the `<slot>` element itself and reports the loss. A projected `<shae-ent>`
+that finds nobody of its own namespace above the slot has no parent afterwards, and a `<shae-prop>`
+with no entity above it has no host. One gap: after a shadow host has left the document and been
+inserted again, a slot in its shadow root is followed into another entity but no longer out of
+every entity.
 
 Removing the element, renaming it, or moving it to another entity clears the property it declared.
 A move within a single tick is a move, not a removal — the property travels with the element.

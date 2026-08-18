@@ -215,10 +215,9 @@ Der Abschluss-Wartelauf hängt ein `.finally()` an `waitForMessageOfType(worker,
 | **VIEW-12** | `ShaePropElement` parst numerische Attribute ohne Warnung — `Number("foo")` → `NaN` propagiert. Der `try`/`catch` um die Konvertierung meldet nur, was wirft; ein Konverter, der `NaN` zurückgibt, gilt als Erfolg. | `ShaePropElement.ts:205–240`, `propValueConverters.ts:24`, `:38`, `:47` |
 | **VIEW-13** | `ShaeEntElement.#dispatchRequestParent`-Microtask prüft `isConnected` nicht; nach Disconnect bubbelt ein Streu-Event. | `ShaeEntElement.ts:527–536` |
 
-Grenzen des Slot-Umzugs, in Chromium gemessen (2026-08-18, Reviewer 6):
+Grenze des Slot-Umzugs nach einem Rundlauf des Shadow-Hosts, in Chromium gemessen (2026-08-18):
 
-- **Ein `<slot>`, der in einen entitylosen Bereich derselben Shadow Root zieht, meldet sich nirgends.** `slotchange` ist nicht `composed` und endet an der Shadow-Grenze; hört keine Entity derselben Shadow Root zu, bleiben beide Kanäle auf der alten Entity stehen. Dasselbe gilt für das Fenster zwischen `slot.remove()` und dem Wiedereinhängen. Ein Beobachter, der das schließt, ist eine eigene Entscheidung — siehe die drei Wege in `view-layer-remediation-plan-2.md`, Paket 6.
-- **Ein projiziertes `<shae-ent>`, das im Ziel-Namespace keinen antwortenden Vorfahren findet, behält seine alte Bindung.** `broadcastEvent(ComponentContext.ReRequestParent)` heißt »frag noch einmal und behalte, was du hast, bis eine andere Antwort kommt« — ohne Antwort bleiben `entParentNode` und `viewComponent.parent` stehen. Der Property-Kanal ist davon nicht betroffen, er kennt keine Namespaces.
+- **Ein `<slot>`, dessen Shadow-Host einmal aus dem Dokument genommen und wieder eingehängt wurde, wird nicht mehr aus jeder Entity heraus verfolgt.** Die Entity über dem Slot nimmt ihn auf, wenn der Slot eine Zuweisung meldet, und gibt ihn beim Verlassen des Baums wieder ab; ein Host, der aus- und wieder eingehängt wird, meldet aber keine Zuweisung, weil sich innerhalb seiner Shadow Root nichts geändert hat. Danach trägt nur noch die Meldung der aufnehmenden Seite: ein Umzug in eine andere Entity wird weiter verfolgt, ein Umzug an eine Stelle ohne Entity darüber nicht. Festgehalten von `ent-element-slot-move.test.js`, Fall »misses a slot moving out of every entity after its shadow host left the document and came back«. Aufheben hieße, die Slots beim Connect einzusammeln (`querySelectorAll('slot')` je Entity plus Nähetest) — eigene Mechanik, eigene Entscheidung.
 
 Grenze der Component-Ablösung, gemessen (2026-08-18):
 

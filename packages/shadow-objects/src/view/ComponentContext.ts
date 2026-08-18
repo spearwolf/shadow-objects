@@ -442,9 +442,11 @@ export class ComponentContext {
    * really sits below `component` is settled on the receiving side, which is where the element
    * tree is visible — `data` is what carries the sender's identity there.
    *
-   * The two signals differ in what they ask for: {@link ComponentContext.ReRequestParentRoots}
-   * means "drop your parent and ask again", {@link ComponentContext.ReRequestParent} means "ask
-   * again and keep what you have until a different answer arrives".
+   * The two signals differ in the order they work in, and that decides more than it looks like:
+   * {@link ComponentContext.ReRequestParentRoots} releases the parent before asking, so a
+   * component that gets the same answer back re-joins its parent's children at the end;
+   * {@link ComponentContext.ReRequestParent} asks first and releases only where nobody answers,
+   * which leaves every component that is already bound where it stands, order included.
    */
   dispatchReRequestParentSiblings(component: ViewComponent, data: unknown = undefined) {
     const parent = component.parent;

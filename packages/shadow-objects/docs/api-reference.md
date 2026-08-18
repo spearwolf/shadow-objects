@@ -786,7 +786,7 @@ Four events arrive from the framework itself rather than from a Shadow Object:
 | Event | When |
 | :--- | :--- |
 | `ComponentContext.ReRequestParentRoots` | The component should drop its parent and ask for one again. |
-| `ComponentContext.ReRequestParent` | The component should ask for a parent again and keep the one it has until a different answer arrives. Receives the sender's identity as `data`. |
+| `ComponentContext.ReRequestParent` | The component should ask for a parent again and take whatever comes back — the same parent, a different one, or none at all where nobody answers. Receives the sender's identity as `data`. |
 | `ComponentContext.ReRequestEntHost` | The element behind the component should let the properties hanging on it look for their host entity again. `<shae-ent>` answers it on its own; a component without such an element has nothing to do here. |
 | `ContextLost` | The context rebuilt its changes from the Component Memory, so everything the component sent before is on its way again. Broadcast by `ComponentContext.reCreateChanges()`. |
 
@@ -926,7 +926,7 @@ Three event names that arrive as ordinary events on a `ViewComponent`; see [Rece
 | Name | Value | Meaning |
 | :--- | :--- | :--- |
 | `ComponentContext.ReRequestParentRoots` | `'re-request-parent-roots'` | Drop your parent and ask for one again. |
-| `ComponentContext.ReRequestParent` | `'re-request-parent'` | Ask again, and keep what you have until a different answer arrives. |
+| `ComponentContext.ReRequestParent` | `'re-request-parent'` | Ask again and take the answer, including the absence of one. |
 | `ComponentContext.ReRequestEntHost` | `'re-request-ent-host'` | Let the properties hanging on your element look for their host entity again. |
 
 ### Properties
@@ -1612,21 +1612,35 @@ Three things happen after that and are picked up on their own: an element that i
 a subclass of `ShaeEntElement`, say, loaded from a lazy module — and that is registered with
 `customElements.define()` while the markup around it already sits in the document takes the
 entities below it under itself; a change to a `<slot>` assignment re-binds what the slot projects,
-and so does the `<slot>` element moving into another entity; and an entity that stays in the tree
+and so does moving the `<slot>` element itself; and an entity that stays in the tree
 while its parent entity leaves it looks for the closest ancestor still answering. None of this
 needs the application to trigger anything.
 
-The slot move has two edges, and both leave a projected entity where it was. The first is a slot
-that lands in a part of its shadow root with no entity above it: `slotchange` is not `composed`
-and stops at the shadow boundary, so the only elements that can hear it are the entities of that
-same shadow root, and a slot outside all of them is heard by none. The window between
-`slot.remove()` and putting the slot back is the same case. The second is a slot that does arrive
-in another entity, but in a namespace where nothing above the projected entity answers: the
-projected entity is asked to look again and keeps what it has until a different answer arrives, so
-with no answer coming its `entParentNode` and its `viewComponent.parent` stay where they are. Both
-are visible by reading `entParentNode` after the move — it still names the entity the slot left.
-A `<shae-prop>` is affected by the first edge only; the second is a question about namespaces, and
-a property does not ask it.
+The move is followed wherever the slot goes: into another entity, into a part of the same shadow
+root with no entity above it, and `slot.remove()` along with the window until the slot is put back.
+`slotchange` is not `composed` and reaches only the shadow root the slot has landed in, so the
+entity giving the slot away hangs its listener on the `<slot>` element itself and hears the event
+wherever the slot ends up. What stands at the destination therefore decides nothing about whether
+the move is announced.
+
+One thing takes that listener away again. An entity picks a slot up when the slot reports an
+assignment, and it lets go on either of two occasions: when it stops being the closest entity above
+the slot, and when it leaves the tree. A shadow host that leaves the document and is inserted again
+reports no assignment, because the assignment inside its shadow root did not change — so the entity
+in it has let go and picks nothing back up.
+
+After such a round trip only the announcement from the receiving side is left. A move into another
+entity therefore carries as always, and it is also what ends the gap: the entity the slot arrives
+under picks the slot up again and answers for it from then on. A move to a place with no entity
+above it goes unseen, and it stays unseen however often the assignment changes afterwards — the
+report arrives at the slot, and above the slot nobody is listening.
+
+Where the projection ends up is what the flattened tree says, and no answer is a result as well. A
+projected `<shae-ent>` that finds nothing of its own namespace above the slot has no parent
+afterwards: `entParentNode` and `viewComponent.parent` are both empty and the entity is a root of
+its `ComponentContext`, until something above it answers again. A `<shae-prop>` asks no question
+about namespaces and takes the closest entity there is; with none above it, it has no host — see
+[Finding the Host Entity](#finding-the-host-entity).
 
 A change of `ns` at runtime takes the entity along into the other environment: it leaves the
 `ComponentContext` of one namespace and joins the one of the other. The binding to the ancestor is
@@ -1736,13 +1750,14 @@ the slot therefore asks every entity and every property in every namespace to lo
 answers sort themselves out. Like every change above an element, it takes effect one microtask
 later.
 
-That is where the announcement ends: a `<slot>` that moves into a part of its shadow root with no
-entity above it announces nothing. `slotchange` is not `composed`, so it stops at the shadow
-boundary and only the entities of that same shadow root can hear it — a slot that lands outside
-all of them is heard by none, and the property keeps the host it had. The window between
-`slot.remove()` and putting the slot back is the same case. Read `entNode` after such a move and
-it still names the entity the slot left. A slot moving from one entity into another is followed;
-a slot moving out of every entity is not.
+The destination decides nothing about whether the move is announced. A `<slot>` that lands in a
+part of its shadow root with no entity above it is followed just as well, and so is `slot.remove()`
+along with the window until the slot is put back: `slotchange` is not `composed` and reaches only
+the shadow root the slot has landed in, so the entity that gives the slot away is the one that
+reports the loss — it listens on the `<slot>` element itself. The property then binds to the
+closest entity the flattened tree still shows above it, and to none where there is none. The one
+gap is the shadow host that leaves the document and is inserted again: see the note on the slot
+move under [Entity Hierarchy](#entity-hierarchy).
 
 The timing is worth knowing, because the code does not show it: a re-binding takes effect one
 microtask after the change, not in the same step. Rebuild the tree and read `entNode` right

@@ -75,8 +75,36 @@ const isInClosedShadowTree = (node: Node): boolean => {
  * that stays does not hold the entity it left: a slot can outlive its entity, and an entry read
  * back as empty is one more way of saying "not the entity asking now", which is the only thing
  * the register is ever asked.
+ *
+ * An entry of `null` names no entity and is still an entry: it says that the entity which answered
+ * for this slot has let go of it. That is a different statement from `undefined`, which is a slot
+ * nobody has ever reported.
  */
-const entHostOfSlot = new WeakMap<Element, WeakRef<ShaeEntElement>>();
+const entHostOfSlot = new WeakMap<Element, WeakRef<ShaeEntElement> | null>();
+
+/** The `slotchange` events whose re-request round has already run. */
+const reRequestedForSlotChange = new WeakSet<Event>();
+
+/**
+ * Everything the slot projects hangs on the entity above the slot, and the slot just took a
+ * different one. There is no named counterpart to inform: the projected nodes can sit in any
+ * namespace, below any entity, and the entities involved are not reachable from here. So the
+ * request goes to every candidate there is, in every namespace: a property binds to the closest
+ * entity above it whatever namespace that entity carries, and an entity from another namespace can
+ * be projected through the same slot.
+ *
+ * Both sides of a move see the same event — the entity losing the slot as a listener on the slot
+ * itself, the one gaining it while the event bubbles — and the round either of them would start is
+ * the same round over the whole document. Whoever gets here first runs it.
+ */
+const askEveryoneToReRequest = (event: Event): void => {
+  if (reRequestedForSlotChange.has(event)) return;
+  reRequestedForSlotChange.add(event);
+  for (const context of ComponentContext.getContextsMap().values()) {
+    context.broadcastEvent(ComponentContext.ReRequestParent);
+    context.broadcastEvent(ComponentContext.ReRequestEntHost);
+  }
+};
 
 interface ReRequestParentData {
   newAncestor?: ShaeEntElement;
@@ -485,6 +513,10 @@ export class ShaeEntElement extends ShaeElement {
 
     this.#destroyParentObserver();
 
+    // an entity outside the tree answers for no slot any more, and its listeners must not outlive
+    // what it is itself
+    this.#releaseHostedSlots();
+
     this.removeEventListener('slotchange', this.#onSlotChange, {capture: false});
     this.removeEventListener(RequestEntParentEventName, this.#onRequestParent, {capture: false});
 
@@ -521,9 +553,10 @@ export class ShaeEntElement extends ShaeElement {
     }
   }
 
-  // nothing is cleared here: an element already bound to its closest ancestor gets the same
-  // answer back and #setParent bails out. Clearing first would take every correctly bound
-  // sibling out of its parent's children and append it again at the end
+  // nothing is cleared here: an element already bound to its closest ancestor gets the same answer
+  // back and #setParent turns around without touching anything, so the round leaves every
+  // correctly bound sibling standing in its parent's children. Only an element that gets no answer
+  // at all loses its binding, and that one sits below nothing any more
   #reRequestParent(newAncestor?: ShaeEntElement) {
     if (!this.isConnected) return;
 
@@ -566,8 +599,13 @@ export class ShaeEntElement extends ShaeElement {
   }
 
   #dispatchRequestParent() {
+    let entParent: ShaeEntElement | undefined;
     // an entity takes only an ancestor from its own namespace as a parent
-    requestEntAncestor(this, {ns: this.ns, answer: (entNode) => this.#setParent(entNode)});
+    requestEntAncestor(this, {ns: this.ns, answer: (entNode) => (entParent = entNode)});
+    // `requestEntAncestor` sends a synchronous `dispatchEvent`, so by the time it returns it is
+    // settled whether anyone answered. No answer is an answer as well: an entity nobody claims is
+    // a root of its context, and that is what gets written here
+    this.#setParent(entParent);
   }
 
   #unsubscribeFromParent?: () => void;
@@ -628,19 +666,54 @@ export class ShaeEntElement extends ShaeElement {
     return false;
   }
 
-  // Everything the slot projects hangs on the entity above the slot, and the slot just took a
-  // different one. There is no named counterpart to inform: the projected nodes can sit in any
-  // namespace, below any entity, and the entities that lost them are not reachable from here —
-  // `slotchange` arrives at the new location only. So the request goes to every candidate there
-  // is, in every namespace: a property binds to the closest entity above it whatever namespace
-  // that entity carries, and an entity from another namespace can be projected through the same
-  // slot.
-  #askEveryoneToReRequest() {
-    for (const context of ComponentContext.getContextsMap().values()) {
-      context.broadcastEvent(ComponentContext.ReRequestParent);
-      context.broadcastEvent(ComponentContext.ReRequestEntHost);
+  // The `<slot>`s this element currently answers for. A listener on the slot itself is the only
+  // thing that tells the side losing a slot about the loss: `slotchange` fires at the slot,
+  // wherever it has landed, and the ascent from there is the one reading of "is this still mine"
+  // that survives the move. `WeakRef` for the same reason as in the register — a slot that is gone
+  // is held by nobody here.
+  readonly #hostedSlots = new Set<WeakRef<Element>>();
+
+  #watchHostedSlot(slot: Element) {
+    for (const ref of this.#hostedSlots) {
+      const el = ref.deref();
+      if (el === undefined) this.#hostedSlots.delete(ref);
+      else if (el === slot) return;
+    }
+    this.#hostedSlots.add(new WeakRef(slot));
+    slot.addEventListener('slotchange', this.#onHostedSlotChange, {capture: false, passive: false});
+  }
+
+  #releaseHostedSlot(slot: Element) {
+    slot.removeEventListener('slotchange', this.#onHostedSlotChange, {capture: false});
+    for (const ref of this.#hostedSlots) {
+      const el = ref.deref();
+      if (el === undefined || el === slot) this.#hostedSlots.delete(ref);
     }
   }
+
+  #releaseHostedSlots() {
+    for (const ref of this.#hostedSlots) {
+      ref.deref()?.removeEventListener('slotchange', this.#onHostedSlotChange, {capture: false});
+    }
+    this.#hostedSlots.clear();
+  }
+
+  // `currentTarget` rather than `target`: a `<slot>` can stand in the fallback content of another
+  // slot, and what reports then is the inner one while the slot this listener hangs on is the one
+  // in question. The early return on "still mine" hands the whole job — register and round alike —
+  // to the bubbling listener, which would otherwise do it a second time. And the `null` entry: a
+  // slot that comes back to this entity has changed hands twice, and the round has to run for the
+  // second change as well.
+  #onHostedSlotChange = (event: Event) => {
+    const slot = event.currentTarget as Element;
+    if (this.#isClosestEntAbove(slot)) return;
+
+    this.#releaseHostedSlot(slot);
+    if (entHostOfSlot.get(slot)?.deref() === this) {
+      entHostOfSlot.set(slot, null);
+    }
+    askEveryoneToReRequest(event);
+  };
 
   #onSlotChange = (event: Event) => {
     // this stands before the shadow-root condition below, and that is where the two channels part
@@ -653,14 +726,15 @@ export class ShaeEntElement extends ShaeElement {
     if (this.#isClosestEntAbove(slot)) {
       const previous = entHostOfSlot.get(slot);
       entHostOfSlot.set(slot, new WeakRef(this));
+      this.#watchHostedSlot(slot);
       // the gate in front of the round, and it is closed twice. What a slot reporting for the
       // first time projects is reached by the two calls that frame this block, so the first
       // registration writes the register and pays nothing beyond it. Afterwards a slot whose
       // entity above it is the same one as last time reports changed content, and content moves
-      // no binding. What is left is the slot that arrived here from somewhere else, and that is
-      // the case nobody else can see
-      if (previous !== undefined && previous.deref() !== this) {
-        this.#askEveryoneToReRequest();
+      // no binding. What is left is the slot that arrived here from somewhere else — and an entry
+      // naming nobody is such an arrival too: that slot stood under no entity in between
+      if (previous !== undefined && previous?.deref() !== this) {
+        askEveryoneToReRequest(event);
       }
     }
 
