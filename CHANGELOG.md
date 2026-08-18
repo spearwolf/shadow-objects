@@ -14,6 +14,12 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
   that belongs to another tool. The exclusion carries no comment: Biome's configuration
   loader accepts `//` comments, but the lint run parses `biome.json` as strict JSON, and a
   comment there breaks the lint run.
+- **`packages/shadow-objects-testing/vitest.globalSetup.ts`** (new): clears
+  `test/__screenshots__` before every vitest run of the package, resolved against the file's
+  own location rather than `process.cwd()` so a targeted single-file invocation clears it too.
+  Wired in via `vitest.config.ts`'s `globalSetup`. `package.json`'s `test` and `watch` scripts
+  drop their own `rimraf test/__screenshots__` step now that the config covers every run path;
+  the `rimraf` devDependency stays, used by the new setup file instead.
 
 ## 2026-08-17 — the test plan and the backlog describe the state that is there
 

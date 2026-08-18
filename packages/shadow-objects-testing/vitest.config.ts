@@ -5,6 +5,7 @@ export default defineConfig({
   test: {
     globals: true,
     include: ['test/**/*.test.{js,ts}'],
+    globalSetup: ['./vitest.globalSetup.ts'],
     setupFiles: ['../shadow-objects/vitest.setup.ts'],
     browser: {
       enabled: true,
