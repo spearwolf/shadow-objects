@@ -52,6 +52,25 @@ interface ReRequestParentData {
 /** An allow-list without entries forwards nothing — the same thing `false` says. */
 const isEmptyFilter = (val: Set<string> | boolean): boolean => val instanceof Set && val.size === 0;
 
+/**
+ * Whether two filter values are the same value — a `Set` by its entries rather than by identity.
+ *
+ * This is not the question {@link isEmptyFilter} answers. An empty `Set` and `false` forward the
+ * same nothing, and they are still two different values: only a write that replaces the one with
+ * the other reaches the subscribers of the signal, and the read-back on connect depends on it.
+ */
+const isSameFilter = (a: Set<string> | boolean, b: Set<string> | boolean): boolean => {
+  if (a === b) return true;
+  if (a instanceof Set && b instanceof Set) {
+    if (a.size !== b.size) return false;
+    for (const type of a) {
+      if (!b.has(type)) return false;
+    }
+    return true;
+  }
+  return false;
+};
+
 export class ShaeEntElement extends ShaeElement {
   static override observedAttributes = [...ShaeElement.observedAttributes, ATTR_TOKEN, ATTR_FORWARD_CUSTOM_EVENTS];
 
@@ -158,7 +177,9 @@ export class ShaeEntElement extends ShaeElement {
       if (!val || isEmptyFilter(val)) {
         this.removeAttribute(ATTR_FORWARD_CUSTOM_EVENTS);
       } else if (val === true) {
-        if (!this.hasAttribute(ATTR_FORWARD_CUSTOM_EVENTS)) {
+        // `getAttribute` answers `null` for an absent attribute, and `null !== ''` — the one
+        // comparison covers both the missing attribute and a value that says something else
+        if (this.getAttribute(ATTR_FORWARD_CUSTOM_EVENTS) !== '') {
           this.setAttribute(ATTR_FORWARD_CUSTOM_EVENTS, '');
         }
       } else {
@@ -324,7 +345,14 @@ export class ShaeEntElement extends ShaeElement {
     beQuiet(() => this.#updateTokenValue());
 
     // --- forward-custom-events ---
-    beQuiet(() => this.#updateForwardCustomEventsValue());
+    // the patch on the ViewComponent's dispatchEvent hangs on this signal, so the read-back has to
+    // reach it: a write nothing observes would leave the patch standing on a filter the element no
+    // longer carries. A list is a fresh Set on every read and would count as a change by identity
+    // alone, so an unchanged filter is left alone instead of written again
+    const forwardCustomEvents = this.#readForwardCustomEventsAttribute();
+    if (!isSameFilter(forwardCustomEvents, this.forwardCustomEvents$.value)) {
+      this.forwardCustomEvents$.set(forwardCustomEvents);
+    }
 
     // --- componentContext | viewComponent ---
     if (this.componentContext == null) {
@@ -609,25 +637,30 @@ export class ShaeEntElement extends ShaeElement {
     }
   }
 
+  /** The filter the `forward-custom-events` attribute currently spells out. */
+  #readForwardCustomEventsAttribute(): Set<string> | boolean {
+    if (!this.hasAttribute(ATTR_FORWARD_CUSTOM_EVENTS)) return false;
+
+    const val = this.getAttribute(ATTR_FORWARD_CUSTOM_EVENTS);
+    if (!val || val.trim().length === 0) return true;
+
+    const types = new Set(
+      val
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0),
+    );
+
+    // a reflected empty string is the spelling for "all events" — a list that names none of
+    // them has to mean the opposite, so it falls back to the signal's own default instead of
+    // becoming a Set that would round-trip into that same empty string
+    return types.size > 0 ? types : false;
+  }
+
+  // the write is unconditional on purpose: a list read from the attribute is a fresh Set every
+  // time, and it is that change of identity which drives the normalization of the attribute back
+  // to its canonical spelling
   #updateForwardCustomEventsValue() {
-    if (this.hasAttribute(ATTR_FORWARD_CUSTOM_EVENTS)) {
-      const val = this.getAttribute(ATTR_FORWARD_CUSTOM_EVENTS);
-      if (!val || val.trim().length === 0) {
-        this.forwardCustomEvents$.set(true);
-      } else {
-        const types = new Set(
-          val
-            .split(',')
-            .map((s) => s.trim())
-            .filter((s) => s.length > 0),
-        );
-        // a reflected empty string is the spelling for "all events" — a list that names none of
-        // them has to mean the opposite, so it falls back to the signal's own default instead of
-        // becoming a Set that would round-trip into that same empty string
-        this.forwardCustomEvents$.set(types.size > 0 ? types : false);
-      }
-    } else {
-      this.forwardCustomEvents$.set(false);
-    }
+    this.forwardCustomEvents$.set(this.#readForwardCustomEventsAttribute());
   }
 }

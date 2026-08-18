@@ -29,10 +29,11 @@ describe('shae-ent forward-custom-events attribute forms', () => {
     ['forward-custom-events', true, ''],
     ['forward-custom-events=""', true, ''],
     // a whitespace-only value reads the same as a bare attribute: the signal becomes `true`,
-    // not a Set. The reflection only writes the attribute for `true` when it was absent before —
-    // it was already present here, just whitespace, so nothing gets written back. "foo, bar"
-    // below takes the Set branch instead, which always compares its joined string against the
-    // current attribute and writes back on any difference.
+    // not a Set. The reflection never runs for this form — the constructor reads the attribute
+    // and puts the signal on `true` before the `onChange` handler exists, and the
+    // `attributeChangedCallback` that follows writes the very same primitive value. "foo, bar"
+    // below lands on a fresh Set instead, which is a change by identity, so the reflection
+    // normalizes the attribute to the joined spelling.
     ['forward-custom-events="   "', true, '   '],
     ['forward-custom-events="foo"', ['foo'], 'foo'],
     ['forward-custom-events="foo, bar"', ['foo', 'bar'], 'foo,bar'],
@@ -97,6 +98,59 @@ describe('shae-ent forward-custom-events runtime changes and reflection', () => 
     el.removeAttribute('forward-custom-events');
     el.forwardCustomEvents$.set(true);
     expect(attrOf(el)).to.equal('');
+  });
+
+  it('forwardCustomEvents$.set(true) replaces a filter list standing in the markup', () => {
+    const container = mount('<shae-ent token="t" forward-custom-events="a,b"></shae-ent>');
+    const el = container.querySelector('shae-ent');
+    expect(fce(el)).to.deep.equal(['a', 'b']);
+
+    el.forwardCustomEvents$.set(true);
+
+    expect(fce(el)).to.equal(true);
+    expect(attrOf(el)).to.equal('');
+  });
+
+  it('a re-append that changes the filter reaches everyone subscribed to the signal', () => {
+    const container = mount('<shae-ent token="t"></shae-ent>');
+    const el = container.querySelector('shae-ent');
+
+    // an allow-list without entries is the one value that survives in the signal without a
+    // matching attribute, so the read-back on the next connect has something to correct
+    el.forwardCustomEvents$.set(new Set());
+
+    const seen = [];
+    const off = el.forwardCustomEvents$.onChange((val) => seen.push(val));
+
+    el.remove();
+    container.append(el);
+
+    off();
+
+    expect(seen).to.deep.equal([false]);
+    expect(fce(el)).to.equal(false);
+  });
+
+  it('setAttribute to a whitespace-only value normalizes the attribute to the empty string', () => {
+    // the write moves the signal from a list to `true`, and it is that change the reflection
+    // writes back — which lands on the canonical spelling of `true`
+    const el = mountFCE();
+    el.setAttribute('forward-custom-events', '   ');
+    expect(fce(el)).to.equal(true);
+    expect(attrOf(el)).to.equal('');
+  });
+
+  it('setAttribute to a whitespace-only value leaves it as written when the signal already says true', () => {
+    // the other direction of the same rule: the signal is on `true` before and after, so there is
+    // no change for the reflection to write, and the attribute keeps the spelling it was given
+    const container = mount('<shae-ent token="t" forward-custom-events></shae-ent>');
+    const el = container.querySelector('shae-ent');
+    expect(fce(el)).to.equal(true);
+
+    el.setAttribute('forward-custom-events', '   ');
+
+    expect(fce(el)).to.equal(true);
+    expect(attrOf(el)).to.equal('   ');
   });
 
   it('forwardCustomEvents$.set(new Set(...)) writes the joined list back', () => {
@@ -333,6 +387,31 @@ describe('shae-ent the dispatchEvent patch', () => {
     p.addEventListener('foo', (e) => domEvents.push(e));
     p.viewComponent.dispatchEvent('foo', {}, false);
     expect(domEvents).to.have.lengthOf(1);
+  });
+
+  it('a re-append leaves the signal, the attribute and the patch saying the same thing', () => {
+    const {p} = mountPK({pAttrs: 'forward-custom-events=","'});
+    const container = p.parentElement;
+    expect(fce(p)).to.equal(false);
+
+    const vc = p.viewComponent;
+    p.forwardCustomEvents$.set(true);
+    expect(attrOf(p)).to.equal('');
+
+    p.remove();
+    container.append(p);
+
+    expect(p.viewComponent).to.equal(vc);
+    expect(fce(p)).to.equal(true);
+    expect(attrOf(p)).to.equal('');
+    expect(Object.hasOwn(vc, 'dispatchEvent')).to.be.true;
+
+    const domEvents = [];
+    p.addEventListener('foo', (e) => domEvents.push(e));
+    p.addEventListener('bar', (e) => domEvents.push(e));
+    p.viewComponent.dispatchEvent('foo', {}, false);
+    p.viewComponent.dispatchEvent('bar', {}, false);
+    expect(domEvents.map((e) => e.type)).to.deep.equal(['foo', 'bar']);
   });
 
   it('keeps the same ViewComponent and the patch across a namespace change', () => {

@@ -198,10 +198,6 @@ Der Abschluss-Wartelauf hängt ein `.finally()` an `waitForMessageOfType(worker,
 *Ort:* `ComponentContext.ts:505-520` und `:158`, gegen `dispose()` bei `:536-541`.
 Nach `ctx.clear()` beziehungsweise `ctx.destroyComponent(vc)` meldet der Component `isDestroyed === false`, sein `context` zeigt weiter auf den Context, und jedes `setProperty` gibt `false` zurück und schreibt nichts. `dispose()` macht es richtig und zerstört die Components, solange der Context noch lebt. Der Code kennt die Lage und arbeitet um sie herum (`:314-315`, `changeOrder`-Guard). Ob `clear()` seine Components ablösen soll, ist eine Verhaltensänderung an der öffentlichen API — deshalb hier und nicht als Bugfix.
 
-**Der `forward-custom-events`-Patch überlebt ein Wiedereinhängen mit der alten Einstellung.**
-*Ort:* `ShaeEntElement.ts:195-241` (Patch-Effect), `:327` (`connectedCallback`).
-`forwardCustomEvents$.set(true)` installiert den Patch, der jedes Ereignis in den DOM schiebt. Ein Ab- und Wiedereinhängen liest das Attribut in `connectedCallback` unter `beQuiet` zurück, der Effect läuft dabei nicht erneut, und `viewComponent$` ändert sich nicht. Danach steht das Signal auf `false` (bei `forward-custom-events=","`) beziehungsweise auf `Set('a')` (bei `="a"`), während der unter `true` installierte Patch weiter alles weiterleitet. In Chromium gemessen.
-
 **[ELEM-1]** ~~`<shae-worker>` erzeugt eine unbehandelte Promise-Rejection beim Teardown im selben Task.~~ **✅ Behoben**
 *Ort:* `ShaeWorkerElement.ts`.
 `connectedCallback()` startet per `start()` automatisch, der `src`-Effekt ruft `importScript()`; beide warten auf `ShadowEnv.ready()`, das seit VIEW-8 mit einem `ShadowEnvDestroyedError` ablehnt — und niemand beobachtete diese Promises. Connect und Disconnect im selben Task (was `#deferDestroy` ausdrücklich vorsieht) ergab damit pro Element eine unbehandelte Rejection. Beide Aufrufstellen fangen jetzt ab: ein Teardown ist still, alles andere wird geloggt. Für Aufrufer, die tatsächlich warten, lehnen `start()` und `importScript()` unverändert ab.
@@ -226,7 +222,6 @@ Nach `ctx.clear()` beziehungsweise `ctx.destroyComponent(vc)` meldet der Compone
 Ohne ID, nach der Analyse vom 2026-05-09 gefunden:
 
 - **Ein verschobener `<slot>` benachrichtigt die Entity nicht, die er verlässt.** `slotchange` feuert erst nach dem Umzug und damit am neuen Ort; `#onSlotChange` (`ShaeEntElement.ts:550-566`) läuft dort und die alte Entity hört nichts. Betrifft beide Kanäle: die Property bleibt an ihrer alten Host-Entity hängen, und `entParentNode` eines projizierten `<shae-ent>` bleibt stehen. Die einzige verbliebene Lücke in der Regel »jeder Weg, antwortender Vorfahre zu werden oder aufzuhören es zu sein, nimmt die Aufforderung mit«.
-- **`forwardCustomEvents$.set(true)` normalisiert ein vorhandenes Filter-Attribut nicht.** Bei `<shae-ent forward-custom-events="a,b">` steht das Signal danach auf `true` und leitet alles weiter, während das Attribut weiter `a,b` zeigt: der `true`-Zweig schreibt nur, wenn das Attribut ganz fehlt (`ShaeEntElement.ts:157-170`). Geschwisterfall des Patch-Befunds in §3.2, in Chromium gemessen.
 
 ### 3.4 LOW (Auswahl)
 
@@ -272,7 +267,7 @@ Ohne ID, nach der Analyse vom 2026-05-09 gefunden:
 **vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 15 Dateien, 358 Fälle):
 `Kernel.spec.ts` (1602 LoC), `Registry.spec.ts`, `ShadowObject.spec.ts`, `SignalsPath.spec.ts`, `ShadowEnv.spec.ts`, `LocalShadowObjectEnv.spec.ts`, `RemoteWorkerEnv.spec.ts`, `ViewComponent.spec.ts`, `ComponentContext.spec.ts`, `ComponentChanges.spec.ts`, `ComponentMemory.spec.ts`, `props-utils.spec.ts`, `ConsoleLogger.spec.ts`, `ConsoleLogger.storage.spec.ts`, `elements/propValueConverters.spec.ts`.
 
-**`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 21 Dateien, 314 Fälle — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `ent-element-attributes`, `ent-element-events`, `ent-element-namespace`, `ent-element-teardown`, `ent-element-upgrade`, `forward-custom-events`, `local-env-entities`, `prop-element-host`, `prop-element-lifecycle`, `prop-element-registration-order`, `prop-element-types`, `remove-and-append-e`, `send-events`, `view-component-context-switch`, `worker-element-attributes`, `worker-element-teardown`, `emit-helper/emit-helper`.
+**`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 21 Dateien, 319 Fälle — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `ent-element-attributes`, `ent-element-events`, `ent-element-namespace`, `ent-element-teardown`, `ent-element-upgrade`, `forward-custom-events`, `local-env-entities`, `prop-element-host`, `prop-element-lifecycle`, `prop-element-registration-order`, `prop-element-types`, `remove-and-append-e`, `send-events`, `view-component-context-switch`, `worker-element-attributes`, `worker-element-teardown`, `emit-helper/emit-helper`.
 
 **`shadow-objects-e2e/`** (Playwright, Chromium + Firefox): 10 Dateien, 201 Fälle je Projekt und damit 402 insgesamt — `async-events`, `auto-destruct`, `bundle`, `create-element`, `dynamic-dom`, `multi-env`, `remote-worker-env`, `shae-worker`, `upgrade-timing`, `worker-failure`. Assertions liegen in den Test-Pages, der gemeinsame `runPageTests`-Helper macht daraus je einen Playwright-Test pro `data-testresult`.
 

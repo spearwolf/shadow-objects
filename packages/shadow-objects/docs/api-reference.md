@@ -1551,19 +1551,22 @@ internal signals of the parent resolution and stay on the view side.
 The signals `token$`, `viewComponent$`, `componentContext$`, `forwardCustomEvents$` and the
 inherited `ns$` are public, not `protected` — read them with `.value` or subscribe to them.
 `forwardCustomEvents$` matters twice over: there is no `forwardCustomEvents` accessor, so the
-signal is the only way to set the filter from JavaScript. It reflects into the attribute:
-`false` and an empty `Set` remove it, a `Set` writes the comma-separated list, and `true` sets it
-to the empty string — as long as the attribute is not already there. A filter list standing in the
-markup is left as it is when the signal is set to `true`, and the attribute then says less than the
-element does.
+signal is the only way to set the filter from JavaScript. The attribute is the serialized form of
+the signal: `false` and an empty `Set` remove it, a `Set` writes the comma-separated list, and
+`true` sets it to the empty string, whatever stood there before. A value already saying the same
+thing as the signal is left exactly as it is written, so markup keeps its spelling.
 
 ```javascript
 const ent = document.querySelector('shae-ent');
 
-ent.forwardCustomEvents$.set(true);                       // forward-custom-events=""
+ent.forwardCustomEvents$.set(true);                       // forward-custom-events="", replacing any filter list
 ent.forwardCustomEvents$.set(new Set(['score-changed'])); // forward-custom-events="score-changed"
 ent.forwardCustomEvents$.set(false);                      // attribute removed
 ```
+
+The element reads the attribute back whenever it connects, and the forwarding follows that result.
+Signal, attribute and what actually reaches the DOM therefore say the same thing over the whole
+lifecycle, across any number of removals and re-appends.
 
 `getParentNodeForObserver()` and the inherited `syncShadowObjectsOf()` are `protected` and meant
 for subclasses. The Custom Elements callbacks — `connectedCallback`, `disconnectedCallback`,
