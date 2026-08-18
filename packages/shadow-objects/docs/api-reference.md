@@ -781,12 +781,13 @@ const unsubscribe = on(component, 'msg-from-shadow', (data) => {
 unsubscribe();      // or off(component, 'msg-from-shadow')
 ```
 
-Three events arrive from the framework itself rather than from a Shadow Object:
+Four events arrive from the framework itself rather than from a Shadow Object:
 
 | Event | When |
 | :--- | :--- |
 | `ComponentContext.ReRequestParentRoots` | The component should drop its parent and ask for one again. |
 | `ComponentContext.ReRequestParent` | The component should ask for a parent again and keep the one it has until a different answer arrives. Receives the sender's identity as `data`. |
+| `ComponentContext.ReRequestEntHost` | The element behind the component should let the properties hanging on it look for their host entity again. `<shae-ent>` answers it on its own; a component without such an element has nothing to do here. |
 | `ContextLost` | The context rebuilt its changes from the Component Memory, so everything the component sent before is on its way again. Broadcast by `ComponentContext.reCreateChanges()`. |
 
 `ContextLost` is exported from `@spearwolf/shadow-objects` as a standalone constant, and its value -- `'contextLost'` -- is the **same string** as `ShadowEnv.ContextLost`. Two names, one value, two different senders: this one is broadcast to every `ViewComponent` in a context, the other is emitted by a `ShadowEnv`. A listener registered on the wrong object hears nothing; one registered on the right object hears only its own sender.
@@ -920,12 +921,13 @@ ComponentContext.getContextsMap().size;
 
 ### Static Event Names
 
-Two event names the context sends to its components. Both arrive as ordinary events on a `ViewComponent`; see [Receiving Events](#receiving-events) for how to listen.
+Three event names that arrive as ordinary events on a `ViewComponent`; see [Receiving Events](#receiving-events) for how to listen. The context sends the first two itself, through the `dispatchReRequestParent…` methods below. The third has no such method: it travels the same channel, but a `<shae-ent>` sets it off by calling `broadcastEvent()` on every context there is.
 
 | Name | Value | Meaning |
 | :--- | :--- | :--- |
 | `ComponentContext.ReRequestParentRoots` | `'re-request-parent-roots'` | Drop your parent and ask for one again. |
 | `ComponentContext.ReRequestParent` | `'re-request-parent'` | Ask again, and keep what you have until a different answer arrives. |
+| `ComponentContext.ReRequestEntHost` | `'re-request-ent-host'` | Let the properties hanging on your element look for their host entity again. |
 
 ### Properties
 
@@ -1528,9 +1530,10 @@ attribute.
 <shae-ent token="game-level" forward-custom-events="score-changed,level-complete"></shae-ent>
 ```
 
-Two events are never forwarded, not even without a filter list:
-`ComponentContext.ReRequestParentRoots` and `ComponentContext.ReRequestParent`. They are the
-internal signals of the parent resolution and stay on the view side.
+Three events are never forwarded, not even without a filter list:
+`ComponentContext.ReRequestParentRoots`, `ComponentContext.ReRequestParent` and
+`ComponentContext.ReRequestEntHost`. They are the internal signals of the parent resolution and
+stay on the view side.
 
 #### JavaScript API
 
@@ -1604,9 +1607,22 @@ it takes writing `viewComponent$` from outside.
 Three things happen after that and are picked up on their own: an element that is itself an entity —
 a subclass of `ShaeEntElement`, say, loaded from a lazy module — and that is registered with
 `customElements.define()` while the markup around it already sits in the document takes the
-entities below it under itself; a change to a `<slot>` assignment re-binds what the slot projects;
-and an entity that stays in the tree while its parent entity leaves it looks for the closest
-ancestor still answering. None of this needs the application to trigger anything.
+entities below it under itself; a change to a `<slot>` assignment re-binds what the slot projects,
+and so does the `<slot>` element moving into another entity; and an entity that stays in the tree
+while its parent entity leaves it looks for the closest ancestor still answering. None of this
+needs the application to trigger anything.
+
+The slot move has two edges, and both leave a projected entity where it was. The first is a slot
+that lands in a part of its shadow root with no entity above it: `slotchange` is not `composed`
+and stops at the shadow boundary, so the only elements that can hear it are the entities of that
+same shadow root, and a slot outside all of them is heard by none. The window between
+`slot.remove()` and putting the slot back is the same case. The second is a slot that does arrive
+in another entity, but in a namespace where nothing above the projected entity answers: the
+projected entity is asked to look again and keeps what it has until a different answer arrives, so
+with no answer coming its `entParentNode` and its `viewComponent.parent` stay where they are. Both
+are visible by reading `entParentNode` after the move — it still names the entity the slot left.
+A `<shae-prop>` is affected by the first edge only; the second is a question about namespaces, and
+a property does not ask it.
 
 A change of `ns` at runtime takes the entity along into the other environment: it leaves the
 `ComponentContext` of one namespace and joins the one of the other. The binding to the ancestor is
@@ -1701,17 +1717,28 @@ The element binds to the closest entity above it, measured on the flattened tree
 page renders it. The search goes through shadow roots, follows slot projections to the entity that
 holds the `<slot>`, and crosses closed shadow boundaries just as well.
 
-The lookup runs when the element enters the tree, every time it is moved, and every time something
-changes above it. A custom element whose tag is registered late takes the properties under it along
+The lookup runs when the element enters the tree, every time it is moved, and every time a change
+above it is announced — which is every change but the one named at the end of this section. A
+custom element whose tag is registered late takes the properties under it along
 the moment it upgrades; a shadow root attached afterwards takes over what its slots project; a
 changed slot assignment is followed. When the host entity leaves the tree, the property looks for
 the next entity above it and binds to that one. If nothing answers, it has no host and the property
 is taken off the entity it left.
 
-One case is out of reach: moving the `<slot>` element itself out of one entity and into another.
-`slotchange` fires after the move and therefore at the new position, so the entity the slot left
-hears nothing and keeps the property. Changing what a slot is assigned is followed; moving the slot
-is not.
+Moving the `<slot>` element itself out of one entity and into another is followed too, and it is
+the one case that takes the long way round: `slotchange` fires after the move and therefore at the
+new position, where the entity that lost the projection has no name any more. The new entity above
+the slot therefore asks every entity and every property in every namespace to look again, and the
+answers sort themselves out. Like every change above an element, it takes effect one microtask
+later.
+
+That is where the announcement ends: a `<slot>` that moves into a part of its shadow root with no
+entity above it announces nothing. `slotchange` is not `composed`, so it stops at the shadow
+boundary and only the entities of that same shadow root can hear it — a slot that lands outside
+all of them is heard by none, and the property keeps the host it had. The window between
+`slot.remove()` and putting the slot back is the same case. Read `entNode` after such a move and
+it still names the entity the slot left. A slot moving from one entity into another is followed;
+a slot moving out of every entity is not.
 
 The timing is worth knowing, because the code does not show it: a re-binding takes effect one
 microtask after the change, not in the same step. Rebuild the tree and read `entNode` right

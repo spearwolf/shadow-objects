@@ -258,11 +258,16 @@ rule — proximity, no namespace.
 The host is the closest entity above the element in the flattened tree — through shadow roots,
 along slot projections, across closed boundaries — regardless of its namespace. It is re-decided
 whenever the element moves and whenever something above it changes: a tag registered late, a shadow
-root attached afterwards, a changed slot assignment, a host that leaves the tree. Moving the
-`<slot>` element itself into another entity is the one case that is not followed. A move binds anew
-right away; a change above the element takes effect one microtask later. With no entity above it at
-all, the property is set nowhere and reported once per element through the `ConsoleLogger` at warn
-level.
+root attached afterwards, a changed slot assignment, the `<slot>` element itself moving into
+another entity, a host that leaves the tree. A move binds anew right away; a change above the
+element takes effect one microtask later. With no entity above it at all, the property is set
+nowhere and reported once per element through the `ConsoleLogger` at warn level.
+
+The one move that is not followed: a `<slot>` that lands in a part of its shadow root with no
+entity above it, `slot.remove()` included. `slotchange` is not `composed`, nobody outside that
+shadow root hears it, and the property keeps the host it had. For a projected `<shae-ent>` there
+is a second one — a slot arriving in an entity whose namespace holds no answering ancestor leaves
+`entParentNode` where it was.
 
 Removing the element, renaming it, or moving it to another entity clears the property it declared.
 A move within a single tick is a move, not a removal — the property travels with the element.

@@ -45,6 +45,18 @@ const isInClosedShadowTree = (node: Node): boolean => {
   return false;
 };
 
+/**
+ * The entity that answered for a `<slot>` the last time the slot reported an assignment.
+ *
+ * `slotchange` fires after the move and therefore at the new location; the place the slot came
+ * from cannot be read from there any more — this register is the only place where it still has a
+ * name. A `WeakMap` so a slot that is gone holds nothing, and a `WeakRef` as its value so a slot
+ * that stays does not hold the entity it left: a slot can outlive its entity, and an entry read
+ * back as empty is one more way of saying "not the entity asking now", which is the only thing
+ * the register is ever asked.
+ */
+const entHostOfSlot = new WeakMap<Element, WeakRef<ShaeEntElement>>();
+
 interface ReRequestParentData {
   newAncestor?: ShaeEntElement;
 }
@@ -199,10 +211,12 @@ export class ShaeEntElement extends ShaeElement {
         const unsubscribeReRequestParent = on(vc, ComponentContext.ReRequestParent, (data?: ReRequestParentData) =>
           this.#reRequestParent(data?.newAncestor),
         );
+        const unsubscribeReRequestEntHost = on(vc, ComponentContext.ReRequestEntHost, () => this.#askPropertiesToReRequestHost());
         const oldNs = vc.context?.ns;
         return () => {
           unsubscribeReRequestParentRoots();
           unsubscribeReRequestParent();
+          unsubscribeReRequestEntHost();
           vc.destroy();
           if (oldNs && oldNs !== this.ns) {
             ShadowEnv.get(oldNs)?.sync();
@@ -232,7 +246,12 @@ export class ShaeEntElement extends ShaeElement {
 
         // the internal signals of the parent resolution never leave the view side as a DOM event,
         // not even under `forward-custom-events` without a filter list
-        if (type === ComponentContext.ReRequestParentRoots || type === ComponentContext.ReRequestParent) return;
+        if (
+          type === ComponentContext.ReRequestParentRoots ||
+          type === ComponentContext.ReRequestParent ||
+          type === ComponentContext.ReRequestEntHost
+        )
+          return;
 
         if (allowedTypes && !allowedTypes.has(type)) return;
 
@@ -575,12 +594,54 @@ export class ShaeEntElement extends ShaeElement {
     }
   }
 
-  #onSlotChange = () => {
+  // Whether this element is the closest entity above `slot`. The ascent goes over `parentElement`
+  // and nothing else: `slotchange` bubbles along the node tree of one shadow root, so the slot and
+  // every entity that can hear it sit in the same tree, and the flattened parent is not the
+  // question here. Without the test every entity of the chain would write the register and the
+  // outermost one would win — the answer a projected node gets comes from the closest.
+  #isClosestEntAbove(slot: Element): boolean {
+    for (let current = slot.parentElement; current != null; current = current.parentElement) {
+      if (current === this) return true;
+      if ((current as ShaeEntElement).isShaeEntElement) return false;
+    }
+    return false;
+  }
+
+  // Everything the slot projects hangs on the entity above the slot, and the slot just took a
+  // different one. There is no named counterpart to inform: the projected nodes can sit in any
+  // namespace, below any entity, and the entities that lost them are not reachable from here —
+  // `slotchange` arrives at the new location only. So the request goes to every candidate there
+  // is, in every namespace: a property binds to the closest entity above it whatever namespace
+  // that entity carries, and an entity from another namespace can be projected through the same
+  // slot.
+  #askEveryoneToReRequest() {
+    for (const context of ComponentContext.getContextsMap().values()) {
+      context.broadcastEvent(ComponentContext.ReRequestParent);
+      context.broadcastEvent(ComponentContext.ReRequestEntHost);
+    }
+  }
+
+  #onSlotChange = (event: Event) => {
     // this stands before the shadow-root condition below, and that is where the two channels part
     // ways: the entity channel only cares about a slot change inside a shadow root, because that
     // is what moves a parent binding across the boundary. For a property every changed slot
     // assignment counts — it moves what sits below this element.
     this.#askPropertiesToReRequestHost();
+
+    const slot = event.target as Element;
+    if (this.#isClosestEntAbove(slot)) {
+      const previous = entHostOfSlot.get(slot);
+      entHostOfSlot.set(slot, new WeakRef(this));
+      // the gate in front of the round, and it is closed twice. What a slot reporting for the
+      // first time projects is reached by the two calls that frame this block, so the first
+      // registration writes the register and pays nothing beyond it. Afterwards a slot whose
+      // entity above it is the same one as last time reports changed content, and content moves
+      // no binding. What is left is the slot that arrived here from somewhere else, and that is
+      // the case nobody else can see
+      if (previous !== undefined && previous.deref() !== this) {
+        this.#askEveryoneToReRequest();
+      }
+    }
 
     const shadowRootHost = this.findShadowRootHost();
     if (shadowRootHost == null) return;

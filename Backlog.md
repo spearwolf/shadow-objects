@@ -219,9 +219,10 @@ Nach `ctx.clear()` beziehungsweise `ctx.destroyComponent(vc)` meldet der Compone
 | **VIEW-12** | `ShaePropElement` parst numerische Attribute ohne Warnung — `Number("foo")` → `NaN` propagiert. Der `try`/`catch` um die Konvertierung meldet nur, was wirft; ein Konverter, der `NaN` zurückgibt, gilt als Erfolg. | `ShaePropElement.ts:205–240`, `propValueConverters.ts:24`, `:38`, `:47` |
 | **VIEW-13** | `ShaeEntElement.#dispatchRequestParent`-Microtask prüft `isConnected` nicht; nach Disconnect bubbelt ein Streu-Event. | `ShaeEntElement.ts:527–536` |
 
-Ohne ID, nach der Analyse vom 2026-05-09 gefunden:
+Grenzen des Slot-Umzugs, in Chromium gemessen (2026-08-18, Reviewer 6):
 
-- **Ein verschobener `<slot>` benachrichtigt die Entity nicht, die er verlässt.** `slotchange` feuert erst nach dem Umzug und damit am neuen Ort; `#onSlotChange` (`ShaeEntElement.ts:550-566`) läuft dort und die alte Entity hört nichts. Betrifft beide Kanäle: die Property bleibt an ihrer alten Host-Entity hängen, und `entParentNode` eines projizierten `<shae-ent>` bleibt stehen. Die einzige verbliebene Lücke in der Regel »jeder Weg, antwortender Vorfahre zu werden oder aufzuhören es zu sein, nimmt die Aufforderung mit«.
+- **Ein `<slot>`, der in einen entitylosen Bereich derselben Shadow Root zieht, meldet sich nirgends.** `slotchange` ist nicht `composed` und endet an der Shadow-Grenze; hört keine Entity derselben Shadow Root zu, bleiben beide Kanäle auf der alten Entity stehen. Dasselbe gilt für das Fenster zwischen `slot.remove()` und dem Wiedereinhängen. Ein Beobachter, der das schließt, ist eine eigene Entscheidung — siehe die drei Wege in `view-layer-remediation-plan-2.md`, Paket 6.
+- **Ein projiziertes `<shae-ent>`, das im Ziel-Namespace keinen antwortenden Vorfahren findet, behält seine alte Bindung.** `broadcastEvent(ComponentContext.ReRequestParent)` heißt »frag noch einmal und behalte, was du hast, bis eine andere Antwort kommt« — ohne Antwort bleiben `entParentNode` und `viewComponent.parent` stehen. Der Property-Kanal ist davon nicht betroffen, er kennt keine Namespaces.
 
 ### 3.4 LOW (Auswahl)
 
@@ -267,7 +268,7 @@ Ohne ID, nach der Analyse vom 2026-05-09 gefunden:
 **vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 15 Dateien, 358 Fälle):
 `Kernel.spec.ts` (1602 LoC), `Registry.spec.ts`, `ShadowObject.spec.ts`, `SignalsPath.spec.ts`, `ShadowEnv.spec.ts`, `LocalShadowObjectEnv.spec.ts`, `RemoteWorkerEnv.spec.ts`, `ViewComponent.spec.ts`, `ComponentContext.spec.ts`, `ComponentChanges.spec.ts`, `ComponentMemory.spec.ts`, `props-utils.spec.ts`, `ConsoleLogger.spec.ts`, `ConsoleLogger.storage.spec.ts`, `elements/propValueConverters.spec.ts`.
 
-**`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 21 Dateien, 319 Fälle — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `ent-element-attributes`, `ent-element-events`, `ent-element-namespace`, `ent-element-teardown`, `ent-element-upgrade`, `forward-custom-events`, `local-env-entities`, `prop-element-host`, `prop-element-lifecycle`, `prop-element-registration-order`, `prop-element-types`, `remove-and-append-e`, `send-events`, `view-component-context-switch`, `worker-element-attributes`, `worker-element-teardown`, `emit-helper/emit-helper`.
+**`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 22 Dateien, 323 Fälle — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `ent-element-attributes`, `ent-element-events`, `ent-element-namespace`, `ent-element-slot-move`, `ent-element-teardown`, `ent-element-upgrade`, `forward-custom-events`, `local-env-entities`, `prop-element-host`, `prop-element-lifecycle`, `prop-element-registration-order`, `prop-element-types`, `remove-and-append-e`, `send-events`, `view-component-context-switch`, `worker-element-attributes`, `worker-element-teardown`, `emit-helper/emit-helper`.
 
 **`shadow-objects-e2e/`** (Playwright, Chromium + Firefox): 10 Dateien, 201 Fälle je Projekt und damit 402 insgesamt — `async-events`, `auto-destruct`, `bundle`, `create-element`, `dynamic-dom`, `multi-env`, `remote-worker-env`, `shae-worker`, `upgrade-timing`, `worker-failure`. Assertions liegen in den Test-Pages, der gemeinsame `runPageTests`-Helper macht daraus je einen Playwright-Test pro `data-testresult`.
 

@@ -181,7 +181,8 @@ describe('shae-prop host lookup across shadow boundaries', () => {
 /**
  * The host of a `<shae-prop>` is not decided once and kept. Every way an element has of becoming
  * the closest entity above a property — a late definition, a shadow root attached afterwards, a
- * slot assignment that changes — moves the binding, and so does every way of ceasing to be one.
+ * slot assignment that changes, a `<slot>` that moves into another entity — moves the binding,
+ * and so does every way of ceasing to be one.
  *
  * A definition is global and permanent, so each case here registers a tag name of its own.
  */
@@ -347,6 +348,39 @@ describe('shae-prop follows its host entity', () => {
       warn.restore();
       ConsoleLogger.sharedConfig.enable = previousEnable;
     }
+  });
+
+  // The `<slot>` moves, not the property and not the entity: what a property sits below changes
+  // without anything in its own ancestor path being touched. The second property sits one level
+  // deeper than the assigned node, which holds that the binding follows the projection and not
+  // just the nodes the slot names.
+  it('follows the slot it is projected into when the slot moves to another entity', async () => {
+    const container = mount(
+      '<shae-ent id="sm-outer" token="outer">' +
+        '<div id="sm-div">' +
+        '<shae-prop id="sm-prop" name="x" value="1"></shae-prop>' +
+        '<div id="sm-wrap"><shae-prop id="sm-deep" name="y" value="2"></shae-prop></div>' +
+        '</div>' +
+        '</shae-ent>',
+    );
+    await Promise.all(['shae-ent', 'shae-prop'].map((name) => customElements.whenDefined(name)));
+
+    const shadowRoot = container.querySelector('#sm-div').attachShadow({mode: 'open'});
+    shadowRoot.innerHTML =
+      '<shae-ent id="sm-from" token="from"><slot id="sm-slot"></slot></shae-ent><shae-ent id="sm-to" token="to"></shae-ent>';
+    await nextTask();
+
+    const prop = container.querySelector('#sm-prop');
+    const deep = container.querySelector('#sm-deep');
+
+    expect(prop.entNode?.id, 'the slot projects the property into the entity holding it').to.equal('sm-from');
+    expect(deep.entNode?.id, 'and the one below the assigned node with it').to.equal('sm-from');
+
+    shadowRoot.getElementById('sm-to').appendChild(shadowRoot.getElementById('sm-slot'));
+    await nextTask();
+
+    expect(prop.entNode?.id, 'the slot takes its projection along').to.equal('sm-to');
+    expect(deep.entNode?.id, 'down to the property below the assigned node').to.equal('sm-to');
   });
 });
 

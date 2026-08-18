@@ -51,6 +51,17 @@ export class ComponentContext {
   static readonly ReRequestParentRoots = 're-request-parent-roots';
   static readonly ReRequestParent = 're-request-parent';
 
+  /**
+   * Ask the element behind a component to let the properties hanging on it look for their host
+   * again.
+   *
+   * A context knows nothing about `<shae-prop>` — a property has no view component and cannot be
+   * addressed here. The signal still belongs next to the two above: it travels the same broadcast
+   * channel to the same receivers, and the element on the other end is the one that can reach the
+   * properties below it.
+   */
+  static readonly ReRequestEntHost = 're-request-ent-host';
+
   static getContextsMap(): Map<NamespaceType, ComponentContext> {
     if (globalThis.__shadowEntsContexts == null) {
       globalThis.__shadowEntsContexts = new Map<NamespaceType, ComponentContext>();
