@@ -383,7 +383,25 @@ export class ComponentContext {
   }
 
   /**
-   * Inform all root components that they should re-request their parents
+   * Inform all root components that they should re-request their parents.
+   *
+   * Every root is asked, because there is nothing here to ask about: the message carries no
+   * sender, so this side cannot narrow the set down at all. A round runs once per entity that
+   * connects, which makes n roots coming up in one namespace n²/2 messages, each one a full
+   * ancestor request through the DOM. That is the more expensive of the two re-request channels —
+   * six hundred roots spend some two hundred seventy milliseconds on it where the same build
+   * without the channel spends about twenty, while a hundred roots in one namespace are not worth
+   * the thought.
+   *
+   * A sender alone would not settle it. The receiver would still have to work out whether it sits
+   * below that sender, and the only test that sees the whole way is an ascent per candidate —
+   * quadratic again, and blind at a closed shadow boundary on top. Both channels would have to be
+   * rebuilt in one go: one round for everything that connects in the same task, instead of one
+   * round each.
+   *
+   * Numbers above are for 600 roots in one namespace, measured 2026-08-18 in Chromium via
+   * Playwright 1.62.1 — a snapshot, not a guarantee; see `Backlog.md`'s Performance section for
+   * the full size series and how to reproduce it.
    */
   dispatchReRequestParentRoots() {
     // a root that answers with a parent is taken out of #rootComponents right away, so walking

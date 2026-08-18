@@ -21,7 +21,28 @@ import {ShaeElement} from './ShaeElement.js';
 const flattenedParentOf = (node: Node): Node | undefined =>
   (node as Element).assignedSlot ?? node.parentNode ?? (node as unknown as ShadowRoot).host ?? undefined;
 
-/** Whether `node` sits below `ancestor`, across shadow boundaries and slot projections. */
+/**
+ * Whether `node` sits below `ancestor`, across shadow boundaries and slot projections.
+ *
+ * One ascent per candidate, and a peer round runs once per entity that connects — so n entity
+ * siblings under one parent pay n²/2 ascents while the tree around them builds. The test is the
+ * cheap half of that, not the expensive one: with the round left in but the test taken out, the
+ * same build costs roughly four and a half times as much. What the test buys back grows with the
+ * candidate set and with nothing else — under a hundred siblings under one parent it does not show
+ * up at all, at six hundred it adds some two hundred fifty milliseconds to a build that would
+ * otherwise take about seventy.
+ *
+ * A cheaper test would not remove the quadratic term, because every round still visits every
+ * candidate; only one round for all the entities connecting in the same task would. Deciding on
+ * the sending side instead runs into two walls: the root channel carries no sender to decide
+ * about, and an ancestor test that skips the ascent cannot see through a closed shadow boundary —
+ * which is why the caller drops the ancestor for an element inside a closed tree and asks
+ * everyone.
+ *
+ * Numbers above are for 600 siblings under one parent, measured 2026-08-18 in Chromium via
+ * Playwright 1.62.1 — a snapshot, not a guarantee; see `Backlog.md`'s Performance section for
+ * the full size series and how to reproduce it.
+ */
 const isBelow = (node: Node, ancestor: Node): boolean => {
   for (let current = flattenedParentOf(node); current != null; current = flattenedParentOf(current)) {
     if (current === ancestor) return true;
