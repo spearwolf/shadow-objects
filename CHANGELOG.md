@@ -4,6 +4,17 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-18 — the lint run covers what the project writes
+
+- **`biome.json`:** `.claude/` is outside the checked file set. The directory holds tool
+  configuration a coding agent writes and rewrites, and the rule that keeps it out of git
+  lives in the user's global exclude file, which Biome does not read — `vcs.useIgnoreFile`
+  reads the `.gitignore` files in the project. Excluding the directory in `files.includes`
+  is what keeps `biome check` off it, and keeps `biome check --write` from editing a file
+  that belongs to another tool. The exclusion carries no comment: Biome's configuration
+  loader accepts `//` comments, but the lint run parses `biome.json` as strict JSON, and a
+  comment there breaks the lint run.
+
 ## 2026-08-17 — the test plan and the backlog describe the state that is there
 
 - **`packages/shadow-objects-e2e/TEST-PLAN.md`:** the head describes the suite as it stands — 402 tests, 201 per project, ten spec files with what each one verifies and which case ids belong to which proposal. The document had been carrying the numbers of a four-file suite (44 → 298 tests, "four spec files, 43 registered test cases"), a §1.2 about two ids that are registered, a harness table whose entries were fixed on 2026-08-02, a `tests/lookupTests.ts` that no longer exists, and a §2.2 describing the `<shae-prop>` host lookup as a `parentElement` walk gated behind `customElements.whenDefined('shae-ent')` — neither of which the code does any more. UPG-3 and UPG-8 are marked as answered rather than open, the still-open list is pulled against the tables, and §4 orders what is left instead of what is done.

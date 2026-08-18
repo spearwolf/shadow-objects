@@ -16,6 +16,7 @@
       "!**/playwright-report",
       "!**/test-results",
       "!**/.npm-pkg",
+      "!**/.claude",
       "!packages/shadow-objects/tests",
       "!packages/shadow-objects-e2e/dist",
       "!packages/shadow-objects-e2e/playwright-report",
