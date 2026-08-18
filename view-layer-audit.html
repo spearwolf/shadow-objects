@@ -228,11 +228,11 @@
             </div>
           </div>
           <div class="scorebox">
-            <div class="score-main">87</div>
-            <div class="score-sub">Code &amp; Laufzeit 89,5 · Projekt-Harness 97,5</div>
+            <div class="score-main">98,5</div>
+            <div class="score-sub">Code &amp; Laufzeit 98,5 · Projekt-Harness 100</div>
             <div class="score-scale">
-              Audit vom 15. August 2026: 47 → 87 (+40) · 16 behoben, 11 neu · Stand vom 17. August 2026 nach einem
-              Remediation-Lauf, nicht nach einem zweiten Audit · Skala 0–100
+              Remediation-Lauf vom 18. August 2026: 87 → 98,5 (+11,5) · 11 behoben, 7 neu · Buchhaltungsstand nach
+              dem Lauf, nicht nach einem zweiten Audit · Skala 0–100
             </div>
           </div>
         </div>
@@ -355,41 +355,53 @@
         <h2>Executive Summary</h2>
         <div class="domain-grid">
           <div class="domain-card">
-            <div class="domain-head"><h3>Code &amp; Laufzeit</h3><div class="domain-score">89,5</div></div>
+            <div class="domain-head"><h3>Code &amp; Laufzeit</h3><div class="domain-score">98,5</div></div>
             <div class="prose">
               <p>
-                Die neun Code-Findings des Audits sind erledigt und gegen den Diff geprüft: die Elternsuche über
-                Shadow-DOM-Grenzen, der Wertepfad von <code>&lt;shae-prop&gt;</code>, der Bindungslebenszyklus nach
-                spätem Upgrade und nach Namespace-Wechsel. Die Asymmetrie ist weg — beide Elemente stellen
-                dieselbe Vorfahrenanfrage statt zweier verschiedener Suchen.
+                Die sieben Code-Findings des Audits sind erledigt und gegen den Diff geprüft: Attribut, Signal und
+                <code>dispatchEvent</code>-Patch von <code>forward-custom-events</code> sagen dasselbe, ein
+                ausgelieferter Change Trail ist ein Wert und kein geteilter Puffer, ein unlesbarer Storage-Wert
+                wirkt wie ein fehlender statt <code>start()</code> mitzureißen, ein verschobener
+                <code>&lt;slot&gt;</code> meldet sich auch dort ab, wo er herkommt, und <code>clear()</code>,
+                <code>destroyComponent()</code> und <code>removeSubTree()</code> lassen ihre
+                <code>ViewComponent</code>s zerstört und abgelöst zurück. Die quadratische Kante der
+                Re-Request-Runde ist beziffert: 375 Geschwister oder 155 Wurzeln, bis der Überhang ein Bild
+                kostet — die größte Geschwisterschar im Repository hat sechs.
               </p>
               <p>
-                Was offen bleibt, ist kleiner und folgt weiter demselben Muster: Zustand wird einmal ermittelt und
-                danach nicht nachgezogen. Ein Ereignis-Patch überlebt ein Wiedereinhängen, ein Attribut
-                widerspricht seinem Signal, ein verschobener <code>&lt;slot&gt;</code> meldet seinen Umzug nur am
-                Zielort. Dazu zwei Stellen, an denen ein ausgelieferter Change Trail und ein zerstörter
-                <code>ComponentContext</code> etwas anderes behaupten, als sie halten.
+                Was bleibt, sind benannte Grenzen, keine offenen Baustellen. Ein <code>&lt;slot&gt;</code>, der in
+                einen entitylosen Bereich derselben Shadow Root zieht, erreicht keinen Zuhörer —
+                <code>slotchange</code> ist nicht <code>composed</code> und endet an der Shadow Root —, und ein
+                projiziertes <code>&lt;shae-ent&gt;</code> ohne antwortenden Vorfahren am Zielort behält seine
+                alte Bindung. Dazu drei Stellen, an denen das Modell schmaler ist als die Wirklichkeit: eine
+                uuid-Kollision überlebt die flächigen Abbauwege, <code>destroy()</code> nimmt keine Listener ab,
+                und der Property-Typ kennt den Eintrag der Länge 1 nicht, den seine eigene Filterfunktion
+                durchlässt.
               </p>
             </div>
             <div class="bars" id="bars-code"></div>
             <div class="cats" id="cats-code"></div>
           </div>
           <div class="domain-card">
-            <div class="domain-head"><h3>Projekt-Harness</h3><div class="domain-score">97,5</div></div>
+            <div class="domain-head"><h3>Projekt-Harness</h3><div class="domain-score">100</div></div>
             <div class="prose">
               <p>
-                Alle sechs Test-Findings sind erledigt. <code>shae-worker.html</code> prüft seine Shadow-DOM-,
-                Slot- und Multi-Namespace-Struktur, die Element-Klassen haben eigene Specs, die Upgrade-Suite
-                fährt heterogene Definitionsreihenfolgen, <code>&lt;shae-prop&gt;</code> wird im Shadow DOM und
-                hinter Slots getestet, der Namespace-Wechsel zur Laufzeit ebenso, und die Typkonvertierung liegt
-                tabellengetrieben unter Test. Der Abschluss-Verify des Laufs misst 659 Fälle in
+                Alle vier Test-Findings des Audits sind erledigt. Der aufgeschobene Abbau von
+                <code>&lt;shae-worker&gt;</code> liegt auf beiden Achsen unter Test — Umgebung und Proxy, Kernel
+                und Entities —, mit Gegenfall über die Taskgrenze hinweg und mit gefahrenen Gegenproben statt
+                geglaubter. <code>ComponentContext.test.js</code> räumt über
+                <code>afterEach(unmountAll)</code> auf wie das übrige Integrationspaket, die innere Frist der
+                E2E-Helfer läuft vor der äußeren ab und nennt ihre Bedingung, und die Fehler-Screenshots des
+                Browser-Modus werden vom Testskript geräumt. Der Abschluss-Verify des Laufs misst 688 Fälle in
                 <code>test:ci</code> und 402 in der E2E-Suite über zwei Browser.
               </p>
               <p>
-                Der blinde Fleck ist damit geschlossen. Was bleibt, ist eine dokumentierte Verhaltenszusage ohne
-                Test — der aufgeschobene Abbau von <code>&lt;shae-worker&gt;</code> — und zwei Stellen, an denen
-                das Harness seine eigene Diagnose verwischt: ein geteilter Context ohne
-                <code>afterEach</code> und zwei Fristen, von denen die falsche zuerst abläuft.
+                Was bleibt, ist zweimal Hausputz ohne Defektcharakter: ein Spec-Fall in
+                <code>RemoteWorkerEnv.spec.ts</code>, den das <code>it.each</code> daneben mit der stärkeren
+                Assertion bereits abdeckt, und ein <code>rimraf</code>-Vorlauf, der an den Skripten
+                <code>test</code> und <code>watch</code> hängt statt an der Testkonfiguration — wer
+                <code>vitest</code> gezielt auf eine Datei ruft, lässt ihn aus und findet danach ungeräumte
+                Aufnahmen vor.
               </p>
             </div>
             <div class="bars" id="bars-harness"></div>
@@ -461,31 +473,43 @@
               statt als Backlog-Eintrag.
             </p>
 
-            <h3>Stand vom 17. August 2026</h3>
+            <h3>Stand vom 18. August 2026</h3>
             <p>
               Diese Fassung ist die Buchhaltung eines abgeschlossenen Remediation-Laufs über den View Layer
-              (<code>view-layer-remediation-plan.md</code>): 24 Pakete, 24 Commits von <code>1efde70</code> bis
-              <code>b2356be</code> auf <code>main</code>. Geschlossen wurde ausschließlich, wofür der Plan ein
-              Reviewer-Urteil mit Fundstelle <em>und</em> einen Commit-Hash führt. Das trifft auf alle 16 Findings
-              des Audits zu, dazu auf beide offenen Fragen und die drei Punkte des Optimierungspotenzials.
-              <strong>Kein Finding blieb mangels Beleg offen</strong> — es gab nichts Acknowledgtes, nichts vom
-              Umfang Ausgenommenes und kein blockiertes Paket. <code>VIEW-010</code> ist mit umgekehrtem Vorzeichen
-              erledigt: Die verlangte Prüfung ist geleistet, ihr Ergebnis lautet nein, und die Begründung steht als
-              Klassenkommentar im Code — genau dort, wo das Finding sie haben wollte.
+              (<code>view-layer-remediation-plan-2.md</code>): zehn Pakete, zehn Commits von <code>d8d432e</code>
+              bis <code>a46ab05</code> auf <code>main</code>. Geschlossen wurde ausschließlich, wofür der Plan ein
+              Reviewer-Urteil mit Fundstelle <em>und</em> einen Commit-Hash führt. Das trifft auf alle elf Findings
+              des Audits zu. <strong>Kein Finding blieb mangels Beleg offen</strong> — es gab nichts Acknowledgtes,
+              nichts vom Umfang Ausgenommenes und kein blockiertes Paket. <code>VIEW-013</code> und
+              <code>VIEW-017</code> sind im entschiedenen Umfang geschlossen: der Slot-Umzug deckt den Wechsel in
+              eine andere Entity ab, die Größenordnung der Re-Request-Runde ist gemessen statt umgebaut. Was dabei
+              nicht abgedeckt ist, steht unten als eigener Befund und nicht als halb geschlossenes Finding.
             </p>
             <p>
-              Neu eingetragen sind elf Befunde aus dem Lauf, jeder mit Datei und Zeile: offene Nebenbefunde unter
-              erledigten Paketen, Reviewer-Funde ohne eigene Runde und ein Optimierungspunkt ohne Defektcharakter.
-              Aufgenommen wurde, was im Prüfumfang dieses Teilaudits liegt — <code>src/elements/</code>,
-              <code>src/view/</code> und die drei Testschichten. Nebenbefunde außerhalb davon (Kernel, Registry,
-              Dokumentation, Toolchain) stehen in <code>Backlog.md</code> und nicht hier; doppelte Buchführung wäre
-              schlechter als eine.
+              Neu eingetragen sind sieben Befunde aus dem Lauf, jeder mit Datei und Zeile: benannte Grenzen der
+              gewählten Lösungen, Nebenbefunde unter erledigten Paketen und ein bewusst offen gelassener
+              Reviewer-Fund. Aufgenommen wurde, was im Prüfumfang dieses Teilaudits liegt —
+              <code>src/elements/</code>, <code>src/view/</code> und die drei Testschichten. Nebenbefunde außerhalb
+              davon (Kernel, Registry, Dokumentation, Toolchain) stehen in <code>Backlog.md</code> und nicht hier;
+              doppelte Buchführung wäre schlechter als eine.
+            </p>
+            <p>
+              Zwei Pakete des Laufs tragen kein Audit-Finding, beide auf Nutzerentscheidung: eine
+              Verhaltenskorrektur an <code>&lt;shae-worker&gt;</code> — der aufgeschobene Abbau war wirkungslos,
+              weil ihn nichts zurücknahm — und eine Zeile in der Lint-Konfiguration, damit <code>pnpm lint</code>
+              nur noch prüft, was das Projekt selbst schreibt. An drei Stellen hat der Lauf das Audit korrigiert,
+              jedes Mal gemessen statt behauptet: Die Prämisse von <code>TEST-008</code> stimmte nicht —
+              <code>&lt;shae-worker&gt;</code> überlebte den Reconnect im selben Task <em>nicht</em>.
+              <code>VIEW-014</code> fasste zwei Wege falsch zusammen: <code>setProperty</code> gab nach
+              <code>destroyComponent()</code> <code>true</code> zurück, nicht <code>false</code>. Und
+              <code>VIEW-017</code> schrieb die Größenordnung <code>isBelow</code> zu, obwohl das die Milderung ist
+              und nicht die Ursache.
             </p>
             <p>
               <strong>Der Code ist seit dem Audit vom 15. August 2026 nicht neu geprüft worden.</strong> Dieser Lauf
               trägt nach, wofür ein unabhängiger Reviewer gegen den Diff geprüft hat; er ist keine zweite
               Bewertung. Ein Folgeaudit vergleicht seinen Prüfumfang gegen den Abschnitt „Prüfumfang“ oben und
-              seine Zahlen gegen 87 / 89,5 / 97,5.
+              seine Zahlen gegen 98,5 / 98,5 / 100.
             </p>
 
             <h3>Score</h3>
@@ -496,16 +520,16 @@
               Menge.
             </p>
             <table class="calc">
-              <tr><td>Gesamt</td><td>6 × −2, 2 × −0,5, 3 × 0</td><td>= 87</td></tr>
-              <tr><td>Code &amp; Laufzeit</td><td>5 × −2, 1 × −0,5, 1 × 0</td><td>= 89,5</td></tr>
-              <tr><td>Projekt-Harness</td><td>1 × −2, 1 × −0,5, 2 × 0</td><td>= 97,5</td></tr>
+              <tr><td>Gesamt</td><td>3 × −0,5, 4 × 0</td><td>= 98,5</td></tr>
+              <tr><td>Code &amp; Laufzeit</td><td>3 × −0,5, 2 × 0</td><td>= 98,5</td></tr>
+              <tr><td>Projekt-Harness</td><td>2 × 0</td><td>= 100</td></tr>
             </table>
             <p style="margin-top: 12px">
               Der Wert ist nicht mit dem Gesamt-Audit vergleichbar: Er misst einen bewusst schmalen Ausschnitt
-              mit höherer Prüftiefe. Ein Folgelauf dieses Teilaudits vergleicht gegen 87 und gegen den oben
+              mit höherer Prüftiefe. Ein Folgelauf dieses Teilaudits vergleicht gegen 98,5 und gegen den oben
               beschriebenen Umfang, nicht gegen die 39 aus <code>audit.html</code>. Der Erstlauf am 15. August 2026
-              stand bei 47 (Code &amp; Laufzeit 68, Projekt-Harness 79); der Sprung stammt aus dem
-              Remediation-Lauf, nicht aus einer neuen Messung am Code.
+              stand bei 47 (Code &amp; Laufzeit 68, Projekt-Harness 79); der Weg von dort hierher stammt aus zwei
+              Remediation-Läufen, nicht aus einer neuen Messung am Code.
             </p>
 
             <h3>Theme</h3>
@@ -515,7 +539,7 @@
       </section>
 
       <p class="footnote">
-        Erstellt am 15. August 2026 · Buchhaltungsstand 17. August 2026 nach dem Remediation-Lauf · Teilaudit
+        Erstellt am 15. August 2026 · Buchhaltungsstand 18. August 2026 nach dem zweiten Remediation-Lauf · Teilaudit
         View Layer · Datenmodell eingebettet als <code>#audit-data</code>
       </p>
     </div>
@@ -528,176 +552,127 @@
     "stack": ["TypeScript 7", "pnpm 11", "turborepo 2.10", "vitest 4", "Playwright 1.62", "Web Components", "@spearwolf/signalize", "@spearwolf/eventize"],
     "date": "2026-08-15",
     "theme": "light",
-    "score": 87,
-    "resolvedCount": 16,
+    "score": 98.5,
+    "resolvedCount": 27,
     "scoreHistory": [
       {"date": "2026-08-15", "score": 47},
-      {"date": "2026-08-17", "score": 87, "source": "remediation"}
+      {"date": "2026-08-17", "score": 87, "source": "remediation"},
+      {"date": "2026-08-18", "score": 98.5, "source": "remediation"}
     ],
-    "bySeverity": {"critical": 0, "high": 0, "medium": 6, "low": 2, "info": 3},
+    "bySeverity": {"critical": 0, "high": 0, "medium": 0, "low": 3, "info": 4},
     "byCategory": {
-      "Bugs & Korrektheitsrisiken": 4,
+      "Bugs & Korrektheitsrisiken": 3,
       "Konsistenz": 2,
-      "Architektur & Struktur": 1,
-      "Testabdeckung & Teststrategie": 2,
-      "Developer Experience": 2
+      "Testabdeckung & Teststrategie": 1,
+      "Developer Experience": 1
     },
     "domains": {
       "code": {
         "label": "Code & Laufzeit",
-        "score": 89.5,
-        "bySeverity": {"critical": 0, "high": 0, "medium": 5, "low": 1, "info": 1},
+        "score": 98.5,
+        "bySeverity": {"critical": 0, "high": 0, "medium": 0, "low": 3, "info": 2},
         "byCategory": {
-          "Bugs & Korrektheitsrisiken": 4,
-          "Konsistenz": 2,
-          "Architektur & Struktur": 1
+          "Bugs & Korrektheitsrisiken": 3,
+          "Konsistenz": 2
         },
-        "executiveSummary": "Die neun Code-Findings des Audits sind erledigt und gegen den Diff geprüft: die Elternsuche über Shadow-DOM-Grenzen, der Wertepfad von shae-prop, der Bindungslebenszyklus nach spätem Upgrade und nach Namespace-Wechsel. Beide Elemente stellen seither dieselbe Vorfahrenanfrage statt zweier verschiedener Suchen. Was offen bleibt, ist kleiner und folgt weiter demselben Muster: Zustand, der einmal ermittelt und danach nicht nachgezogen wird — ein Ereignis-Patch, der ein Wiedereinhängen überlebt, ein Attribut, das seinem Signal widerspricht, ein slot, der seinen Umzug nur am Zielort meldet."
+        "executiveSummary": "Die sieben Code-Findings des Audits sind erledigt und gegen den Diff geprüft: Attribut, Signal und dispatchEvent-Patch von forward-custom-events sagen dasselbe, ein ausgelieferter Change Trail ist ein Wert und kein geteilter Puffer, ein unlesbarer Storage-Wert wirkt wie ein fehlender statt start() mitzureißen, ein verschobener slot meldet sich auch an der abgebenden Seite ab, und clear(), destroyComponent() und removeSubTree() lassen ihre ViewComponents zerstört und abgelöst zurück; die quadratische Kante der Re-Request-Runde ist beziffert statt geschätzt. Was bleibt, sind benannte Grenzen: ein slot, der in einen entitylosen Bereich derselben Shadow Root zieht, erreicht keinen Zuhörer, ein projiziertes shae-ent ohne antwortenden Vorfahren behält seine alte Bindung, eine uuid-Kollision überlebt die flächigen Abbauwege, destroy() nimmt keine Listener ab, und der Property-Typ kennt den Eintrag der Länge 1 nicht, den seine eigene Filterfunktion durchlässt."
       },
       "harness": {
         "label": "Projekt-Harness",
-        "score": 97.5,
-        "bySeverity": {"critical": 0, "high": 0, "medium": 1, "low": 1, "info": 2},
+        "score": 100,
+        "bySeverity": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 2},
         "byCategory": {
-          "Testabdeckung & Teststrategie": 2,
-          "Developer Experience": 2
+          "Testabdeckung & Teststrategie": 1,
+          "Developer Experience": 1
         },
-        "executiveSummary": "Alle sechs Test-Findings sind erledigt: shae-worker.html prüft seine Shadow-DOM-, Slot- und Multi-Namespace-Struktur, die Element-Klassen haben eigene Specs, die Upgrade-Suite fährt heterogene Definitionsreihenfolgen, shae-prop wird im Shadow DOM und hinter Slots getestet, der Namespace-Wechsel zur Laufzeit ebenso, und die Typkonvertierung liegt tabellengetrieben unter Test. Der Abschluss-Verify des Laufs misst 659 Fälle in test:ci und 402 in der E2E-Suite über zwei Browser. Offen bleiben eine dokumentierte Verhaltenszusage ohne Test und zwei Stellen, an denen das Harness seine eigene Diagnose verwischt."
+        "executiveSummary": "Alle vier Test-Findings des Audits sind erledigt: der aufgeschobene Abbau von shae-worker liegt auf beiden Achsen unter Test — Umgebung und Proxy, Kernel und Entities —, mit Gegenfall über die Taskgrenze hinweg und mit gefahrenen Gegenproben statt geglaubter, ComponentContext.test.js räumt über afterEach(unmountAll) auf wie das übrige Integrationspaket, die innere Frist der E2E-Helfer läuft vor der äußeren ab und nennt ihre Bedingung, und die Fehler-Screenshots des Browser-Modus werden vom Testskript geräumt. Der Abschluss-Verify des Laufs misst 688 Fälle in test:ci und 402 in der E2E-Suite über zwei Browser. Offen bleibt zweimal Hausputz ohne Defektcharakter: ein Spec-Fall, den das it.each daneben mit der stärkeren Assertion bereits abdeckt, und ein rimraf-Vorlauf, der an den Skripten hängt statt an der Testkonfiguration."
       }
     }
   },
   "findings": [
     {
-      "id": "VIEW-011",
-      "category": "Konsistenz",
-      "domain": "code",
-      "severity": "medium",
-      "title": "Ein programmatisch gesetztes forward-custom-events normalisiert das Attribut nicht",
-      "location": "packages/shadow-objects/src/elements/ShaeEntElement.ts:157-170",
-      "description": "forwardCustomEvents$.set(true) schreibt das Attribut nur zurück, wenn es ganz fehlt — der true-Zweig steht unter if (!this.hasAttribute(...)). Trägt das Element bereits eine Filterliste, also <shae-ent forward-custom-events=\"a,b\">, dann leitet es nach dem Aufruf jedes Ereignis weiter, während das Attribut weiterhin a,b zeigt. Attribut und Signal behaupten Verschiedenes: wer das Attribut liest, bekommt die falsche Auskunft, und ein späteres Wiedereinhängen liest genau diesen Attributwert als Wahrheit zurück.",
-      "recommendation": "Im true-Zweig das Attribut bedingungslos auf die Wahr-Form setzen, so wie es der Set-Zweig für die Listenform bereits tut. Danach gilt in beide Richtungen: das Attribut ist die serialisierte Form des Signals, nicht eine zweite Meinung daneben.",
-      "effort": "S",
-      "evidence": "In echtem Chromium gemessen (Implementierer Paket 12b): nach forwardCustomEvents$.set(true) steht das Signal auf true, getAttribute('forward-custom-events') liefert unverändert \"a,b\"."
-    },
-    {
-      "id": "VIEW-012",
-      "category": "Bugs & Korrektheitsrisiken",
-      "domain": "code",
-      "severity": "medium",
-      "title": "Der forward-custom-events-Patch überlebt ein Wiedereinhängen mit der alten Einstellung",
-      "location": "packages/shadow-objects/src/elements/ShaeEntElement.ts:195-241, :327",
-      "description": "forwardCustomEvents$.set(true) installiert den dispatchEvent-Patch, der jedes Ereignis in den DOM schiebt. Ein Ab- und Wiedereinhängen liest das Attribut in connectedCallback unter beQuiet zurück; der Patch-Effect läuft dabei nicht erneut, weil sich aus seiner Sicht weder viewComponent$ noch der gelesene Wert ändern. Danach steht das Signal auf false (bei forward-custom-events=\",\") beziehungsweise auf Set('a') (bei =\"a\"), während der unter true installierte Patch weiter alles weiterleitet. Was das Element tatsächlich weiterleitet, ist damit weder am Signal noch am Attribut ablesbar.",
-      "recommendation": "Das Zurücklesen unter beQuiet darf den Patch nicht überspringen: entweder den Patch-Effect nach dem Zurücklesen ausdrücklich neu auswerten, oder den Patch im disconnectedCallback abnehmen und beim Verbinden aus dem dann gültigen Signalwert neu aufbauen.",
-      "effort": "M",
-      "evidence": "In echtem Chromium gemessen (Reviewer Paket 13), beide Attributformen: Signal false beziehungsweise Set('a'), weitergeleitet wird trotzdem jedes Ereignis. Der =\"a\"-Gegenfall belegt, dass der Zustand vorbesteht und nicht aus der Attributarbeit dieses Laufs stammt."
-    },
-    {
-      "id": "VIEW-013",
-      "category": "Bugs & Korrektheitsrisiken",
-      "domain": "code",
-      "severity": "medium",
-      "title": "Ein verschobener slot benachrichtigt die Entity nicht, die er verlässt",
-      "location": "packages/shadow-objects/src/elements/ShaeEntElement.ts:550-566",
-      "description": "slotchange feuert erst nach dem Umzug und damit am neuen Ort; #onSlotChange läuft dort, und die Entity, unter der der <slot> bisher hing, hört nichts. Betroffen sind beide Kanäle gleichermaßen: eine projizierte Property bleibt an ihrer alten Host-Entity hängen, und entParentNode eines projizierten <shae-ent> bleibt stehen. Es ist die einzige verbliebene Lücke in der Regel, die der View Layer sonst durchhält — jeder Weg, antwortender Vorfahre zu werden oder aufzuhören es zu sein, nimmt die Aufforderung an die Kandidaten mit.",
-      "recommendation": "Den Umzug eines <slot> an der abgebenden Seite sichtbar machen: entweder beobachtet die Entity ihre eigenen <slot>-Nachkommen, oder das tragende Element schickt beim Verlassen dieselbe Re-Request-Aufforderung, die disconnectedCallback bereits kennt.",
-      "effort": "M",
-      "evidence": "Gefunden vom Reviewer Paket 9b, in echtem Chromium gemessen: nach dem Verschieben steht sowohl die Property an der alten Entity als auch entParentNode des projizierten <shae-ent> unverändert."
-    },
-    {
-      "id": "VIEW-014",
-      "category": "Konsistenz",
-      "domain": "code",
-      "severity": "medium",
-      "title": "clear() und destroyComponent() lassen lebende ViewComponents zurück",
-      "location": "packages/shadow-objects/src/view/ComponentContext.ts:505-520, :158, :536-541",
-      "description": "Nach ctx.clear() beziehungsweise ctx.destroyComponent(vc) meldet die Komponente isDestroyed === false, ihr context zeigt weiter auf den Context, und jedes setProperty gibt false zurück und schreibt nichts. dispose() macht es an derselben Klasse richtig und zerstört die Components, solange der Context noch lebt. Der Code kennt die Lage und arbeitet um sie herum — der changeOrder-Wächter bei :314-315 existiert genau deswegen. Für einen Konsumenten ist isDestroyed damit keine verlässliche Auskunft über den dritten Zustand.",
-      "recommendation": "Entweder lösen clear() und destroyComponent() ihre Components ab wie dispose(), oder isDestroyed benennt den dritten Zustand. Beides ist eine Verhaltensänderung an der öffentlichen API und braucht eine eigene Entscheidung, keinen Bugfix nebenbei.",
-      "effort": "M",
-      "evidence": "Sonde vom 2026-08-17 (Planer Paket 12d) gegen den gebauten Stand; die Doku benennt den Zustand seit demselben Paket, der Code nicht."
-    },
-    {
-      "id": "VIEW-015",
-      "category": "Bugs & Korrektheitsrisiken",
-      "domain": "code",
-      "severity": "medium",
-      "title": "applyPropsChanges schreibt bereits ausgelieferte Change Trails fort",
-      "location": "packages/shadow-objects/src/utils/props-utils.ts:19-27, sichtbar über view/ComponentMemory.ts (createEntity)",
-      "description": "applyPropsChanges übernimmt die Tupel-Objekte des Change Trails per Referenz und schreibt sie später mit entry[1] = value fort. Ein Trail, den ein Konsument aufgezeichnet oder weitergereicht hat, ändert sich damit nachträglich unter der Hand — eine Falle für jeden, der Trails protokolliert, vergleicht oder wiedereinspielt. Der sichtbare Weg führt über ComponentMemory.createEntity, also über die Stelle, an der die View ihren Zustand für den Wiederaufbau nach einem Context-Verlust hält.",
-      "recommendation": "Die Tupel beim Übernehmen kopieren statt sie zu referenzieren. Ein ausgelieferter Change Trail ist ein Wert, kein gemeinsamer Puffer.",
-      "effort": "S",
-      "evidence": "Gefunden vom Reviewer Paket 8 an der Fundstelle; vorbestehend, von diesem Lauf nicht angefasst."
-    },
-    {
-      "id": "VIEW-016",
+      "id": "VIEW-018",
       "category": "Bugs & Korrektheitsrisiken",
       "domain": "code",
       "severity": "low",
-      "title": "configureConsoleLogger parst den Storage-Wert ungeschützt und reißt start() mit",
-      "location": "packages/shadow-objects/src/view/RemoteWorkerEnv.ts:337",
-      "description": "Die Fähigkeitsprüfung für localStorage ist gehärtet, der gelesene Wert selbst geht danach ungeprüft durch JSON.parse. Ein von Hand gesetzter oder von einer fremden Anwendung überschriebener Schlüssel wirft damit synchron in configureConsoleLogger() und nimmt RemoteWorkerEnv.start() mit: der Worker kommt nicht hoch, und die Ursache liegt in einem Storage-Schlüssel, nicht im Code des Konsumenten.",
-      "recommendation": "Den JSON.parse in ein try/catch fassen und einen unlesbaren Wert wie einen fehlenden behandeln — dieselbe Linie, die für die Storage-Fähigkeit selbst bereits gezogen ist.",
-      "effort": "S",
-      "evidence": "Nebenbefund des Reviewers Paket 15, an der Fundstelle nachgelesen; die Storage-Fähigkeitsprüfung derselben Funktion ist im selben Paket gehärtet worden, der Parse nicht."
+      "title": "Ein slot, der in einen entitylosen Bereich derselben Shadow Root zieht, erreicht keinen Zuhörer",
+      "location": "packages/shadow-objects/src/elements/ShaeEntElement.ts:645-676 (#onSlotChange)",
+      "description": "slotchange ist nicht composed und endet an der Shadow Root, in der der <slot> nach dem Umzug steht. Landet er dort unter keiner Entity, läuft #onSlotChange nirgends: weder das Register noch die Re-Request-Runde kommen an, und beide Kanäle bleiben stehen — eine projizierte Property hängt weiter an ihrer alten Host-Entity, entParentNode eines projizierten <shae-ent> ebenso. Dasselbe gilt für das Fenster zwischen slot.remove() und dem Wiedereinhängen, weil auch dort keine Entity über dem Slot steht.",
+      "recommendation": "Nur an der abgebenden Seite zu schließen: die Entity müsste ihre eigenen <slot>-Nachkommen beobachten, statt auf ein Ereignis zu warten, das sie nicht erreicht. Das kostet einen MutationObserver je Entity mit subtree: true, weil ein MutationObserver nicht nach Tag filtern kann, und ist eine eigene Entscheidung.",
+      "effort": "M",
+      "evidence": "In echtem Chromium gemessen (Reviewer 2026-08-18): von sechs einzeln gefahrenen Umzugsvarianten tragen drei nicht, darunter dieser Fall. Die Grenze steht in docs/ und in Backlog.md unter »Grenzen des Slot-Umzugs«."
     },
     {
-      "id": "VIEW-017",
-      "category": "Architektur & Struktur",
+      "id": "VIEW-019",
+      "category": "Bugs & Korrektheitsrisiken",
+      "domain": "code",
+      "severity": "low",
+      "title": "Ein projiziertes shae-ent ohne antwortenden Vorfahren im Ziel-Namespace behält seine alte Bindung",
+      "location": "packages/shadow-objects/src/elements/ShaeEntElement.ts:638-643, view/ComponentContext.ts:372-376",
+      "description": "#askEveryoneToReRequest schickt die Aufforderung über broadcastEvent(ReRequestParent) in jeden Namespace, aber die Aufforderung löst keine vorhandene Bindung. Findet das projizierte <shae-ent> am Zielort keinen antwortenden Vorfahren, bleiben entParentNode und viewComponent.parent auf dem alten Stand stehen. Der Property-Kanal zieht im selben Zug korrekt nach — an dieser Stelle laufen die beiden Kanäle auseinander.",
+      "recommendation": "Die Aufforderung müsste die Bindung lösen, bevor sie neu sucht, so wie #reRequestParentAsRoot es am Wurzelkanal tut. Das ändert jede Re-Request-Runde und gehört in den Umbau der Elternsuche, nicht daneben.",
+      "effort": "M",
+      "evidence": "In echtem Chromium gemessen (Reviewer 2026-08-18), aus derselben Reihe von sechs Umzugsvarianten; in docs/ und Backlog.md als Grenze benannt."
+    },
+    {
+      "id": "VIEW-020",
+      "category": "Konsistenz",
+      "domain": "code",
+      "severity": "low",
+      "title": "Der von einer uuid-Kollision verdrängte ViewComponent überlebt die flächigen Abbauwege",
+      "location": "packages/shadow-objects/src/view/ComponentContext.ts:555-557, :251-266, :584-595",
+      "description": "clear(), removeSubTree() und dispose() gehen über #components, und dort liegt je uuid genau ein Eintrag — der des zuletzt beigetretenen. Teilen sich zwei ViewComponents eine uuid, behält die verdrängte ihren context und meldet weiter isDestroyed === false, während der Rest des Contexts abgeräumt ist. destroyComponent(component) ist davon nicht betroffen: es bekommt eine Instanz genannt und löst genau diese ab, beanspruchte uuid oder nicht. Die Folge fängt der changeOrder-Wächter ab, die Ablösung selbst ist bewusst nicht auf diesen Weg erweitert.",
+      "recommendation": "Wer die Ablösung auf den Kollisionsfall ausweiten will, braucht neben #components ein zweites Register, das auf Instanzen schlüsselt. Davor steht die Frage, ob doppelte uuids überhaupt vorkommen dürfen — sie entscheidet, ob sich der Umbau lohnt.",
+      "effort": "M",
+      "evidence": "Gemessen am 2026-08-18 gegen den gebauten Stand; wörtlich festgehalten in docs/api-reference.md und Backlog.md:225."
+    },
+    {
+      "id": "VIEW-021",
+      "category": "Bugs & Korrektheitsrisiken",
       "domain": "code",
       "severity": "info",
-      "title": "Der Unterhalb-Test der Re-Request-Runde bleibt quadratisch",
-      "location": "packages/shadow-objects/src/elements/ShaeEntElement.ts:25-30, view/ComponentContext.ts:365-371",
-      "description": "isBelow filtert die Kandidaten einer Re-Request-Runde, und jeder Kandidat steigt für sich auf — n²/2 mit sehr kleiner Konstante. Die Gegenseite hat dasselbe Problem von hinten: dispatchReRequestParentRoots() kennt keinen Absender und kann deshalb gar nicht filtern; ein ns-Wechsel kostet N+1 Nachrichten bei N Wurzeln im Ziel-Namespace. Ein Absender allein reicht dort nicht, weil #reRequestParentAsRoot die Bindung bedingungslos löst und ein Filter denselben Aufstieg bräuchte, der an geschlossenen Shadow-Grenzen ausfällt.",
-      "recommendation": "Beides in einem Zug oder gar nicht: ein Absender am Wurzel-Kanal zusammen mit einem Unterhalb-Test, der ohne den Aufstieg je Kandidat auskommt. Kein Defekt — eine Größenordnung, die erst bei einigen tausend Geschwistern unter einem Elternteil zurückkommt.",
+      "title": "ViewComponent.destroy() nimmt keine Listener ab",
+      "location": "packages/shadow-objects/src/view/ViewComponent.ts:247-255",
+      "description": "destroy() löst die Komponente aus der Hierarchie und vom ComponentContext, ruft aber kein off(). Jedes on(vc, …) eines Konsumenten bleibt bestehen, und der dispatchEvent-Patch, den ShaeEntElement.ts für forward-custom-events installiert, überlebt jeden Abbauweg. Eine zerstörte Komponente benachrichtigt weiterhin ihre eigenen Listener. Vorbestehend und in docs/api-reference.md so dokumentiert, also keine Überraschung — aber eine Quelle für Referenzen, die länger leben als die Komponente, die sie hält.",
+      "recommendation": "Entweder nimmt destroy() die Listener ab, dann ist eine zerstörte Komponente wirklich still — eine Verhaltensänderung an der öffentlichen API mit eigener Entscheidung. Oder es bleibt so, und die Doku behält den Vorrang, den sie hat.",
+      "effort": "S",
+      "evidence": "Nebenbefund aus dem Abbau-Paket, an der Fundstelle nachgelesen; docs/api-reference.md führt das Verhalten in der Tabelle des zerstörten Zustands."
+    },
+    {
+      "id": "VIEW-022",
+      "category": "Konsistenz",
+      "domain": "code",
+      "severity": "info",
+      "title": "ComponentPropertiesType modelliert den Eintrag der Länge 1 nicht",
+      "location": "packages/shadow-objects/src/utils/props-utils.ts:5, :21 (Typ in src/types.ts:22)",
+      "description": "ComponentPropertiesType ist [string, unknown][] und kennt damit keinen Eintrag der Länge 1; filterUndefinedProps lässt genau diesen bewusst durch, weil entry.length === 1 als gesetzt zählt. Typ und Funktion sagen Verschiedenes, und die Kopierstelle in applyPropsChanges braucht deshalb einen Cast auf ComponentPropertiesType, der mehr behauptet, als gilt. Kein Laufzeitdefekt — eine Lücke im Typmodell, die jede spätere Änderung an dieser Stelle wieder einen Cast kostet.",
+      "recommendation": "Den Typ beide Formen nennen lassen, ([string] | [string, unknown])[], dann trägt filterUndefinedProps seine Absicht im Typ und der Cast entfällt. Der Wechsel schlägt auf jede Stelle durch, die auf entry[1] zugreift, und gehört deshalb in einen eigenen Zug.",
       "effort": "M",
-      "evidence": "Gemessen mit 1200 kinderlosen Geschwistern unter einem Elternteil: 251 ms gegen 57 ms im Vergleichslauf ohne die Filterfrage."
+      "evidence": "Vom Reviewer durch drei tsc-Läufe eingegrenzt; vorbestehend, von diesem Lauf nicht angefasst."
     },
     {
-      "id": "TEST-008",
+      "id": "TEST-012",
       "category": "Testabdeckung & Teststrategie",
       "domain": "harness",
-      "severity": "medium",
-      "title": "Der #deferDestroy-Reconnect hat auf keiner Ebene einen Test",
-      "location": "packages/shadow-objects-testing/test/worker-element-attributes.test.js:402-404",
-      "description": "<shae-worker> verschiebt seinen Abbau ausdrücklich, damit ein Ab- und Wiedereinhängen im selben Task die Umgebung nicht wegwirft. Das Verhalten ist dokumentiert und wird von der Element-Spec benannt — sie sagt an der Fundstelle selbst, dass sie es nicht prüft. Weder das Integrationspaket noch die E2E-Suite fährt den Pfad, und es ist genau der Pfad, den ein Framework-Wrapper beim Re-Rendern auslöst.",
-      "recommendation": "Einen Fall im Integrationspaket: Element entfernen und im selben Task wieder einhängen, danach prüfen, dass Environment und Entities dieselben geblieben sind. Dazu einen Gegenfall über einen Task hinweg, der den Abbau tatsächlich sieht — sonst bewacht der erste Fall nichts.",
+      "severity": "info",
+      "title": "Ein Spec-Fall in RemoteWorkerEnv.spec.ts ist zum it.each daneben redundant",
+      "location": "packages/shadow-objects/src/view/RemoteWorkerEnv.spec.ts:487-506, :508-541",
+      "description": "Der Einzelfall legt den Wert \"debug\" unter den Storage-Schlüssel — denselben Schlüssel und denselben Wert, den das it.each direkt darunter als vierte Zeile führt. Die Assertion der Tabelle ist die stärkere: sie vergleicht die Worker-Konfiguration gegen eine eigens erhobene Nulllinie, während der Einzelfall nur prüft, dass sich der String nicht in die Konfiguration spreizt. Doppelte Abdeckung ist kein Defekt, aber der Fall kostet einen Env-Start je Lauf und lässt beim Lesen offen, was er zusätzlich belegen soll.",
+      "recommendation": "Den Einzelfall streichen und, falls die Nicht-Spreizung eigens festgehalten werden soll, seine Assertion in die Tabelle heben.",
       "effort": "S",
-      "evidence": "Nebenbefund Paket 17; der Kommentar an der Fundstelle spricht die Lücke aus."
+      "evidence": "Vom Reviewer an der Fundstelle festgestellt und bewusst offen gelassen: eine weitere Review-Runde dafür wäre teurer als der Nutzen."
     },
     {
-      "id": "TEST-009",
-      "category": "Testabdeckung & Teststrategie",
-      "domain": "harness",
-      "severity": "low",
-      "title": "ComponentContext.test.js teilt einen Context über alle Fälle",
-      "location": "packages/shadow-objects-testing/test/ComponentContext.test.js:6-10",
-      "description": "ComponentContext.get() steht auf Modulebene und wird nur in einem after() geleert. Jeder Fall, der ohne buildChangeTrails() endet, hinterlässt seine Änderungen im nächsten. Es ist die letzte Datei des Integrationspakets ohne afterEach; die übrigen zwanzig Spec-Dateien räumen über unmountAll() auf.",
-      "recommendation": "Auf denselben afterEach/unmountAll()-Weg umstellen, den das restliche Integrationspaket geht.",
-      "effort": "S",
-      "evidence": "Nebenbefund Paket 7, in den Paketen 8, 9a, 9b und 10 je erneut als offen bestätigt."
-    },
-    {
-      "id": "TEST-010",
+      "id": "TEST-013",
       "category": "Developer Experience",
       "domain": "harness",
       "severity": "info",
-      "title": "waitUntil und testAsyncAction teilen sich dieselbe 5000-ms-Vorgabe",
-      "location": "packages/shadow-objects-e2e/src/test-helpers/waitUntil.js:9, src/test-helpers/testAsyncAction.js:3",
-      "description": "Sieben der zehn Seitenmodule rufen waitUntil an 20 Stellen, 16 davon unmittelbar in einer testAsyncAction. Beide Helfer haben 5000 ms als Vorgabe, also läuft die äußere Frist zuerst ab: der Bericht sagt »did not settle within 5000ms« statt der Bedingung, an der es hing. Kein Testergebnis ändert sich dadurch, nur die Diagnose — und die kostet bei jedem roten E2E-Lauf eine Runde Suchen.",
-      "recommendation": "Der inneren Frist einen kleineren Vorgabewert geben, damit sie zuerst greift und ihre Bedingung nennt.",
+      "title": "Ein gezielter vitest-Aufruf umgeht den rimraf-Vorlauf des Testpakets",
+      "location": "packages/shadow-objects-testing/package.json:14-15, test/__screenshots__/",
+      "description": "test und watch räumen test/__screenshots__ über einen rimraf-Vorlauf im Skript. Wer vitest gezielt auf eine Datei ruft — der übliche Weg beim Eingrenzen eines roten Falls —, bekommt diesen Vorlauf nicht: die Aufnahmen fehlgeschlagener Fälle bleiben danach stehen, mit frischem Zeitstempel und ohne zugehörigen roten Fall. Das Verzeichnis ist gitignored, liegt also nicht im Diff und fällt erst beim nächsten Blick hinein auf.",
+      "recommendation": "Das Räumen an den Ort hängen, den jeder Lauf passiert — ein globalSetup der vitest-Konfiguration statt eines Vorlaufs an zwei Skripten.",
       "effort": "S",
-      "evidence": "Über die zehn Seitenmodule der E2E-Suite ausgezählt: 20 Aufrufe von waitUntil, 16 davon unmittelbar in einer testAsyncAction, vier in Seiten-Helfern, die von dort gerufen werden."
-    },
-    {
-      "id": "TEST-011",
-      "category": "Developer Experience",
-      "domain": "harness",
-      "severity": "info",
-      "title": "Die Fehler-Screenshots des Browser-Modus werden von keinem Skript geleert",
-      "location": "packages/shadow-objects-testing/package.json:13-17, test/__screenshots__/",
-      "description": "test/__screenshots__/ sammelt die Aufnahmen fehlgeschlagener Fälle des Vitest-Browser-Modus; das Paket hat kein pretest, das aufräumt. Ein Screenshot mit frischem Zeitstempel aus einem längst grünen Fall sieht aus wie ein aktueller Fehler — dieselbe Falle, die für die Playwright-Ausgabe der E2E-Suite inzwischen abgestellt ist. Das Verzeichnis ist gitignored, liegt also nicht im Diff, und entsteht beim ersten roten Fall neu.",
-      "recommendation": "Dasselbe pretest-Muster übernehmen, das packages/shadow-objects-e2e/package.json für test-results/ benutzt.",
-      "effort": "S",
-      "evidence": "Gefunden am 2026-08-16 (Planer Paket 4b): vier Altaufnahmen im Verzeichnis, davon eine zu einem Fall, der im selben Arbeitsbaum grün lief."
+      "evidence": "Nebenbefund aus dem forward-custom-events-Paket, an den beiden Skripten nachgelesen."
     }
   ],
   "acknowledged": [],
