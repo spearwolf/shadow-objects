@@ -1,33 +1,19 @@
-import {emit, eventize, off, on, once, Priority} from '@spearwolf/eventize';
-import {
-  batch,
-  type CompareFunc,
-  createEffect,
-  createMemo,
-  createSignal,
-  destroySignal,
-  isSignal,
-  link,
-  type Signal,
-  type SignalReader,
-} from '@spearwolf/signalize';
+import {emit, eventize, off, on} from '@spearwolf/eventize';
+import {batch} from '@spearwolf/signalize';
 import {ComponentChangeType, MessageToView} from '../constants.js';
 import type {
   ComponentPropertiesType,
   IComponentChangeType,
   IComponentEvent,
-  Maybe,
-  ProvideContextOptions,
   ShadowObjectConstructor,
   ShadowObjectType,
-  SignalValueOptions,
   SyncEvent,
 } from '../types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
-import {toMaybe} from '../utils/toMaybe.js';
 import {Entity} from './Entity.js';
-import {type OnCreate, type OnDestroy, onCreate, onDestroy, onParentChanged, onViewEvent} from './events.js';
+import {type OnCreate, type OnDestroy, onCreate, onDestroy, onParentChanged} from './events.js';
 import {Registry} from './Registry.js';
+import {ShadowObjectCreationScope} from './ShadowObjectCreationScope.js';
 import {SignalsPath} from './SignalsPath.js';
 
 export interface MessageToViewEvent {
@@ -59,12 +45,6 @@ enum ShadowObjectAction {
 
 const getDisplayName = (construct: ShadowObjectConstructor) => construct.displayName || construct.name;
 
-let provideContextOptionsDeprecatedShown = false;
-let provideGlobalContextOptionsDeprecatedShown = false;
-let useContextOptionsDeprecatedShown = false;
-let useParentContextOptionsDeprecatedShown = false;
-let usePropertyOptionsDeprecatedShown = false;
-
 /**
  * The entity kernel manages the lifecycle of all entities and shadow-objects.
  *
@@ -87,19 +67,18 @@ export class Kernel {
   #rootContexts: Map<string | symbol, SignalsPath> = new Map();
 
   /**
-   * The teardown of a shadow-object, keyed by the shadow-object itself.
+   * The creation scope of a shadow-object, keyed by the shadow-object itself.
    *
-   * `constructShadowObject()` builds the teardown as a closure over everything the creation API
-   * handed out; `destroyShadowObject()` needs to reach it from the outside when a shadow-object
-   * leaves the constructor set of an entity that stays alive. The teardown removes its own entry,
+   * `destroyShadowObject()` needs to reach the scope from the outside when a shadow-object leaves the
+   * constructor set of an entity that stays alive. The scope removes its own entry when it tears down,
    * so nothing here outlives the shadow-object it belongs to.
    *
    * The key is the shadow-object instance, which assumes one instance per construction. A
    * constructor handing out the same instance twice — to a second entity, or to the same one
-   * under another token — leaves only the later teardown reachable from here; the earlier one
-   * still runs when its entity is destroyed.
+   * under another token — leaves only the later scope reachable from here; the earlier one
+   * still tears down when its entity is destroyed.
    */
-  readonly #shadowObjectTearDowns = new WeakMap<object, () => void>();
+  readonly #shadowObjectScopes = new WeakMap<object, ShadowObjectCreationScope>();
 
   constructor(registry?: Registry) {
     eventize(this);
@@ -471,394 +450,27 @@ export class Kernel {
   }
 
   private constructShadowObject(construct: ShadowObjectConstructor, entry: EntityEntry): ShadowObjectType {
-    const unsubscribePrimary = new Set<() => any>();
-    const unsubscribeSecondary = new Set<() => any>();
+    const scope = new ShadowObjectCreationScope(entry.entity, this.logger, getDisplayName(construct));
 
-    const contextReaders = new Map<string | symbol, SignalReader<any>>();
-    const contextReaderCompares = new Map<string | symbol, CompareFunc<any> | undefined>();
-    const contextParentReaders = new Map<string | symbol, SignalReader<any>>();
-    const contextParentReaderCompares = new Map<string | symbol, CompareFunc<any> | undefined>();
-    const contextProviders = new Map<string | symbol, Signal<any>>();
-    const contextRootProviders = new Map<string | symbol, Signal<any>>();
+    const shadowObject = eventize(new construct(scope.createAPI()));
 
-    const propertyReaders = new Map<string, SignalReader<any>>();
-    const propertyCompares = new Map<string, CompareFunc<any> | undefined>();
+    this.#shadowObjectScopes.set(shadowObject, scope);
 
-    const getUseProperty = <T = any>(
-      name: string,
-      options?: SignalValueOptions<T> | CompareFunc<T | undefined>,
-    ): SignalReader<Maybe<T>> => {
-      if (!usePropertyOptionsDeprecatedShown && options != null && typeof options === 'function') {
-        console.warn(
-          '[shadow-objects] Deprecation Warning: The "isEqual" option of "useProperty()" is now passed as {compare} argument. Please update your code accordingly.',
-        );
-        usePropertyOptionsDeprecatedShown = true;
-      }
-
-      const opts = typeof options === 'function' ? {compare: options} : options;
-
-      let propReader = propertyReaders.get(name);
-
-      if (propReader === undefined) {
-        propReader = createSignal<any>(undefined, opts).get;
-        propertyReaders.set(name, propReader);
-        propertyCompares.set(name, opts?.compare);
-        const con = link(entry.entity.getPropertyReader(name), propReader);
-        unsubscribeSecondary.add(con.destroy.bind(con));
-      } else if (opts?.compare != null && propertyCompares.get(name) !== opts.compare) {
-        console.warn(
-          `[shadow-objects] useProperty("${name}"): the cached signal already exists with a different (or no) {compare} function — the new options are ignored. Pass options only on the first call per property.`,
-        );
-      }
-
-      return propReader;
-    };
-
-    const shadowObject = eventize(
-      new construct({
-        entity: entry.entity,
-
-        provideContext<T = unknown>(
-          name: string | symbol,
-          sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>,
-          options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
-        ) {
-          if (!provideContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
-            console.warn(
-              '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideContext()" is now passed as {compare} argument. Please update your code accordingly.',
-            );
-            provideContextOptionsDeprecatedShown = true;
+    scope.bindTo(
+      shadowObject,
+      () => {
+        this.#shadowObjectScopes.delete(shadowObject);
+      },
+      () => {
+        const otherShadowObjects = entry.usedConstructors.get(construct);
+        if (otherShadowObjects) {
+          otherShadowObjects.delete(shadowObject);
+          if (otherShadowObjects.size === 0) {
+            entry.usedConstructors.delete(construct);
           }
-
-          const opts = typeof options === 'function' ? {compare: options} : options;
-
-          let ctxProvider = contextProviders.get(name);
-
-          if (ctxProvider == null) {
-            const isSig = isSignal(sourceOrInitialValue);
-            const initialValue = isSig ? undefined : toMaybe(sourceOrInitialValue as T);
-
-            ctxProvider = createSignal(initialValue, opts?.compare ? {compare: opts.compare} : undefined);
-
-            if (isSig) {
-              const ln = link(sourceOrInitialValue as SignalReader<T>, ctxProvider);
-              unsubscribeSecondary.add(ln.destroy.bind(ln));
-            }
-
-            const ln = link(ctxProvider, entry.entity.provideContext(name));
-            unsubscribeSecondary.add(ln.destroy.bind(ln));
-            contextProviders.set(name, ctxProvider);
-          }
-
-          if (ctxProvider != null && (opts?.clearOnDestroy ?? true)) {
-            unsubscribeSecondary.add(() => {
-              ctxProvider.set(undefined);
-            });
-          }
-
-          return ctxProvider;
-        },
-
-        provideGlobalContext<T = unknown>(
-          name: string | symbol,
-          sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>,
-          options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
-        ) {
-          if (!provideGlobalContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
-            console.warn(
-              '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideGlobalContext()" is now passed as {compare} argument. Please update your code accordingly.',
-            );
-            provideGlobalContextOptionsDeprecatedShown = true;
-          }
-
-          const opts = typeof options === 'function' ? {compare: options} : options;
-
-          let ctxProvider = contextRootProviders.get(name);
-
-          if (ctxProvider == null) {
-            const isSig = isSignal(sourceOrInitialValue);
-            const initialValue = isSig ? undefined : toMaybe(sourceOrInitialValue as T);
-
-            ctxProvider = createSignal(initialValue, opts?.compare ? {compare: opts.compare} : undefined);
-
-            if (isSig) {
-              const ln = link(sourceOrInitialValue as SignalReader<T>, ctxProvider);
-              unsubscribeSecondary.add(ln.destroy.bind(ln));
-            }
-
-            const ln = link(ctxProvider, entry.entity.provideGlobalContext(name));
-            unsubscribeSecondary.add(ln.destroy.bind(ln));
-            contextRootProviders.set(name, ctxProvider);
-          }
-
-          if (ctxProvider != null && (opts?.clearOnDestroy ?? true)) {
-            unsubscribeSecondary.add(() => {
-              ctxProvider.set(undefined);
-            });
-          }
-
-          return ctxProvider;
-        },
-
-        useContext<T = unknown>(name: string | symbol, options?: SignalValueOptions<T> | CompareFunc<T | undefined>) {
-          if (!useContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
-            console.warn(
-              '[shadow-objects] Deprecation Warning: The "isEqual" option of "useContext()" is now passed as {compare} argument. Please update your code accordingly.',
-            );
-            useContextOptionsDeprecatedShown = true;
-          }
-
-          const opts = typeof options === 'function' ? {compare: options} : options;
-
-          let ctxReader = contextReaders.get(name);
-
-          if (ctxReader === undefined) {
-            ctxReader = createSignal<any>(undefined, opts).get;
-            contextReaders.set(name, ctxReader);
-            contextReaderCompares.set(name, opts?.compare);
-            const ln = link(entry.entity.useContext(name), ctxReader);
-            unsubscribeSecondary.add(ln.destroy.bind(ln));
-          } else if (opts?.compare != null && contextReaderCompares.get(name) !== opts.compare) {
-            console.warn(
-              `[shadow-objects] useContext("${String(name)}"): the cached signal already exists with a different (or no) {compare} function — the new options are ignored. Pass options only on the first call per context.`,
-            );
-          }
-
-          return ctxReader;
-        },
-
-        useParentContext<T = unknown>(name: string | symbol, options?: SignalValueOptions<T> | CompareFunc<T | undefined>) {
-          if (!useParentContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
-            console.warn(
-              '[shadow-objects] Deprecation Warning: The "isEqual" option of "useParentContext()" is now passed as {compare} argument. Please update your code accordingly.',
-            );
-            useParentContextOptionsDeprecatedShown = true;
-          }
-
-          const opts = typeof options === 'function' ? {compare: options} : options;
-
-          let ctxReader = contextParentReaders.get(name);
-
-          if (ctxReader === undefined) {
-            ctxReader = createSignal<any>(undefined, opts).get;
-            contextParentReaders.set(name, ctxReader);
-            contextParentReaderCompares.set(name, opts?.compare);
-            const ln = link(entry.entity.useParentContext(name), ctxReader);
-            unsubscribeSecondary.add(ln.destroy.bind(ln));
-          } else if (opts?.compare != null && contextParentReaderCompares.get(name) !== opts.compare) {
-            console.warn(
-              `[shadow-objects] useParentContext("${String(name)}"): the cached signal already exists with a different (or no) {compare} function — the new options are ignored. Pass options only on the first call per parent context.`,
-            );
-          }
-
-          return ctxReader;
-        },
-
-        dispatchMessageToView(type: string, data?: unknown, transferables?: Transferable[], traverseChildren = false) {
-          entry.entity.dispatchMessageToView(type, data, transferables, traverseChildren);
-        },
-
-        useProperty: getUseProperty,
-
-        useProperties<T extends Record<string, unknown> = Record<string, unknown>>(
-          props: {[K in keyof T]: string},
-        ): {
-          [K in keyof T]: SignalReader<Maybe<T[K]>>;
-        } {
-          const result = {} as {[K in keyof T]: SignalReader<Maybe<T[K]>>};
-          for (const key in props) {
-            if (Object.hasOwn(props, key)) {
-              result[key] = getUseProperty(props[key]);
-            }
-          }
-          return result;
-        },
-
-        createResource<T = unknown>(
-          factory: () => T | undefined,
-          cleanup?: (resource: NonNullable<T>) => unknown,
-        ): Signal<Maybe<T>> {
-          const resourceSignal = createSignal<Maybe<T>>();
-
-          const effect = createEffect(() => {
-            const resource = toMaybe(factory());
-            resourceSignal.set(resource);
-
-            if (resource !== undefined && cleanup) {
-              return () => {
-                cleanup(resource);
-                resourceSignal.set(undefined);
-              };
-            }
-
-            return () => {
-              resourceSignal.set(undefined);
-            };
-          });
-
-          unsubscribeSecondary.add(() => {
-            effect.destroy();
-            resourceSignal.set(undefined);
-            destroySignal(resourceSignal);
-          });
-
-          return resourceSignal;
-        },
-
-        createEffect(...args: any[]): ReturnType<typeof createEffect> {
-          // @ts-ignore
-          const effect = createEffect(...args);
-          unsubscribeSecondary.add(effect.destroy);
-          return effect;
-        },
-
-        createSignal(...args: any[]): any {
-          // @ts-ignore
-          const sig = createSignal(...args);
-          unsubscribeSecondary.add(() => {
-            destroySignal(sig);
-          });
-          return sig;
-        },
-
-        createMemo<T = unknown>(...args: Parameters<typeof createMemo<T>>): SignalReader<T> {
-          const sig = createMemo<T>(...args);
-          unsubscribeSecondary.add(() => {
-            destroySignal(sig);
-          });
-          return sig;
-        },
-
-        on(...args: any[]): ReturnType<typeof on> {
-          const [firstArg] = args;
-          if (typeof firstArg === 'string' || typeof firstArg === 'symbol' || Array.isArray(firstArg)) {
-            // @ts-ignore
-            const unsub = on(entry.entity, ...args);
-            unsubscribeSecondary.add(unsub);
-            return unsub;
-          }
-          // @ts-ignore
-          const unsub = on(...args);
-          unsubscribeSecondary.add(unsub);
-          // return unsub;
-          return Object.assign(() => {
-            unsubscribeSecondary.delete(unsub);
-            unsub();
-          }, unsub);
-        },
-
-        once(...args: any[]): ReturnType<typeof once> {
-          const [firstArg] = args;
-          if (typeof firstArg === 'string' || typeof firstArg === 'symbol' || Array.isArray(firstArg)) {
-            // @ts-ignore
-            const unsub = once(entry.entity, ...args);
-            unsubscribeSecondary.add(unsub);
-            return unsub;
-          }
-          // @ts-ignore
-          const unsub = once(...args);
-          unsubscribeSecondary.add(unsub);
-          // return unsub;
-          return Object.assign(() => {
-            unsubscribeSecondary.delete(unsub);
-            unsub();
-          }, unsub);
-        },
-
-        emit(...args: any[]): void {
-          const [firstArg] = args;
-          if (typeof firstArg === 'string' || typeof firstArg === 'symbol' || Array.isArray(firstArg)) {
-            // @ts-ignore
-            emit(entry.entity, ...args);
-          } else {
-            // @ts-ignore
-            emit(...args);
-          }
-        },
-
-        onViewEvent(callback: (type: string, data: unknown) => any) {
-          const unsub = on(entry.entity, onViewEvent, (type: string, data: unknown) => {
-            callback(type, data);
-          });
-          unsubscribeSecondary.add(unsub);
-        },
-
-        onDestroy(callback: () => any) {
-          unsubscribePrimary.add(callback);
-        },
-      }),
-    );
-
-    if (this.logger.isInfo) {
-      this.logger.info('create shadow-object', getDisplayName(construct), {shadowObject, entity: entry.entity});
-    }
-
-    // A shadow-object reaches its end on two independent paths: the entity is destroyed, or the
-    // shadow-object leaves the constructor set of a still living entity (token or route change).
-    // Both run the same teardown, and each path reaches it through a handle of its own.
-    let unsubscribeFromEntityDestroy: (() => void) | undefined;
-
-    const tearDown = () => {
-      // Both handles on this closure are released before anything else runs, which is what makes
-      // the teardown a one-time act: a destroy callback reaching back into the kernel finds no way
-      // to start it a second time. Releasing them also ends the retention in both directions --
-      // the map entry points from the shadow-object to a closure holding the entity, and the
-      // subscription points from the entity to the same closure.
-      this.#shadowObjectTearDowns.delete(shadowObject);
-      unsubscribeFromEntityDestroy?.();
-
-      if (this.logger.isInfo) {
-        this.logger.info('destroy shadow-object', getDisplayName(construct), {shadowObject, entity: entry.entity});
-      }
-
-      for (const callback of unsubscribePrimary) {
-        callback();
-      }
-
-      for (const callback of unsubscribeSecondary) {
-        callback();
-      }
-
-      for (const sig of contextReaders.values()) {
-        destroySignal(sig);
-      }
-
-      for (const sig of contextParentReaders.values()) {
-        destroySignal(sig);
-      }
-
-      for (const sig of propertyReaders.values()) {
-        destroySignal(sig);
-      }
-
-      for (const sig of contextProviders.values()) {
-        destroySignal(sig);
-      }
-
-      for (const sig of contextRootProviders.values()) {
-        destroySignal(sig);
-      }
-
-      unsubscribePrimary.clear();
-      unsubscribeSecondary.clear();
-      contextReaders.clear();
-      contextParentReaders.clear();
-      propertyReaders.clear();
-      contextProviders.clear();
-      contextRootProviders.clear();
-
-      const otherShadowObjects = entry.usedConstructors.get(construct);
-      if (otherShadowObjects) {
-        otherShadowObjects.delete(shadowObject);
-        if (otherShadowObjects.size === 0) {
-          entry.usedConstructors.delete(construct);
         }
-      }
-    };
-
-    unsubscribeFromEntityDestroy = once(entry.entity, onDestroy, Priority.Low, tearDown);
-
-    this.#shadowObjectTearDowns.set(shadowObject, tearDown);
+      },
+    );
 
     // `entry.usedConstructors` tracks, per constructor, the set of shadow-objects it created.
     // `updateShadowObjects()` reads this bookkeeping to tell which shadow-objects belong to a
@@ -913,7 +525,7 @@ export class Kernel {
 
     // The teardown runs after the destroy notifications, so a shadow-object that reacts to its own
     // end still sees the signals, contexts and subscriptions the creation API gave it.
-    this.#shadowObjectTearDowns.get(shadowObject)?.();
+    this.#shadowObjectScopes.get(shadowObject)?.tearDown();
 
     off(entity, shadowObject);
   }
