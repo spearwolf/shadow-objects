@@ -213,7 +213,7 @@ Der Abschluss-Wartelauf hängt ein `.finally()` an `waitForMessageOfType(worker,
 | ~~**KERN-6**~~ | ~~`Registry.clear()` löscht `#truthyPropRoutes` nicht — Test-Pollution + Akkumulation in langlebigen Registries.~~ **✅ Behoben** — `clear()` räumt auch die Prop-basierten Routen ab. | `Registry.ts` |
 | ~~**KERN-7**~~ | ~~`useContext`/`useParentContext`/`useProperty` ignorieren `options` bei Cache-Hit (z. B. `compare`). Der erste Aufrufer „gewinnt", was leise zu falschen Equality-Vergleichen führen kann.~~ **✅ Behoben** — bei Cache-Hit mit abweichender `compare`-Funktion wird ein `console.warn` emittiert; das alte Reader-Objekt bleibt aus Kompatibilitätsgründen erhalten. | `Kernel.ts` |
 | **VIEW-12** | `ShaePropElement` parst numerische Attribute ohne Warnung — `Number("foo")` → `NaN` propagiert. Der `try`/`catch` um die Konvertierung meldet nur, was wirft; ein Konverter, der `NaN` zurückgibt, gilt als Erfolg. | `ShaePropElement.ts:205–240`, `propValueConverters.ts:24`, `:38`, `:47` |
-| **VIEW-13** | `ShaeEntElement.#dispatchRequestParent`-Microtask prüft `isConnected` nicht; nach Disconnect bubbelt ein Streu-Event. | `ShaeEntElement.ts:527–536` |
+| **VIEW-13** | `ShaeEntElement.#dispatchRequestParent`-Microtask prüft `isConnected` nicht; nach Disconnect bubbelt ein Streu-Event. | `ShaeEntElement.ts:665–667` (der Microtask in `#setParent`), Methode bei `:627–635` |
 
 Grenze des Slot-Umzugs nach einem Rundlauf des Shadow-Hosts, in Chromium gemessen (2026-08-18):
 
@@ -372,6 +372,7 @@ Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements
 
 - `pnpm install` installiert keine Playwright-Browser — manuelles `pnpm exec playwright install chromium firefox` nötig (wird in CLAUDE.md erwähnt).
 - `engines.node: ">=24.13.0"` blockiert Mitwirkende auf Node 22.x. Hinweis: Node 24+ stellt eine inerte `localStorage`-Stub auf `globalThis`. Der `ConsoleLogger` verträgt sie seit der Fähigkeitsprüfung in `ConsoleLogger.ts` selbst. `packages/shadow-objects/vitest.setup.ts` ersetzt sie trotzdem weiter: Specs, die `localStorage` direkt benutzen, brauchen eine funktionierende Storage — ohne die Ersetzung fallen 8 Tests in 3 Dateien: `ConsoleLogger.spec.ts` (Fall `reads a style from storage as-is`), `ConsoleLogger.storage.spec.ts` (Fall `keeps using a localStorage that works`) und `RemoteWorkerEnv.spec.ts` (6 Fälle im Block `console-logger config for the worker`).
+- **`biome.json` führt `"trailingNewline": false`** (`:40`) — Dateien enden ohne abschließenden Zeilenumbruch, sonst ist `pnpm lint` rot. Steht weder in `CLAUDE.md` noch in `AGENTS.md`; wer eine Datei mit einem üblichen Editor-Default schreibt, läuft hinein. `*audit*.html` ist von `files.includes` ausgenommen (`:30`) und behält seinen Zeilenumbruch.
 - `make:todo` ist Honor-System (kein Pre-Commit-Hook, kein CI-Check).
 - Manuelles `CHANGELOG.md`-Pflegen ohne Changesets/release-please.
 - **npm-Publish läuft über OIDC Trusted Publishing**, nicht über ein `NPM_TOKEN`-Secret. Einmalig auf npmjs.com je Paket einzutragen (GitHub Actions, Repo `spearwolf/shadow-objects`, Workflow `deploy.yml`); ohne diesen Eintrag bricht `deploy.yml` beim OIDC-Austausch ab. `turbo` läuft im Strict-Env-Mode — wer dem Publish-Pfad eine neue Umgebungsvariable gibt, muss sie in `turbo.json#tasks.publishNpmPkg.passThroughEnv` eintragen, sonst kommt sie im Skript nie an.

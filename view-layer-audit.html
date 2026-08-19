@@ -231,8 +231,8 @@
             <div class="score-main">98,5</div>
             <div class="score-sub">Code &amp; Laufzeit 98,5 · Projekt-Harness 100</div>
             <div class="score-scale">
-              Remediation-Lauf vom 18. August 2026: 87 → 98,5 (+11,5) · 11 behoben, 7 neu · Buchhaltungsstand nach
-              dem Lauf, nicht nach einem zweiten Audit · Skala 0–100
+              Remediation-Lauf vom 19. August 2026: 98,5 → 98,5 (±0) · 7 behoben, 9 neu · Buchhaltungsstand nach
+              dem Lauf, nicht nach einem neuen Audit · Skala 0–100
             </div>
           </div>
         </div>
@@ -358,25 +358,24 @@
             <div class="domain-head"><h3>Code &amp; Laufzeit</h3><div class="domain-score">98,5</div></div>
             <div class="prose">
               <p>
-                Die sieben Code-Findings des Audits sind erledigt und gegen den Diff geprüft: Attribut, Signal und
-                <code>dispatchEvent</code>-Patch von <code>forward-custom-events</code> sagen dasselbe, ein
-                ausgelieferter Change Trail ist ein Wert und kein geteilter Puffer, ein unlesbarer Storage-Wert
-                wirkt wie ein fehlender statt <code>start()</code> mitzureißen, ein verschobener
-                <code>&lt;slot&gt;</code> meldet sich auch dort ab, wo er herkommt, und <code>clear()</code>,
-                <code>destroyComponent()</code> und <code>removeSubTree()</code> lassen ihre
-                <code>ViewComponent</code>s zerstört und abgelöst zurück. Die quadratische Kante der
-                Re-Request-Runde ist beziffert: 375 Geschwister oder 155 Wurzeln, bis der Überhang ein Bild
-                kostet — die größte Geschwisterschar im Repository hat sechs.
+                Die fünf Code-Findings des Audits sind erledigt und gegen den Diff geprüft: ein umziehender
+                <code>&lt;slot&gt;</code> meldet sich an der Seite ab, die ihn verliert, eine Elternbindung, für
+                die niemand antwortet, fällt statt stehenzubleiben, <code>clear()</code> und
+                <code>dispose()</code> erreichen jede Instanz statt einer je uuid, <code>destroy()</code> nimmt
+                die Listener der Komponente ab, und <code>ComponentPropertiesType</code> nennt den Eintrag, der
+                einen Schlüssel ohne Wert trägt. Dazu hat der Lauf die Wurzel geheilt, an der ein
+                <code>&lt;shae-ent&gt;</code> nach dem Abbau seiner Komponente taub blieb:
+                <code>destroy()</code> kündigt sich an, das Element abonniert einen Microtask später neu.
               </p>
               <p>
-                Was bleibt, sind benannte Grenzen, keine offenen Baustellen. Ein <code>&lt;slot&gt;</code>, der in
-                einen entitylosen Bereich derselben Shadow Root zieht, erreicht keinen Zuhörer —
-                <code>slotchange</code> ist nicht <code>composed</code> und endet an der Shadow Root —, und ein
-                projiziertes <code>&lt;shae-ent&gt;</code> ohne antwortenden Vorfahren am Zielort behält seine
-                alte Bindung. Dazu drei Stellen, an denen das Modell schmaler ist als die Wirklichkeit: eine
-                uuid-Kollision überlebt die flächigen Abbauwege, <code>destroy()</code> nimmt keine Listener ab,
-                und der Property-Typ kennt den Eintrag der Länge 1 nicht, den seine eigene Filterfunktion
-                durchlässt.
+                Was bleibt, sitzt um den Kollisionsfall herum, den heute nur eine handgebaute Komponente
+                erzeugt: ein verdrängter Namensvetter bleibt in der Kinderliste seines alten Elternteils
+                stehen, weshalb ein einzelnes <code>setProperty()</code> zwei identische Trail-Einträge
+                schreibt, und <code>hasComponent()</code> wie <code>assertUsableAsParent</code> antworten über
+                die uuid statt über die Instanz. Dazu zwei Stellen in <code>src/elements/</code>: der
+                <code>#setParent</code>-Effekt wirft nach einem Sweep einen <code>ViewComponentError</code> aus
+                einem Signal-Effekt heraus, und ein Shadow-Host, der einmal aus dem Dokument war, verfolgt
+                seinen <code>&lt;slot&gt;</code> nicht mehr aus jeder Entity heraus.
               </p>
             </div>
             <div class="bars" id="bars-code"></div>
@@ -386,22 +385,18 @@
             <div class="domain-head"><h3>Projekt-Harness</h3><div class="domain-score">100</div></div>
             <div class="prose">
               <p>
-                Alle vier Test-Findings des Audits sind erledigt. Der aufgeschobene Abbau von
-                <code>&lt;shae-worker&gt;</code> liegt auf beiden Achsen unter Test — Umgebung und Proxy, Kernel
-                und Entities —, mit Gegenfall über die Taskgrenze hinweg und mit gefahrenen Gegenproben statt
-                geglaubter. <code>ComponentContext.test.js</code> räumt über
-                <code>afterEach(unmountAll)</code> auf wie das übrige Integrationspaket, die innere Frist der
-                E2E-Helfer läuft vor der äußeren ab und nennt ihre Bedingung, und die Fehler-Screenshots des
-                Browser-Modus werden vom Testskript geräumt. Der Abschluss-Verify des Laufs misst 688 Fälle in
-                <code>test:ci</code> und 402 in der E2E-Suite über zwei Browser.
+                Beide Test-Findings des Audits sind erledigt: die Screenshot-Räumung hängt am
+                <code>globalSetup</code> der vitest-Konfiguration und läuft damit auch beim gezielten Aufruf auf
+                eine einzelne Datei, und der Spec-Fall, den das <code>it.each</code> daneben mit der stärkeren
+                Assertion bereits trug, ist gefallen — die Nicht-Spreizung eines String-Configs wird an genau
+                einer Stelle geprüft, gegen eine eigens erhobene Nulllinie. Der Abschluss-Verify des Laufs misst
+                719 Fälle in <code>test:ci</code> und 402 in der E2E-Suite über zwei Browser.
               </p>
               <p>
-                Was bleibt, ist zweimal Hausputz ohne Defektcharakter: ein Spec-Fall in
-                <code>RemoteWorkerEnv.spec.ts</code>, den das <code>it.each</code> daneben mit der stärkeren
-                Assertion bereits abdeckt, und ein <code>rimraf</code>-Vorlauf, der an den Skripten
-                <code>test</code> und <code>watch</code> hängt statt an der Testkonfiguration — wer
-                <code>vitest</code> gezielt auf eine Datei ruft, lässt ihn aus und findet danach ungeräumte
-                Aufnahmen vor.
+                Was bleibt, ist eine Stelle ohne Defektcharakter: das Pending-Gate der Re-Subscription in
+                <code>ShaeEntElement</code> bündelt mehrere Abbauten desselben Tasks zu einem
+                Abonnier-Durchlauf, ist aber von außen unbeobachtbar — mit entschärftem Gate bleibt die Suite
+                grün. Eine Sparmaßnahme, keine Korrektheitswache, und kein Test, der es hielte.
               </p>
             </div>
             <div class="bars" id="bars-harness"></div>
@@ -473,37 +468,39 @@
               statt als Backlog-Eintrag.
             </p>
 
-            <h3>Stand vom 18. August 2026</h3>
+            <h3>Stand vom 19. August 2026</h3>
             <p>
               Diese Fassung ist die Buchhaltung eines abgeschlossenen Remediation-Laufs über den View Layer
-              (<code>view-layer-remediation-plan-2.md</code>): zehn Pakete, zehn Commits von <code>d8d432e</code>
-              bis <code>a46ab05</code> auf <code>main</code>. Geschlossen wurde ausschließlich, wofür der Plan ein
-              Reviewer-Urteil mit Fundstelle <em>und</em> einen Commit-Hash führt. Das trifft auf alle elf Findings
-              des Audits zu. <strong>Kein Finding blieb mangels Beleg offen</strong> — es gab nichts Acknowledgtes,
-              nichts vom Umfang Ausgenommenes und kein blockiertes Paket. <code>VIEW-013</code> und
-              <code>VIEW-017</code> sind im entschiedenen Umfang geschlossen: der Slot-Umzug deckt den Wechsel in
-              eine andere Entity ab, die Größenordnung der Re-Request-Runde ist gemessen statt umgebaut. Was dabei
-              nicht abgedeckt ist, steht unten als eigener Befund und nicht als halb geschlossenes Finding.
+              (<code>view-layer-remediation-plan-3.md</code>): sieben Pakete, sieben Commits von
+              <code>1b3dd3f</code> bis <code>9d35e13</code> auf <code>main</code>. Geschlossen wurde ausschließlich,
+              wofür der Plan ein Reviewer-Urteil mit Fundstelle <em>und</em> einen Commit-Hash führt. Das trifft auf
+              alle sieben Findings des Audits zu — <code>TEST-013</code>, <code>VIEW-018</code>,
+              <code>VIEW-019</code>, <code>VIEW-021</code>, <code>VIEW-020</code>, <code>VIEW-022</code> und
+              <code>TEST-012</code>, in dieser Reihenfolge. <strong>Kein Finding blieb mangels Beleg offen</strong>
+              — es gab nichts Acknowledgtes, nichts vom Umfang Ausgenommenes und kein blockiertes Paket. Das siebte
+              Paket trägt kein Finding: es repariert die Wurzel der Taubheit, die das Paket zu <code>VIEW-021</code>
+              gemessen hatte — ein <code>&lt;shae-ent&gt;</code> stellt seine Abonnements wieder scharf, wenn seine
+              Komponente abgebaut wird.
             </p>
             <p>
-              Neu eingetragen sind sieben Befunde aus dem Lauf, jeder mit Datei und Zeile: benannte Grenzen der
-              gewählten Lösungen, Nebenbefunde unter erledigten Paketen und ein bewusst offen gelassener
-              Reviewer-Fund. Aufgenommen wurde, was im Prüfumfang dieses Teilaudits liegt —
+              Neu eingetragen sind neun Befunde aus dem Lauf, jeder mit Datei und Zeile: Nebenbefunde unter
+              erledigten Paketen, eine gemessene Grenze der gewählten Lösung und ein vom Reviewer bestätigter,
+              bewusst nicht gefixter Fund. Aufgenommen wurde, was im Prüfumfang dieses Teilaudits liegt —
               <code>src/elements/</code>, <code>src/view/</code> und die drei Testschichten. Nebenbefunde außerhalb
               davon (Kernel, Registry, Dokumentation, Toolchain) stehen in <code>Backlog.md</code> und nicht hier;
-              doppelte Buchführung wäre schlechter als eine.
+              doppelte Buchführung wäre schlechter als eine. Nicht eingetragen sind daher: die undokumentierte
+              Biome-Regel <code>trailingNewline: false</code>, der falsche Zeilenverweis in
+              <code>Backlog.md:216</code> und zwei Doku-Zeilen zum zerstörten Zustand — dazu zwei Nebenbefunde ohne
+              Datei und Zeile, die Kompaktierung von <code>#hostedSlots</code> und die Auflösung des
+              Integrationspakets über <code>dist/</code>. Sie leben im Plan, nicht hier.
             </p>
             <p>
-              Zwei Pakete des Laufs tragen kein Audit-Finding, beide auf Nutzerentscheidung: eine
-              Verhaltenskorrektur an <code>&lt;shae-worker&gt;</code> — der aufgeschobene Abbau war wirkungslos,
-              weil ihn nichts zurücknahm — und eine Zeile in der Lint-Konfiguration, damit <code>pnpm lint</code>
-              nur noch prüft, was das Projekt selbst schreibt. An drei Stellen hat der Lauf das Audit korrigiert,
-              jedes Mal gemessen statt behauptet: Die Prämisse von <code>TEST-008</code> stimmte nicht —
-              <code>&lt;shae-worker&gt;</code> überlebte den Reconnect im selben Task <em>nicht</em>.
-              <code>VIEW-014</code> fasste zwei Wege falsch zusammen: <code>setProperty</code> gab nach
-              <code>destroyComponent()</code> <code>true</code> zurück, nicht <code>false</code>. Und
-              <code>VIEW-017</code> schrieb die Größenordnung <code>isBelow</code> zu, obwohl das die Milderung ist
-              und nicht die Ursache.
+              An zwei Stellen ist der Lauf bewusst vom Weg des Audits abgewichen, beide auf Nutzerentscheidung und
+              beide gemessen statt behauptet: <code>VIEW-018</code> hängt den <code>slotchange</code>-Listener an
+              den <code>&lt;slot&gt;</code>, statt je Entity einen <code>MutationObserver</code> zu stellen, und
+              <code>VIEW-019</code> löst die Elternbindung nur, wenn niemand antwortet, statt sie vor jeder Suche zu
+              lösen — der Weg des Audits hätte korrekt gebundene Geschwister aus ihrer Position gerissen. Was beide
+              Wege offen lassen, steht als eigener Befund im Backlog und nicht als halb geschlossenes Finding.
             </p>
             <p>
               <strong>Der Code ist seit dem Audit vom 15. August 2026 nicht neu geprüft worden.</strong> Dieser Lauf
@@ -520,16 +517,17 @@
               Menge.
             </p>
             <table class="calc">
-              <tr><td>Gesamt</td><td>3 × −0,5, 4 × 0</td><td>= 98,5</td></tr>
-              <tr><td>Code &amp; Laufzeit</td><td>3 × −0,5, 2 × 0</td><td>= 98,5</td></tr>
-              <tr><td>Projekt-Harness</td><td>2 × 0</td><td>= 100</td></tr>
+              <tr><td>Gesamt</td><td>3 × −0,5, 6 × 0</td><td>= 98,5</td></tr>
+              <tr><td>Code &amp; Laufzeit</td><td>3 × −0,5, 5 × 0</td><td>= 98,5</td></tr>
+              <tr><td>Projekt-Harness</td><td>1 × 0</td><td>= 100</td></tr>
             </table>
             <p style="margin-top: 12px">
               Der Wert ist nicht mit dem Gesamt-Audit vergleichbar: Er misst einen bewusst schmalen Ausschnitt
               mit höherer Prüftiefe. Ein Folgelauf dieses Teilaudits vergleicht gegen 98,5 und gegen den oben
               beschriebenen Umfang, nicht gegen die 39 aus <code>audit.html</code>. Der Erstlauf am 15. August 2026
-              stand bei 47 (Code &amp; Laufzeit 68, Projekt-Harness 79); der Weg von dort hierher stammt aus zwei
-              Remediation-Läufen, nicht aus einer neuen Messung am Code.
+              stand bei 47 (Code &amp; Laufzeit 68, Projekt-Harness 79); der Weg von dort hierher stammt aus drei
+              Remediation-Läufen, nicht aus einer neuen Messung am Code. Der dritte Lauf hat die Zahl nicht bewegt:
+              er schloss drei <code>low</code>-Findings und trug drei neue ein — gleicher Abzug, anderer Inhalt.
             </p>
 
             <h3>Theme</h3>
@@ -539,7 +537,7 @@
       </section>
 
       <p class="footnote">
-        Erstellt am 15. August 2026 · Buchhaltungsstand 18. August 2026 nach dem zweiten Remediation-Lauf · Teilaudit
+        Erstellt am 15. August 2026 · Buchhaltungsstand 19. August 2026 nach dem dritten Remediation-Lauf · Teilaudit
         View Layer · Datenmodell eingebettet als <code>#audit-data</code>
       </p>
     </div>
@@ -553,126 +551,149 @@
     "date": "2026-08-15",
     "theme": "light",
     "score": 98.5,
-    "resolvedCount": 27,
+    "resolvedCount": 34,
     "scoreHistory": [
       {"date": "2026-08-15", "score": 47},
       {"date": "2026-08-17", "score": 87, "source": "remediation"},
-      {"date": "2026-08-18", "score": 98.5, "source": "remediation"}
+      {"date": "2026-08-18", "score": 98.5, "source": "remediation"},
+      {"date": "2026-08-19", "score": 98.5, "source": "remediation"}
     ],
-    "bySeverity": {"critical": 0, "high": 0, "medium": 0, "low": 3, "info": 4},
+    "bySeverity": {"critical": 0, "high": 0, "medium": 0, "low": 3, "info": 6},
     "byCategory": {
-      "Bugs & Korrektheitsrisiken": 3,
-      "Konsistenz": 2,
-      "Testabdeckung & Teststrategie": 1,
-      "Developer Experience": 1
+      "Bugs & Korrektheitsrisiken": 4,
+      "Konsistenz": 4,
+      "Testabdeckung & Teststrategie": 1
     },
     "domains": {
       "code": {
         "label": "Code & Laufzeit",
         "score": 98.5,
-        "bySeverity": {"critical": 0, "high": 0, "medium": 0, "low": 3, "info": 2},
+        "bySeverity": {"critical": 0, "high": 0, "medium": 0, "low": 3, "info": 5},
         "byCategory": {
-          "Bugs & Korrektheitsrisiken": 3,
-          "Konsistenz": 2
+          "Bugs & Korrektheitsrisiken": 4,
+          "Konsistenz": 4
         },
-        "executiveSummary": "Die sieben Code-Findings des Audits sind erledigt und gegen den Diff geprüft: Attribut, Signal und dispatchEvent-Patch von forward-custom-events sagen dasselbe, ein ausgelieferter Change Trail ist ein Wert und kein geteilter Puffer, ein unlesbarer Storage-Wert wirkt wie ein fehlender statt start() mitzureißen, ein verschobener slot meldet sich auch an der abgebenden Seite ab, und clear(), destroyComponent() und removeSubTree() lassen ihre ViewComponents zerstört und abgelöst zurück; die quadratische Kante der Re-Request-Runde ist beziffert statt geschätzt. Was bleibt, sind benannte Grenzen: ein slot, der in einen entitylosen Bereich derselben Shadow Root zieht, erreicht keinen Zuhörer, ein projiziertes shae-ent ohne antwortenden Vorfahren behält seine alte Bindung, eine uuid-Kollision überlebt die flächigen Abbauwege, destroy() nimmt keine Listener ab, und der Property-Typ kennt den Eintrag der Länge 1 nicht, den seine eigene Filterfunktion durchlässt."
+        "executiveSummary": "Die fünf Code-Findings des Audits sind erledigt und gegen den Diff geprüft: ein umziehender slot meldet sich an der Seite ab, die ihn verliert, eine Elternbindung, für die niemand antwortet, fällt statt stehenzubleiben, clear() und dispose() erreichen jede Instanz statt einer je uuid, destroy() nimmt die Listener der Komponente ab, und ComponentPropertiesType nennt den Eintrag, der einen Schlüssel ohne Wert trägt. Der Lauf hat zusätzlich die Wurzel geheilt, an der ein shae-ent nach dem Abbau seiner Komponente taub blieb: destroy() kündigt sich an, das Element abonniert einen Microtask später neu. Was bleibt, sitzt um den Kollisionsfall herum, den heute nur eine handgebaute Komponente erzeugt: ein verdrängter Namensvetter bleibt in der Kinderliste seines alten Elternteils stehen, weshalb ein einzelnes setProperty() zwei identische Trail-Einträge schreibt, und hasComponent() wie assertUsableAsParent antworten über die uuid statt über die Instanz. Dazu zwei Stellen in src/elements/: der #setParent-Effekt wirft nach einem Sweep einen ViewComponentError aus einem Signal-Effekt heraus, und ein Shadow-Host, der einmal aus dem Dokument war, verfolgt seinen slot nicht mehr aus jeder Entity heraus."
       },
       "harness": {
         "label": "Projekt-Harness",
         "score": 100,
-        "bySeverity": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 2},
+        "bySeverity": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 1},
         "byCategory": {
-          "Testabdeckung & Teststrategie": 1,
-          "Developer Experience": 1
+          "Testabdeckung & Teststrategie": 1
         },
-        "executiveSummary": "Alle vier Test-Findings des Audits sind erledigt: der aufgeschobene Abbau von shae-worker liegt auf beiden Achsen unter Test — Umgebung und Proxy, Kernel und Entities —, mit Gegenfall über die Taskgrenze hinweg und mit gefahrenen Gegenproben statt geglaubter, ComponentContext.test.js räumt über afterEach(unmountAll) auf wie das übrige Integrationspaket, die innere Frist der E2E-Helfer läuft vor der äußeren ab und nennt ihre Bedingung, und die Fehler-Screenshots des Browser-Modus werden vom Testskript geräumt. Der Abschluss-Verify des Laufs misst 688 Fälle in test:ci und 402 in der E2E-Suite über zwei Browser. Offen bleibt zweimal Hausputz ohne Defektcharakter: ein Spec-Fall, den das it.each daneben mit der stärkeren Assertion bereits abdeckt, und ein rimraf-Vorlauf, der an den Skripten hängt statt an der Testkonfiguration."
+        "executiveSummary": "Beide Test-Findings des Audits sind erledigt: die Screenshot-Räumung hängt am globalSetup der vitest-Konfiguration und läuft damit auch beim gezielten Aufruf auf eine einzelne Datei, und der Spec-Fall, den das it.each daneben mit der stärkeren Assertion bereits trug, ist gefallen — die Nicht-Spreizung eines String-Configs wird an genau einer Stelle geprüft, gegen eine eigens erhobene Nulllinie. Der Abschluss-Verify des Laufs misst 719 Fälle in test:ci und 402 in der E2E-Suite über zwei Browser. Offen bleibt eine Stelle ohne Defektcharakter: das Pending-Gate der Re-Subscription in ShaeEntElement bündelt mehrere Abbauten desselben Tasks zu einem Abonnier-Durchlauf, ist aber von außen unbeobachtbar — mit entschärftem Gate bleibt die Suite grün."
       }
     }
   },
   "findings": [
     {
-      "id": "VIEW-018",
+      "id": "VIEW-024",
       "category": "Bugs & Korrektheitsrisiken",
       "domain": "code",
       "severity": "low",
-      "title": "Ein slot, der in einen entitylosen Bereich derselben Shadow Root zieht, erreicht keinen Zuhörer",
-      "location": "packages/shadow-objects/src/elements/ShaeEntElement.ts:645-676 (#onSlotChange)",
-      "description": "slotchange ist nicht composed und endet an der Shadow Root, in der der <slot> nach dem Umzug steht. Landet er dort unter keiner Entity, läuft #onSlotChange nirgends: weder das Register noch die Re-Request-Runde kommen an, und beide Kanäle bleiben stehen — eine projizierte Property hängt weiter an ihrer alten Host-Entity, entParentNode eines projizierten <shae-ent> ebenso. Dasselbe gilt für das Fenster zwischen slot.remove() und dem Wiedereinhängen, weil auch dort keine Entity über dem Slot steht.",
-      "recommendation": "Nur an der abgebenden Seite zu schließen: die Entity müsste ihre eigenen <slot>-Nachkommen beobachten, statt auf ein Ereignis zu warten, das sie nicht erreicht. Das kostet einen MutationObserver je Entity mit subtree: true, weil ein MutationObserver nicht nach Tag filtern kann, und ist eine eigene Entscheidung.",
+      "title": "Ein verdrängter Namensvetter bleibt in der Kinderliste seines alten Elternteils stehen",
+      "location": "packages/shadow-objects/src/view/ComponentContext.ts:115-135 (addComponent)",
+      "description": "Beansprucht eine zweite ViewComponent eine bereits vergebene uuid unter einem anderen Elternteil, ersetzt addComponent() den Eintrag und leert dessen children — räumt die uuid aber nicht aus der Kinderliste des bisherigen Elternteils. traverseLevelOrderBFS() liefert sie danach zweimal, und weil #buildPathOfChanges darüber läuft, erzeugt ein einzelnes setProperty() zwei identische Einträge im Change Trail. Der Zustand entsteht beim Beitritt, ohne dass ein Abbauweg beteiligt wäre.",
+      "recommendation": "addComponent() müsste die uuid beim Verdrängen aus der Kinderliste ihres bisherigen Elternteils nehmen. Davor steht dieselbe Frage wie bei jedem Kollisionsfall: ob doppelte uuids überhaupt vorkommen dürfen — sie entscheidet, ob sich der Umbau lohnt.",
       "effort": "M",
-      "evidence": "In echtem Chromium gemessen (Reviewer 2026-08-18): von sechs einzeln gefahrenen Umzugsvarianten tragen drei nicht, darunter dieser Fall. Die Grenze steht in docs/ und in Backlog.md unter »Grenzen des Slot-Umzugs«."
+      "evidence": "Nebenbefund aus dem Paket zu den flächigen Abbauwegen (2026-08-18), am Code hergeleitet: addComponent() ersetzt den Eintrag und leert dessen children, fasst die Kinderliste des alten Elternteils aber nicht an."
     },
     {
-      "id": "VIEW-019",
+      "id": "VIEW-028",
       "category": "Bugs & Korrektheitsrisiken",
       "domain": "code",
       "severity": "low",
-      "title": "Ein projiziertes shae-ent ohne antwortenden Vorfahren im Ziel-Namespace behält seine alte Bindung",
-      "location": "packages/shadow-objects/src/elements/ShaeEntElement.ts:638-643, view/ComponentContext.ts:372-376",
-      "description": "#askEveryoneToReRequest schickt die Aufforderung über broadcastEvent(ReRequestParent) in jeden Namespace, aber die Aufforderung löst keine vorhandene Bindung. Findet das projizierte <shae-ent> am Zielort keinen antwortenden Vorfahren, bleiben entParentNode und viewComponent.parent auf dem alten Stand stehen. Der Property-Kanal zieht im selben Zug korrekt nach — an dieser Stelle laufen die beiden Kanäle auseinander.",
-      "recommendation": "Die Aufforderung müsste die Bindung lösen, bevor sie neu sucht, so wie #reRequestParentAsRoot es am Wurzelkanal tut. Das ändert jede Re-Request-Runde und gehört in den Umbau der Elternsuche, nicht daneben.",
-      "effort": "M",
-      "evidence": "In echtem Chromium gemessen (Reviewer 2026-08-18), aus derselben Reihe von sechs Umzugsvarianten; in docs/ und Backlog.md als Grenze benannt."
-    },
-    {
-      "id": "VIEW-020",
-      "category": "Konsistenz",
-      "domain": "code",
-      "severity": "low",
-      "title": "Der von einer uuid-Kollision verdrängte ViewComponent überlebt die flächigen Abbauwege",
-      "location": "packages/shadow-objects/src/view/ComponentContext.ts:555-557, :251-266, :584-595",
-      "description": "clear(), removeSubTree() und dispose() gehen über #components, und dort liegt je uuid genau ein Eintrag — der des zuletzt beigetretenen. Teilen sich zwei ViewComponents eine uuid, behält die verdrängte ihren context und meldet weiter isDestroyed === false, während der Rest des Contexts abgeräumt ist. destroyComponent(component) ist davon nicht betroffen: es bekommt eine Instanz genannt und löst genau diese ab, beanspruchte uuid oder nicht. Die Folge fängt der changeOrder-Wächter ab, die Ablösung selbst ist bewusst nicht auf diesen Weg erweitert.",
-      "recommendation": "Wer die Ablösung auf den Kollisionsfall ausweiten will, braucht neben #components ein zweites Register, das auf Instanzen schlüsselt. Davor steht die Frage, ob doppelte uuids überhaupt vorkommen dürfen — sie entscheidet, ob sich der Umbau lohnt.",
-      "effort": "M",
-      "evidence": "Gemessen am 2026-08-18 gegen den gebauten Stand; wörtlich festgehalten in docs/api-reference.md und Backlog.md:225."
-    },
-    {
-      "id": "VIEW-021",
-      "category": "Bugs & Korrektheitsrisiken",
-      "domain": "code",
-      "severity": "info",
-      "title": "ViewComponent.destroy() nimmt keine Listener ab",
-      "location": "packages/shadow-objects/src/view/ViewComponent.ts:247-255",
-      "description": "destroy() löst die Komponente aus der Hierarchie und vom ComponentContext, ruft aber kein off(). Jedes on(vc, …) eines Konsumenten bleibt bestehen, und der dispatchEvent-Patch, den ShaeEntElement.ts für forward-custom-events installiert, überlebt jeden Abbauweg. Eine zerstörte Komponente benachrichtigt weiterhin ihre eigenen Listener. Vorbestehend und in docs/api-reference.md so dokumentiert, also keine Überraschung — aber eine Quelle für Referenzen, die länger leben als die Komponente, die sie hält.",
-      "recommendation": "Entweder nimmt destroy() die Listener ab, dann ist eine zerstörte Komponente wirklich still — eine Verhaltensänderung an der öffentlichen API mit eigener Entscheidung. Oder es bleibt so, und die Doku behält den Vorrang, den sie hat.",
+      "title": "Der #setParent-Effekt wirft ViewComponentError aus einem Signal-Effekt heraus",
+      "location": "packages/shadow-objects/src/elements/ShaeEntElement.ts:658-670",
+      "description": "Der Effekt setzt vc.parent = parentVC, sobald parentVC.context === vc.context gilt. Nach einem flächigen Abbau ohne Wiederbelebung sind beide undefined, die Bedingung greift, und addChild wirft ViewComponentError — aus einem Signal-Effekt heraus, wo kein Aufrufer ihn fängt. Erreichbar über eine DOM-Bewegung nach einem clear(); kein Test hält den Fall fest.",
+      "recommendation": "Die Bedingung müsste einen gesetzten Context verlangen statt zwei gleiche. Zuerst braucht der Fall einen Wächter, der ihn festhält — ohne den ist jede Korrektur ungedeckt.",
       "effort": "S",
-      "evidence": "Nebenbefund aus dem Abbau-Paket, an der Fundstelle nachgelesen; docs/api-reference.md führt das Verhalten in der Tabelle des zerstörten Zustands."
+      "evidence": "Nebenbefund aus dem Paket, das die Abonnements eines shae-ent nach dem Abbau wieder scharf stellt (2026-08-19); an der Fundstelle nachgelesen, nicht gemessen."
     },
     {
-      "id": "VIEW-022",
+      "id": "VIEW-029",
+      "category": "Bugs & Korrektheitsrisiken",
+      "domain": "code",
+      "severity": "low",
+      "title": "Ein Shadow-Host, der aus dem Dokument geht und zurückkommt, gibt seinen Slot-Watch ab",
+      "location": "packages/shadow-objects/src/elements/ShaeEntElement.ts:536-543 (disconnectedCallback → #releaseHostedSlots)",
+      "description": "Die Entity über einem slot nimmt ihn auf, wenn er eine Zuweisung meldet, und gibt ihn beim Verlassen des Baums wieder ab. Ein Host, der aus- und wieder eingehängt wird, meldet keine Zuweisung, weil sich innerhalb seiner Shadow Root nichts geändert hat — der Watch kommt nicht zurück. Danach trägt nur noch die Meldung der aufnehmenden Seite: ein Umzug in eine andere Entity wird weiter verfolgt, ein Umzug an eine Stelle ohne Entity darüber nicht.",
+      "recommendation": "Aufheben hieße, die Slots beim Connect einzusammeln — querySelectorAll('slot') je Entity plus Nähetest. Eigene Mechanik, eigene Entscheidung; die Grenze ist so lange die billigere Antwort.",
+      "effort": "M",
+      "evidence": "In echtem Chromium gemessen (2026-08-18) und vom Fall »misses a slot moving out of every entity after its shadow host left the document and came back« in ent-element-slot-move.test.js festgehalten; wörtlich in Backlog.md:218-220."
+    },
+    {
+      "id": "VIEW-026",
+      "category": "Bugs & Korrektheitsrisiken",
+      "domain": "code",
+      "severity": "info",
+      "title": "assertUsableAsParent lässt eine verdrängte Instanz als Elternteil durchgehen",
+      "location": "packages/shadow-objects/src/view/ViewComponent.ts:17-24",
+      "description": "Die Prüfung fragt parent.context, und eine Instanz, die ein Namensvetter aus #components verdrängt hat, behält ihren context. Eine neue Komponente lässt sich damit unter einen Elternteil hängen, den der Context nicht mehr führt — sie landet in der Kinderliste des Namensvetters. Aus dem Code gelesen, nicht gemessen.",
+      "recommendation": "Die Prüfung müsste den Context fragen, ob er diese Instanz führt, statt die Instanz zu fragen, ob sie einen Context nennt. Dieselbe Umstellung, die hasComponent() braucht — beide gehören in einen Zug.",
+      "effort": "S",
+      "evidence": "Nebenbefund aus dem Paket zu den flächigen Abbauwegen (2026-08-18), an der Fundstelle nachgelesen."
+    },
+    {
+      "id": "VIEW-023",
       "category": "Konsistenz",
       "domain": "code",
       "severity": "info",
-      "title": "ComponentPropertiesType modelliert den Eintrag der Länge 1 nicht",
-      "location": "packages/shadow-objects/src/utils/props-utils.ts:5, :21 (Typ in src/types.ts:22)",
-      "description": "ComponentPropertiesType ist [string, unknown][] und kennt damit keinen Eintrag der Länge 1; filterUndefinedProps lässt genau diesen bewusst durch, weil entry.length === 1 als gesetzt zählt. Typ und Funktion sagen Verschiedenes, und die Kopierstelle in applyPropsChanges braucht deshalb einen Cast auf ComponentPropertiesType, der mehr behauptet, als gilt. Kein Laufzeitdefekt — eine Lücke im Typmodell, die jede spätere Änderung an dieser Stelle wieder einen Cast kostet.",
-      "recommendation": "Den Typ beide Formen nennen lassen, ([string] | [string, unknown])[], dann trägt filterUndefinedProps seine Absicht im Typ und der Cast entfällt. Der Wechsel schlägt auf jede Stelle durch, die auf entry[1] zugreift, und gehört deshalb in einen eigenen Zug.",
-      "effort": "M",
-      "evidence": "Vom Reviewer durch drei tsc-Läufe eingegrenzt; vorbestehend, von diesem Lauf nicht angefasst."
+      "title": "Der ViewComponent-Konstruktor akzeptiert eine Aufrufform, die seine Signatur nicht nennt",
+      "location": "packages/shadow-objects/src/view/ViewComponent.ts:177-191",
+      "description": "Deklariert ist new ViewComponent(token, options?). Der Rumpf prüft zusätzlich options instanceof ViewComponent und deutet das Argument dann als {parent: options} um — die Form new ViewComponent(token, parent) läuft also, steht aber weder in der Signatur noch in docs/. Auffindbar ist sie allein im Quelltext. Wer sie benutzt, hängt an einem Zweig, den kein Vertrag deckt; wer sie streicht, kann nicht wissen, wen er trifft.",
+      "recommendation": "Entweder die Form als Overload deklarieren und in docs/api-reference.md nennen, oder sie fallen lassen. Beides ist eine Entscheidung über die öffentliche Oberfläche und gehört in einen eigenen Zug.",
+      "effort": "S",
+      "evidence": "Nebenbefund aus dem Slot-Umzugs-Paket (2026-08-18), an der Fundstelle nachgelesen und in zwei weiteren Paketen unverändert wiedergefunden."
     },
     {
-      "id": "TEST-012",
+      "id": "VIEW-025",
+      "category": "Konsistenz",
+      "domain": "code",
+      "severity": "info",
+      "title": "hasComponent() antwortet über die uuid, nicht über die Instanz",
+      "location": "packages/shadow-objects/src/view/ComponentContext.ts:163-165",
+      "description": "hasComponent(component) schlägt component.uuid in #components nach und meldet deshalb true für eine Instanz, deren Eintrag längst ein Namensvetter hält. Über die uuid ist die Antwort richtig, über die Instanz falsch. Mit #componentInstances führt der Context seit dem Register für die flächigen Abbauwege erstmals eine Quelle, die die Frage wahrheitsgemäß beantworten könnte.",
+      "recommendation": "Die Prüfung auf #componentInstances umstellen. Das ist eine Verhaltensänderung im Kollisionsfall und trifft addChild und removeChild mit, die über hasComponent(parent) gehen — eigener Zug, eigene Gegenprobe.",
+      "effort": "S",
+      "evidence": "Nebenbefund aus dem Paket zu den flächigen Abbauwegen (2026-08-18), an der Fundstelle nachgelesen."
+    },
+    {
+      "id": "VIEW-027",
+      "category": "Konsistenz",
+      "domain": "code",
+      "severity": "info",
+      "title": "Der Wächter gegen fremde Einträge prüft die Komponente, nicht das parent-Argument",
+      "location": "packages/shadow-objects/src/view/ComponentContext.ts:207-221 (removeFromParent), :228-234 (moveToRoot)",
+      "description": "Beide Wege lassen einen Eintrag stehen, dessen component eine andere Instanz ist — der Wächter prüft dafür aber nur die Identität der ausscheidenden Komponente, nicht die des parent-Arguments. Heute nicht erreichbar: beansprucht ein Namensvetter die uuid eines Elternteils, hebt addComponent() dessen Kinder sofort auf Wurzelebene. Eine Asymmetrie ohne Wirkung, die beim nächsten Umbau an dieser Stelle zur Falle wird.",
+      "recommendation": "Den Wächter symmetrisch führen, sobald einer der beiden Zweige ohnehin angefasst wird. Ein eigener Zug lohnt sich nicht, solange der Fall unerreichbar ist.",
+      "effort": "S",
+      "evidence": "Nebenbefund aus dem Paket zu den flächigen Abbauwegen (2026-08-18), am Code nachgezählt."
+    },
+    {
+      "id": "VIEW-030",
+      "category": "Konsistenz",
+      "domain": "code",
+      "severity": "info",
+      "title": "Der Eintrag der Länge 1 hat im Repository keinen Erzeuger",
+      "location": "packages/shadow-objects/src/utils/props-utils.ts:5",
+      "description": "filterUndefinedProps lässt einen Eintrag der Länge 1 als gesetzt durch, und ComponentPropertiesType nennt die Form inzwischen. Erzeugt wird sie im ganzen Repository nirgends: props-utils.ts:5 ist die einzige Leseposition, seit 9e56c21 rein defensiv. Der Zweig ist damit nur für Eingaben von außerhalb erreichbar — eine zugesagte Form ohne inneren Weg dorthin, und ohne Erzeuger auch ohne Anlass, sie bei einem Umbau mitzudenken.",
+      "recommendation": "Entweder einen Erzeuger benennen — dann gehört er in einen Test —, oder die Form als reine Eingangs-Toleranz dokumentieren. Streichen wäre eine Verhaltensänderung an einer exportierten Struktur und braucht einen eigenen Auftrag.",
+      "effort": "S",
+      "evidence": "Vom Reviewer per eigener Repo-Suche bestätigt (2026-08-19): einzige Leseposition, kein Erzeuger, die Funktion selbst nicht exportiert."
+    },
+    {
+      "id": "TEST-014",
       "category": "Testabdeckung & Teststrategie",
       "domain": "harness",
       "severity": "info",
-      "title": "Ein Spec-Fall in RemoteWorkerEnv.spec.ts ist zum it.each daneben redundant",
-      "location": "packages/shadow-objects/src/view/RemoteWorkerEnv.spec.ts:487-506, :508-541",
-      "description": "Der Einzelfall legt den Wert \"debug\" unter den Storage-Schlüssel — denselben Schlüssel und denselben Wert, den das it.each direkt darunter als vierte Zeile führt. Die Assertion der Tabelle ist die stärkere: sie vergleicht die Worker-Konfiguration gegen eine eigens erhobene Nulllinie, während der Einzelfall nur prüft, dass sich der String nicht in die Konfiguration spreizt. Doppelte Abdeckung ist kein Defekt, aber der Fall kostet einen Env-Start je Lauf und lässt beim Lesen offen, was er zusätzlich belegen soll.",
-      "recommendation": "Den Einzelfall streichen und, falls die Nicht-Spreizung eigens festgehalten werden soll, seine Assertion in die Tabelle heben.",
+      "title": "Das Pending-Gate der Re-Subscription ist von außen unbeobachtbar",
+      "location": "packages/shadow-objects/src/elements/ShaeEntElement.ts:189-205",
+      "description": "Das Gate bündelt mehrere Abbauten desselben Tasks zu einem Abonnier-Durchlauf. Mit entschärftem Gate bleibt die gesamte Suite grün: jeder Effekt-Neulauf räumt vor dem Abonnieren auf, zwei Microtasks liefern dasselbe Ergebnis wie einer. Es ist eine Sparmaßnahme, keine Korrektheitswache — wer es entfernt, merkt es an keinem Test.",
+      "recommendation": "Entweder einen Fall bauen, der die Ersparnis misst statt das Ergebnis, oder im Code festhalten, dass das Gate bewusst nicht testbar ist. Ein Wächter, der nur das Ergebnis prüft, hält es nie.",
       "effort": "S",
-      "evidence": "Vom Reviewer an der Fundstelle festgestellt und bewusst offen gelassen: eine weitere Review-Runde dafür wäre teurer als der Nutzen."
-    },
-    {
-      "id": "TEST-013",
-      "category": "Developer Experience",
-      "domain": "harness",
-      "severity": "info",
-      "title": "Ein gezielter vitest-Aufruf umgeht den rimraf-Vorlauf des Testpakets",
-      "location": "packages/shadow-objects-testing/package.json:14-15, test/__screenshots__/",
-      "description": "test und watch räumen test/__screenshots__ über einen rimraf-Vorlauf im Skript. Wer vitest gezielt auf eine Datei ruft — der übliche Weg beim Eingrenzen eines roten Falls —, bekommt diesen Vorlauf nicht: die Aufnahmen fehlgeschlagener Fälle bleiben danach stehen, mit frischem Zeitstempel und ohne zugehörigen roten Fall. Das Verzeichnis ist gitignored, liegt also nicht im Diff und fällt erst beim nächsten Blick hinein auf.",
-      "recommendation": "Das Räumen an den Ort hängen, den jeder Lauf passiert — ein globalSetup der vitest-Konfiguration statt eines Vorlaufs an zwei Skripten.",
-      "effort": "S",
-      "evidence": "Nebenbefund aus dem forward-custom-events-Paket, an den beiden Skripten nachgelesen."
+      "evidence": "Gemessen (2026-08-18): mit auf void this.#reSubscribePending; entschärftem Gate bleiben alle 334 Fälle des Integrationspakets grün."
     }
   ],
   "acknowledged": [],
