@@ -161,7 +161,7 @@ Shadow environments can run on the main thread (local) or in a web worker (remot
 
 ### Use a local environment when:
 
-- You need to pass non-cloneable objects (DOM references, Canvas contexts, WebGL/WebGPU handles) directly to the Shadow Object. This is the decisive one: no worker can do it, at any price.
+- You need to pass non-cloneable objects (DOM references, Canvas contexts, WebGL/WebGPU handles) directly to the Shadow Object. This is the decisive one: no worker can do it, at any price. It takes `no-structured-clone` — the clone a local environment runs by default refuses exactly these values, see [Both Modes Clone the Change Trail](#both-modes-clone-the-change-trail).
 - Your logic is coordination-heavy rather than compute-heavy, so a worker would only add latency
 - Web Workers are unavailable in the target environment
 - You want to step through logic with browser devtools without crossing a worker boundary
@@ -175,6 +175,24 @@ Shadow environments can run on the main thread (local) or in a web worker (remot
 - The data crossing the boundary is small compared to the work done behind it
 
 The Shadow Object code is identical either way. Only the proxy changes: swap `LocalShadowObjectEnv` for `RemoteWorkerEnv`, or add/remove the `local` attribute on `<shae-worker>`. Pick by what your logic needs to touch, not by whether you are in development or production.
+
+### Both Modes Clone the Change Trail
+
+A local environment clones every entry of the change trail with `structuredClone` before it applies it, although nothing between the view and the Shadow Objects forces a copy. That is the point: local and remote then have the same semantics. An object handed to a Shadow Object arrives as a copy in either mode, so a Shadow Object that writes into it changes nothing the view can see, and an application built against the local environment meets the same behaviour once the same code runs in a worker.
+
+The price is one `structuredClone` per trail entry per sync tick -- and the refusal of everything `structuredClone` cannot take, a DOM node, a canvas context or a WebGL handle included.
+
+Switching the clone off is what lifts both:
+
+```html
+<shae-worker local no-structured-clone></shae-worker>
+```
+
+```javascript
+localEnv.disableStructuredClone = true;
+```
+
+The view and the Shadow Objects then share the very objects in the trail. That is the mode in which a local environment carries a handle no worker could ever be given, and it is the mode in which the two environments stop behaving alike -- take it when you own the data on both ends, not to save the clone alone.
 
 ### Mind the Sync Tempo, in Both Modes
 

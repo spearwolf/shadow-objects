@@ -106,6 +106,20 @@ ShadowEnv A        ShadowEnv B
 
 This lets you compose independent logic environments side by side -- for example, a main game simulation in a worker and a UI overlay logic on the main thread -- without either environment knowing about the other. If they need to share data, the View Layer mediates.
 
+### Shared Registries
+
+Three lookups in this package are shared instead of belonging to whoever asks for them, and two of them are shared further than the third.
+
+`globalThis.__shadowEntsContexts` (namespace to `ComponentContext`) and `globalThis.__shadowEnvs` (namespace to `ShadowEnv`) hang off the global object deliberately. Custom elements often arrive on a page more than once: a bundled application plus a second copy from a CDN, a micro-frontend that ships its own module graph, a test run that imports the package under two specifiers. Anchoring both registries globally is what lets a `<shae-ent ns="foo">` from one module instance and a `<shae-worker ns="foo">` from another meet in the same namespace. `new ComponentContext('foo')` hands back the instance that already holds that namespace rather than building a second one -- see [`ComponentContext`](./api-reference.md#componentcontext) -- and [`ShadowEnv.get('foo')`](./api-reference.md#shadowenv) answers across module instances as well.
+
+The shared [`FrameLoop`](./api-reference.md#frameloop) is anchored differently. `FrameLoop.get()` keeps its instance in module state, so a second module instance builds a second shared loop with a subscriber count and a `requestAnimationFrame` cycle of its own. Both loops run; neither knows about the other.
+
+Three consequences follow:
+
+- **Server-side rendering.** Global object and module state both outlive a single request. A namespace registered while one request renders is still registered while the next one renders, and everything hanging on it comes along.
+- **Multi-tenant pages.** A namespace is matched by its string, and the key carries no tenant. Two tenants that pick the same namespace share one `ComponentContext` and one `ShadowEnv`. Give each tenant a namespace no one else will pick.
+- **Test isolation.** `ComponentContext.dispose()` empties a context and takes its entry out of the global map. The `view` setter of `ShadowEnv` releases a namespace registration only while it holds it, so handing one environment a new `view` cannot strip the namespace from the environment that holds it. And `new FrameLoop()` yields a loop that belongs to the test rather than to the page.
+
 ### The Kernel (ECS System Runner)
 
 The Kernel is the engine inside each Shadow Environment.

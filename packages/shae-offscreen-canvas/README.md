@@ -13,14 +13,14 @@ npm install @spearwolf/shae-offscreen-canvas
 ## Usage Example
 
 ```html
-<shae-offscreen-canvas-ctx src="my-logic.js">
+<shae-worker src="my-logic.js">
 
   <shae-offscreen-canvas>
     <!-- Your entities here -->
     <shae-ent token="my-scene"></shae-ent>
   </shae-offscreen-canvas>
 
-</shae-offscreen-canvas-ctx>
+</shae-worker>
 ```
 
 The `src` attribute points to your shadow environment entry file -- the script that runs inside the worker and defines your shadow objects. The `<shae-ent>` elements are entities in the view layer; their tokens connect them to shadow objects running in the worker.

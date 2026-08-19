@@ -1284,7 +1284,7 @@ const scopedEnv = new LocalShadowObjectEnv(new Registry());
 | `kernel` | Direct access to the `Kernel` instance. |
 | `registry` | Direct access to the `Registry` instance. |
 | `isLocalEnv` | Always `true`. |
-| `disableStructuredClone` | Set to `true` to skip cloning data (performance optimization for local use). |
+| `disableStructuredClone` | Set to `true` to skip cloning data (performance optimization for local use). The clone is what keeps the local environment semantically equal to the remote one -- see [Both Modes Clone the Change Trail](./best-practices.md#both-modes-clone-the-change-trail). |
 
 **Methods:**
 
@@ -1423,7 +1423,7 @@ import {
 | Symbol | Signature | Meaning |
 | :--- | :--- | :--- |
 | `FrameLoop.OnFrame` | `symbol` | The event name. |
-| `FrameLoop.get()` | `(): FrameLoop` | The shared loop. Created on first read, the same instance afterwards, no cap on the frame rate. |
+| `FrameLoop.get()` | `(): FrameLoop` | The shared loop. Created on first read, the same instance afterwards, no cap on the frame rate. The instance lives in module state, so "shared" reaches as far as the module instance and no further -- see [Shared Registries](./concepts.md#shared-registries). |
 | `new FrameLoop(maxFps?)` | `(maxFps?: number) => FrameLoop` | A loop of your own. `0`, negative and non-finite values mean: no cap. |
 | `maxFps` | `number`, get/set | The cap, writable while the loop runs. |
 | `subscriptionCount` | `number`, get | How many targets listen. Zero means the loop asks for no frames. |
@@ -1470,7 +1470,7 @@ The first frame reports no delta rather than a delta against an empty predecesso
 
 ### Capping the frame rate
 
-`maxFps` holds back the frames that arrive too early. The distance is measured from the last frame that was actually emitted, and the threshold is three quarters of the nominal frame time. Animation frames do not arrive at the nominal distance, and browsers differ in how coarsely they round the timestamps they hand out, so the threshold has room for that jitter: a cap at or above the refresh rate of the display lets every frame through, and a cap at half the refresh rate drops every second frame. A held-back frame still arms the next one, so the cap slows the loop down instead of stopping it.
+`maxFps` holds back the frames that arrive too early. The distance is measured from the last frame that was actually emitted, and the threshold is three quarters of the nominal frame time. Animation frames do not arrive at the nominal distance, and browsers differ in how coarsely they round the timestamps they hand out, so the threshold has room for that jitter: a cap at or above the refresh rate of the display lets every frame through, and a cap at half the refresh rate drops every second frame. A held-back frame still arms the next one, so the cap slows the loop down instead of stopping it. Between those two points the cap quantizes: the loop can only emit on a frame it is handed, so the rate it actually delivers is one of those reachable by dropping whole frames -- the refresh rate, its half, its third, and so on. Which of them a cap lands on is decided by the threshold, not by which one lies closest to the number you asked for. On a 144 Hz display, `maxFps = 90` delivers about 72 frames per second.
 
 ```typescript
 const loop = new FrameLoop(30);
@@ -1588,7 +1588,7 @@ not revive it — build a new one. `<shae-ent>` elements of the same namespace k
 | `autostart` | Whether the element may start on connect. Writable, defaults to `true`; the `no-autostart` attribute is the declarative half of the same decision. |
 | `shouldAutostart` | Read-only: `autostart` and the `no-autostart` attribute taken together. This is what the element asks when it connects. |
 | `autoSync` | The current `auto-sync` value. **Writing takes strings only:** any other value is read as a flag — a truthy one becomes `"frame"`, a falsy one `"no"`. `el.autoSync = 30` therefore syncs every frame, while `auto-sync="30"` is a 30-millisecond interval. Every value other than the frame default is reflected into the attribute; the frame default is written only when the attribute is already there. |
-| `frameLoop` | The [`FrameLoop`](#frameloop) driving the frame-based sync, taken on first read. There is one per process — every element that reads it gets the same instance. |
+| `frameLoop` | The [`FrameLoop`](#frameloop) driving the frame-based sync, taken on first read. There is one per module instance — every element that reads it from the same copy of the package gets the same instance, while a second copy on the page drives a loop of its own; see [Shared Registries](./concepts.md#shared-registries). |
 | `ns` | The namespace, get and set, inherited from `ShaeElement`. Writing trims the value and reflects it back into the `ns` attribute; an empty value removes the attribute and returns the element to the Global Context. |
 | `isShaeWorkerElement` | `true`. `isShaeElement` is `true` as well, inherited from `ShaeElement`. |
 | `ShaeWorkerElement.DefaultAutoSync` | Static, `"frame"` — what an empty `auto-sync`, a removed one and any truthy non-string assignment fall back to. An unreadable value does *not* come here; it is reported and switches syncing off. |
@@ -2245,6 +2245,8 @@ const attached = kernel.findShadowObjects('abc-123');
 **The Entity tree stays a tree.** `setParent` refuses a parent that is the Entity itself or one of its descendants, and so does the `parent` setter of the `Entity` class, the other way the link is written. Both run the check before they touch anything, so a refused call leaves the Entity attached where it was, with its `order` and its place among the siblings intact. The check itself is `Entity.assertAttachableTo(nextParent)` -- it walks the parent chain and throws; call it yourself if you drive the link by a route of your own. `ViewComponent.addChild()` guards the same thing on the View Layer side.
 
 Neither check reaches a children list written without the parent link -- `Entity.addChild()` and `ComponentContext.addToChildren()` do exactly that. The four traversals over the children lists carry that case instead: `Kernel.traverseLevelOrderBFS()`, `Kernel.getEntityGraph()`, `entity.traverse()` and `ComponentContext.traverseLevelOrderBFS()` each visit every node once and terminate.
+
+Termination is all they carry, though. A ring closed through `Entity.addChild()` or `ComponentContext.addToChildren()` and reachable from no root is not walked by `Kernel.destroy()`, which sweeps from the roots: its Entities go with the bookkeeping and their `onDestroy` never runs. Keep such a ring reachable from a root, or take it down yourself before the Kernel goes.
 
 #### `dispatchMessageToView(message)`
 
