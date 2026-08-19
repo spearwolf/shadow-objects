@@ -1,4 +1,4 @@
-import {emit, once, retain} from '@spearwolf/eventize';
+import {emit, off, once, retain} from '@spearwolf/eventize';
 import {
   AppliedChangeTrail,
   ChangeTrail,
@@ -20,23 +20,32 @@ import {toUrlString} from '../utils/toUrlString.js';
 import {waitForMessageOfType} from '../utils/waitForMessageOfType.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
-const removeTransferables = (changeTrail: ChangeTrailType): TransferablesType | undefined => {
+/**
+ * Splits the transferables out of a change trail without writing to it. The trail handed in
+ * is a snapshot that travels on to the `ShadowEnv.AfterSync` consumers after this call, so an
+ * entry carrying transferables is replaced by a shallow copy without them and every other
+ * entry is passed through as it is. A trail that carries none is handed back object for
+ * object.
+ */
+const splitTransferables = (changeTrail: ChangeTrailType): {changeTrail: ChangeTrailType; transferables?: TransferablesType} => {
+  if (!Array.isArray(changeTrail)) return {changeTrail};
+
+  let outbound: ChangeTrailType | undefined;
   let transferables: TransferablesType | undefined;
 
-  if (changeTrail != null && Array.isArray(changeTrail)) {
-    for (const changeItem of changeTrail) {
-      if (changeItem.transferables) {
-        if (!transferables) {
-          transferables = changeItem.transferables;
-        } else {
-          transferables = [...transferables, ...changeItem.transferables];
-        }
-        delete changeItem.transferables;
-      }
+  for (let i = 0; i < changeTrail.length; i++) {
+    const changeItem = changeTrail[i];
+    if (changeItem.transferables) {
+      transferables = transferables ? [...transferables, ...changeItem.transferables] : [...changeItem.transferables];
+
+      outbound ??= [...changeTrail];
+      const withoutTransferables = {...changeItem};
+      delete withoutTransferables.transferables;
+      outbound[i] = withoutTransferables;
     }
   }
 
-  return transferables;
+  return {changeTrail: outbound ?? changeTrail, transferables};
 };
 
 /**
@@ -171,8 +180,8 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
 
     // registered before the load handshake begins: a worker that dies while it is
     // still coming up must not leave the caller waiting for the load timeout
-    worker.addEventListener('error', this.onWorkerError.bind(this));
-    worker.addEventListener('messageerror', this.onWorkerMessageError.bind(this));
+    worker.addEventListener('error', this.onWorkerError);
+    worker.addEventListener('messageerror', this.onWorkerMessageError);
 
     this.configureConsoleLogger(worker);
 
@@ -186,10 +195,10 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
         throw signal.aborted ? signal.reason : new WorkerDestroyedError();
       }
 
-      worker.addEventListener('message', this.onMessageFromWorker.bind(this));
+      worker.addEventListener('message', this.onMessageFromWorker);
 
       queueMicrotask(() => {
-        emit(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerLoaded, this);
+        this.announceLoaded();
       });
     } catch (error) {
       // the failure path reports with the worker event in hand; anything else is on us
@@ -197,6 +206,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
         this.logger.error('failed to start', error);
       }
 
+      this.stopListeningTo(worker);
       this.#worker = undefined;
 
       // only a start that nobody else is unwinding owns this worker: the reference is gone,
@@ -219,30 +229,35 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     const worker = this.#worker;
     if (worker == null) return Promise.reject(new WorkerDestroyedError());
 
-    const transferables = removeTransferables(changeTrail);
-    const message = {type: ChangeTrail, changeTrail} as any;
+    const {changeTrail: outbound, transferables} = splitTransferables(changeTrail);
+    const message = {type: ChangeTrail, changeTrail: outbound} as any;
 
-    const serial = ++this.#changeTrailSerial;
-    if (waitForConfirmation) {
-      message.serial = serial;
+    if (!waitForConfirmation) {
+      worker.postMessage(message, transferables ?? []);
+      return Promise.resolve();
     }
+
+    // the counter moves only where a number actually goes on the wire: it is the sole link
+    // between a request and its confirmation, and a sequence with invisible jumps in it tells
+    // a later diagnosis nothing
+    const serial = ++this.#changeTrailSerial;
+    message.serial = serial;
 
     worker.postMessage(message, transferables ?? []);
 
-    if (waitForConfirmation) {
-      return waitForMessageOfType(
-        worker,
-        AppliedChangeTrail,
-        WorkerChangeTrailTimeout,
-        (data: AppliedChangeTrailEvent) => {
-          if (data.error) throw data.error;
-          return data.serial === serial;
-        },
-        signal,
-      );
-    } else {
-      return Promise.resolve();
-    }
+    return waitForMessageOfType(
+      worker,
+      AppliedChangeTrail,
+      WorkerChangeTrailTimeout,
+      (data: AppliedChangeTrailEvent) => {
+        // the serial decides who a confirmation concerns -- an error belonging to another
+        // trail would otherwise reject the request that happens to be waiting here
+        if (data.serial !== serial) return false;
+        if (data.error) throw data.error;
+        return true;
+      },
+      signal,
+    );
   }
 
   importScript(url: URL | string): Promise<void> {
@@ -259,8 +274,9 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
       ImportedModule,
       WorkerConfigureTimeout,
       (data: ImportedModuleEvent) => {
+        if (data.url !== url) return false;
         if (data.error) throw data.error;
-        return data.url === url;
+        return true;
       },
       signal,
     );
@@ -282,20 +298,29 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
 
     if (worker == null) return;
 
+    this.stopListeningTo(worker);
+
     worker.postMessage({type: Destroy});
 
-    waitForMessageOfType(worker, Destroyed, WorkerDestroyTimeout).finally(() => {
-      worker.terminate();
-    });
+    waitForMessageOfType(worker, Destroyed, WorkerDestroyTimeout)
+      .catch((error) => {
+        // `.finally()` passes a rejection on, so without this the silence of a worker ends as an
+        // unhandled rejection five seconds after the teardown. It is terminated either way, and
+        // by then there is nobody left to hand the error to
+        this.logger.warn('the worker did not acknowledge the teardown', error);
+      })
+      .finally(() => {
+        worker.terminate();
+      });
   }
 
-  private onWorkerError(event: ErrorEvent) {
+  private readonly onWorkerError = (event: ErrorEvent): void => {
     this.handleWorkerFailure('error', event, event.message || 'the worker reported an error');
-  }
+  };
 
-  private onWorkerMessageError(event: MessageEvent) {
+  private readonly onWorkerMessageError = (event: MessageEvent): void => {
     this.handleWorkerFailure('messageerror', event, 'the worker sent a message that could not be deserialized');
-  }
+  };
 
   private handleWorkerFailure(type: 'error' | 'messageerror', event: ErrorEvent | MessageEvent, message: string): void {
     // a deliberate teardown, or a failure that was already reported: the first one wins
@@ -312,6 +337,8 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     const worker = this.#worker;
     this.#worker = undefined;
 
+    if (worker != null) this.stopListeningTo(worker);
+
     // settle everyone waiting for a reply before the worker goes away — it can no longer arrive
     this.#workerFailure.abort(reason);
 
@@ -326,21 +353,90 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
       this.logger.error('the proxy-failed callback threw', error);
     }
 
-    emit(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerFailed, {
-      env: this,
-      type,
-      message,
-      reason,
-      event,
-    } as WorkerFailedEvent);
+    this.announceFailure({env: this, type, message, reason, event});
   }
 
-  private onMessageFromWorker(event: MessageEvent) {
+  /**
+   * Announces the completed handshake to the consumers -- and makes sure it stays announceable.
+   * The same recovery as {@link RemoteWorkerEnv.announceFailure}, and needed more sharply here:
+   * `workerLoaded` reads the retained value, so an environment that never stored it leaves every
+   * later read of that promise waiting for a failure or a teardown instead of resolving. The emit
+   * runs from a microtask, where a throw has no caller left to reach and would surface as an
+   * unhandled error.
+   *
+   * One cost is specific to this event: a `workerLoaded` promise that was already handed out and
+   * is waiting behind the throwing listener loses its subscription to the sweep, and stays pending
+   * until the environment fails or is torn down. Reading `workerLoaded` again gets the replay.
+   */
+  private announceLoaded(): void {
+    try {
+      emit(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerLoaded, this);
+      return;
+    } catch (error) {
+      this.logger.error('a workerLoaded listener threw; the ones behind it did not hear about the handshake', error);
+    }
+
+    try {
+      off(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerLoaded);
+      retain(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerLoaded);
+      emit(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerLoaded, this);
+    } catch (error) {
+      this.logger.error('the handshake could not be retained for later listeners', error);
+    }
+  }
+
+  /**
+   * Announces the failure to the consumers -- and makes sure it stays announceable. eventize
+   * stores a retained value only after the dispatch has run through, so a listener that throws
+   * would take the replay for every later subscriber with it, and `WorkerFailed` is documented
+   * as retained. It is emitted exactly once per environment, so dropping the subscriptions of
+   * that name on the second pass costs nothing: no further one is ever sent. `off()` drops the
+   * retain policy along with the listeners, hence the `retain()` in between.
+   *
+   * What the recovery costs, for both events: the listeners standing behind the throwing one in
+   * the first pass never hear it. A listener subscribed to every event name survives the sweep,
+   * which reaches the subscriptions of this one name only, so it is served in the recovery pass.
+   * Whether that is its first serving or its second depends on its priority: eventize runs the
+   * named subscriptions ahead of the wildcard ones at equal priority, so at the default the throw
+   * ends the first pass before the wildcard is reached and it hears the event exactly once. Only a
+   * wildcard registered above the throwing listener runs ahead of it, and that one hears it twice.
+   */
+  private announceFailure(payload: WorkerFailedEvent): void {
+    try {
+      emit(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerFailed, payload);
+      return;
+    } catch (error) {
+      this.logger.error('a workerFailed listener threw; the ones behind it did not hear about the failure', error);
+    }
+
+    try {
+      off(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerFailed);
+      retain(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerFailed);
+      emit(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerFailed, payload);
+    } catch (error) {
+      // a listener subscribed to every event name survives the `off()` above and can throw again
+      this.logger.error('the failure could not be retained for later listeners', error);
+    }
+  }
+
+  private readonly onMessageFromWorker = (event: MessageEvent): void => {
     if (event.data?.type === MessageToView) {
       (this as IShadowObjectEnvProxy).onMessageToView?.(event.data.data);
     } else if (this.logger.isDebug) {
       this.logger.debug('message from worker', event);
     }
+  };
+
+  /**
+   * Takes every listener of this environment off a worker. Whoever registered them takes them
+   * off again -- between the teardown and the `terminate()` that ends it the worker stays
+   * alive, and through its listeners it keeps this environment and everything it references
+   * reachable for exactly that long.
+   */
+  private stopListeningTo(worker: Worker): void {
+    worker.removeEventListener('error', this.onWorkerError);
+    worker.removeEventListener('messageerror', this.onWorkerMessageError);
+    worker.removeEventListener('message', this.onMessageFromWorker);
   }
 
   private configureConsoleLogger(worker: Worker) {

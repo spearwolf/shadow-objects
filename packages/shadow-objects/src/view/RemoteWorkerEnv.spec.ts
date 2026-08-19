@@ -1,6 +1,18 @@
 import {on} from '@spearwolf/eventize';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
-import {Destroy, Destroyed, Loaded} from '../constants.js';
+import {
+  AppliedChangeTrail,
+  ChangeTrail,
+  ComponentChangeType,
+  Destroy,
+  Destroyed,
+  ImportedModule,
+  Loaded,
+  MessageToView,
+  WorkerDestroyTimeout,
+  WorkerLoadTimeout,
+} from '../constants.js';
+import type {ChangeTrailType, ISendEvents, IUpdateOrderChange} from '../types.js';
 import {CONSOLE_LOGGER, CONSOLE_LOGGER_STORAGE} from '../utils/ConsoleLogger.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 import {RemoteWorkerEnv} from './RemoteWorkerEnv.js';
@@ -9,6 +21,7 @@ const {FakeWorker, workers} = vi.hoisted(() => {
   class FakeWorker {
     listeners = new Map<string, Set<(event: any) => void>>();
     posted: any[] = [];
+    transferred: (Transferable[] | undefined)[] = [];
     terminateCount = 0;
 
     addEventListener(type: string, listener: (event: any) => void) {
@@ -24,8 +37,9 @@ const {FakeWorker, workers} = vi.hoisted(() => {
       this.listeners.get(type)?.delete(listener);
     }
 
-    postMessage(data: any) {
+    postMessage(data: any, transfer?: Transferable[]) {
       this.posted.push(data);
+      this.transferred.push(transfer);
     }
 
     terminate() {
@@ -222,6 +236,25 @@ describe('RemoteWorkerEnv', () => {
       expect(worker.terminateCount).toBe(1);
     });
 
+    // eventize puts the value into the keeper only after the dispatch has run through, so a
+    // listener that throws would take the replay for every later subscriber with it -- and
+    // `WorkerFailed` is documented as retained (`docs/api-reference.md`, RemoteWorkerEnv events)
+    it('replays workerFailed to a later listener even when the first one throws', async () => {
+      const {env, worker} = await startEnv();
+
+      on(env, 'workerFailed', () => {
+        throw new Error('a consumer that cannot cope');
+      });
+
+      expect(() => worker.fail('kaboom')).not.toThrow();
+
+      const late = vi.fn();
+      on(env, 'workerFailed', late);
+
+      expect(late, 'the retained failure is still there for whoever comes after').toHaveBeenCalledTimes(1);
+      expect(late.mock.calls[0][0].reason.name).toBe('WorkerFailedError');
+    });
+
     it('rejects calls issued after the failure right away', async () => {
       const {env, worker} = await startEnv();
 
@@ -248,6 +281,42 @@ describe('RemoteWorkerEnv', () => {
 
     it('pins the event name', () => {
       expect(RemoteWorkerEnv.WorkerFailed).toBe('workerFailed');
+    });
+  });
+
+  describe('the load announcement', () => {
+    // the same keeper rule as for the failure, and it bites harder here: `workerLoaded` reads the
+    // retained value, so an environment that never stored it hands out a promise that waits for a
+    // failure or a teardown instead of resolving. The emit runs from a microtask, so a throw that
+    // escapes has no caller left to reach
+    it('replays workerLoaded to a later listener even when the first one throws', async () => {
+      const env = new RemoteWorkerEnv();
+      const started = env.start();
+      const worker = workers.at(-1)!;
+
+      on(env, RemoteWorkerEnv.WorkerLoaded, () => {
+        throw new Error('a consumer that cannot cope');
+      });
+
+      worker.reply({type: Loaded});
+      await started;
+      await flushMicrotasks();
+
+      const late = vi.fn();
+      on(env, RemoteWorkerEnv.WorkerLoaded, late);
+
+      expect(late, 'the retained handshake is still there for whoever comes after').toHaveBeenCalledTimes(1);
+      expect(late.mock.calls[0][0]).toBe(env);
+
+      // the promise is built on that same replay
+      await expect(withTimeout(env.workerLoaded)).resolves.toBe(env);
+
+      env.destroy();
+      worker.reply({type: Destroyed});
+    });
+
+    it('pins the event name', () => {
+      expect(RemoteWorkerEnv.WorkerLoaded).toBe('workerLoaded');
     });
   });
 
@@ -432,6 +501,214 @@ describe('RemoteWorkerEnv', () => {
       await flushMicrotasks();
 
       expect(worker.terminateCount).toBe(1);
+    });
+
+    // `.finally()` passes a rejection on, so without a `catch()` closing the chain a silent worker
+    // ends five seconds after the teardown in an unhandled rejection that belongs to nobody.
+    // On the fake timers: `startEnv()` gets through on microtasks alone, the load handshake needs
+    // no real timer of its own.
+    it('terminates the worker and reports it when the teardown is never acknowledged', async () => {
+      try {
+        // inside the try, so that a throw anywhere below still gives the real timers back --
+        // fake ones left standing would hang `flushMicrotasks()` in every case after this one
+        vi.useFakeTimers();
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+        const {env, worker} = await startEnv();
+
+        env.destroy();
+        expect(worker.terminateCount, 'the worker gets its own teardown window').toBe(0);
+
+        await vi.advanceTimersByTimeAsync(WorkerDestroyTimeout);
+
+        expect(worker.terminateCount, 'and does not outlive it').toBe(1);
+        expect(warn, 'the silence is reported instead of ending as an unhandled rejection').toHaveBeenCalledTimes(1);
+      } finally {
+        vi.restoreAllMocks();
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  describe('change trails', () => {
+    // the trail is a snapshot that travels on to the consumers as `ShadowEnv.AfterSync` after this
+    // call -- `docs/api-reference.md` promises that of `buildChangeTrails()`, and the promise holds
+    // for both environments or for neither
+    it('keeps the transferables on the change trail it was handed', async () => {
+      const {env, worker} = await startEnv();
+
+      const buffer = new ArrayBuffer(8);
+      const carrier: ISendEvents = {
+        type: ComponentChangeType.SendEvents,
+        uuid: 'a',
+        events: [{type: 'blob', data: 'payload'}],
+        transferables: [buffer],
+      };
+      const plain: IUpdateOrderChange = {type: ComponentChangeType.UpdateOrder, uuid: 'b', order: 1};
+      const trail: ChangeTrailType = [carrier, plain];
+
+      await env.applyChangeTrail(trail, false);
+
+      expect(worker.posted.at(-1).type).toBe(ChangeTrail);
+      expect(carrier.transferables, 'the trail the caller keeps still carries them').toEqual([buffer]);
+      expect(worker.posted.at(-1).changeTrail[0].transferables, 'the message does not').toBeUndefined();
+      expect(worker.transferred.at(-1), 'they travel as the transfer list instead').toEqual([buffer]);
+      expect(worker.posted.at(-1).changeTrail[1], 'an entry without them is passed through as it is').toBe(plain);
+    });
+
+    // the number is the only link between a request and its confirmation; one that jumps is
+    // worthless to any later diagnosis
+    it('numbers only the change trails it asks a confirmation for', async () => {
+      const {env, worker} = await startEnv();
+
+      await env.applyChangeTrail([], false);
+      expect(worker.posted.at(-1).serial, 'a trail nobody waits for travels without a serial').toBeUndefined();
+
+      const first = env.applyChangeTrail([], true);
+      expect(worker.posted.at(-1).serial).toBe(1);
+      worker.reply({type: AppliedChangeTrail, serial: 1});
+      await first;
+
+      await env.applyChangeTrail([], false);
+
+      const second = env.applyChangeTrail([], true);
+      expect(worker.posted.at(-1).serial, 'the sequence on the wire has no gaps').toBe(2);
+      worker.reply({type: AppliedChangeTrail, serial: 2});
+      await second;
+    });
+
+    // the serial decides who a confirmation concerns -- even when it carries an error
+    it('settles only the request the confirmation belongs to', async () => {
+      const {env, worker} = await startEnv();
+
+      const first = env.applyChangeTrail([], true);
+      const second = env.applyChangeTrail([], true);
+
+      let secondSettled = false;
+      second.then(
+        () => {
+          secondSettled = true;
+        },
+        () => {
+          secondSettled = true;
+        },
+      );
+
+      worker.reply({type: AppliedChangeTrail, serial: 1, error: 'the first trail failed'});
+
+      await expect(first).rejects.toBe('the first trail failed');
+      await flushMicrotasks();
+      expect(secondSettled, 'a failure of another trail decides nothing here').toBe(false);
+
+      worker.reply({type: AppliedChangeTrail, serial: 2});
+      await second;
+    });
+  });
+
+  describe('module imports', () => {
+    // two imports can be on the wire at the same time, and the worker answers each one with its
+    // own url (`worker/MessageRouter.ts`, the Configure branch)
+    it('settles only the import the confirmation belongs to', async () => {
+      const {env, worker} = await startEnv();
+
+      const first = env.importScript('./first.js');
+      const second = env.importScript('./second.js');
+
+      // the urls the environment resolved -- `importScript` matches on the absolute form it sent
+      const firstUrl = worker.posted.at(-2).importModule;
+      const secondUrl = worker.posted.at(-1).importModule;
+
+      let secondSettled = false;
+      second.then(
+        () => {
+          secondSettled = true;
+        },
+        () => {
+          secondSettled = true;
+        },
+      );
+
+      worker.reply({type: ImportedModule, url: firstUrl, error: 'module has no "shadowObjects" export'});
+
+      await expect(first).rejects.toBe('module has no "shadowObjects" export');
+      await flushMicrotasks();
+      expect(secondSettled, 'a module that failed to import says nothing about another one').toBe(false);
+
+      worker.reply({type: ImportedModule, url: secondUrl});
+      await second;
+    });
+  });
+
+  describe('the listeners on the worker', () => {
+    it('takes its listeners off the worker when the environment is torn down', async () => {
+      const {env, worker} = await startEnv();
+
+      const messages = vi.fn();
+      (env as IShadowObjectEnvProxy).onMessageToView = messages;
+
+      env.destroy();
+
+      // the window this is about: the worker is still alive, waiting to acknowledge, and through
+      // the listeners it would keep the environment and everything it references reachable.
+      // The `message` slot is not empty here -- the wait for the acknowledgement holds one of
+      // its own -- so what pins it is that nothing of this environment answers any more
+      worker.reply({type: MessageToView, data: {uuid: 'a', type: 'ping'}});
+      expect(messages, 'a message after the teardown reaches nobody').not.toHaveBeenCalled();
+      expect(worker.listeners.get('error')?.size ?? 0, 'error, while the worker is still alive').toBe(0);
+      expect(worker.listeners.get('messageerror')?.size ?? 0, 'messageerror, while the worker is still alive').toBe(0);
+
+      worker.reply({type: Destroyed});
+      await flushMicrotasks();
+
+      // the acknowledgement takes the waiting listener with it, and nothing of ours is left
+      expect(worker.listeners.get('message')?.size ?? 0, 'message').toBe(0);
+      expect(worker.listeners.get('error')?.size ?? 0, 'error').toBe(0);
+      expect(worker.listeners.get('messageerror')?.size ?? 0, 'messageerror').toBe(0);
+    });
+
+    // the third path: no failure, no teardown -- the load handshake simply runs out of time and
+    // `start()` unwinds on its own
+    it('takes its listeners off a start() that runs out of time', async () => {
+      try {
+        vi.useFakeTimers();
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        const env = new RemoteWorkerEnv();
+        const started = env.start().then(
+          () => undefined,
+          (reason: Error) => reason,
+        );
+        const worker = workers.at(-1)!;
+
+        await vi.advanceTimersByTimeAsync(WorkerLoadTimeout);
+
+        expect((await started)?.message, 'the handshake reports its own timeout').toContain(
+          'Timeout waiting for message of type',
+        );
+        expect(env.isDestroyed, 'a start that failed is not a teardown').toBe(false);
+        expect(worker.terminateCount, 'the start that failed owns the worker it created').toBe(1);
+        expect(error, 'the failure is reported').toHaveBeenCalled();
+
+        expect(worker.listeners.get('message')?.size ?? 0, 'message').toBe(0);
+        expect(worker.listeners.get('error')?.size ?? 0, 'error').toBe(0);
+        expect(worker.listeners.get('messageerror')?.size ?? 0, 'messageerror').toBe(0);
+      } finally {
+        vi.restoreAllMocks();
+        vi.useRealTimers();
+      }
+    });
+
+    // the failure path terminates right away, so the unsubscribe costs it nothing and makes the
+    // rule one that knows no second case
+    it('takes its listeners off the worker when it fails', async () => {
+      const {env, worker} = await startEnv();
+
+      worker.fail();
+
+      expect(env.isDestroyed).toBe(true);
+      expect(worker.listeners.get('message')?.size ?? 0, 'message').toBe(0);
+      expect(worker.listeners.get('error')?.size ?? 0, 'error').toBe(0);
+      expect(worker.listeners.get('messageerror')?.size ?? 0, 'messageerror').toBe(0);
     });
   });
 
