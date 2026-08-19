@@ -96,6 +96,15 @@ export class ShaeWorkerElement extends ShaeElement {
       );
     });
 
+    on(this.shadowEnv, ShadowEnv.SyncFailed, (reason: unknown, changeTrail: unknown) => {
+      this.dispatchEvent(
+        new CustomEvent(ShadowEnv.SyncFailed.toLowerCase(), {
+          bubbles: false,
+          detail: {shadowEnv: this.shadowEnv, reason, changeTrail},
+        }),
+      );
+    });
+
     this.autoSync$.onChange((sVal) => {
       const hasAttr = this.hasAttribute(ATTR_AUTO_SYNC);
       const attrVal = hasAttr ? this.getAttribute(ATTR_AUTO_SYNC) : undefined;

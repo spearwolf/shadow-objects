@@ -530,6 +530,32 @@ Without a listener the failure is still logged, and `env.isReady` drops to `fals
 
 With the declarative setup the same thing arrives as a DOM event: `<shae-worker>` dispatches `proxyfailed` on itself, with `reason` and `shadowEnv` in the `detail`.
 
+### When a Single Sync Cycle Fails
+
+A refused change trail is a different failure from a lost worker, and the two must not be treated as one. The worker is alive, the proxy is intact, `env.isReady` still reads `true` -- one cycle did not get through. That happens when the worker does not confirm the trail within `changeTrailTimeout`, and when the Kernel throws while applying it and the worker reports the error back.
+
+The cost is the trail itself. `buildChangeTrails()` has already folded every pending change into the state it wrote before the trail went out, so the next cycle carries only what changed after that. The Shadow Environment ends up missing exactly what the refused trail described, and nothing sends it again on its own:
+
+```javascript
+import { on } from '@spearwolf/eventize';
+import { ShadowEnv } from '@spearwolf/shadow-objects';
+
+on(env, ShadowEnv.SyncFailed, (reason, changeTrail) => {
+  console.warn(`${changeTrail.length} entries did not reach the Shadow Environment:`, reason);
+
+  // rebuild the pending changes from the Component Memory -- the next sync() sends
+  // the full state of every component, not just what changed since
+  env.view.reCreateChanges();
+  env.sync();
+});
+```
+
+`syncWait()` reports the same thing to whoever awaited that cycle: it rejects with the reason instead of resolving with a trail that never arrived. `ShadowEnv.AfterSync` does not fire for a cycle that failed, so a listener of that event hears the successful cycles and nothing else.
+
+Rebuilding unconditionally is a trap worth naming: a Shadow Environment that refuses every trail turns the listener above into a loop that re-sends an ever-growing state. Count the attempts, and treat a run of failures as what it probably is -- an environment to replace rather than a cycle to repeat.
+
+With the declarative setup this arrives as a DOM event too: `<shae-worker>` dispatches `syncfailed` on itself, with `reason`, `changeTrail` and `shadowEnv` in the `detail`.
+
 ---
 
 ## 5. Framework Integration Note

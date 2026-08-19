@@ -533,9 +533,10 @@ describe('RemoteWorkerEnv', () => {
   });
 
   describe('change trails', () => {
-    // the trail is a snapshot that travels on to the consumers as `ShadowEnv.AfterSync` after this
-    // call -- `docs/api-reference.md` promises that of `buildChangeTrails()`, and the promise holds
-    // for both environments or for neither
+    // the trail is a snapshot that travels on to the consumers after this call, as
+    // `ShadowEnv.AfterSync` when the environment applies it and as `ShadowEnv.SyncFailed` when it
+    // refuses it -- `docs/api-reference.md` promises that of `buildChangeTrails()`, and the
+    // promise holds for both environments or for neither
     it('keeps the transferables on the change trail it was handed', async () => {
       const {env, worker} = await startEnv();
 

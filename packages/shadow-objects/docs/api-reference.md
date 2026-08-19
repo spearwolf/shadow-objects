@@ -1002,7 +1002,7 @@ Three event names that arrive as ordinary events on a `ViewComponent`; see [Rece
 | `buildChangeTrails(clearChanges = true)` | The changes since the previous call, as a `ChangeTrailType`. Returns an empty array when the context holds no components. Also writes the Component Memory. |
 | `reCreateChanges()` | Rebuild every component from the Component Memory, so that the next trail re-creates all of them. This is how a fresh proxy is brought up to the state the view is already in. |
 
-A change trail returned by `buildChangeTrails()` is a snapshot: nothing in the library writes to it again, not even the property tuples of its entries. This holds for anything derived from it too, including the value `ShadowEnv.syncWait()` resolves with and the payload of `ShadowEnv.AfterSync`.
+A change trail returned by `buildChangeTrails()` is a snapshot: nothing in the library writes to it again, not even the property tuples of its entries. This holds for anything derived from it too, including the value `ShadowEnv.syncWait()` resolves with and the payloads of `ShadowEnv.AfterSync` and `ShadowEnv.SyncFailed`.
 
 `reCreateChanges()` announces itself: it broadcasts the `ContextLost` event to every `ViewComponent` in the context, parents and children alike. It returns immediately when the memory is empty -- after a `clear()`, for instance, there is nothing left to recover.
 
@@ -1140,7 +1140,8 @@ nothing, so this lookup keeps answering the environment that is actually registe
 | :--- | :--- |
 | `ShadowEnv.ContextCreated` | Fired when the environment becomes ready (view and proxy both connected). Receives the `ShadowEnv`. Retained, so a listener registered afterwards still gets it. |
 | `ShadowEnv.ContextLost` | Fired when the environment loses its connection. Receives the `ShadowEnv`. Clears the retained `ContextCreated`, so a listener registered after the loss gets nothing until the environment becomes ready again. |
-| `ShadowEnv.AfterSync` | Fired after each synchronization cycle, including cycles with nothing to send. Receives the `ChangeTrailType` data, which is an empty array when nothing changed. |
+| `ShadowEnv.AfterSync` | Fired after a synchronization cycle the Shadow Environment applied, including cycles with nothing to send. Receives the `ChangeTrailType` data, which is an empty array when nothing changed. A cycle that failed emits `SyncFailed` instead, so a listener of this event hears the successful cycles and nothing else. |
+| `ShadowEnv.SyncFailed` | Fired when the Shadow Environment could not apply the change trail of a cycle — a worker that does not confirm within `changeTrailTimeout`, a Kernel error the worker reports back, a proxy whose environment is already gone. Receives the reason, the `ChangeTrailType` that was lost, and the `ShadowEnv`. The environment stays ready: what failed is the cycle, not the connection. |
 | `ShadowEnv.ProxyFailed` | Fired when the proxy loses the Shadow Environment it stands for. Receives the reason and the `ShadowEnv`. `ContextLost` follows, because the environment stops being ready. |
 
 ```typescript
@@ -1155,7 +1156,21 @@ on(env, ShadowEnv.AfterSync, (changeTrail) => {
 });
 ```
 
+A listener that throws ends the run of its event where it stands, and the listeners behind it hear
+nothing -- the same as everywhere else in the library. What such a listener cannot do is derail the
+cycle it was told about: `syncWait()` is settled before either event goes out, so a promise waiting
+on that cycle never depends on the listeners getting through, and the throw is reported through the
+`ConsoleLogger` instead of escaping as an unhandled rejection.
+
 Recovery from a `ProxyFailed` is a new proxy: `env.envProxy = new RemoteWorkerEnv()`. The setter starts it, and once it is ready the view re-creates its pending changes from the Component Memory. The next `sync()` therefore restores every entity in the new environment -- token, parent, order and properties -- so the application does not have to rebuild its `ViewComponent`s or its markup.
+
+A `SyncFailed` costs the change trail of that one cycle. `buildChangeTrails()` folds every pending
+change into the state it has written before the trail leaves, so no later cycle carries it again --
+the Shadow Environment is missing exactly what that trail described. `env.view.reCreateChanges()`
+rebuilds the pending changes from the Component Memory, and the next `sync()` sends the full state
+of every component. When to reach for it is the application's decision, the same as with a new
+proxy after a `ProxyFailed`: a trail that keeps being refused turns an unconditional rebuild into
+a loop, so a retry budget belongs around the call.
 
 ### Methods
 
@@ -1165,14 +1180,30 @@ Triggers synchronization of pending changes from the `ComponentContext` to the S
 
 #### `syncWait()`
 
-Like `sync()`, but returns a Promise that resolves after synchronization completes. Useful when you need to guarantee the Shadow Environment has processed changes before continuing.
+Like `sync()`, but returns a Promise that settles once the cycle is over. Useful when you need to guarantee the Shadow Environment has processed changes before continuing.
 
-The Promise resolves on every cycle, including one with nothing to send -- then the change trail is an empty array. It stays pending only while the environment is not ready; it resolves once `ContextCreated` fires.
+The Promise resolves with the change trail of a cycle the Shadow Environment applied, including one with nothing to send -- then the change trail is an empty array. It stays pending only while the environment is not ready; it settles once `ContextCreated` fires.
+
+It rejects with the reason the proxy gave when the Shadow Environment could not apply the trail: a worker that does not confirm within `changeTrailTimeout`, a Kernel error the worker reports back, a `WorkerDestroyedError` from a worker that is already gone. The same reason reaches every listener of `ShadowEnv.SyncFailed`, and `AfterSync` does not fire for that cycle.
 
 ```typescript
-const changeTrail = await env.syncWait();
-console.log('Synced changes:', changeTrail);
+try {
+  const changeTrail = await env.syncWait();
+  console.log('Synced changes:', changeTrail);
+} catch (error) {
+  console.warn('the change trail did not make it:', error);
+
+  // the only way back: the Component Memory rebuilds what the trail was carrying,
+  // and the next sync() sends the full state of every component
+  env.view?.reCreateChanges();
+  env.sync();
+}
 ```
+
+The `reCreateChanges()` call is deliberately left to the consumer. A cycle can fail because a
+single worker hiccup swallowed one trail, and it can fail because the Shadow Environment refuses
+everything it is sent -- the first case wants the rebuild, the second one spins on it. Only the
+application knows which of the two it is in.
 
 #### `ready()`
 
@@ -1253,6 +1284,18 @@ The `envProxy` property accepts any implementation of `IShadowObjectEnvProxy`. T
 | `destroy` | `() => void` | yes |
 | `onMessageToView` | `(event: Omit<MessageToViewEvent, 'transferables'>) => any` | no |
 | `onProxyFailed` | `(reason: unknown) => any` | no |
+
+A rejected `applyChangeTrail` is part of the contract, not an accident: the environment reads it
+as a cycle that failed, emits `ShadowEnv.SyncFailed` with the reason the Promise carries, and
+rejects the `syncWait()` waiting on that cycle. `ShadowEnv.AfterSync` stays quiet. Reject when the
+trail did not arrive or could not be applied, resolve when it did -- and note that the distinction
+holds regardless of `waitForConfirmation`: an implementation applying the trail synchronously may
+well know it failed without anyone having asked for a confirmation. A proxy that swallows its own
+errors and resolves anyway reports a Shadow Environment that is further along than it is.
+
+Losing the environment altogether is the other channel: that is `onProxyFailed`, and the two are
+not interchangeable. A refused trail leaves the environment ready and costs one cycle; a failed
+proxy ends it.
 
 The last two are callbacks rather than calls: `ShadowEnv` installs both on every proxy it is given -- `onMessageToView` for messages coming out of the Shadow Environment, `onProxyFailed` for the loss of that environment. An implementation that cannot fail simply never calls the latter.
 
@@ -1606,15 +1649,16 @@ subclass that overrides one has to call `super`.
 
 #### DOM Events
 
-The element mirrors three of the `ShadowEnv` events onto itself as `CustomEvent`s, so the declarative setup has the same information available as the programmatic one. The names are lower-cased; `detail` always carries `shadowEnv`. `ShadowEnv.AfterSync` is *not* among them — it stays on the `ShadowEnv`.
+The element mirrors four of the `ShadowEnv` events onto itself as `CustomEvent`s, so the declarative setup has the same information available as the programmatic one. The names are lower-cased; `detail` always carries `shadowEnv`. `ShadowEnv.AfterSync` is *not* among them — it fires on every successful cycle, which makes it a poor fit for the DOM, and it stays on the `ShadowEnv`. Its counterpart `ShadowEnv.SyncFailed` is mirrored, because a lost change trail is the kind of thing a declarative setup has to be able to hear.
 
 | Event | `detail` | When |
 | :--- | :--- | :--- |
 | `contextcreated` | `{shadowEnv}` | The environment became ready. |
 | `contextlost` | `{shadowEnv}` | The environment lost its connection. |
 | `proxyfailed` | `{shadowEnv, reason}` | The proxy lost the Shadow Environment it stands for. `contextlost` follows. |
+| `syncfailed` | `{shadowEnv, reason, changeTrail}` | The Shadow Environment could not apply the change trail of a cycle. The environment stays ready, and the trail in the `detail` is what did not arrive. |
 
-All three are dispatched with `bubbles: false` and without `composed`, so they are only heard on
+All four are dispatched with `bubbles: false` and without `composed`, so they are only heard on
 the element itself — there is no delegation to an ancestor and none across a shadow boundary.
 
 ```javascript

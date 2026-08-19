@@ -396,8 +396,17 @@ loop();
 |---|---|
 | `ShadowEnv.ContextCreated` | Environment is ready (view + proxy both connected) |
 | `ShadowEnv.ContextLost` | Environment lost connection |
-| `ShadowEnv.AfterSync` | After each sync cycle completes, also when the change trail was empty |
+| `ShadowEnv.AfterSync` | After each sync cycle the Shadow Environment applied, also when the change trail was empty |
+| `ShadowEnv.SyncFailed` | The Shadow Environment could not apply the change trail; reason, lost trail and env come with the event, and `AfterSync` stays quiet for that cycle |
 | `ShadowEnv.ProxyFailed` | The proxy lost its Shadow Environment; the reason comes with the event |
+
+```typescript
+// resolves with the change trail of an applied cycle, rejects with the reason a refused one gave
+const changeTrail = await env.syncWait();
+
+// the way back after a refused cycle -- that trail is not sent a second time
+env.view?.reCreateChanges();
+```
 
 ```typescript
 env.destroy();          // idempotent; env.isDestroyed === true

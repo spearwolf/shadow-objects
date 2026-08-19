@@ -16,6 +16,14 @@ describe('ShadowEnv', () => {
     Registry.get().clear();
   });
 
+  /**
+   * Caps a wait that is meant to end quickly. The timeout is an abort condition and never an
+   * assertion: a promise that has to settle is asserted on directly, so a case that only ends
+   * because the clock ran out fails instead of passing quietly.
+   */
+  const withTimeout = <T>(promise: Promise<T>, ms = 250) =>
+    Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('timed out')), ms))]);
+
   it('should be defined', () => {
     expect(ShadowEnv).toBeDefined();
   });
@@ -92,9 +100,6 @@ describe('ShadowEnv', () => {
   });
 
   describe('syncWait', () => {
-    const withTimeout = <T>(promise: Promise<T>, ms = 250) =>
-      Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('syncWait timed out')), ms))]);
-
     const makeEnv = () => {
       const env = new ShadowEnv();
       env.view = ComponentContext.get();
@@ -175,10 +180,218 @@ describe('ShadowEnv', () => {
     });
   });
 
-  describe('destroy', () => {
-    const withTimeout = <T>(promise: Promise<T>, ms = 250) =>
-      Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('timed out')), ms))]);
+  describe('a change trail the environment cannot apply', () => {
+    /**
+     * A proxy that hands every change trail back as a rejection while it is armed. The real
+     * rejections come from a worker that timed out and from a kernel that threw; what is under
+     * test here is the exit the environment takes once one of them arrives.
+     */
+    class RejectingProxy implements IShadowObjectEnvProxy {
+      onMessageToView?: (event: any) => any;
+      onProxyFailed?: (reason: unknown) => any;
 
+      rejectWith: unknown;
+      applyCalls = 0;
+
+      async start(): Promise<void> {}
+
+      async importScript(): Promise<void> {}
+
+      async applyChangeTrail(): Promise<void> {
+        this.applyCalls++;
+        if (this.rejectWith !== undefined) throw this.rejectWith;
+      }
+
+      destroy(): void {}
+    }
+
+    const makeEnv = async (rejectWith?: unknown) => {
+      const env = new ShadowEnv();
+      const proxy = new RejectingProxy();
+      proxy.rejectWith = rejectWith;
+      env.view = ComponentContext.get();
+      env.envProxy = proxy;
+      await env.ready();
+      return {env, proxy};
+    };
+
+    it('rejects syncWait() with the reason the proxy gave', async () => {
+      const reason = new Error('the environment refused the trail');
+      const {env, proxy} = await makeEnv(reason);
+
+      new ViewComponent('test', {context: env.view});
+
+      await expect(withTimeout(env.syncWait())).rejects.toBe(reason);
+      expect(proxy.applyCalls).toBe(1);
+
+      env.destroy();
+    });
+
+    it('does not emit AfterSync for a cycle that failed', async () => {
+      const reason = new Error('the environment refused the trail');
+      const {env} = await makeEnv(reason);
+
+      const afterSyncSpy = vi.fn();
+      on(env, ShadowEnv.AfterSync, afterSyncSpy);
+
+      new ViewComponent('test', {context: env.view});
+
+      await expect(withTimeout(env.syncWait())).rejects.toBe(reason);
+
+      expect(afterSyncSpy).not.toHaveBeenCalled();
+
+      env.destroy();
+    });
+
+    it('emits SyncFailed once, with the reason, the lost change trail and the environment', async () => {
+      const reason = new Error('the environment refused the trail');
+      const {env} = await makeEnv(reason);
+
+      const syncFailedSpy = vi.fn();
+      on(env, ShadowEnv.SyncFailed, syncFailedSpy);
+
+      const vc = new ViewComponent('test', {context: env.view});
+
+      await expect(withTimeout(env.syncWait())).rejects.toBe(reason);
+
+      expect(syncFailedSpy).toHaveBeenCalledTimes(1);
+
+      const [gotReason, changeTrail, gotEnv] = syncFailedSpy.mock.calls[0];
+
+      expect(gotReason).toBe(reason);
+      expect(changeTrail).toHaveLength(1);
+      expect((changeTrail as ChangeTrailType)[0].uuid).toBe(vc.uuid);
+      expect(gotEnv).toBe(env);
+
+      env.destroy();
+    });
+
+    it('emits SyncFailed for a sync() nobody is waiting on', async () => {
+      const reason = new Error('the environment refused the trail');
+      const {env} = await makeEnv(reason);
+
+      const syncFailed = withTimeout(
+        new Promise<unknown[]>((resolve) => {
+          once(env, ShadowEnv.SyncFailed, (...args: unknown[]) => resolve(args));
+        }),
+      );
+
+      new ViewComponent('test', {context: env.view});
+      env.sync();
+
+      const [gotReason, changeTrail] = (await syncFailed) as unknown[];
+
+      expect(gotReason).toBe(reason);
+      expect(changeTrail).toHaveLength(1);
+
+      env.destroy();
+    });
+
+    it('stays usable after a failed cycle', async () => {
+      const {env, proxy} = await makeEnv(new Error('the environment refused the trail'));
+
+      new ViewComponent('a', {context: env.view});
+      await expect(withTimeout(env.syncWait())).rejects.toBeInstanceOf(Error);
+
+      proxy.rejectWith = undefined;
+
+      new ViewComponent('b', {context: env.view});
+      await expect(withTimeout(env.syncWait())).resolves.toHaveLength(1);
+
+      env.destroy();
+    });
+
+    it('leaves the successful cycle alone: AfterSync fires, SyncFailed does not', async () => {
+      const {env, proxy} = await makeEnv();
+
+      const afterSyncSpy = vi.fn();
+      const syncFailedSpy = vi.fn();
+      on(env, ShadowEnv.AfterSync, afterSyncSpy);
+      on(env, ShadowEnv.SyncFailed, syncFailedSpy);
+
+      // an empty change trail never reaches the proxy, and a cycle without a call cannot fail
+      await expect(withTimeout(env.syncWait())).resolves.toEqual([]);
+      expect(proxy.applyCalls).toBe(0);
+
+      new ViewComponent('test', {context: env.view});
+      await expect(withTimeout(env.syncWait())).resolves.toHaveLength(1);
+      expect(proxy.applyCalls).toBe(1);
+
+      expect(afterSyncSpy).toHaveBeenCalledTimes(2);
+      expect(syncFailedSpy).not.toHaveBeenCalled();
+
+      env.destroy();
+    });
+
+    it('rejects a pending syncWait() with a ShadowEnvDestroyedError, not with a sync reason', async () => {
+      const {env} = await makeEnv(new Error('the environment refused the trail'));
+
+      new ViewComponent('test', {context: env.view});
+      const pending = env.syncWait();
+
+      env.destroy();
+
+      const error = await withTimeout(pending).then(
+        () => {
+          throw new Error('expected the promise to reject, but it resolved');
+        },
+        (reason) => reason,
+      );
+
+      expect(error).toBeInstanceOf(ShadowEnvDestroyedError);
+    });
+
+    it('rejects every caller waiting on the same failed cycle', async () => {
+      const reason = new Error('the environment refused the trail');
+      const {env} = await makeEnv(reason);
+
+      new ViewComponent('test', {context: env.view});
+
+      const first = env.syncWait();
+      const second = env.syncWait();
+
+      // one cycle, one promise: the second caller joins the wait rather than opening a new one
+      expect(second).toBe(first);
+
+      await expect(withTimeout(first)).rejects.toBe(reason);
+      await expect(withTimeout(second)).rejects.toBe(reason);
+
+      env.destroy();
+    });
+
+    it('settles syncWait() even when a SyncFailed listener throws', async () => {
+      const reason = new Error('the environment refused the trail');
+      const {env} = await makeEnv(reason);
+
+      // registered before the syncWait() call, which is the order an application produces:
+      // the listeners go up during setup, the wait happens later
+      on(env, ShadowEnv.SyncFailed, () => {
+        throw new Error('a consumer that cannot cope');
+      });
+
+      new ViewComponent('test', {context: env.view});
+
+      await expect(withTimeout(env.syncWait())).rejects.toBe(reason);
+
+      env.destroy();
+    });
+
+    it('settles syncWait() even when an AfterSync listener throws', async () => {
+      const {env} = await makeEnv();
+
+      on(env, ShadowEnv.AfterSync, () => {
+        throw new Error('a consumer that cannot cope');
+      });
+
+      new ViewComponent('test', {context: env.view});
+
+      await expect(withTimeout(env.syncWait())).resolves.toHaveLength(1);
+
+      env.destroy();
+    });
+  });
+
+  describe('destroy', () => {
     /**
      * Asserts that the promise rejects because the environment was destroyed.
      * A plain `rejects.toThrow(SomeClass)` would also swallow the timeout rejection,

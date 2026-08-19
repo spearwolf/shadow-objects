@@ -21,8 +21,9 @@ import {waitForMessageOfType} from '../utils/waitForMessageOfType.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
 /**
- * Splits the transferables out of a change trail without writing to it. The trail handed in
- * is a snapshot that travels on to the `ShadowEnv.AfterSync` consumers after this call, so an
+ * Splits the transferables out of a change trail without writing to it. The trail handed in is a
+ * snapshot that travels on after this call -- to the `ShadowEnv.AfterSync` consumers when the
+ * environment applies it, to the `ShadowEnv.SyncFailed` consumers when it refuses it -- so an
  * entry carrying transferables is replaced by a shallow copy without them and every other
  * entry is passed through as it is. A trail that carries none is handed back object for
  * object.
