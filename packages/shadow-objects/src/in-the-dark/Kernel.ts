@@ -339,7 +339,11 @@ export class Kernel {
       throw new Error(`entity with uuid "${parentUuid}" not found!`);
     }
 
-    e.removeFromParent();
+    // The detachment is what places the entity anew, which is the point of a call that keeps the
+    // parent and changes the order alone. It skips the rebinding of the contexts whenever a parent
+    // follows right away -- that parent binds them, and the root value in between would be visible
+    // to every `useParentContext()` reader on the entity.
+    e.removeFromParent(parentUuid == null);
 
     e.order = nextOrder;
     e.parentUuid = parentUuid;

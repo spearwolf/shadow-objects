@@ -113,6 +113,8 @@ Consumes a context value provided by the nearest ancestor Entity that has it.
 
 Like `useProperty`, the reader is cached per name and per Shadow Object, and a `compare` passed on a later call for the same name is ignored with a message on the console.
 
+The binding follows the entity tree at any point in time. An Entity that already holds a context and is then attached to a parent reads from that parent onwards, and one that loses its parent falls back to the root context.
+
 #### `useParentContext(name, options?)`
 
 Like `useContext`, but skips the current Entity and starts searching from the parent. Useful for "middleware" components that want to wrap or extend a context value that shares the same name.
@@ -409,6 +411,8 @@ The API provides direct access to the underlying `EntityApi` instance via the `e
 | `entity.kernel` | `Kernel` (readonly) | The Kernel this Entity lives in. |
 
 `propKeys` and `propEntries` are **methods**, not properties -- call them. They also do not shrink: a property that was cleared keeps its key and reads `undefined`, which is what lets a `useProperty()` reader survive the whole lifecycle.
+
+`entity.children` is sorted by ascending `order`; a newly attached child is placed after all siblings sharing its `order`.
 
 ```typescript
 createEffect(() => {

@@ -99,7 +99,9 @@ export class Entity {
       // Resolve the new parent FIRST so an unknown-uuid throw doesn't orphan us mid-mutation.
       const nextParent = parentUuid ? this.#kernel.getEntity(parentUuid) : undefined;
 
-      this.removeFromParent();
+      // A parent that follows right away binds the contexts itself, so the detachment skips it. The
+      // entity keeps reading the parent it leaves until the one it joins takes over.
+      this.#detachFromParent(nextParent == null);
 
       this.#parentUuid = parentUuid || undefined;
       this.#parent = nextParent;
@@ -176,29 +178,42 @@ export class Entity {
   }
 
   addChild(child: Entity) {
-    if (this.#children.length === 0) {
-      this.#childrenUuids.add(child.uuid);
-      this.#children.push(child);
-      // this.emit(onAddChild, this, child);
-      // child.emit(onAddToParent, child, this);
-      return;
-    }
-
     if (this.#childrenUuids.has(child.uuid)) {
       throw new Error(`child with uuid: ${child.uuid} already exists! parentUuid: ${this.uuid}`);
     }
 
     this.#childrenUuids.add(child.uuid);
-    this.#children.push(child);
+    this.#insertChildInOrder(child);
 
-    this.resortChildren();
-
+    // the child may have created its contexts while it was still unattached: they hang on the root
+    // of the entity context tree until something binds them to the parent they now have
     for (const [, ctx] of child.#context) {
       child.#subscribeToParent(ctx);
     }
 
     // this.emit(onAddChild, this, child);
     // child.emit(onAddToParent, child, this);
+  }
+
+  /**
+   * Puts a child at its place among the siblings, so building a subtree costs one insertion per
+   * child. The scan runs from the end because children usually arrive with an equal or rising
+   * `order`, which makes the common case a plain append. A child lands behind every sibling that
+   * shares its `order` -- the same place a stable sort would give it.
+   *
+   * The result only matches a full sort while `#children` is already sorted when the insertion
+   * starts, so name what keeps it that way: the insertion here preserves the order, `removeChild()`
+   * cuts an element out with `splice`, the destroy handler empties the list, and the `order` setter
+   * re-sorts through the parent. That last one is the condition worth stating, because it needs the
+   * child to know its parent -- `#parentUuid` has to be set. Every way an entity is attached inside
+   * this class goes through the `parentUuid` setter, which establishes both directions of the link
+   * before it calls `addChild()`. A caller that reaches for `addChild()` on its own leaves the child
+   * without a parent link, and a later `order` on such a child never reaches this list.
+   */
+  #insertChildInOrder(child: Entity) {
+    let i = this.#children.length;
+    while (i > 0 && child.order < this.#children[i - 1].order) i--;
+    this.#children.splice(i, 0, child);
   }
 
   resortChildren() {
@@ -213,7 +228,19 @@ export class Entity {
     }
   }
 
-  removeFromParent() {
+  /**
+   * @param rebindContexts bind every context back to the root of the entity context tree. An entity
+   *   that carries a context out of a subtree keeps following the value it can still see, rather
+   *   than freezing on the last one the former parent held. Only a caller that attaches the entity
+   *   to the next parent in the same breath passes `false` -- that parent binds the contexts itself,
+   *   and the detour over the root would be visible to `useParentContext()`, which hands out the
+   *   inherited value without the microtask collector `useContext()` has in front of it.
+   */
+  removeFromParent(rebindContexts = true) {
+    this.#detachFromParent(rebindContexts);
+  }
+
+  #detachFromParent(rebindContexts: boolean) {
     if (this.#parent) {
       // const prevParent = this.#parent;
 
@@ -222,10 +249,9 @@ export class Entity {
       this.#parent = undefined;
       this.#parentUuid = undefined;
 
-      for (const [, ctx] of this.#context) {
-        if (ctx.unsubscribeFromParent) {
-          ctx.unsubscribeFromParent();
-          ctx.unsubscribeFromParent = undefined;
+      if (rebindContexts) {
+        for (const [, ctx] of this.#context) {
+          this.#subscribeToParent(ctx);
         }
       }
 
@@ -265,6 +291,12 @@ export class Entity {
     }
   }
 
+  /**
+   * Binds every context of this entity to its current position in the entity tree -- to the parent
+   * if there is one, to the root otherwise. `addChild()` and `removeFromParent()` each do this for
+   * the entity they move, so a caller needs this only when it changed the position by other means
+   * or wants the binding re-established without knowing which of the two ran.
+   */
   reSubscribeToParentContexts() {
     for (const [, ctx] of this.#context) {
       this.#subscribeToParent(ctx);
@@ -298,7 +330,6 @@ export class Entity {
   }
 
   setProperties(properties: ComponentPropertiesType) {
-    this.clearTruthyPropsCache();
     batch(() => {
       // an entry that names only the key sets the property to `undefined` — the key is there, the value is not
       for (const [key, val] of properties) {
@@ -308,6 +339,9 @@ export class Entity {
   }
 
   setProperty(key: string, value: unknown) {
+    // the cache answers `updateShadowObjects()`, which picks the shadow objects of this entity by the
+    // property routes of the registry -- a write it does not see routes to a state that no longer exists
+    this.clearTruthyPropsCache();
     this.getPropertyWriter(key)(value);
   }
 
