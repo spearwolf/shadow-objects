@@ -683,7 +683,15 @@ export class ComponentContext {
 
     const lvl = new Map<number, ViewInstance[]>();
 
+    // The same set `#removeSubTree()` keeps, for the same reason: `addToChildren()` writes a children
+    // list without taking the child out of the one it already stands in, so a component can be reached
+    // twice and a children list can point back at an ancestor.
+    const visited = new Set<string>();
+
     const traverse = (uuid: string, depth: number) => {
+      if (visited.has(uuid)) return;
+      visited.add(uuid);
+
       const viewInstance = this.#components.get(uuid);
       if (viewInstance == null) return;
 

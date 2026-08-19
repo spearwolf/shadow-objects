@@ -665,6 +665,19 @@ describe('ComponentContext', () => {
       expect(ctx.hasComponent(b)).toBe(false);
     });
 
+    it('terminates the breadth-first walk when a children list points back at an ancestor', () => {
+      ctx = makeContext();
+      const r = new ViewComponent('r', {context: ctx, uuid: 'r'});
+      const a = new ViewComponent('a', {context: ctx, parent: r, uuid: 'a'});
+      const b = new ViewComponent('b', {context: ctx, parent: a, uuid: 'b'});
+
+      // the primitive below `ViewComponent.addChild()`: it writes a children list without touching
+      // the parent link, so `a` stands in two of them afterwards
+      ctx.addToChildren(b, a);
+
+      expect(ctx.traverseLevelOrderBFS().map((c) => c.uuid)).toEqual(['r', 'a', 'b']);
+    });
+
     it('every component is either a root or a child of a known parent', () => {
       ctx = makeContext();
       const parent = new ViewComponent('p', {context: ctx});

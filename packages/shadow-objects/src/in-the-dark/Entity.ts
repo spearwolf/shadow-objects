@@ -99,6 +99,10 @@ export class Entity {
       // Resolve the new parent FIRST so an unknown-uuid throw doesn't orphan us mid-mutation.
       const nextParent = parentUuid ? this.#kernel.getEntity(parentUuid) : undefined;
 
+      if (nextParent != null) {
+        this.assertAttachableTo(nextParent);
+      }
+
       // A parent that follows right away binds the contexts itself, so the detachment skips it. The
       // entity keeps reading the parent it leaves until the one it joins takes over.
       this.#detachFromParent(nextParent == null);
@@ -142,9 +146,20 @@ export class Entity {
   }
 
   traverse(callback: (entity: Entity) => void) {
+    this.#traverse(callback, new Set());
+  }
+
+  // The visited set guards the one traversal an outside shadow object drives, over a tree it did not
+  // build. `addChild()` writes a children list without touching the parent link, so no ancestor check
+  // can cover it.
+  #traverse(callback: (entity: Entity) => void, visited: Set<Entity>) {
+    if (visited.has(this)) return;
+    visited.add(this);
+
     callback(this);
+
     for (const child of this.#children) {
-      child.traverse(callback);
+      child.#traverse(callback, visited);
     }
   }
 
@@ -175,6 +190,25 @@ export class Entity {
 
     this.#childrenUuids.clear();
     this.#children.length = 0;
+  }
+
+  /**
+   * Refuses a parent that would close the entity tree into a ring: the entity itself, or an entity that
+   * already sits below it. The walk follows the parent chain upwards, which is a chain exactly because
+   * this guard keeps it one.
+   *
+   * `Kernel.setParent()` calls it before it detaches, and the `parentUuid` setter before it resolves the
+   * link, so a refused attachment leaves the entity where it was instead of orphaned halfway through.
+   * `ViewComponent.addChild()` guards the same thing on the view side.
+   */
+  assertAttachableTo(nextParent: Entity) {
+    for (let e: Entity | undefined = nextParent; e != null; e = e.parent) {
+      if (e === this) {
+        throw new Error(
+          `entity "${nextParent.uuid}" cannot become the parent of "${this.uuid}": it is the entity itself or one of its descendants`,
+        );
+      }
+    }
   }
 
   addChild(child: Entity) {
@@ -296,6 +330,9 @@ export class Entity {
    * if there is one, to the root otherwise. `addChild()` and `removeFromParent()` each do this for
    * the entity they move, so a caller needs this only when it changed the position by other means
    * or wants the binding re-established without knowing which of the two ran.
+   *
+   * Moving an entity through the kernel is not such a case: both directions bring their own binding,
+   * and a third one would reach every `useParentContext()` reader as another change.
    */
   reSubscribeToParentContexts() {
     for (const [, ctx] of this.#context) {

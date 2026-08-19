@@ -466,4 +466,104 @@ describe('Entity', () => {
       kernel.destroy();
     });
   });
+
+  describe('cycles in the entity tree', () => {
+    it('refuses the entity itself as its own parent', () => {
+      const kernel = makeKernel();
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'entity');
+      const entity = kernel.getEntity(uuid);
+
+      expect(() => {
+        entity.parent = entity;
+      }).toThrow();
+
+      expect(entity.children, 'the entity does not end up among its own children').toHaveLength(0);
+
+      kernel.destroy();
+    });
+
+    it('refuses a parent that already sits below the entity', () => {
+      const kernel = makeKernel();
+      const [aUuid, bUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(aUuid, 'parent');
+      kernel.createEntity(bUuid, 'child', aUuid);
+
+      const a = kernel.getEntity(aUuid);
+      const b = kernel.getEntity(bUuid);
+
+      expect(() => {
+        a.parent = b;
+      }).toThrow();
+
+      kernel.destroy();
+    });
+
+    it('leaves the entity attached where it was when it refuses the new parent', () => {
+      const kernel = makeKernel();
+      const [aUuid, bUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(aUuid, 'parent');
+      kernel.createEntity(bUuid, 'child', aUuid);
+
+      const a = kernel.getEntity(aUuid);
+      const b = kernel.getEntity(bUuid);
+
+      expect(() => {
+        a.parent = b;
+      }).toThrow();
+
+      expect(b.parentUuid, 'the child stays below the parent it had').toBe(aUuid);
+      expect(a.children).toHaveLength(1);
+      expect(a.parentUuid, 'the refused entity is still a root').toBeUndefined();
+
+      kernel.destroy();
+    });
+  });
+
+  describe('traverse()', () => {
+    it('visits the entity and its descendants once each', () => {
+      const kernel = makeKernel();
+      const [rUuid, aUuid, bUuid, cUuid] = [generateUUID(), generateUUID(), generateUUID(), generateUUID()];
+
+      kernel.createEntity(rUuid, 'root');
+      kernel.createEntity(aUuid, 'child', rUuid);
+      kernel.createEntity(bUuid, 'grandchild', aUuid);
+      kernel.createEntity(cUuid, 'child', rUuid);
+
+      const seen: string[] = [];
+      kernel.getEntity(rUuid).traverse((entity) => {
+        seen.push(entity.uuid);
+      });
+
+      // depth first, the parent ahead of its children
+      expect(seen).toEqual([rUuid, aUuid, bUuid, cUuid]);
+
+      kernel.destroy();
+    });
+
+    it('terminates when a children list points back at an ancestor', () => {
+      const kernel = makeKernel();
+      const [rUuid, aUuid, bUuid] = [generateUUID(), generateUUID(), generateUUID()];
+
+      kernel.createEntity(rUuid, 'root');
+      kernel.createEntity(aUuid, 'child', rUuid);
+      kernel.createEntity(bUuid, 'grandchild', aUuid);
+
+      // `addChild()` writes a children list without touching the parent link, so the ring it lays
+      // here is invisible to any check that walks the parent chain
+      kernel.getEntity(bUuid).addChild(kernel.getEntity(aUuid));
+
+      const seen: string[] = [];
+      kernel.getEntity(rUuid).traverse((entity) => {
+        seen.push(entity.uuid);
+      });
+
+      expect(seen).toEqual([rUuid, aUuid, bUuid]);
+
+      kernel.destroy();
+    });
+  });
 });

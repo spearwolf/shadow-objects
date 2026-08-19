@@ -111,6 +111,19 @@ export class Kernel {
   }
 
   /**
+   * The entity behind a uuid, or `undefined` when the kernel does not hold one.
+   *
+   * The counterpart to `getEntity()`, which throws. Which of the two a caller wants follows from what an
+   * absent entity means to it: a change that describes the entity tree -- a new parent, a new order, new
+   * properties -- names an entity the view believes to be there, and a uuid the kernel does not know is a
+   * disagreement the caller has to hear about. An event is the other case: it carries no structure, and the
+   * entity it was meant for may have been torn down between the two sides.
+   */
+  findEntity(uuid: string): Entity | undefined {
+    return this.#entities.get(uuid)?.entity;
+  }
+
+  /**
    * The entry for an entity that is expected to exist.
    *
    * The uuid is the caller's responsibility: `getEntity()` hands the throw on to its own
@@ -131,12 +144,21 @@ export class Kernel {
 
   /**
    * @returns all entities in breadth-first order
+   *
+   * The list belongs to the caller: sorting or reversing it changes nothing about what the next call
+   * hands out. The walk behind it visits every entity once, which also carries it over a children list
+   * that points back at an ancestor -- `Entity.addChild()` writes such a list without touching the parent
+   * link, so no check along the parent chain can cover it.
    */
   traverseLevelOrderBFS(reverse = false): Entity[] {
     if (this.#allEntitiesNeedUpdate) {
       const lvl = new Map<number, Entity[]>();
+      const visited = new Set<string>();
 
       const traverse = (uuid: string, depth: number) => {
+        if (visited.has(uuid)) return;
+        visited.add(uuid);
+
         const e = this.getEntity(uuid);
 
         const entities = lvl.get(depth);
@@ -163,16 +185,25 @@ export class Kernel {
       this.#allEntitiesNeedUpdate = false;
     }
 
-    return reverse ? this.#allEntitiesReversed : this.#allEntities;
+    return reverse ? this.#allEntitiesReversed.slice() : this.#allEntities.slice();
   }
 
+  /**
+   * The entity tree as nested nodes, one node per entity. The visited set is what makes that count
+   * hold: a children list that points back at an ancestor would otherwise be walked forever, and this
+   * is the one traversal a caller reaches for while debugging a tree that is already broken.
+   */
   getEntityGraph(): EntityGraphNode[] {
+    const visited = new Set<string>();
     return Array.from(this.#rootEntities)
-      .map((uuid) => this.getEntityGraphNode(uuid))
+      .map((uuid) => this.getEntityGraphNode(uuid, visited))
       .filter((node) => node !== undefined);
   }
 
-  private getEntityGraphNode(uuid: string): EntityGraphNode | undefined {
+  private getEntityGraphNode(uuid: string, visited: Set<string>): EntityGraphNode | undefined {
+    if (visited.has(uuid)) return undefined;
+    visited.add(uuid);
+
     const entry = this.#entities.get(uuid);
     if (entry === undefined) return undefined;
 
@@ -182,7 +213,7 @@ export class Kernel {
       entity,
       props: Object.fromEntries(entity.propEntries()),
       // A node the kernel no longer holds drops out of the graph.
-      children: entity.children.map((child) => this.getEntityGraphNode(child.uuid)).filter((node) => node !== undefined),
+      children: entity.children.map((child) => this.getEntityGraphNode(child.uuid, visited)).filter((node) => node !== undefined),
     };
   }
 
@@ -339,6 +370,12 @@ export class Kernel {
       throw new Error(`entity with uuid "${parentUuid}" not found!`);
     }
 
+    // Before the detachment as well, and for the same reason: a parent that would close the entity
+    // tree into a ring is refused while the entity still hangs where it was.
+    if (parentUuid) {
+      e.assertAttachableTo(this.getEntity(parentUuid));
+    }
+
     // The detachment is what places the entity anew, which is the point of a call that keeps the
     // parent and changes the order alone. It skips the rebinding of the contexts whenever a parent
     // follows right away -- that parent binds them, and the root value in between would be visible
@@ -354,8 +391,6 @@ export class Kernel {
       this.#rootEntities.add(uuid);
     }
 
-    e.reSubscribeToParentContexts();
-
     queueMicrotask(() => {
       if (this.logger.isDebug) {
         this.logger.debug('entity.onParentChanged', {uuid, parentUuid, order: nextOrder, entity: e});
@@ -369,7 +404,7 @@ export class Kernel {
   }
 
   dispatchEventsToEntity(uuid: string, events: IComponentEvent[]): void {
-    this.getEntity(uuid)?.dispatchViewEvents(events);
+    this.findEntity(uuid)?.dispatchViewEvents(events);
   }
 
   changeProperties(uuid: string, properties: ComponentPropertiesType): void {
@@ -891,13 +926,26 @@ export class Kernel {
   }
 
   destroy(): void {
+    // Leaves first, and to the end: a callback that throws costs its own entity, not the ones behind it
+    // in the sweep. The reversed order is already cached, so the walk does not turn its own result around.
+    for (const entity of this.traverseLevelOrderBFS(true)) {
+      try {
+        this.destroyEntity(entity.uuid);
+      } catch (error) {
+        this.logger.error('entity teardown failed:', entity.uuid, error);
+      }
+    }
+
+    // Whatever a failing callback left half torn down, the kernel holds none of it afterwards.
+    this.#entities.clear();
+    this.#rootEntities.clear();
+    this.#allEntitiesNeedUpdate = true;
+
+    // After the entities, not before: a shadow-object callback that reads a global context during its
+    // teardown reaches the path the kernel held, not a fresh empty one.
     for (const ctx of this.#rootContexts.values()) {
       ctx.dispose();
     }
     this.#rootContexts.clear();
-
-    for (const entity of this.traverseLevelOrderBFS().reverse()) {
-      this.destroyEntity(entity.uuid);
-    }
   }
 }

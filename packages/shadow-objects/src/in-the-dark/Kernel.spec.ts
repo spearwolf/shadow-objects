@@ -5,10 +5,23 @@ import {ChangeTrailPhase, ComponentChangeType, MessageToView} from '../constants
 import type {ICreateEntitiesChange, ShadowObjectCreationAPI} from '../types.js';
 import {generateUUID} from '../utils/generateUUID.js';
 import {ComponentChanges} from '../view/ComponentChanges.js';
+import type {Entity} from './Entity.js';
 import {type OnCreate, type OnDestroy, onCreate, onDestroy} from './events.js';
 import {Kernel, type MessageToViewEvent} from './Kernel.js';
 import {Registry} from './Registry.js';
 import {ShadowObject} from './ShadowObject.js';
+
+// A chain r -> a -> b under one kernel. The breadth-first order over it is exactly the order the
+// three entities are created in, which makes a reversed result easy to tell apart from a fresh one.
+const makeEntityChain = (kernel: Kernel) => {
+  const uuids = [generateUUID(), generateUUID(), generateUUID()];
+
+  kernel.createEntity(uuids[0], 'node');
+  kernel.createEntity(uuids[1], 'node', uuids[0]);
+  kernel.createEntity(uuids[2], 'node', uuids[1]);
+
+  return uuids;
+};
 
 describe('Kernel', () => {
   afterEach(() => {
@@ -513,6 +526,60 @@ describe('Kernel', () => {
 
         await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
         expect(value(capturedParentContext!)).toBe('parentValue');
+
+        kernel.destroy();
+      });
+
+      it('notifies its reader once when the kernel moves the entity to another parent', async () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const seen: unknown[] = [];
+
+        @ShadowObject({registry, token: 'ctxFromA'})
+        class CtxFromA {
+          constructor({provideContext}: ShadowObjectCreationAPI) {
+            provideContext('movedCtx', 'from-a');
+          }
+        }
+        expect(CtxFromA).toBeDefined();
+
+        @ShadowObject({registry, token: 'ctxFromB'})
+        class CtxFromB {
+          constructor({provideContext}: ShadowObjectCreationAPI) {
+            provideContext('movedCtx', 'from-b');
+          }
+        }
+        expect(CtxFromB).toBeDefined();
+
+        @ShadowObject({registry, token: 'ctxReader'})
+        class CtxReader {
+          constructor({useParentContext, createEffect}: ShadowObjectCreationAPI) {
+            const ctx = useParentContext('movedCtx');
+            // The explicit dependency is what makes the effect follow the context: without it the
+            // effect runs once and sees none of the values that arrive afterwards.
+            createEffect(() => {
+              seen.push(value(ctx));
+            }, [ctx]);
+          }
+        }
+        expect(CtxReader).toBeDefined();
+
+        const [aUuid, bUuid, cUuid] = [generateUUID(), generateUUID(), generateUUID()];
+
+        kernel.createEntity(aUuid, 'ctxFromA');
+        kernel.createEntity(bUuid, 'ctxFromB');
+        kernel.createEntity(cUuid, 'ctxReader', aUuid);
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+        expect(seen).toEqual(['from-a']);
+
+        kernel.setParent(cUuid, bUuid);
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+        expect(seen, 'the move is one change to the reader, not several').toEqual(['from-a', 'from-b']);
 
         kernel.destroy();
       });
@@ -1828,6 +1895,265 @@ describe('Kernel', () => {
       // B sits behind C in the reversed snapshot and must still have been upgraded.
       expect(kernel.findShadowObjects(bUuid)).toHaveLength(1);
       expect(kernel.findShadowObjects(bUuid)[0]).toBeInstanceOf(Marker);
+
+      kernel.destroy();
+    });
+  });
+
+  describe('entity lookup and the change trail', () => {
+    it('findEntity() answers with the entity behind a uuid it holds', () => {
+      const kernel = new Kernel(new Registry());
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'entity');
+
+      expect(kernel.findEntity(uuid)).toBe(kernel.getEntity(uuid));
+
+      kernel.destroy();
+    });
+
+    it('findEntity() answers undefined for a uuid it does not hold', () => {
+      const kernel = new Kernel(new Registry());
+
+      expect(kernel.findEntity(generateUUID())).toBeUndefined();
+
+      kernel.destroy();
+    });
+
+    // Both calls describe the entity tree, so both name an entity the view believes to be there:
+    // a uuid the kernel does not hold is a disagreement, and the caller has to hear about it.
+    it('getEntity() and changeProperties() throw for a uuid the kernel does not hold', () => {
+      const kernel = new Kernel(new Registry());
+      const uuid = generateUUID();
+
+      expect(() => kernel.getEntity(uuid)).toThrow(/not found/);
+      expect(() => kernel.changeProperties(uuid, [['a', 1]])).toThrow(/not found/);
+
+      kernel.destroy();
+    });
+
+    // An event carries no structure, and the entity it was meant for may have been torn down
+    // between the two sides.
+    it('dispatchEventsToEntity() ignores events for an entity the kernel does not hold', () => {
+      const kernel = new Kernel(new Registry());
+
+      expect(() => kernel.dispatchEventsToEntity(generateUUID(), [{type: 'ping', data: 1}])).not.toThrow();
+
+      kernel.destroy();
+    });
+
+    it('run() applies the entries behind a send-events entry for an entity that is gone', () => {
+      const kernel = new Kernel(new Registry());
+      const lateUuid = generateUUID();
+
+      expect(() =>
+        kernel.run({
+          changeTrail: [
+            {type: ComponentChangeType.SendEvents, uuid: generateUUID(), events: [{type: 'ping', data: 1}]},
+            {type: ComponentChangeType.CreateEntities, uuid: lateUuid, token: 'late'},
+          ],
+        }),
+      ).not.toThrow();
+
+      // the entry behind the stray event is what this case is about: a single event for an
+      // entity that is gone must not cost the rest of the change trail
+      expect(kernel.hasEntity(lateUuid)).toBe(true);
+
+      kernel.destroy();
+    });
+  });
+
+  describe('traverseLevelOrderBFS', () => {
+    it('hands out a fresh array on every call', () => {
+      const kernel = new Kernel(new Registry());
+      makeEntityChain(kernel);
+
+      expect(kernel.traverseLevelOrderBFS()).not.toBe(kernel.traverseLevelOrderBFS());
+
+      kernel.destroy();
+    });
+
+    it('keeps its own order when a caller reverses the array it got', () => {
+      const kernel = new Kernel(new Registry());
+      const [rUuid, aUuid, bUuid] = makeEntityChain(kernel);
+
+      const before = kernel.traverseLevelOrderBFS().map((e) => e.uuid);
+      expect(before).toEqual([rUuid, aUuid, bUuid]);
+
+      kernel.traverseLevelOrderBFS().reverse();
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual(before);
+
+      kernel.destroy();
+    });
+
+    it('upgrades the entities from the root down after a caller reversed an earlier result', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const created: string[] = [];
+
+      @ShadowObject({registry, token: 'node'})
+      class FirstRecorder implements OnCreate {
+        [onCreate](entity: Entity) {
+          created.push(entity.uuid);
+        }
+      }
+      expect(FirstRecorder).toBeDefined();
+
+      const [rUuid] = makeEntityChain(kernel);
+
+      created.length = 0;
+
+      // Nothing between this line and the upgrade may change the entity tree: a structural change
+      // rebuilds the cache and would make the case pass for the wrong reason.
+      kernel.traverseLevelOrderBFS().reverse();
+
+      // a second constructor for the same token is what gives the upgrade something to create
+      @ShadowObject({registry, token: 'node'})
+      class SecondRecorder implements OnCreate {
+        [onCreate](entity: Entity) {
+          created.push(entity.uuid);
+        }
+      }
+      expect(SecondRecorder).toBeDefined();
+
+      kernel.upgradeEntities();
+
+      expect(created.at(0), 'a shadow object reaches the parent before it reaches the child').toBe(rUuid);
+
+      kernel.destroy();
+    });
+
+    it('terminates when a children list points back at an ancestor', () => {
+      const kernel = new Kernel(new Registry());
+      const [rUuid, aUuid, bUuid] = makeEntityChain(kernel);
+
+      // `addChild()` writes a children list without touching the parent link, so no ancestor check
+      // on the parent path can cover the ring it lays here
+      kernel.getEntity(bUuid).addChild(kernel.getEntity(aUuid));
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([rUuid, aUuid, bUuid]);
+
+      kernel.destroy();
+    });
+  });
+
+  describe('getEntityGraph', () => {
+    it('terminates when a children list points back at an ancestor', () => {
+      const kernel = new Kernel(new Registry());
+      const [rUuid, aUuid, bUuid] = makeEntityChain(kernel);
+
+      // the ring the debugging tool is most likely to be pointed at
+      kernel.getEntity(bUuid).addChild(kernel.getEntity(aUuid));
+
+      const graph = kernel.getEntityGraph();
+
+      expect(graph.map((node) => node.entity.uuid)).toEqual([rUuid]);
+      expect(graph[0].children.map((node) => node.entity.uuid)).toEqual([aUuid]);
+      expect(graph[0].children[0].children.map((node) => node.entity.uuid)).toEqual([bUuid]);
+      expect(graph[0].children[0].children[0].children, 'the entity that is already in the graph is not written twice').toEqual(
+        [],
+      );
+
+      kernel.destroy();
+    });
+  });
+
+  describe('kernel teardown', () => {
+    // Three roots in creation order; the teardown walks them the other way round, so `c` goes first
+    // and `a` is the one that sits behind the callback that throws.
+    const makeRoots = (kernel: Kernel) => {
+      const uuids = [generateUUID(), generateUUID(), generateUUID()];
+      for (const uuid of uuids) {
+        kernel.createEntity(uuid, 'node');
+      }
+      return uuids;
+    };
+
+    it('runs the destroy callbacks behind one that throws', () => {
+      const kernel = new Kernel(new Registry());
+      const [aUuid, bUuid, cUuid] = makeRoots(kernel);
+
+      const seen: string[] = [];
+
+      for (const uuid of [aUuid, cUuid]) {
+        on(kernel.getEntity(uuid), onDestroy, () => {
+          seen.push(uuid);
+        });
+      }
+
+      on(kernel.getEntity(bUuid), onDestroy, () => {
+        seen.push(bUuid);
+        throw new Error('this teardown fails');
+      });
+
+      expect(() => kernel.destroy()).not.toThrow();
+
+      expect(seen, 'the failing callback costs its own entity, not the ones behind it').toEqual([cUuid, bUuid, aUuid]);
+    });
+
+    it('holds no entity any more when a destroy callback throws', () => {
+      const kernel = new Kernel(new Registry());
+      const [aUuid, bUuid, cUuid] = makeRoots(kernel);
+
+      on(kernel.getEntity(bUuid), onDestroy, () => {
+        throw new Error('this teardown fails');
+      });
+
+      kernel.destroy();
+
+      for (const uuid of [aUuid, bUuid, cUuid]) {
+        expect(kernel.hasEntity(uuid)).toBe(false);
+      }
+    });
+
+    // No failing callback here on purpose: with one, the statement would hang on whether the
+    // callback gets its turn at all.
+    it('hands a destroy callback the root contexts it still holds', () => {
+      const kernel = new Kernel(new Registry());
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'node');
+
+      const rootCtx = kernel.findOrCreateRootContext('ctx');
+      let sameContext: boolean | undefined;
+
+      on(kernel.getEntity(uuid), onDestroy, () => {
+        sameContext = kernel.findOrCreateRootContext('ctx') === rootCtx;
+      });
+
+      kernel.destroy();
+
+      expect(sameContext, 'a shadow object reading a global context while it is torn down reaches the path the kernel held').toBe(
+        true,
+      );
+    });
+  });
+
+  describe('cycles in the entity tree', () => {
+    it('refuses a setParent() that would put an entity below its own descendant', () => {
+      const kernel = new Kernel(new Registry());
+      const [aUuid, , cUuid] = makeEntityChain(kernel);
+
+      expect(() => kernel.setParent(aUuid, cUuid)).toThrow();
+
+      kernel.destroy();
+    });
+
+    it('leaves the entity where it was when it refuses the new parent', () => {
+      const kernel = new Kernel(new Registry());
+      const [aUuid, bUuid, cUuid] = makeEntityChain(kernel);
+
+      kernel.updateOrder(cUuid, 3);
+
+      expect(() => kernel.setParent(aUuid, cUuid)).toThrow();
+
+      expect(kernel.getEntity(aUuid).parentUuid, 'the refused entity is still a root').toBeUndefined();
+      expect(kernel.getEntity(bUuid).parentUuid).toBe(aUuid);
+      expect(kernel.getEntity(cUuid).parentUuid).toBe(bUuid);
+      expect(kernel.getEntity(cUuid).order).toBe(3);
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([aUuid, bUuid, cUuid]);
 
       kernel.destroy();
     });

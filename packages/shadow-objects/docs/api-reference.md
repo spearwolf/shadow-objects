@@ -437,7 +437,7 @@ entity.traverse((e) => {
 });
 ```
 
-`traverse()` is useful for broadcast patterns where a parent needs to notify all descendants of an event, like a frame tick or a configuration change.
+`traverse()` is useful for broadcast patterns where a parent needs to notify all descendants of an event, like a frame tick or a configuration change. Every Entity below the starting point is visited exactly once.
 
 ---
 
@@ -962,7 +962,7 @@ Three event names that arrive as ordinary events on a `ViewComponent`; see [Rece
 | `getChildren(component)` | The children of a component, in sort order. A fresh array each call. |
 | `traverseLevelOrderBFS()` | Every component in the context, breadth-first from the roots. |
 | `destroyComponent(component)` | Write the destroy change for a component, promote its children to roots and detach the component from this context. |
-| `addToChildren(parent, child)` | Insert `child` into the children of `parent`. Throws a plain `Error` when the context does not hold `parent`. |
+| `addToChildren(parent, child)` | Insert `child` into the children of `parent`. Throws a plain `Error` when the context does not hold `parent`. It only appends: a `child` that already stands in the children list of another parent stays there as well, and it is not checked against the ancestors of `parent`. Both are the job of `ViewComponent.addChild()`. |
 | `removeFromParent(component, parent)` | Detach a component from that parent and make it a root. A no-op when a later `ViewComponent` has since claimed `component`'s uuid. |
 | `moveToRoot(component)` | Make a component a root without naming its previous parent. A no-op when a later `ViewComponent` has since claimed `component`'s uuid. |
 | `removeSubTree(uuid)` | Destroy a component and all its descendants **without** writing anything to a change trail. Each of them is detached from this context. |
@@ -1353,7 +1353,7 @@ The two ends are told apart by the error they hand out: a worker that broke down
 
 **What the worker does with it.** In this order: it takes its kernel down, entity by entity, so the `onDestroy` callbacks of the Shadow Objects run while the thread is still alive; then it sends the `Destroyed` acknowledgement; from then on it discards every message that reaches it and takes its `message` listener off the global scope. One `Destroy` therefore means exactly one `Destroyed`: a second one is discarded like everything else, and the worker stays down -- there is no message and no call that starts it again.
 
-Two limits are worth knowing. A callback that throws ends the sweep where it stands, so the entities behind it in the order are not torn down; the acknowledgement still goes out, because without it the view sits out its `WorkerDestroyTimeout` and learns nothing it could act on. And what an `onDestroy` sends towards the view during this teardown does not arrive: the router unsubscribes from the kernel before taking it down, so that the acknowledgement is not overtaken by a message from a kernel that is on its way out. A `LocalShadowObjectEnv` delivers such a message, so this is the one point at which the two environments do not end alike.
+Two things are worth knowing. A callback that throws costs its own Entity, not the ones behind it in the order: the sweep carries on, the failure is logged with the uuid, and the acknowledgement goes out as always -- without it the view would sit out its `WorkerDestroyTimeout` and learn nothing it could act on. And what an `onDestroy` sends towards the view during this teardown does not arrive: the router unsubscribes from the kernel before taking it down, so that the acknowledgement is not overtaken by a message from a kernel that is on its way out. A `LocalShadowObjectEnv` delivers such a message, so this is the one point at which the two environments do not end alike.
 
 A teardown settles what is still waiting. A `start()` caught in the middle of its load handshake rejects with a `WorkerDestroyedError` right away -- whether the worker was still coming up, went on to complete the handshake afterwards, or never answered at all; nothing sits out `WorkerLoadTimeout` for a reply that has nowhere left to go. An `applyChangeTrail()` or `importScript()` already on the wire goes the same way, and that cuts a real window: `destroy()` waits for the worker's `Destroyed` reply or `WorkerDestroyTimeout`, so the worker may well finish the change trail in the meantime and confirm it. That confirmation no longer reaches the caller -- the request is rejected at the moment of the teardown, whether it was going to succeed or run into its timeout. Send what has to arrive before you tear the environment down. `workerLoaded` follows the same rule: every promise of it that has not already resolved rejects, and so does every read after the teardown. A confirmation belongs to exactly one request, so a change trail that fails rejects only the caller holding its serial and an import that fails only the caller holding its url; requests running side by side settle on their own.
 
@@ -2018,10 +2018,22 @@ kernel.run(event);
 
 Retrieves an Entity by UUID. The return type is `Entity`, never `undefined`: an unknown UUID throws `entity with uuid "..." not found!`. Use `hasEntity` when you are not sure.
 
+That throw is the contract of every change that describes the Entity tree -- a new parent, a new order, new properties: it names an Entity the view believes to be there, and a UUID the Kernel does not hold is a disagreement between the two sides. An event is the other case, and runs into the void instead: see `dispatchEventsToEntity` below.
+
 - **Signature:** `getEntity(uuid: string): Entity`
 
 ```typescript
 const entity = kernel.getEntity('abc-123');
+```
+
+#### `findEntity(uuid)`
+
+The Entity behind a UUID, or `undefined` when the Kernel does not hold one. The counterpart to `getEntity`, for a caller that has something to do in both cases -- and one lookup instead of the two an `hasEntity` check in front of `getEntity` costs.
+
+- **Signature:** `findEntity(uuid: string): Entity | undefined`
+
+```typescript
+kernel.findEntity('abc-123')?.dispatchViewEvent('ping', {});
 ```
 
 #### `hasEntity(uuid)`
@@ -2039,7 +2051,7 @@ if (kernel.hasEntity('abc-123')) {
 
 #### `traverseLevelOrderBFS(reverse?)`
 
-Returns all Entities in breadth-first order. Pass `true` to reverse (leaves to root, useful for cleanup). The array is the Kernel's own cache, not a copy -- sort, splice or push it in place and you have changed what the Kernel hands out next.
+Returns all Entities in breadth-first order. Pass `true` to reverse (leaves to root, useful for cleanup). A fresh array each call, and it belongs to the caller: sorting, splicing or reversing it changes nothing about what the next call hands out.
 
 - **Signature:** `traverseLevelOrderBFS(reverse?: boolean): Entity[]`
 
@@ -2050,7 +2062,7 @@ const reversed = kernel.traverseLevelOrderBFS(true);
 
 #### `getEntityGraph()`
 
-Returns the Entity tree as a hierarchical structure, starting at the root Entities -- those without a parent. Each node contains `token`, `entity`, `props`, and `children`; a node the Kernel no longer holds drops out. Useful for debugging.
+Returns the Entity tree as a hierarchical structure, starting at the root Entities -- those without a parent. Each node contains `token`, `entity`, `props`, and `children`; a node the Kernel no longer holds drops out, and every Entity appears exactly once. Useful for debugging.
 
 - **Signature:** `getEntityGraph(): EntityGraphNode[]`
 
@@ -2090,11 +2102,15 @@ const attached = kernel.findShadowObjects('abc-123');
 | :--- | :--- | :--- |
 | `createEntity` | `(uuid, token, parentUuid?, order?, properties?, autoDestructionOnParentRemoval?)` | Creates an Entity and its Shadow Objects. `properties` is a list of `[name, value]` pairs; an entry that names only `name` sets the property to `undefined`. |
 | `destroyEntity` | `(uuid: string)` | Destroys the Entity, its Shadow Objects and its children. |
-| `setParent` | `(uuid, parentUuid?, order?)` | Moves the Entity under a new parent, or makes it a root when `parentUuid` is omitted. An absent `order` keeps the current one -- it is not a reset to `0`. |
+| `setParent` | `(uuid, parentUuid?, order?)` | Moves the Entity under a new parent, or makes it a root when `parentUuid` is omitted. An absent `order` keeps the current one -- it is not a reset to `0`. A `parentUuid` naming the Entity itself or one of its descendants is refused with an error, and the Entity stays where it was. |
 | `updateOrder` | `(uuid: string, order: number)` | Sets the sort order among siblings. |
 | `changeProperties` | `(uuid: string, properties: ComponentPropertiesType)` | Writes property values; every reader bound to one of the names sees the new value. |
 | `changeToken` | `(uuid: string, token: string)` | Replaces the Entity's token, which re-resolves its Shadow Objects the same way `upgradeEntities()` does. |
-| `dispatchEventsToEntity` | `(uuid: string, events: IComponentEvent[])` | Delivers View Layer events to the Entity, where every attached Shadow Object receives them as `onViewEvent`. |
+| `dispatchEventsToEntity` | `(uuid: string, events: IComponentEvent[])` | Delivers View Layer events to the Entity, where every attached Shadow Object receives them as `onViewEvent`. A UUID the Kernel does not hold is ignored: the events are dropped, and the rest of the Change Trail is applied. |
+
+**The Entity tree stays a tree.** `setParent` refuses a parent that is the Entity itself or one of its descendants, and so does the `parent` setter of the `Entity` class, the other way the link is written. Both run the check before they touch anything, so a refused call leaves the Entity attached where it was, with its `order` and its place among the siblings intact. The check itself is `Entity.assertAttachableTo(nextParent)` -- it walks the parent chain and throws; call it yourself if you drive the link by a route of your own. `ViewComponent.addChild()` guards the same thing on the View Layer side.
+
+Neither check reaches a children list written without the parent link -- `Entity.addChild()` and `ComponentContext.addToChildren()` do exactly that. The four traversals over the children lists carry that case instead: `Kernel.traverseLevelOrderBFS()`, `Kernel.getEntityGraph()`, `entity.traverse()` and `ComponentContext.traverseLevelOrderBFS()` each visit every node once and terminate.
 
 #### `dispatchMessageToView(message)`
 
