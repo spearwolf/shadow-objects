@@ -52,6 +52,35 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
   `packages/shadow-objects/src/types.ts` — and is described from the package's own side in
   `packages/shadow-objects/CHANGELOG.md`, since its emitted declaration changes.
 
+## 2026-08-19 — the tooling catches up with what it actually reads and ships
+
+- **`turbo.json`:** `tasks.build.inputs` gains `tests/**`, `vite.config.*`, `pages/**`,
+  `public/**` and `index.html`; `tasks.test.inputs` gains `playwright.config.ts`, `pages/**`,
+  `public/**` and `index.html`. `shadow-objects-e2e` builds via `tsc && vite build` — `tsc` reads
+  `tests/**` too, per its own `tsconfig.json`, and `vite.config.mjs` reads `pages/**` to build the
+  entry list; its Playwright suite then runs against that built preview, with its assertions
+  living in the test pages themselves. A file missing from a task's `inputs` is a file whose
+  edits go unnoticed — turbo hashes only what is listed, so a changed test file, an edited page,
+  or a changed suite config used to be answered with a cache hit on the last green run instead of
+  a fresh one. The two lists apply per task, across every package that has one, not per package —
+  `@spearwolf/shae-offscreen-canvas` has an `index.html` and a `vite.config.js` of its own that
+  neither of its tasks reads, so it now rebuilds and retests on a change to its demo page where a
+  cache hit used to stand. Both tasks finish in under two seconds there, which is why the lists
+  stay shared instead of splitting into one `turbo.json` per package.
+- **`biome.json`:** `$schema` moves from `2.4.14` to `2.5.9`, matching the installed
+  `@biomejs/biome` version. Editor completion only — the linter itself reads the installed
+  package, not the schema URL.
+- **`packages/shae-offscreen-canvas/vitest.config.ts`:** the `include` pattern drops the
+  `specs` alternative — `src/**/*.{spec,specs,test}.{js,ts}` becomes
+  `src/**/*.{spec,test}.{js,ts}`. No file in the workspace matches `*.specs.*`; the dropped
+  alternative matched nothing.
+- **`packages/shae-offscreen-canvas/package.json`:** `@esm-bundle/chai` and `sinon` drop out of
+  `devDependencies`. Neither is imported anywhere in the package.
+- **`packages/shae-offscreen-canvas/build.mjs`:** the `cp()` that copies `src/` into the
+  publish-ready package root takes a `filter` that skips files ending in `.spec.js`,
+  `.specs.js` or `.test.js`. The published package is a source distribution, and a spec file is
+  not part of it.
+
 ## 2026-08-18 — the lint run covers what the project writes
 
 - **`biome.json`:** `.claude/` is outside the checked file set. The directory holds tool

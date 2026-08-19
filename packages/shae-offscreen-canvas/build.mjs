@@ -9,4 +9,10 @@ const projectRoot = path.resolve(process.cwd());
 const packageRoot = path.resolve(projectRoot, targetSubDir);
 
 await cp(`${projectRoot}/README.md`, `${packageRoot}/README.md`);
-await cp(`${projectRoot}/src`, `${packageRoot}/src`, {recursive: true});
+await cp(`${projectRoot}/src`, `${packageRoot}/src`, {
+  recursive: true,
+  // the published package is a source distribution, and a spec is not part of it. `cp`'s
+  // `filter` receives source and destination paths and must answer `true` for a directory,
+  // or the whole subtree under it is skipped rather than just the files this excludes
+  filter: (source) => !/\.(spec|specs|test)\.(js|ts)$/.test(source),
+});

@@ -14,7 +14,7 @@ import {
   WorkerLoadTimeout,
 } from '../constants.js';
 import createWorker from '../create-worker.js';
-import type {AppliedChangeTrailEvent, ChangeTrailType, ImportedModuleEvent, TransferablesType} from '../types.js';
+import type {AppliedChangeTrailEvent, ChangeTrailType, ImportedModuleEvent, SyncEvent, TransferablesType} from '../types.js';
 import {CONSOLE_LOGGER, ConsoleLogger, consoleLoggerConfigKey, loadConsoleLoggerConfig} from '../utils/ConsoleLogger.js';
 import {toUrlString} from '../utils/toUrlString.js';
 import {waitForMessageOfType} from '../utils/waitForMessageOfType.js';
@@ -47,6 +47,19 @@ const splitTransferables = (changeTrail: ChangeTrailType): {changeTrail: ChangeT
 
   return {changeTrail: outbound ?? changeTrail, transferables};
 };
+
+/**
+ * What actually goes on the wire for a `ChangeTrail` message. `SyncEvent` describes the shape a
+ * change trail carries once it is inside the worker, without the `type` discriminant that gets
+ * it there — its two neighbors on the wire (`ImportedModuleEvent`, `AppliedChangeTrailEvent`)
+ * both require that field, so adding it to `SyncEvent` itself would either make it mandatory
+ * where `LocalShadowObjectEnv` never sets it, or optional on a public type whose neighbors need
+ * it required. Kept local instead: it says exactly what this message is without touching the
+ * exported type surface.
+ */
+interface ChangeTrailMessage extends SyncEvent {
+  type: typeof ChangeTrail;
+}
 
 /**
  * The reason every pending and every later worker request is rejected with
@@ -309,7 +322,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     if (worker == null) return Promise.reject(new WorkerDestroyedError());
 
     const {changeTrail: outbound, transferables} = splitTransferables(changeTrail);
-    const message = {type: ChangeTrail, changeTrail: outbound} as any;
+    const message: ChangeTrailMessage = {type: ChangeTrail, changeTrail: outbound};
 
     if (!waitForConfirmation) {
       worker.postMessage(message, transferables ?? []);

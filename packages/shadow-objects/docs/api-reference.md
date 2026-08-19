@@ -1292,7 +1292,7 @@ const scopedEnv = new LocalShadowObjectEnv(new Registry());
 | :--- | :--- |
 | `constructor(registry?)` | Without an argument the environment uses the default registry; pass a `Registry` to isolate it. See the example above. |
 | `start()` | Resolves immediately -- there is no thread to bring up. |
-| `applyChangeTrail(data, waitForConfirmation)` | Run a change trail through the Kernel. `waitForConfirmation` is ignored: the run is synchronous, and the returned promise is already settled when you get it. |
+| `applyChangeTrail(data, waitForConfirmation)` | Runs the change trail through the Kernel synchronously, before this method returns. `waitForConfirmation` does not change that -- only the settling of the returned promise moves: one microtask later than the call instead of in the same microtask, so it never settles in the same microtask as the call that made it. That is not the same relative ordering `RemoteWorkerEnv` gives its own promises -- that one settles only after its worker round-trip and can land later still. |
 | `importScript(url)` | Import a shadow objects module from a URL. |
 | `importModule(module)` | Import a shadow objects module directly. |
 | `destroy()` | Tears the environment down: the Kernel is destroyed and the set of imported modules is forgotten. The `Registry` in use is cleared too, unless it is the default registry — that one is shared with every other environment in the thread and stays untouched. |

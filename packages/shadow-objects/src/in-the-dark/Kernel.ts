@@ -860,9 +860,11 @@ export class Kernel {
 
     this.#shadowObjectTearDowns.set(shadowObject, tearDown);
 
-    // We want to keep track which shadow-objects are created by which constructors.
-    // This will all
-    //
+    // `entry.usedConstructors` tracks, per constructor, the set of shadow-objects it created.
+    // `updateShadowObjects()` reads this bookkeeping to tell which shadow-objects belong to a
+    // constructor that has left the entity's current constructor set, so it knows which ones to
+    // tear down. An entry disappears from the set above when the tear-down of its shadow-object
+    // runs, so this bookkeeping never outlives what it describes.
     const createdBy = entry.usedConstructors.get(construct);
     if (createdBy) {
       createdBy.add(shadowObject);

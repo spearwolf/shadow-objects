@@ -1,4 +1,5 @@
-import {afterEach, describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
+import {ComponentChangeType} from '../constants.js';
 import {Registry} from '../in-the-dark/Registry.js';
 import {shadowObjects} from '../in-the-dark/ShadowObject.js';
 import {ComponentContext} from './ComponentContext.js';
@@ -51,6 +52,85 @@ describe('LocalShadowObjectEnv', () => {
     expect(entity.getProperty('bar')).toBe(42);
 
     env.destroy();
+  });
+
+  describe('applyChangeTrail', () => {
+    it('runs the kernel synchronously, without waiting for confirmation', () => {
+      const env = new LocalShadowObjectEnv();
+      const uuid = 'sync-no-confirmation';
+
+      void env.applyChangeTrail([{type: ComponentChangeType.CreateEntities, uuid, token: 'foo'}], false);
+
+      expect(env.kernel.hasEntity(uuid)).toBe(true);
+
+      env.destroy();
+    });
+
+    it('runs the kernel synchronously, even when waiting for confirmation', () => {
+      const env = new LocalShadowObjectEnv();
+      const uuid = 'sync-with-confirmation';
+
+      void env.applyChangeTrail([{type: ComponentChangeType.CreateEntities, uuid, token: 'foo'}], true);
+
+      expect(env.kernel.hasEntity(uuid)).toBe(true);
+
+      env.destroy();
+    });
+
+    it('resolves before an immediately-scheduled promise, without waiting for confirmation', async () => {
+      const env = new LocalShadowObjectEnv();
+      const order: string[] = [];
+
+      env.applyChangeTrail([], false).then(() => order.push('trail'));
+      Promise.resolve().then(() => order.push('control'));
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(order).toEqual(['trail', 'control']);
+
+      env.destroy();
+    });
+
+    it('resolves after an immediately-scheduled promise, when waiting for confirmation', async () => {
+      const env = new LocalShadowObjectEnv();
+      const order: string[] = [];
+
+      env.applyChangeTrail([], true).then(() => order.push('trail'));
+      Promise.resolve().then(() => order.push('control'));
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(order).toEqual(['control', 'trail']);
+
+      env.destroy();
+    });
+
+    it('rejects after an immediately-scheduled promise too, when waiting for confirmation', async () => {
+      const env = new LocalShadowObjectEnv();
+      const order: string[] = [];
+      const error = new Error('kernel run failed');
+
+      const runSpy = vi.spyOn(env.kernel, 'run').mockImplementation(() => {
+        throw error;
+      });
+
+      const rejection = env.applyChangeTrail([], true).then(
+        () => order.push('trail (resolved)'),
+        (caught) => {
+          order.push('trail (rejected)');
+          return caught;
+        },
+      );
+      Promise.resolve().then(() => order.push('control'));
+
+      const caught = await rejection;
+
+      expect(order).toEqual(['control', 'trail (rejected)']);
+      expect(caught).toBe(error);
+
+      runSpy.mockRestore();
+      env.destroy();
+    });
   });
 
   describe('destroy', () => {

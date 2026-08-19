@@ -48,7 +48,7 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
     return Promise.resolve();
   }
 
-  applyChangeTrail(data: ChangeTrailType, _waitForConfirmation: boolean): Promise<void> {
+  applyChangeTrail(data: ChangeTrailType, waitForConfirmation: boolean): Promise<void> {
     const syncData: SyncEvent = {changeTrail: this.disableStructuredClone ? data : cloneChangeTrail(data)};
     let result: Promise<void>;
     try {
@@ -57,7 +57,13 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
     } catch (error) {
       result = Promise.reject(error);
     }
-    return result;
+    if (!waitForConfirmation) return result;
+    // The kernel above still runs synchronously, in the same tick this method is called in; only
+    // the settling of the returned promise is deferred here, by one microtask, so it never
+    // settles in the same microtask as the call that made it. That is the guarantee this gives —
+    // not the same relative ordering RemoteWorkerEnv has against its own promises, which settles
+    // only after its worker round-trip and can land later still.
+    return result.then(() => undefined);
   }
 
   async importScript(url: URL | string): Promise<void> {

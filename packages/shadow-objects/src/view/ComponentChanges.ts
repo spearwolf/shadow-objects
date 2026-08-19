@@ -14,6 +14,15 @@ import {appendToEnd, removeFrom} from '../utils/array-utils.js';
 
 const ROOT = '#root';
 
+/**
+ * Tracks one component's outstanding changes between two change trails as four written ↔
+ * pending pairs: `#token`/`#nextToken`, `#parentUuid`/`#nextParentUuid`, `#order`/`#nextOrder`
+ * and `#properties`/`#nextProperties`. Each `make*` method folds its pending half forward into
+ * the written half as it turns the change into a trail entry, so {@link
+ * ComponentChanges.clear} — which resets every pending value — must run only after all of them
+ * have. {@link ComponentContext.buildChangeTrails} is the only caller that does both, in that
+ * order.
+ */
 export class ComponentChanges {
   readonly #uuid: string;
 
@@ -254,6 +263,7 @@ export class ComponentChanges {
     return event;
   }
 
+  // folds every pending value this entry carries into its written counterpart
   makeCreateEntityChange(): ICreateEntitiesChange {
     // never emit a create without a token: the kernel would register an entity that no
     // shadow object can ever be looked up for
@@ -300,6 +310,7 @@ export class ComponentChanges {
     };
   }
 
+  // folds the pending parent (and, if due, the pending order) into their written counterparts
   makeSetParentChange(): ISetParentChange {
     this.#parentUuid = this.#nextParentUuid === ROOT ? undefined : this.#nextParentUuid;
 
@@ -316,6 +327,7 @@ export class ComponentChanges {
     return entry;
   }
 
+  // folds the pending order into its written counterpart
   makeUpdateOrderChange(): IUpdateOrderChange {
     this.#order = this.#nextOrder ?? 0;
 
@@ -326,6 +338,7 @@ export class ComponentChanges {
     };
   }
 
+  // folds the pending token into its written counterpart
   makeChangeToken(): IChangeToken {
     this.#token = this.#nextToken ?? VoidToken;
 
@@ -336,6 +349,7 @@ export class ComponentChanges {
     };
   }
 
+  // folds every pending property into its written counterpart, key by key
   makeChangePropertyChange(): IPropertiesChange {
     const properties = this.#propsChangeOrder.map((key) => {
       if (this.#nextProperties.has(key)) {

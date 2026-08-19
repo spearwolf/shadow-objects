@@ -19,6 +19,17 @@ declare global {
 }
 
 /**
+ * Thrown when a {@link ViewComponent} tries to join a {@link ComponentContext} that has
+ * already been disposed.
+ */
+export class ComponentContextDisposedError extends Error {
+  constructor(message = 'the component context has been disposed') {
+    super(message);
+    this.name = 'ComponentContextDisposedError';
+  }
+}
+
+/**
  * The {@link ComponentContext} represents the current real-time state of the _view components_.
  *
  * Changes to the components and their hierarchy are also logged to the {@link ComponentChanges}.
@@ -34,19 +45,10 @@ declare global {
  *
  * A context is always associated with a namespace.
  * If no namespace is specified when creating a {@link ComponentContext}, the global namespace is used.
- * There is only one {@link ComponentContext} (a singleton) for each namespace.
+ * There is only one {@link ComponentContext} instance per namespace: the constructor returns the
+ * existing instance for an already-occupied namespace rather than building a second one, so
+ * {@link ComponentContext.get} is the way consumers are meant to reach it.
  */
-/**
- * Thrown when a {@link ViewComponent} tries to join a {@link ComponentContext} that has
- * already been disposed.
- */
-export class ComponentContextDisposedError extends Error {
-  constructor(message = 'the component context has been disposed') {
-    super(message);
-    this.name = 'ComponentContextDisposedError';
-  }
-}
-
 export class ComponentContext {
   static readonly ReRequestParentRoots = 're-request-parent-roots';
   static readonly ReRequestParent = 're-request-parent';

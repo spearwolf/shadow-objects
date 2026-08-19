@@ -397,17 +397,21 @@ export class ShaeEntElement extends ShaeElement {
     this.#unsubscribeViewComponentEffect = undefined;
   }
 
+  // `getRootNode()` answers for every state of the tree — the shadow root for a node inside
+  // one, and the topmost node of its own chain for a node outside every tree. This reads `.host`
+  // off the result without checking for a `ShadowRoot` first: only a shadow root has one, so a
+  // node outside every tree reads no host, the same answer a check would have given
+  #readShadowRootHost(): HTMLElement | undefined {
+    return (this.getRootNode() as ShadowRoot)?.host as HTMLElement | undefined;
+  }
+
   #shadowRootHost?: HTMLElement;
   #shadowRootHostNeedsUpdate = true;
 
   findShadowRootHost(): HTMLElement | undefined {
     if (this.#shadowRootHostNeedsUpdate) {
       this.#shadowRootHostNeedsUpdate = false;
-
-      // `getRootNode()` answers for every state of the tree — the shadow root for a node inside
-      // one, and the topmost node of its own chain for a node outside every tree. Only a shadow
-      // root has a host, so the assignment runs unconditionally: no host is an answer too
-      this.#shadowRootHost = (this.getRootNode() as ShadowRoot)?.host as HTMLElement | undefined;
+      this.#shadowRootHost = this.#readShadowRootHost();
     }
     return this.#shadowRootHost;
   }
@@ -416,7 +420,7 @@ export class ShaeEntElement extends ShaeElement {
     // a node still sitting in a tree answers from the first term, and for one placed directly
     // under a shadow root that term is the shadow root itself. Once it has no parent left it is
     // its own root, so the host lookup comes up empty too and the answer is: no parent
-    return this.parentNode ?? (this.getRootNode() as ShadowRoot)?.host ?? undefined;
+    return this.parentNode ?? this.#readShadowRootHost() ?? undefined;
   }
 
   connectedCallback() {

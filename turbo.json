@@ -5,7 +5,19 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": ["src/**", "tsconfig*.json", "playwright.config.ts", "build.mjs", "package.json", "package.override.json"],
+      "inputs": [
+        "src/**",
+        "tests/**",
+        "tsconfig*.json",
+        "playwright.config.ts",
+        "vite.config.*",
+        "pages/**",
+        "public/**",
+        "index.html",
+        "build.mjs",
+        "package.json",
+        "package.override.json"
+      ],
       "outputs": ["dist/**", "build/**", ".npm-pkg/**"]
     },
     "test": {
@@ -17,6 +29,10 @@
         "vitest.config.ts",
         "vitest.setup.ts",
         "../shadow-objects/vitest.setup.ts",
+        "playwright.config.ts",
+        "pages/**",
+        "public/**",
+        "index.html",
         "package.json"
       ],
       "outputs": []

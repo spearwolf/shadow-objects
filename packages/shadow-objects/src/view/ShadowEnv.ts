@@ -114,7 +114,9 @@ export class ShadowEnv {
    * make `ShadowEnv.get()` answer `undefined` for an environment that is very much alive.
    */
   #releaseNamespace(ns: NamespaceType | undefined): void {
-    if (ns == null) return;
+    // the same truthiness check the `view` setter above uses before it registers a namespace,
+    // so release and registration recognize the same namespace as "none"
+    if (!ns) return;
     const shadowEnvs = globalThis.__shadowEnvs;
     if (shadowEnvs?.get(ns) === this) {
       shadowEnvs.delete(ns);

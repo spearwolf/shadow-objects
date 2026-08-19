@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 > **Next release: minor.** The package is below `1.0.0`, so the accumulated breaking
-> changes below bump the minor position — `0.33.0` → `0.34.0`. Thirty changes reach existing
+> changes below bump the minor position — `0.33.0` → `0.34.0`. Thirty-one changes reach existing
 > consumers: both runtime dependencies take a major step and carry behaviour changes of their
 > own; the emitted declarations carry `| undefined` where a value can be missing, so a
 > build with `strictNullChecks` sees new errors; `RemoteWorkerEnv` rejects with
@@ -52,10 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > `.destroyComponent()` and `.removeSubTree()` destroy the `ViewComponent`s they take down, so
 > `isDestroyed` reads `true` and `context` reads nothing where all three used to hand back a
 > component that described itself as still being in the context — `setProperty` after a
-> `destroyComponent()` answers `false`; an `addChild` or a `parent = …` on such a component throws
+> `destroyComponent()` answers `false` — an `addChild` or a `parent = …` on such a component throws
 > the error about a destroyed component, where a `clear()` used to raise the one about a component
 > the context does not hold and a `destroyComponent()` before the next change trail used to hang
-> the child on a component that was already on its way out; and `vc.context = ctx` after a
+> the child on a component that was already on its way out — and `vc.context = ctx` after a
 > `clear()` takes the component back in rather than doing nothing, and that same teardown takes
 > the listeners of the component off — an `on(vc, …)` set before a `destroy()`, `destroyComponent()`,
 > `clear()`, `removeSubTree()` or `dispose()` hears nothing afterwards and its unsubscribe function
@@ -93,7 +93,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > listener on `<shae-worker>.frameLoop` used to be handed the raw millisecond timestamp;
 > and a `<shae-prop>` with a numeric type whose value does not convert into a number sets no
 > property at all, where the entity used to be handed the `NaN` — or the `0` a typed-array
-> constructor made of it.
+> constructor made of it; and `LocalShadowObjectEnv.applyChangeTrail()` settles one microtask
+> later when called with `waitForConfirmation`, where it used to settle in the same microtask as
+> the call — an application that awaits it alongside another promise queued right after the call
+> now sees that other promise settle first, where it used to see the trail settle first instead.
 > Everything else in this section is additive or a bugfix.
 
 - **Bugfix (view):** the start of a proxy that is no longer the current one has no say over the environment. `ShadowEnv.envProxy` starts every proxy it is handed without waiting, and the result used to land wherever it arrived: a proxy replaced while it was still starting reported the *new* environment ready although nothing had started it — and in the other direction, the one that actually bites, its rejection arrived after the successor had come up and left `proxyReady` at `false`, with an environment that never became ready again, a `ready()` that never resolved and a `failed to start envProxy` in the log about a proxy nobody holds any more. Each assignment now opens a generation, and a start that finishes outside its own is discarded, error message included. Swapping a `RemoteWorkerEnv` that is still in its load handshake for another environment is the case this covers. The environment also stops listening to a proxy it has let go, and the two callbacks come off at their own moment: `onProxyFailed` as soon as its `destroy()` returns, `onMessageToView` behind the messages that teardown queued. What an `onDestroy` sends towards the view therefore still arrives — a `LocalShadowObjectEnv` delivers it — while everything the released proxy says after that finds nobody listening, a failure it reports included. A failure of the current proxy ends its turn as well: a start of its own that resolves afterwards no longer reports the lost environment as ready.
@@ -172,6 +175,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **New (public API):** `ShadowEnv.ProxyFailed`, carrying the reason; `ContextLost` follows. A new `envProxy` is the way back: once it is ready the view re-creates its changes from the Component Memory, so the next sync restores every entity in the new environment. `IShadowObjectEnvProxy` gained the optional callback `onProxyFailed`, which `ShadowEnv` installs just like `onMessageToView`. `<shae-worker>` mirrors it as a `proxyfailed` DOM `CustomEvent`, alongside the `contextcreated` and `contextlost` it already dispatched.
 - **Behavior (view):** a consumer listening for `ShadowEnv.ProxyFailed` can no longer stop the environment from noticing its own loss — `isReady` drops and `ContextLost` fires even when that listener throws.
 - **Behavior (worker environments):** a `start()` that fails now terminates the worker it created instead of just dropping the reference.
+- **Behavior (environments):** `LocalShadowObjectEnv.applyChangeTrail()` settles one microtask later when called with `waitForConfirmation`, instead of in the same microtask as the call. The kernel still runs synchronously above, before the method returns — only the settling of the returned promise is deferred, so it never settles in the same microtask as the call that made it. This is not the same relative ordering `RemoteWorkerEnv` gives its own promises — that one settles only after its worker round-trip and can land later still.
 - **Bugfix (environments):** `LocalShadowObjectEnv.destroy()` emptied the registry it was working with. Unless a registry is handed to the constructor, that is the default one — shared with every other environment in the thread and with every class registered through `@ShadowObject` or `shadowObjects.define()` — so tearing down a single environment stripped the definitions from all of them. `destroy()` now only clears a registry that belongs to that environment alone; passing `Registry.get()` explicitly still counts as the shared one.
 - **Bugfix (change trail, VIEW-23):** `ComponentChanges.changeToken()` dropped the pending create-token of a component that had not been flushed yet. `#token` starts at `VoidToken` and only tracks the last token *written to a trail*, so resetting the token of a fresh component (`c.token = undefined`, or any assignment of the void token) cleared `#nextToken` and produced a `CreateEntities` change with no `token` field at all — the kernel then registered the entity with `token: undefined` and never looked up a shadow object for it. A pending create now keeps its token, and `makeCreateEntityChange()` never emits a create without one.
 - **Bugfix (view components, VIEW-24):** assigning a `ViewComponent.context` that had been disposed left the component in a state that reported itself as alive. The setter destroyed the component in its old context and *then* let `addComponent()` throw, so `isDestroyed` stayed `false` while every `setProperty` / `removeProperty` / `dispatchShadowObjectsEvent` silently went nowhere. A disposed context is now rejected before the teardown, so the component keeps its current context; any other failure to join leaves the component detached rather than pointing at a context that never took it in.
