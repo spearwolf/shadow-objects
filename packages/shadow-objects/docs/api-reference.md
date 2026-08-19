@@ -2070,11 +2070,11 @@ const attached = kernel.findShadowObjects('abc-123');
 
 | Method | Signature | Description |
 | :--- | :--- | :--- |
-| `createEntity` | `(uuid, token, parentUuid?, order?, properties?, autoDestructionOnParentRemoval?)` | Creates an Entity and its Shadow Objects. `properties` is a list of `[name, value]` pairs. |
+| `createEntity` | `(uuid, token, parentUuid?, order?, properties?, autoDestructionOnParentRemoval?)` | Creates an Entity and its Shadow Objects. `properties` is a list of `[name, value]` pairs; an entry that names only `name` sets the property to `undefined`. |
 | `destroyEntity` | `(uuid: string)` | Destroys the Entity, its Shadow Objects and its children. |
 | `setParent` | `(uuid, parentUuid?, order?)` | Moves the Entity under a new parent, or makes it a root when `parentUuid` is omitted. An absent `order` keeps the current one -- it is not a reset to `0`. |
 | `updateOrder` | `(uuid: string, order: number)` | Sets the sort order among siblings. |
-| `changeProperties` | `(uuid: string, properties: [string, unknown][])` | Writes property values; every reader bound to one of the names sees the new value. |
+| `changeProperties` | `(uuid: string, properties: ComponentPropertiesType)` | Writes property values; every reader bound to one of the names sees the new value. |
 | `changeToken` | `(uuid: string, token: string)` | Replaces the Entity's token, which re-resolves its Shadow Objects the same way `upgradeEntities()` does. |
 | `dispatchEventsToEntity` | `(uuid: string, events: IComponentEvent[])` | Delivers View Layer events to the Entity, where every attached Shadow Object receives them as `onViewEvent`. |
 

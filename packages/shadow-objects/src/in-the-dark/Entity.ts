@@ -9,7 +9,7 @@ import {
   type SignalWriter,
   value,
 } from '@spearwolf/signalize';
-import type {IComponentEvent} from '../types.js';
+import type {ComponentPropertiesType, IComponentEvent} from '../types.js';
 import {onDestroy, onViewEvent} from './events.js';
 import {Kernel} from './Kernel.js';
 import {SignalsPath} from './SignalsPath.js';
@@ -297,9 +297,10 @@ export class Entity {
     return this.#getPropSignal<T>(key).set;
   }
 
-  setProperties(properties: [string, unknown][]) {
+  setProperties(properties: ComponentPropertiesType) {
     this.clearTruthyPropsCache();
     batch(() => {
+      // an entry that names only the key sets the property to `undefined` — the key is there, the value is not
       for (const [key, val] of properties) {
         this.setProperty(key, val);
       }

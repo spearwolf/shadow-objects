@@ -30,6 +30,11 @@ describe('props-utils', () => {
         ['abc', ''],
       ]);
     });
+
+    it('keeps a bare key', () => {
+      const props: ComponentPropertiesType = [['foo'], ['bar', undefined], ['baz', 1]];
+      expect(filterUndefinedProps(props)).toEqual([['foo'], ['baz', 1]]);
+    });
   });
 
   describe('applyPropsChanges', () => {
@@ -82,6 +87,12 @@ describe('props-utils', () => {
 
       expect(changes).toEqual([['foo', 'bar']]);
       expect(props[0]).not.toBe(changes[0]);
+    });
+
+    it('copies a bare key as a bare key', () => {
+      const changes: ComponentPropertiesType = [['foo'], ['bar', 2]];
+      const result = applyPropsChanges(undefined, changes);
+      expect(result).toEqual([['foo'], ['bar', 2]]);
     });
   });
 
@@ -148,6 +159,11 @@ describe('props-utils', () => {
         ['666', undefined],
       ];
       expect(propsEqual(a, b)).toBeTruthy();
+    });
+
+    it('compares a bare key', () => {
+      expect(propsEqual([['foo']], [['foo']])).toBeTruthy();
+      expect(propsEqual([['foo']], [['foo', 'bar']])).toBeFalsy();
     });
   });
 });

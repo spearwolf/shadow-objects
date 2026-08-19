@@ -2,7 +2,7 @@ import type {ComponentPropertiesType} from '../types.js';
 
 export const filterUndefinedProps = (props: ComponentPropertiesType | undefined) => {
   if (props === undefined || props.length === 0) return undefined;
-  return props.filter((entry) => (entry as Array<any>).length === 1 || entry[1] !== undefined);
+  return props.filter((entry) => entry.length === 1 || entry[1] !== undefined);
 };
 
 /**
@@ -18,7 +18,7 @@ export const applyPropsChanges = (
   // the tuples belong to `changes` — a change trail that has been handed out is a value, and
   // the loop below writes through `entry[1] = value` on every later call
   if (curProps === undefined)
-    return filterUndefinedProps(changes)?.map((entry) => entry.slice()) as ComponentPropertiesType | undefined;
+    return filterUndefinedProps(changes)?.map((entry) => (entry.length === 1 ? [entry[0]] : [entry[0], entry[1]]));
 
   for (const [key, value] of changes) {
     const entry = curProps.find(([k]) => k === key);

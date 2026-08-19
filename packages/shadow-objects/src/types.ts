@@ -19,7 +19,12 @@ export interface IComponentEvent {
   data: unknown;
 }
 
-export type ComponentPropertiesType = [string, unknown][];
+/**
+ * A list of property entries in a Change Trail. An entry carries a key together with its
+ * value; an entry that names only the key counts as set, without carrying a value — the
+ * Entity behind it reads the property as `undefined`.
+ */
+export type ComponentPropertiesType = ([string] | [string, unknown])[];
 
 export interface ICreateEntitiesChange extends IComponentChange {
   type: ComponentChangeType.CreateEntities;

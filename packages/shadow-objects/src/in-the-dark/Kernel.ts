@@ -13,6 +13,7 @@ import {
 } from '@spearwolf/signalize';
 import {ComponentChangeType, MessageToView} from '../constants.js';
 import type {
+  ComponentPropertiesType,
   IComponentChangeType,
   IComponentEvent,
   Maybe,
@@ -263,7 +264,7 @@ export class Kernel {
     token: string,
     parentUuid?: string,
     order = 0,
-    properties?: [string, unknown][],
+    properties?: ComponentPropertiesType,
     autoDestructionOnParentRemoval = false,
   ): void {
     const e = new Entity(this, uuid);
@@ -367,7 +368,7 @@ export class Kernel {
     this.getEntity(uuid)?.dispatchViewEvents(events);
   }
 
-  changeProperties(uuid: string, properties: [string, unknown][]): void {
+  changeProperties(uuid: string, properties: ComponentPropertiesType): void {
     this.getEntity(uuid).setProperties(properties);
     this.updateShadowObjects(uuid);
   }
