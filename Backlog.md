@@ -254,8 +254,8 @@ je einmal wie es ist / Runde aus / Filter aus), Wurzelkanal mit n `<shae-ent>` o
 Entity-Elternteil im selben Namespace (`dispatchReRequestParentRoots`, wie es ist / Kanal aus),
 Slot-Auslöser als Preis einer einzelnen `broadcastEvent(ReRequestParent)` beziehungsweise
 `broadcastEvent(ReRequestEntHost)`-Runde über einem bereits stehenden Baum. Lief als Wegwerf-Spec
-in `packages/shadow-objects-testing/test/`, nach der Messung wieder entfernt; ihr vollständiger
-Quelltext samt Aufrufkommando steht wörtlich in `view-layer-remediation-plan-2.md` unter Paket 8.
+in `packages/shadow-objects-testing/test/`, nach der Messung wieder entfernt; der Absatz oben ist
+das ganze Rezept, aus dem sie sich wieder aufbauen lässt.
 
 ### 3.6 API-/Design-Smells
 
