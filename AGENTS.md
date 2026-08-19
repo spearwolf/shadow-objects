@@ -62,10 +62,13 @@ Uses Signals and Effects (via `@spearwolf/signalize`).
 
 ### Documentation
 - **Authoritative Source:** The documentation lives in `packages/shadow-objects/docs/`. Any reference to "shadow-objects developer documentation" always refers to this directory.
-- **Public API Changes:** Any change to the public API must be reflected in:
+- **Public API Changes:** Any change to the public API of `@spearwolf/shadow-objects` must be reflected in:
     1. `packages/shadow-objects/docs/` (Update relevant Markdown files).
     2. `packages/shadow-objects/README.md`.
     3. `packages/shadow-objects/CHANGELOG.md`.
+
+    A public API change in another published package documents itself the same way, in that package's
+    own `docs/`, `README.md` and `CHANGELOG.md` — `@spearwolf/shae-offscreen-canvas` is the second one.
 - **Language:** Always use **English**.
 - **Format:** Use **Markdown**.
 - **Terminology:** Use ECS terms. Never use: "shadow theater", "puppet", "puppeteer", "light world", "screen" (as analogy).

@@ -83,20 +83,22 @@ The published `dist/` layout is part of the public API contract — its file lis
 
 ## Changelogs and Backlog — keep them in sync
 
-Two changelogs live in this repo and must be kept current as part of every change that touches them:
+Three changelogs live in this repo and must be kept current as part of every change that touches them:
 
 - **`CHANGELOG.md` (repo root)** — *monorepo-level* changes: build system, monorepo orchestrator, lint/format, dev workflow, CI, devDependencies that aren't shipped. Entries are dated (no version numbers — this isn't a published package).
 - **`packages/shadow-objects/CHANGELOG.md`** — *package-level* changes: runtime API, runtime dependencies, behavior changes, output/contract changes for `@spearwolf/shadow-objects`. New work goes under `## [Unreleased]` until a release. Each released version gets a `## [X.Y.Z] - YYYY-MM-DD` section.
+- **`packages/shae-offscreen-canvas/CHANGELOG.md`** — *package-level* changes: runtime API, runtime dependencies, behavior changes, output/contract changes for `@spearwolf/shae-offscreen-canvas`. Same layout: new work under `## [Unreleased]`, a `## [X.Y.Z] - YYYY-MM-DD` section per release.
 
 When you make a change, decide where it belongs:
 
 | Change touches… | Goes in… |
 |---|---|
 | `src/`, runtime deps, `dist/` shape, public exports, behavior visible to consumers of `@spearwolf/shadow-objects` | `packages/shadow-objects/CHANGELOG.md` (Unreleased) |
+| `packages/shae-offscreen-canvas/src/`, behavior visible to consumers of `@spearwolf/shae-offscreen-canvas` | `packages/shae-offscreen-canvas/CHANGELOG.md` (Unreleased) |
 | Build pipeline, test runner, lint config, turbo/pnpm setup, devDeps, monorepo scripts | root `CHANGELOG.md` (new dated section, or append to today's) |
-| Both | both files — describe each side from its own perspective, don't duplicate |
+| More than one of them | every file it touches — describe each side from its own perspective, don't duplicate |
 
-Other affected packages (`shae-offscreen-canvas`, etc.) don't currently maintain their own changelog. If they start to be published independently, add one and follow the same split.
+The remaining workspace packages (`shadow-objects-testing`, `shadow-objects-e2e`) are `private` and keep no changelog. A package that starts to be published gets one and follows the same split.
 
 **Keep entries short and precise.** One bullet per change, name the symbol/file/feature, link to a commit if non-obvious. Don't restate the diff.
 
@@ -104,7 +106,7 @@ After updating the changelogs, **sync `Backlog.md`**: cross off or remove items 
 
 ## Conventions that bite
 
-- **Documentation is part of the public API contract.** Public API changes must update `packages/shadow-objects/docs/`, the package `README.md`, **and** `packages/shadow-objects/CHANGELOG.md` in the same change. `AGENTS.md` §4 lists this; it is enforced.
+- **Documentation is part of the public API contract.** A public API change must update the `docs/`, the `README.md` **and** the `CHANGELOG.md` of the package it belongs to, in the same change — `packages/shadow-objects/` for the core library, `packages/shae-offscreen-canvas/` for the canvas element. `AGENTS.md` §4 lists this; it is enforced.
 - **Banned analogies**: "shadow theater", "puppet", "puppeteer", "light world", "screen". Use ECS terminology (Entity, Component, Kernel, View, Token).
 - All docs and code comments in English, Markdown for docs.
 - Lint + format are Biome only — config lives at repo root (`biome.json`). No per-package overrides.

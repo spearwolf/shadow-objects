@@ -40,7 +40,7 @@ const InitialHTML = `
   <div class="frame">
     <canvas id="${DISPLAY_ID}" class="content"></canvas>
     <div class="content">
-      <shae-ent id="${ENTITY_ID}" %NS% token="ShaeOffscreenCanvas">
+      <shae-ent id="${ENTITY_ID}" token="ShaeOffscreenCanvas">
         <slot></slot>
       </shae-ent>
     </div>
@@ -67,8 +67,19 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
 
     this.shadow = this.attachShadow({mode: 'open'});
 
-    const ns = this.#readNsAttr() || '';
-    this.shadow.innerHTML = initialHTML.replaceAll('%NS%', ns ? `ns="${ns}"` : '');
+    // The template is parsed while its content is still detached from the document: a namespace
+    // handed to setAttribute() cannot end the attribute or open a tag the way a value spliced into
+    // markup can, and the entity element enters the shadow root with its namespace already set,
+    // so it never connects to the global environment on its way to the one it belongs in.
+    const template = document.createElement('template');
+    template.innerHTML = initialHTML;
+
+    const ns = this.#readNsAttr();
+    if (ns) {
+      template.content.getElementById(ENTITY_ID).setAttribute(ATTR_NS, ns);
+    }
+
+    this.shadow.appendChild(template.content);
 
     this.canvas = this.shadow.getElementById(DISPLAY_ID);
     this.shadowEntity = this.shadow.getElementById(ENTITY_ID);
