@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Audit · @spearwolf/shadow-objects · 2026-08-14</title>
+<title>Audit · @spearwolf/shadow-objects · 2026-08-19</title>
 <style>
   /* ============================================================
      Audit-Report · Theme: light (fest ausgeliefert, kein
@@ -295,12 +295,12 @@
 
 <header class="masthead">
   <div class="mh-lead">
-    <p class="eyebrow">Project Audit · Remediation-Stand 2026-08-14</p>
+    <p class="eyebrow">Project Audit · Remediation-Stand 2026-08-19</p>
     <h1>@spearwolf/shadow-objects-monorepo</h1>
     <div class="badges">
       <span class="badge badge-key">@spearwolf/shadow-objects@0.33.0</span>
       <span class="badge">Audit-Datum 2026-08-13</span>
-      <span class="badge">Remediation 2026-08-14</span>
+      <span class="badge">Remediation 2026-08-19</span>
       <span class="badge">pnpm 9.15 · catalog:</span>
       <span class="badge">turborepo 2.9</span>
       <span class="badge">TypeScript 6 (strict, strictNullChecks: true)</span>
@@ -316,24 +316,24 @@
     <div class="scorecard">
       <div class="sc-top">
         <div>
-          <div class="score-value">39,0</div>
+          <div class="score-value">81,0</div>
           <div class="score-label">Health-Score / 100</div>
         </div>
         <span class="rise">
           <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10.2V2.2M6 2.2 2.6 5.6M6 2.2l3.4 3.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          +17,5
+          +42,0
         </span>
       </div>
-      <p class="sc-line">gegenüber <strong>21,5</strong> vom 2026-08-13 — der erste Anstieg in vier Läufen.</p>
+      <p class="sc-line">gegenüber <strong>39,0</strong> vom 2026-08-14 — der zweite Anstieg in Folge.</p>
       <p class="sc-caveat">Der Zuwachs stammt aus einem Remediation-Lauf, nicht aus einer neuen Prüfung des Codes.</p>
       <div class="subscores">
         <div class="sub">
-          <div class="sub-head"><span>Code &amp; Laufzeit</span><b>56,5</b></div>
-          <div class="meter"><i style="width:56.5%"></i></div>
+          <div class="sub-head"><span>Code &amp; Laufzeit</span><b>91,5</b></div>
+          <div class="meter"><i style="width:91.5%"></i></div>
         </div>
         <div class="sub">
-          <div class="sub-head"><span>Projekt-Harness</span><b>82,5</b></div>
-          <div class="meter"><i style="width:82.5%"></i></div>
+          <div class="sub-head"><span>Projekt-Harness</span><b>89,5</b></div>
+          <div class="meter"><i style="width:89.5%"></i></div>
         </div>
       </div>
     </div>
@@ -348,20 +348,21 @@
       </div>
       <div class="prose">
         <p>
-          Dieser Stand kommt aus einem Remediation-Lauf vom 14. August, nicht aus einer neuen Prüfung
-          des Codes: sieben Pakete, sieben Commits, jedes Paket von einem unabhängigen Reviewer gegen
-          seinen Diff geprüft. <strong>8 Findings sind geschlossen</strong>, <strong>1 teilweise
-          erledigt</strong>, <strong>46 unverändert übernommen</strong> und <strong>7 neu</strong>.
-          Die neuen Einträge stammen aus der Arbeit selbst: Nebenbefunde und Reviewer-Befunde der
-          sieben Pakete, jeder mit Datei und Zeile. Der Score ist die Formel dieses Audits auf ein
+          Dieser Stand kommt aus einem Remediation-Lauf vom 19. August, nicht aus einer neuen Prüfung
+          des Codes: zwölf Pakete, dreizehn Commits, jedes Paket von einem unabhängigen Reviewer gegen
+          seinen Diff geprüft. <strong>42 Findings sind geschlossen</strong>, <strong>12 unverändert
+          übernommen</strong> und <strong>11 neu</strong>. 31 der geschlossenen Punkte hat der Lauf
+          bearbeitet, 11 waren am Code bereits erledigt oder gegenstandslos und sind mit Fundstelle
+          gestrichen worden. Die neuen Einträge stammen aus der Arbeit selbst: offene Nebenbefunde der
+          zwölf Pakete, jeder mit Datei und Zeile. Der Score ist die Formel dieses Audits auf ein
           verändertes Backlog — die inhaltliche Neubewertung gehört dem nächsten Audit-Lauf.
         </p>
       </div>
       <div class="diffline">
-        <strong>Diff zum Audit vom 2026-08-13:</strong>
-        8 behoben · 1 teilweise · 7 neu · 46 übernommen. Behobene Punkte werden gezählt, nicht gelistet —
-        Details liefern <code>remediation-plan.md</code> und der git-Verlauf von <code>3cfd93d</code>
-        bis <code>aa74955</code>.
+        <strong>Diff zum Remediation-Stand vom 2026-08-14:</strong>
+        42 behoben · 11 neu · 12 übernommen. Behobene Punkte werden gezählt, nicht gelistet —
+        Details liefern <code>remediation-plan-2.md</code> und der git-Verlauf von <code>7e147e4</code>
+        bis <code>86623a5</code>.
       </div>
     </div>
   </div>
@@ -490,85 +491,86 @@
   <div class="sec-head">
     <span class="sec-num">02</span>
     <h2>Zusammenfassung</h2>
-    <span class="sec-note">54 Findings · beide Teilscores auf der Skala 0–100</span>
+    <span class="sec-note">23 Findings · beide Teilscores auf der Skala 0–100</span>
   </div>
   <div class="domains">
 
     <article class="panel domain">
       <div class="dom-head">
         <h3>Code &amp; Laufzeit</h3>
-        <div class="dom-score">56,5 <span>/ 100</span></div>
+        <div class="dom-score">91,5 <span>/ 100</span></div>
       </div>
-      <div class="meter"><i style="width:56.5%"></i></div>
+      <div class="meter"><i style="width:91.5%"></i></div>
       <div class="prose">
         <p>
           Die beiden schwersten Befunde sind geschlossen: <code>LocalShadowObjectEnv.destroy()</code>
           lässt die geteilte Default-Registry stehen, und <code>RemoteWorkerEnv</code> meldet
           Worker-Ausfälle, statt Aufrufer in Fünf- und Sechzig-Sekunden-Timeouts laufen zu lassen.
-          Was bleibt, ist dasselbe Muster wie zuvor, nur eine Schicht tiefer: Aufräumen ist an
-          mehreren Stellen halb. Ein MutationObserver trennt sich beim Umsortieren selbst und wird
-          nie wieder angelegt, ein regulärer <code>destroy()</code> lässt seine pendenden Anfragen
-          in den Timeout laufen, und die beiden Worker-Einstiegspunkte lesen fremde Nachrichten
-          ungeprüft — was seit der Härtung der Ausfallpfade nicht mehr nur den Handler kostet,
-          sondern die ganze Umgebung.
+          Die halben Teardowns, die danach übrig blieben — der Observer, der sich beim Umsortieren
+          selbst trennt, die pendenden Anfragen eines regulären <code>destroy()</code>, die
+          ungeprüften Worker-Eingänge —, sind im Lauf vom 19. August nachgezogen worden. Was in
+          diesem Bereich stehen bleibt, hat der Lauf nicht angefasst: der localStorage-Schreibzugriff
+          des Loggers, die 384-Zeilen-Closure im Kernel, die Deprecation-Warnung als Modul-Singleton
+          und der <code>Math.random</code>-Fallback von <code>generateUUID</code>. Dazu neun
+          Nebenbefunde des Laufs selbst, jeder mit Datei und Zeile, keiner über <code>low</code>.
         </p>
       </div>
       <h4 class="mini-h">Severity</h4>
       <div class="bars">
         <div class="bar-row is-zero"><span>critical</span><div class="bar-track"><div class="bar-fill sv-critical" style="width:0%"></div></div><span class="cnt">0</span></div>
         <div class="bar-row is-zero"><span>high</span><div class="bar-track"><div class="bar-fill sv-high" style="width:0%"></div></div><span class="cnt">0</span></div>
-        <div class="bar-row"><span>medium</span><div class="bar-track"><div class="bar-fill sv-medium" style="width:94.7%"></div></div><span class="cnt">18</span></div>
-        <div class="bar-row"><span>low</span><div class="bar-track"><div class="bar-fill sv-low" style="width:78.9%"></div></div><span class="cnt">15</span></div>
-        <div class="bar-row"><span>info</span><div class="bar-track"><div class="bar-fill sv-info" style="width:15.8%"></div></div><span class="cnt">3</span></div>
+        <div class="bar-row"><span>medium</span><div class="bar-track"><div class="bar-fill sv-medium" style="width:20.0%"></div></div><span class="cnt">2</span></div>
+        <div class="bar-row"><span>low</span><div class="bar-track"><div class="bar-fill sv-low" style="width:90.0%"></div></div><span class="cnt">9</span></div>
+        <div class="bar-row"><span>info</span><div class="bar-track"><div class="bar-fill sv-info" style="width:20.0%"></div></div><span class="cnt">2</span></div>
       </div>
       <h4 class="mini-h">Kategorien</h4>
       <div class="catlist">
-        <div><span>Bugs &amp; Korrektheitsrisiken</span><span>12</span></div>
-        <div><span>Konsistenz</span><span>4</span></div>
-        <div><span>Lesbarkeit &amp; Clean Code</span><span>4</span></div>
-        <div><span>Architektur &amp; Struktur</span><span>3</span></div>
-        <div><span>Async &amp; Concurrency</span><span>3</span></div>
-        <div><span>Memory Leaks &amp; Ressourcen</span><span>3</span></div>
-        <div><span>Sicherheit</span><span>3</span></div>
-        <div><span>Performance</span><span>2</span></div>
-        <div><span>Öffentliche API</span><span>2</span></div>
+        <div><span>Bugs &amp; Korrektheitsrisiken</span><span>5</span></div>
+        <div><span>Lesbarkeit &amp; Clean Code</span><span>2</span></div>
+        <div><span>Architektur &amp; Struktur</span><span>1</span></div>
+        <div><span>Async &amp; Concurrency</span><span>1</span></div>
+        <div><span>Konsistenz</span><span>1</span></div>
+        <div><span>Memory Leaks &amp; Ressourcen</span><span>1</span></div>
+        <div><span>Sicherheit</span><span>1</span></div>
+        <div><span>Öffentliche API</span><span>1</span></div>
       </div>
     </article>
 
     <article class="panel domain">
       <div class="dom-head">
         <h3>Projekt-Harness</h3>
-        <div class="dom-score">82,5 <span>/ 100</span></div>
+        <div class="dom-score">89,5 <span>/ 100</span></div>
       </div>
-      <div class="meter"><i style="width:82.5%"></i></div>
+      <div class="meter"><i style="width:89.5%"></i></div>
       <div class="prose">
         <p>
           Beide strukturellen Lücken sind zu. <code>strictNullChecks</code> steht auf
           <code>true</code>, die 60 verdeckten Typfehler sind abgearbeitet, und die Ratsche greift
           über beide TypeScript-Pakete statt über eines. Die E2E-Suite läuft als eigener CI-Job mit
           Chromium und Firefox und hängt über <code>workflow_run</code> vor dem npm-Publish. Die
-          Suiten sind gewachsen: 13 vitest-Specs am Source, 12 in echtem Chromium, 10
-          Playwright-Specs mit 324 Fällen. Offen bleibt, was schon vorher offen war und niemand
-          angefasst hat: gemessen wird die Testabdeckung nirgends, MessageRouter und WorkerRuntime
-          haben weiterhin keine Spec, und die beiden dist-Snapshots aus <code>CLAUDE.md</code> sind
-          veraltet.
+          Suiten sind seither weiter gewachsen: <code>MessageRouter</code> und
+          <code>WorkerRuntime</code> haben eigene Specs, der Wurzellauf steht bei 908 Unit- und
+          Integrationsfällen und 404 E2E-Fällen, und die beiden veralteten dist-Snapshots gibt es
+          nicht mehr. Offen bleibt, was niemand angefasst hat: gemessen wird die Testabdeckung in
+          keinem der vier Pakete, WebKit ist in der Playwright-Konfiguration weiterhin
+          auskommentiert, und die publizierte Referenzanwendung trägt genau eine Spec-Datei.
         </p>
       </div>
       <h4 class="mini-h">Severity</h4>
       <div class="bars">
         <div class="bar-row is-zero"><span>critical</span><div class="bar-track"><div class="bar-fill sv-critical" style="width:0%"></div></div><span class="cnt">0</span></div>
         <div class="bar-row is-zero"><span>high</span><div class="bar-track"><div class="bar-fill sv-high" style="width:0%"></div></div><span class="cnt">0</span></div>
-        <div class="bar-row"><span>medium</span><div class="bar-track"><div class="bar-fill sv-medium" style="width:50.0%"></div></div><span class="cnt">6</span></div>
-        <div class="bar-row"><span>low</span><div class="bar-track"><div class="bar-fill sv-low" style="width:91.7%"></div></div><span class="cnt">11</span></div>
-        <div class="bar-row"><span>info</span><div class="bar-track"><div class="bar-fill sv-info" style="width:8.3%"></div></div><span class="cnt">1</span></div>
+        <div class="bar-row"><span>medium</span><div class="bar-track"><div class="bar-fill sv-medium" style="width:66.7%"></div></div><span class="cnt">4</span></div>
+        <div class="bar-row"><span>low</span><div class="bar-track"><div class="bar-fill sv-low" style="width:83.3%"></div></div><span class="cnt">5</span></div>
+        <div class="bar-row"><span>info</span><div class="bar-track"><div class="bar-fill sv-info" style="width:16.7%"></div></div><span class="cnt">1</span></div>
       </div>
       <h4 class="mini-h">Kategorien</h4>
       <div class="catlist">
-        <div><span>Dependencies</span><span>4</span></div>
-        <div><span>Developer Experience</span><span>4</span></div>
         <div><span>Testabdeckung &amp; Teststrategie</span><span>4</span></div>
-        <div><span>Projektaufbau &amp; Build</span><span>3</span></div>
-        <div><span>Typsicherheit</span><span>3</span></div>
+        <div><span>Developer Experience</span><span>3</span></div>
+        <div><span>Dependencies</span><span>1</span></div>
+        <div><span>Projektaufbau &amp; Build</span><span>1</span></div>
+        <div><span>Typsicherheit</span><span>1</span></div>
       </div>
     </article>
 
@@ -661,13 +663,15 @@
       Endzustand? Solange das offen ist, weiß niemand, ob die Warnung irgendwann ein Fehler wird.
     </li>
     <li>
-      <strong>structuredClone als Local-Default</strong> — bewusst gewählt, um lokale und entfernte Semantik
-      identisch zu halten (kein versehentliches Sharen), oder historisch gewachsen? Siehe PERF-CLONE.
+      <strong>structuredClone als Local-Default</strong> — beantwortet am 2026-08-19: bewusst, und der Klon
+      bleibt Default, weil er der lokalen Umgebung dieselbe Semantik gibt wie der entfernten. Begründung und
+      der Weg zum Abschalten stehen seit <code>86623a5</code> in <code>docs/best-practices.md</code> §6.
     </li>
     <li>
-      <strong><code>packages/shae-offscreen-canvas/src/shared/utils.specs.js</code> ist nicht eingecheckt.</strong>
-      Der einzige Test des Pakets liegt auf der Platte, aber nicht im Repo — <code>git ls-files</code> kennt
-      ihn nicht, <code>.gitignore</code> greift nicht. Vergessen oder Absicht?
+      <strong><code>packages/shae-offscreen-canvas/src/shared/utils.specs.js</code> gibt es nicht mehr.</strong>
+      Die Datei war entgegen der ursprünglichen Annahme getrackt; sie ist mit <code>dc29a1b</code> gelöscht
+      worden, als die zweite <code>FrameLoop</code>-Implementierung des Pakets wegfiel. Die Frage ist damit
+      beantwortet, die Deckung des Pakets bleibt offen.
     </li>
   </ul>
 </section>
@@ -770,40 +774,56 @@
       ist eine Regression — jede betroffene Zeile existierte bereits im Mai. Gegenprobe: die CI ist grün,
       und vier Altbefunde sind seither behoben worden. Wer nur die Zahl liest, liest falsch.
     </p>
-    <h3>Remediation-Lauf vom 2026-08-14</h3>
+    <h3>Remediation-Läufe vom 2026-08-14 und 2026-08-19</h3>
     <p>
-      Der aktuelle Stand dieser Datei stammt nicht aus einer Pr&#252;fung des Codes, sondern aus einem
-      Remediation-Lauf: sieben Pakete, sieben Commits von <code>3cfd93d</code> bis <code>aa74955</code>,
-      jedes Paket unmittelbar vor der Umsetzung gegen den aktuellen Code detailliert und danach von einem
+      <strong>2026-08-14</strong> — sieben Pakete, sieben Commits von <code>3cfd93d</code> bis
+      <code>aa74955</code>. Geschlossen wurden acht Findings, sieben neue kamen hinzu, der Score ging von
+      21,5 auf 39,0. Der Lauf ist in <code>remediation-plan.md</code> dokumentiert.
+    </p>
+    <p>
+      <strong>2026-08-19</strong> — der aktuelle Stand dieser Datei. Zw&#246;lf Pakete, <strong>dreizehn
+      Commits</strong> von <code>7e147e4</code> bis <code>86623a5</code> (Paket 12 ergab zwei), jedes Paket
+      unmittelbar vor der Umsetzung gegen den aktuellen Code detailliert und danach von einem
       unabh&#228;ngigen Subagenten gegen seinen Diff gepr&#252;ft. Verify je Paket: Lint, Typecheck,
-      <code>test:ci</code> und die Playwright-Suite, alle vier gr&#252;n vor jedem Commit. Der Lauf ist in
-      <code>remediation-plan.md</code> im Projektwurzelverzeichnis vollst&#228;ndig dokumentiert.
+      <code>test:ci</code> und die Playwright-Suite, alle vier gr&#252;n vor jedem Commit; zuletzt 908
+      Unit- und Integrationsf&#228;lle und 404 E2E-F&#228;lle. Der Lauf ist in
+      <code>remediation-plan-2.md</code> im Projektwurzelverzeichnis vollst&#228;ndig dokumentiert.
+      <strong>Der Code ist seit dem Audit vom 2026-08-13 nicht neu gepr&#252;ft worden</strong> — diese
+      Datei bucht, was die beiden L&#228;ufe belegt haben, und beurteilt nichts neu.
     </p>
     <p>
-      <strong>Geschlossen wurde ausschlie&#223;lich, wof&#252;r ein Reviewer-Urteil mit Fundstelle und ein
-      Commit-Hash vorliegen.</strong> Das sind die vier vom Nutzer benannten Findings CI-001,
-      ENV-REGISTRY-001, WORKER-001 und STRICT-NULL, dazu ELEM-OBS-001 und ELEM-VC-001, auf die der
-      Compiler beim Scharfschalten von <code>strictNullChecks</code> zeigte, sowie ERR-TYPE-001 und
-      RWE-DESTROY-001, deren s&#228;mtliche Fundstellen dabei mit umgebaut und vom Reviewer best&#228;tigt
-      wurden. TEST-001 blieb mangels vollst&#228;ndigem Beleg stehen: <code>RemoteWorkerEnv</code> hat
-      jetzt eine Spec mit 19 F&#228;llen, <code>MessageRouter</code> und <code>WorkerRuntime</code>
-      weiterhin keine. Die &#252;brigen 46 Findings sind unver&#228;ndert &#252;bernommen — dieser Lauf
-      hat sie weder angefasst noch neu beurteilt.
+      <strong>Geschlossen wurde ausschlie&#223;lich, wof&#252;r ein Urteil mit Fundstelle und der
+      Commit-Hash des Pakets vorliegt.</strong> Der Nutzer hatte 42 Findings benannt. 11 davon waren am
+      Code bereits erledigt oder gegenstandslos und sind im Abgleich vor dem Lauf mit Fundstelle
+      gestrichen worden — darunter TYPO-001, PROP-FALSY-001, DOM-OBS, RWE-DESTROY-002, WORKER-002,
+      SNAPSHOT-001 und die beiden Dependency-Punkte. Die &#252;brigen 31 hat der Lauf in zw&#246;lf
+      Paketen abgearbeitet; jedes Paket tr&#228;gt sein Ergebnis samt Hash im Plan.
+      <strong>Kein Finding des Scopes blieb mangels Beleg stehen.</strong> Zwei Punkte sind nur zur
+      H&#228;lfte durch den Lauf abgedeckt und zur anderen H&#228;lfte durch den Abgleich: DEPS-001 —
+      vite und turbo sind dokumentierte Holdbacks, <code>@types/node</code> bleibt nach Entscheidung
+      liegen, offen war allein der biome-Patchsprung — und TEST-001, dessen
+      <code>RemoteWorkerEnv</code>-Teil schon stand und dessen Rest mit <code>1f0f44d</code> gekommen ist.
+      Bei CHANGELOG-001 ist die Gliederung umgesetzt und die empfohlene Versionsanhebung ausdr&#252;cklich
+      abgelehnt worden: ein Release ist ein eigener Akt des Nutzers.
     </p>
     <p>
-      Die sieben neuen Eintr&#228;ge stammen aus der Arbeit selbst: Nebenbefunde der Implementierer und
-      <code>klein</code>-Befunde der Reviewer, die keine weitere Runde ausgel&#246;st haben, jeder mit
-      Datei und Zeile. Zwei davon sind Folgen des Laufs im engeren Sinn — ROUTER-003 beschreibt einen
-      vorbestehenden Defekt, dessen Blast Radius durch die geh&#228;rteten Ausfallpfade gewachsen ist,
-      und WORKER-003 h&#228;ngt an dem neu eingef&#252;hrten <code>WorkerFailed</code>-Ereignis.
+      Die verbleibenden <strong>12 Findings waren nie im Scope</strong> — dieser Lauf hat sie weder
+      angefasst noch neu beurteilt. Die 11 neuen Eintr&#228;ge stammen aus der Arbeit selbst: offene
+      Nebenbefunde der Implementierer und <code>klein</code>-Befunde der Reviewer, jeder mit Datei und
+      Zeile, keiner schwerer als <code>low</code>. Drei weitere Nebenbefunde des Plans sind
+      <em>nicht</em> eingetragen, weil sie keine Zeilenangabe tragen: der beschreibbare
+      Eigenschafts-Slot von <code>env.timeouts</code>, die Zahlenlesart von
+      <code>readNumberAttribute</code> und die Audit-K&#252;rzel in den Etiketten des
+      Unreleased-Abschnitts. Ohne Fundstelle ist ein Eintrag im n&#228;chsten Lauf nicht verifizierbar.
     </p>
     <p>
       <strong>Der Score ist die Formel dieses Audits auf ein ver&#228;ndertes Backlog, kein neues Urteil
-      &#252;ber den Code.</strong> Der Sprung von 21,5 auf 39,0 misst, dass vier <code>high</code>-Findings
-      und vier weitere verschwunden sind — nicht, dass der Code an ungepr&#252;fter Stelle besser geworden
+      &#252;ber den Code.</strong> Der Sprung von 39,0 auf 81,0 misst, dass 42 Findings verschwunden und
+      11 leichte dazugekommen sind — nicht, dass der Code an ungepr&#252;fter Stelle besser geworden
       w&#228;re. Der Punkt im Verlaufsdiagramm tr&#228;gt deshalb <code>source: "remediation"</code>. Die
-      inhaltliche Neubewertung geh&#246;rt dem n&#228;chsten Audit-Lauf, der jeden &#252;bernommenen Punkt
-      an seiner Fundstelle frisch verifiziert.
+      Lagebilder der Zusammenfassung beschreiben den Stand des Audits vom 2026-08-13, fortgeschrieben um
+      das, was die beiden L&#228;ufe belegt haben. Die inhaltliche Neubewertung geh&#246;rt dem
+      n&#228;chsten Audit-Lauf, der jeden &#252;bernommenen Punkt an seiner Fundstelle frisch verifiziert.
     </p>
     <h3>Score-Berechnung</h3>
     <p>Start bei 100, Abzug je Finding: critical −10, high −5, medium −2, low −0,5, info 0. Untergrenze 0.
@@ -811,44 +831,48 @@
     sind keine Summanden des Gesamtscores; sie stehen auf derselben Skala von 0 bis 100.</p>
     <div class="calc">Gesamt      0 × −10  =    0    critical
             0 × −5   =    0    high
-           24 × −2   =  −48    medium
-           26 × −0,5 =  −13,0  low
-            4 ×   0  =    0    info
+            6 × −2   =  −12    medium
+           14 × −0,5 =   −7,0  low
+            3 ×   0  =    0    info
                        ───────
-                        −61,0  →  39,0 / 100
+                        −19,0  →  81,0 / 100
 
-Code        0 high, 18 medium, 15 low, 3 info  →  56,5 / 100
-Harness     0 high,  6 medium, 11 low, 1 info  →  82,5 / 100</div>
+Code        0 high,  2 medium,  9 low, 2 info  →  91,5 / 100
+Harness     0 high,  4 medium,  5 low, 1 info  →  89,5 / 100</div>
     <p style="margin-top:14px;">Theme: <strong>light</strong>, übernommen aus dem Vorgänger-Audit, damit die Optik über Folgeläufe stabil bleibt.</p>
   </div>
 
   <figure class="chart">
     <div class="scroller">
-    <svg viewBox="0 0 640 214" role="img" aria-label="Verlauf der Health-Scores: 65, 51,5, 21,5 und zuletzt 39,0">
-      <line x1="52" y1="20" x2="620" y2="20" stroke="#ddd8cd" stroke-dasharray="3 3"/>
-      <line x1="52" y1="95" x2="620" y2="95" stroke="#ddd8cd" stroke-dasharray="3 3"/>
-      <line x1="52" y1="170" x2="620" y2="170" stroke="#8f8981"/>
+    <svg viewBox="0 0 790 214" role="img" aria-label="Verlauf der Health-Scores: 65, 51,5, 21,5, 39,0 und zuletzt 81,0">
+      <line x1="52" y1="20" x2="770" y2="20" stroke="#ddd8cd" stroke-dasharray="3 3"/>
+      <line x1="52" y1="95" x2="770" y2="95" stroke="#ddd8cd" stroke-dasharray="3 3"/>
+      <line x1="52" y1="170" x2="770" y2="170" stroke="#8f8981"/>
       <text x="44" y="24" font-size="11" fill="#6b655e" text-anchor="end" font-family="ui-sans-serif,sans-serif">100</text>
       <text x="44" y="99" font-size="11" fill="#6b655e" text-anchor="end" font-family="ui-sans-serif,sans-serif">50</text>
       <text x="44" y="174" font-size="11" fill="#6b655e" text-anchor="end" font-family="ui-sans-serif,sans-serif">0</text>
       <polyline points="110,72.5 260,92.75 410,137.75" fill="none" stroke="#45528a" stroke-width="2"/>
-      <polyline points="410,137.75 560,111.5" fill="none" stroke="#45528a" stroke-width="2" stroke-dasharray="5 4"/>
+      <polyline points="410,137.75 560,111.5 710,48.5" fill="none" stroke="#45528a" stroke-width="2" stroke-dasharray="5 4"/>
       <circle cx="110" cy="72.5" r="4" fill="#f7f6f3" stroke="#45528a" stroke-width="2"/>
       <circle cx="260" cy="92.75" r="4" fill="#f7f6f3" stroke="#45528a" stroke-width="2"/>
       <circle cx="410" cy="137.75" r="4" fill="#f7f6f3" stroke="#45528a" stroke-width="2"/>
-      <circle cx="560" cy="111.5" r="5.5" fill="#45528a"/>
+      <circle cx="560" cy="111.5" r="4" fill="#f7f6f3" stroke="#45528a" stroke-width="2"/>
+      <circle cx="710" cy="48.5" r="5.5" fill="#45528a"/>
       <text x="110" y="62" font-size="12" fill="#55504a" text-anchor="middle" font-family="ui-sans-serif,sans-serif">65</text>
       <text x="260" y="82" font-size="12" fill="#55504a" text-anchor="middle" font-family="ui-sans-serif,sans-serif">51,5</text>
       <text x="410" y="127" font-size="12" fill="#55504a" text-anchor="middle" font-family="ui-sans-serif,sans-serif">21,5</text>
-      <text x="560" y="100" font-size="13" font-weight="600" fill="#1b1917" text-anchor="middle" font-family="ui-sans-serif,sans-serif">39,0</text>
+      <text x="560" y="100" font-size="12" fill="#55504a" text-anchor="middle" font-family="ui-sans-serif,sans-serif">39,0</text>
+      <text x="710" y="37" font-size="13" font-weight="600" fill="#1b1917" text-anchor="middle" font-family="ui-sans-serif,sans-serif">81,0</text>
       <text x="110" y="190" font-size="11" fill="#6b655e" text-anchor="middle" font-family="ui-sans-serif,sans-serif">2026-05-14</text>
       <text x="260" y="190" font-size="11" fill="#6b655e" text-anchor="middle" font-family="ui-sans-serif,sans-serif">2026-05-14</text>
       <text x="410" y="190" font-size="11" fill="#6b655e" text-anchor="middle" font-family="ui-sans-serif,sans-serif">2026-08-13</text>
       <text x="560" y="190" font-size="11" fill="#6b655e" text-anchor="middle" font-family="ui-sans-serif,sans-serif">2026-08-14</text>
+      <text x="710" y="190" font-size="11" fill="#6b655e" text-anchor="middle" font-family="ui-sans-serif,sans-serif">2026-08-19</text>
       <text x="560" y="207" font-size="10.5" fill="#6b655e" text-anchor="middle" font-family="ui-sans-serif,sans-serif" letter-spacing="0.6">REMEDIATION</text>
+      <text x="710" y="207" font-size="10.5" fill="#6b655e" text-anchor="middle" font-family="ui-sans-serif,sans-serif" letter-spacing="0.6">REMEDIATION</text>
     </svg>
     </div>
-    <figcaption>Verlauf der Health-Scores seit 2026-05-14. Die gestrichelte letzte Strecke markiert den Remediation-Lauf. Der Abfall bis August spiegelt wachsende Prüftiefe, keinen Codeverfall; der letzte Punkt stammt aus dem Remediation-Lauf vom 14. August und nicht aus einer neuen Prüfung des Codes.</figcaption>
+    <figcaption>Verlauf der Health-Scores seit 2026-05-14. Die gestrichelten Strecken markieren die beiden Remediation-Läufe. Der Abfall bis August spiegelt wachsende Prüftiefe, keinen Codeverfall; die beiden letzten Punkte stammen aus den Remediation-Läufen vom 14. und 19. August und nicht aus einer neuen Prüfung des Codes.</figcaption>
   </figure>
 </details>
 
@@ -859,41 +883,40 @@ Harness     0 high,  6 medium, 11 low, 1 info  →  82,5 / 100</div>
   "project": "@spearwolf/shadow-objects-monorepo",
   "packageVersion": "0.33.0",
   "stack": "pnpm 9.15 + catalog:, turborepo 2.9, TypeScript 6 (strict, strictNullChecks:true), esbuild 0.28, vitest 4, Playwright 1.59, biome 2.4, Node >=24.13",
-  "date": "2026-08-14",
-  "previousDate": "2026-08-13",
-  "previousScore": 21.5,
-  "score": 39.0,
-  "scoreDelta": 17.5,
-  "resolvedCount": 8,
-  "improvedCount": 1,
-  "newCount": 7,
-  "carriedOverCount": 47,
-  "unchangedCount": 46,
+  "date": "2026-08-19",
+  "previousDate": "2026-08-14",
+  "previousScore": 39.0,
+  "score": 81.0,
+  "scoreDelta": 42.0,
+  "resolvedCount": 42,
+  "improvedCount": 0,
+  "newCount": 11,
+  "carriedOverCount": 12,
+  "unchangedCount": 12,
   "deltaCause": "remediation",
-  "deltaExplanation": "Dieser Stand stammt nicht aus einer neuen Prüfung des Codes, sondern aus einem Remediation-Lauf am 2026-08-14: sieben Pakete, sieben Commits von 3cfd93d bis aa74955, jedes Paket von einem unabhängigen Subagenten gegen seinen Diff geprüft. Geschlossen wurde ausschließlich, wofür ein Reviewer-Urteil mit Fundstelle und ein Commit-Hash vorliegen — die vier vom Nutzer benannten Findings CI-001, ENV-REGISTRY-001, WORKER-001 und STRICT-NULL, dazu ELEM-OBS-001 und ELEM-VC-001, auf die der Compiler beim Scharfschalten von strictNullChecks zeigte, sowie ERR-TYPE-001 und RWE-DESTROY-001, deren sämtliche Fundstellen dabei mit umgebaut und vom Reviewer bestätigt wurden. Die sieben neuen Einträge sind Nebenbefunde und Reviewer-Befunde aus genau diesen Paketen, jeder mit Datei und Zeile. TEST-001 ist teilweise erledigt: RemoteWorkerEnv hat jetzt eine Spec mit 19 Fällen, MessageRouter und WorkerRuntime weiterhin keine — der Eintrag bleibt deshalb stehen. Der Score ist die Formel dieses Audits auf ein verändertes Backlog, kein neues Urteil über den Code; die inhaltliche Neubewertung gehört dem nächsten Audit-Lauf.",
+  "deltaExplanation": "Dieser Stand stammt nicht aus einer neuen Prüfung des Codes, sondern aus einem Remediation-Lauf am 2026-08-19: zwölf Pakete, dreizehn Commits von 7e147e4 bis 86623a5 (Paket 12 ergab zwei), jedes Paket von einem unabhängigen Subagenten gegen seinen Diff geprüft, dokumentiert in remediation-plan-2.md. Von den 42 vom Nutzer benannten Findings hat der Lauf 31 bearbeitet; 11 waren am Code bereits erledigt oder gegenstandslos und sind mit Fundstelle gestrichen worden. Geschlossen wurde ausschließlich, wofür ein Urteil mit Fundstelle und der Commit-Hash des Pakets vorliegt oder die Streichung aus dem Abgleich vor dem Lauf. Die übrigen 12 Findings waren nie im Scope und sind weder angefasst noch neu beurteilt worden. Die 11 neuen Einträge stammen aus der Arbeit selbst: offene Nebenbefunde der Implementierer und Reviewer, jeder mit Datei und Zeile, keiner schwerer als low. Der Score ist die Formel dieses Audits auf ein verändertes Backlog, kein neues Urteil über den Code; die inhaltliche Neubewertung gehört dem nächsten Audit-Lauf.",
   "theme": "light",
   "bySeverity": {
    "critical": 0,
    "high": 0,
-   "medium": 24,
-   "low": 26,
-   "info": 4
+   "medium": 6,
+   "low": 14,
+   "info": 3
   },
   "byCategory": {
-   "Bugs & Korrektheitsrisiken": 12,
-   "Dependencies": 4,
-   "Developer Experience": 4,
-   "Konsistenz": 4,
-   "Lesbarkeit & Clean Code": 4,
+   "Bugs & Korrektheitsrisiken": 5,
    "Testabdeckung & Teststrategie": 4,
-   "Architektur & Struktur": 3,
-   "Async & Concurrency": 3,
-   "Memory Leaks & Ressourcen": 3,
-   "Projektaufbau & Build": 3,
-   "Sicherheit": 3,
-   "Typsicherheit": 3,
-   "Performance": 2,
-   "Öffentliche API": 2
+   "Developer Experience": 3,
+   "Lesbarkeit & Clean Code": 2,
+   "Architektur & Struktur": 1,
+   "Async & Concurrency": 1,
+   "Dependencies": 1,
+   "Konsistenz": 1,
+   "Memory Leaks & Ressourcen": 1,
+   "Projektaufbau & Build": 1,
+   "Sicherheit": 1,
+   "Typsicherheit": 1,
+   "Öffentliche API": 1
   },
   "scoreHistory": [
    {
@@ -912,175 +935,59 @@ Harness     0 high,  6 medium, 11 low, 1 info  →  82,5 / 100</div>
     "date": "2026-08-14",
     "score": 39.0,
     "source": "remediation"
+   },
+   {
+    "date": "2026-08-19",
+    "score": 81.0,
+    "source": "remediation"
    }
   ],
   "domains": {
    "code": {
     "label": "Code & Laufzeit",
-    "score": 56.5,
+    "score": 91.5,
     "bySeverity": {
      "critical": 0,
      "high": 0,
-     "medium": 18,
-     "low": 15,
-     "info": 3
+     "medium": 2,
+     "low": 9,
+     "info": 2
     },
     "byCategory": {
-     "Bugs & Korrektheitsrisiken": 12,
-     "Konsistenz": 4,
-     "Lesbarkeit & Clean Code": 4,
-     "Architektur & Struktur": 3,
-     "Async & Concurrency": 3,
-     "Memory Leaks & Ressourcen": 3,
-     "Sicherheit": 3,
-     "Performance": 2,
-     "Öffentliche API": 2
+     "Bugs & Korrektheitsrisiken": 5,
+     "Lesbarkeit & Clean Code": 2,
+     "Architektur & Struktur": 1,
+     "Async & Concurrency": 1,
+     "Konsistenz": 1,
+     "Memory Leaks & Ressourcen": 1,
+     "Sicherheit": 1,
+     "Öffentliche API": 1
     },
-    "executiveSummary": "Die beiden schwersten Befunde des Audits sind geschlossen: LocalShadowObjectEnv.destroy() lässt die geteilte Default-Registry stehen, und RemoteWorkerEnv meldet Worker-Ausfälle, statt Aufrufer in Fünf- und Sechzig-Sekunden-Timeouts laufen zu lassen. Was bleibt, ist dasselbe Muster wie zuvor, nur eine Schicht tiefer: Aufräumen ist an mehreren Stellen halb. Ein Observer trennt sich beim Umsortieren selbst und wird nie wieder angelegt, ein regulärer destroy() lässt seine pendenden Anfragen in den Timeout laufen, und die beiden Worker-Einstiegspunkte lesen fremde Nachrichten ungeprüft — was seit der Härtung der Ausfallpfade nicht mehr nur den Handler kostet, sondern die ganze Umgebung."
+    "executiveSummary": "Die beiden schwersten Befunde des Audits sind geschlossen: LocalShadowObjectEnv.destroy() lässt die geteilte Default-Registry stehen, und RemoteWorkerEnv meldet Worker-Ausfälle, statt Aufrufer in Fünf- und Sechzig-Sekunden-Timeouts laufen zu lassen. Die halben Teardowns, die danach übrig blieben — der Observer, die pendenden Anfragen, die ungeprüften Worker-Eingänge —, sind im Lauf vom 2026-08-19 nachgezogen worden. Was in diesem Bereich stehen bleibt, hat der Lauf nicht angefasst: der localStorage-Schreibzugriff des Loggers, die 384-Zeilen-Closure im Kernel, die Deprecation-Warnung als Modul-Singleton und der Math.random-Fallback von generateUUID. Dazu neun Nebenbefunde des Laufs selbst, jeder mit Datei und Zeile, keiner über low."
    },
    "harness": {
     "label": "Projekt-Harness",
-    "score": 82.5,
+    "score": 89.5,
     "bySeverity": {
      "critical": 0,
      "high": 0,
-     "medium": 6,
-     "low": 11,
+     "medium": 4,
+     "low": 5,
      "info": 1
     },
     "byCategory": {
-     "Dependencies": 4,
-     "Developer Experience": 4,
      "Testabdeckung & Teststrategie": 4,
-     "Projektaufbau & Build": 3,
-     "Typsicherheit": 3
+     "Developer Experience": 3,
+     "Dependencies": 1,
+     "Projektaufbau & Build": 1,
+     "Typsicherheit": 1
     },
-    "executiveSummary": "Beide strukturellen Lücken sind zu. strictNullChecks steht auf true, die 60 verdeckten Typfehler sind abgearbeitet, und die Ratsche greift über beide TypeScript-Pakete statt über eines. Die E2E-Suite läuft als eigener CI-Job mit Chromium und Firefox und hängt über workflow_run vor dem npm-Publish. Die Suiten sind gewachsen: 13 vitest-Specs am Source, 12 in echtem Chromium, 10 Playwright-Specs mit 324 Fällen. Offen bleibt, was schon vorher offen war und niemand angefasst hat: Testabdeckung wird in keinem der vier Pakete gemessen, MessageRouter und WorkerRuntime haben weiterhin keine Spec, und die beiden dist-Snapshots, die CLAUDE.md als Verifikationsgrundlage führt, sind veraltet."
+    "executiveSummary": "Beide strukturellen Lücken sind zu. strictNullChecks steht auf true, die 60 verdeckten Typfehler sind abgearbeitet, und die Ratsche greift über beide TypeScript-Pakete statt über eines. Die E2E-Suite läuft als eigener CI-Job mit Chromium und Firefox und hängt über workflow_run vor dem npm-Publish. MessageRouter und WorkerRuntime haben seit 1f0f44d eigene Specs, die beiden veralteten dist-Snapshots existieren nicht mehr, und Katalog wie Typecheck-Umfang sind seit 7e147e4 wieder vollständig. Offen bleibt, was niemand angefasst hat: gemessen wird die Testabdeckung in keinem der vier Pakete, WebKit ist in der Playwright-Konfiguration weiterhin auskommentiert, und die publizierte Referenzanwendung trägt genau eine Spec-Datei."
    }
   }
  },
  "acknowledged": [],
  "findings": [
-  {
-   "id": "ROUTER-001",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Bugs & Korrektheitsrisiken",
-   "effort": "S",
-   "status": "unchanged",
-   "title": "MessageRouter meldet einen fehlgeschlagenen Change Trail zusätzlich als Erfolg",
-   "location": "packages/shadow-objects/src/worker/MessageRouter.ts:84-97",
-   "description": "Im catch-Zweig wird ein AppliedChangeTrail mit error gepostet — anschließend läuft die Funktion weiter und postet bei gesetzter serial ein zweites AppliedChangeTrail ohne error. Nachgewiesen: ein Trail mit unbekannter parentUuid erzeugt exakt zwei Bestätigungen, [{serial:42, error:...}, {serial:42}]. Welche davon der Guard in waitForMessageOfType zuerst sieht, entscheidet, ob syncWait() ablehnt oder fälschlich auflöst.",
-   "recommendation": "Nach dem Posten der Fehlerbestätigung aus der Methode zurückkehren (return im catch), damit pro Change Trail genau eine Bestätigung entsteht."
-  },
-  {
-   "id": "ENT-PROP-001",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Bugs & Korrektheitsrisiken",
-   "effort": "S",
-   "status": "new",
-   "title": "Entity.setProperty() invalidiert den truthyProps-Cache nicht",
-   "location": "packages/shadow-objects/src/in-the-dark/Entity.ts:307-309, 323-344",
-   "description": "setProperties() ruft clearTruthyPropsCache(), setProperty() nicht. Der Cache steuert über Kernel.updateShadowObjects() das Prop-basierte Token-Routing (die 'token@prop'-Routen der Registry). Nach einem direkten setProperty() liefert truthyProps() weiterhin den alten Satz, und die Registry wählt die Shadow Objects nach einem Zustand aus, den es nicht mehr gibt. Nachgewiesen: nach setProperties([['a',1]]) und anschließendem setProperty('b',1) meldet truthyProps() weiterhin nur ['a'].",
-   "recommendation": "clearTruthyPropsCache() in setProperty() aufrufen und setProperties() über setProperty() laufen lassen, statt die Invalidierung an zwei Stellen zu pflegen. Ein Regressionstest, der beide Einstiegspunkte gegen dieselbe Erwartung prüft, hält die Symmetrie."
-  },
-  {
-   "id": "ENT-CTX-001",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Bugs & Korrektheitsrisiken",
-   "effort": "S",
-   "status": "new",
-   "title": "Das erste Kind einer Entity erbt den Eltern-Context nicht",
-   "location": "packages/shadow-objects/src/in-the-dark/Entity.ts:176-200",
-   "description": "addChild() hat zwei Zweige. Ist die Kinderliste leer, kehrt die Methode früh zurück — und überspringt dabei die Schleife, die die bereits existierenden Contexts des Kindes neu an den Elternteil bindet. Ein Kind, das seinen Context erzeugt hat, bevor es angehängt wurde, hängt danach als erstes Kind weiterhin am Root-Context statt am Eltern-Context. Nachgewiesen mit Kontrollversuch: als erstes Kind liest der Consumer undefined, als zweites Kind (identischer Aufbau, ein Geschwisterkind vorher) korrekt 'from-parent'. Über Kernel.setParent() ist der Defekt verdeckt, weil dort anschließend reSubscribeToParentContexts() läuft; über die Entity-API direkt schlägt er durch.",
-   "recommendation": "Den frühen Rückgabepfad auflösen: Duplikat-Prüfung, Einfügen, resortChildren() und die Context-Neubindung für alle Fälle durchlaufen lassen. Bei genau einem Kind ist das Sortieren ohnehin ein No-op — die Sonderbehandlung spart nichts und kostet eine Verhaltensabweichung."
-  },
-  {
-   "id": "PROP-FALSY-001",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Bugs & Korrektheitsrisiken",
-   "effort": "S",
-   "status": "new",
-   "title": "<shae-prop> verwirft falsy, aber gültige Werte",
-   "location": "packages/shadow-objects/src/elements/ShaePropElement.ts:168",
-   "description": "Der Konvertierungs-Effekt normalisiert mit 'value = value || undefined', bevor der Typ angewandt wird. Über das Attribut ist das harmlos (Attributwerte sind nicht-leere Strings), über die Property-Schnittstelle nicht: el.value = 0 und el.value = false landen beide als undefined in der Entity, statt als 0 und false. Nachgewiesen an einem verbundenen Element. Ein Zähler auf 0 oder ein Flag auf false ist damit nicht ausdrückbar — und undefined bedeutet an dieser Stelle zusätzlich 'Property entfernen', der Wert verschwindet also ganz.",
-   "recommendation": "Nur den leeren String normalisieren, nicht jeden falsy-Wert: 'if (typeof value === \"string\" && value === \"\") value = undefined;'. Die Attribut-Semantik bleibt unverändert, die Property-Schnittstelle wird korrekt."
-  },
-  {
-   "id": "PROP-NAN",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Bugs & Korrektheitsrisiken",
-   "effort": "S",
-   "status": "unchanged",
-   "title": "Typkonvertierung in <shae-prop> wirft und prüft nicht auf NaN",
-   "location": "packages/shadow-objects/src/elements/ShaePropElement.ts:170-310",
-   "description": "Der Konvertierungsblock läuft ungeschützt: 'json' ruft JSON.parse auf einen Attributwert, 'bigint' und die BigInt-Array-Varianten rufen BigInt() — beide werfen bei ungültiger Eingabe, und zwar innerhalb eines signalize-Effekts, wo der Fehler die Reaktivitätskette trifft statt den Aufrufer. Die numerischen Typen werfen zwar nicht, liefern aber stillschweigend NaN an die Entity, wo es als gültiger Wert weiterläuft.",
-   "recommendation": "Den Konvertierungsblock in try/catch legen, im Fehlerfall über den Logger warnen und undefined liefern. Für die numerischen Pfade zusätzlich auf Number.isNaN prüfen — ein Attribut, das keine Zahl ist, sollte eine Warnung erzeugen und nicht NaN durchreichen."
-  },
-  {
-   "id": "ROUTER-002",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Memory Leaks & Ressourcen",
-   "effort": "S",
-   "status": "new",
-   "title": "Destroy im MessageRouter räumt den Kernel nicht ab",
-   "location": "packages/shadow-objects/src/worker/MessageRouter.ts:99-104",
-   "description": "#onDestroy() meldet den Router vom Kernel ab, leert die Modul-Liste und bestätigt mit Destroyed — kernel.destroy() bleibt aus. Alle Entities, alle Shadow Objects und deren Signale und Effekte überleben. Damit läuft kein einziger onDestroy-Callback der Shadow Objects: Ressourcen, die dort freigegeben würden (OffscreenCanvas, WebGL-Kontexte, Timer, Subscriptions), bleiben bis zum terminate() des Workers belegt. Nachgewiesen: nach einer Destroy-Nachricht meldet kernel.hasEntity() für eine zuvor angelegte Entity weiterhin true.",
-   "recommendation": "In #onDestroy() this.kernel.destroy() aufrufen, bevor Destroyed gepostet wird — damit räumt der Worker geordnet auf, statt sich auf terminate() zu verlassen. Der lokale Pfad in LocalShadowObjectEnv.destroy() macht es bereits richtig und ist die Vorlage."
-  },
-  {
-   "id": "FRAME-LOOP-001",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Memory Leaks & Ressourcen",
-   "effort": "S",
-   "status": "new",
-   "title": "FrameLoop fordert weiter Frames an, nachdem der letzte Abonnent gegangen ist",
-   "location": "packages/shadow-objects/src/utils/FrameLoop.ts:38-41",
-   "description": "#onFrame emittiert erst und ruft danach bedingungslos #requestAnimationFrame(). Meldet sich der letzte Abonnent innerhalb des Frames ab — was jedes syncShadowObjects() auslösen kann, das ein <shae-worker> aus dem DOM nimmt —, läuft stop() vor der Neuanforderung: cancelAnimationFrame trifft die bereits gefeuerte ID, und die Zeile danach armiert die Schleife neu. Nachgewiesen mit gepatchtem rAF: nach der Abmeldung im Frame steigt die Zahl der rAF-Anforderungen weiter. Da FrameLoop ein prozessweiter Singleton ist, läuft die Schleife dann für die Lebensdauer der Seite mit null Abonnenten.",
-   "recommendation": "Die Neuanforderung an die Abonnentenzahl binden: in #onFrame nur dann #requestAnimationFrame() aufrufen, wenn getSubscriptionCount(this) > 0 ist. Damit verschwindet auch die Abhängigkeit von der Reihenfolge zwischen cancel und request."
-  },
-  {
-   "id": "CTX-LEAK",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Memory Leaks & Ressourcen",
-   "effort": "S",
-   "status": "carried-over",
-   "title": "Worker-Message-Listener wird mit nicht wieder abmeldbarem bind() registriert",
-   "location": "packages/shadow-objects/src/view/RemoteWorkerEnv.ts:87",
-   "description": "addEventListener('message', this.onMessageFromWorker.bind(this)) erzeugt bei jedem Aufruf eine neue Funktionsreferenz. Es gibt keinen Weg, diesen Listener je wieder zu entfernen; destroy() versucht es auch nicht und verlässt sich darauf, dass terminate() alles mitnimmt. Solange der Worker zwischen Destroy-Nachricht und Terminierung noch sendet, hält der Listener die RemoteWorkerEnv-Instanz samt ihrer Referenzkette am Leben.",
-   "recommendation": "Die gebundene Funktion einmal als Feld anlegen (#onMessage = (event) => …) und in destroy() per removeEventListener wieder abmelden, bevor terminate() gerufen wird."
-  },
-  {
-   "id": "SEC-NS-001",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Sicherheit",
-   "effort": "S",
-   "status": "new",
-   "title": "HTML-Injection über das ns-Attribut in ShaeOffscreenCanvasElement",
-   "location": "packages/shae-offscreen-canvas/src/elements/ShaeOffscreenCanvasElement.js:71",
-   "description": "Der Shadow-Root wird aus einem Template zusammengesetzt: shadow.innerHTML = initialHTML.replaceAll('%NS%', ns ? `ns=\"${ns}\"` : ''). ns stammt ungeprüft aus getAttribute('ns'). Ein Anführungszeichen im Attributwert bricht aus dem Attribut aus und schreibt beliebiges Markup in den Shadow-Root. Direkt ausgenutzt wird das nur von jemandem, der das Markup ohnehin kontrolliert — kritisch wird es, sobald das Attribut aus Anwendungsdaten gebunden wird, wie es jedes Framework-Template tut (React attr-Binding, Vue :ns, Angular [attr.ns]). Dann ist es ein regulärer XSS-Vektor.",
-   "recommendation": "Das Element aufbauen statt zusammenstringen: Template einmal ohne Platzhalter parsen und das ns-Attribut danach per setAttribute setzen. Wo Template-Ersetzung bleiben soll, den Wert vorher escapen und gegen die erlaubte Namespace-Form validieren."
-  },
-  {
-   "id": "WORKER-002",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Sicherheit",
-   "effort": "S",
-   "status": "unchanged",
-   "title": "Ungeschützter localStorage-Zugriff und JSON.parse beim Worker-Start",
-   "location": "packages/shadow-objects/src/view/RemoteWorkerEnv.ts:152-158",
-   "description": "configureConsoleLogger() liest localStorage direkt und schiebt das Ergebnis ohne Absicherung durch JSON.parse. Zwei Fehlerquellen: In einem sandboxed iframe oder bei blockierten Cookies wirft bereits der localStorage-Zugriff einen SecurityError; ein manipulierter oder abgeschnittener Eintrag lässt JSON.parse werfen. Beides passiert synchron in start(), also scheitert die gesamte Worker-Initialisierung an einer reinen Logging-Konfiguration.",
-   "recommendation": "Zugriff und Parsing gemeinsam in try/catch kapseln und im Fehlerfall auf ein leeres Konfigurationsobjekt zurückfallen. Logging-Konfiguration darf den Start nie blockieren."
-  },
   {
    "id": "LOG-STORAGE-001",
    "domain": "code",
@@ -1090,56 +997,8 @@ Harness     0 high,  6 medium, 11 low, 1 info  →  82,5 / 100</div>
    "status": "new",
    "title": "ConsoleLogger schreibt bei jeder Instanziierung in den localStorage",
    "location": "packages/shadow-objects/src/utils/ConsoleLogger.ts:181-192",
-   "description": "Der Konstruktor liest nicht nur Konfiguration, er schreibt sie auch unbedingt zurück (saveConfigValue). Jedes new ConsoleLogger(namespace) — und die Klasse wird in Kernel, ShadowEnv, RemoteWorkerEnv, ShaeWorkerElement und ShaePropElement je Instanz angelegt — setzt damit einen Schlüssel im localStorage der Anwendung. Eine Bibliothek beschreibt so ungefragt den Speicher ihres Consumers, und zwar synchron im Konstruktionspfad. Zusätzlich fehlt hier dieselbe Absicherung wie in WORKER-002: in einem Kontext ohne Storage-Zugriff wirft schon das Anlegen eines Loggers.",
+   "description": "Der Konstruktor liest nicht nur Konfiguration, er schreibt sie auch unbedingt zurück (saveConfigValue). Jedes new ConsoleLogger(namespace) — und die Klasse wird in Kernel, ShadowEnv, RemoteWorkerEnv, ShaeWorkerElement und ShaePropElement je Instanz angelegt — setzt damit einen Schlüssel im localStorage der Anwendung. Eine Bibliothek beschreibt so ungefragt den Speicher ihres Consumers, und zwar synchron im Konstruktionspfad. Der Zugriff selbst ist inzwischen gehärtet und durch ConsoleLogger.storage.spec.ts abgesichert — das unbedingte Zurückschreiben bleibt.",
    "recommendation": "Nur schreiben, wenn kein Wert existiert, oder ausschließlich beim expliziten Setzen über die globalThis.ConsoleLogger-Schnittstelle. Zugriffe in try/catch kapseln. Mittelfristig: die Logger pro Namespace zwischenspeichern, statt sie pro Instanz neu zu bauen."
-  },
-  {
-   "id": "ENV-RACE",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Async & Concurrency",
-   "effort": "M",
-   "status": "carried-over",
-   "title": "envProxy-Setter startet fire-and-forget — Reassign-Race",
-   "location": "packages/shadow-objects/src/view/ShadowEnv.ts:113-138",
-   "description": "Der Setter ruft proxy.start() und setzt im then() proxyReady = true, ohne zu prüfen, ob der Proxy zu diesem Zeitpunkt noch der aktuelle ist. Wird envProxy während des laufenden start() erneut zugewiesen, meldet der alte Proxy die neue Umgebung als bereit — oder der catch-Zweig des alten Proxys setzt proxyReady = false, nachdem der neue bereits erfolgreich gestartet ist. Beide Richtungen führen zu einem ShadowEnv, dessen isReady lügt.",
-   "recommendation": "Die Zuweisung mit einem Generations-Zähler versehen und in then()/catch() prüfen, ob der abgeschlossene Start noch zur aktuellen Generation gehört. Ergebnisse veralteter Starts verwerfen."
-  },
-  {
-   "id": "ENV-ASYMM",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Konsistenz",
-   "effort": "M",
-   "status": "carried-over",
-   "title": "LocalShadowObjectEnv ignoriert waitForConfirmation",
-   "location": "packages/shadow-objects/src/view/LocalShadowObjectEnv.ts:40-50",
-   "description": "Der Parameter heißt dort _waitForConfirmation und wird nicht gelesen: lokal läuft kernel.run() synchron und das Promise ist bereits aufgelöst, wenn der Aufrufer es erhält. Remote dagegen wartet die Methode auf eine Bestätigung des Workers. Dieselbe Schnittstelle verhält sich also je nach Umgebung unterschiedlich — Code, der lokal getestet und remote betrieben wird (oder umgekehrt), trifft auf eine andere Auflösungsreihenfolge, ohne dass die Signatur das andeutet.",
-   "recommendation": "Entweder das Flag lokal respektieren, indem die Auflösung auf einen Microtask verschoben wird, oder die Asymmetrie an der Schnittstelle IShadowObjectEnvProxy und in der Dokumentation ausdrücklich festschreiben. Stillschweigendes Ignorieren ist die einzige Variante, die niemandem hilft."
-  },
-  {
-   "id": "PERF-CLONE",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Performance",
-   "effort": "S",
-   "status": "carried-over",
-   "title": "LocalShadowObjectEnv klont per Default jeden Change Trail strukturell",
-   "location": "packages/shadow-objects/src/view/LocalShadowObjectEnv.ts:22, 41",
-   "description": "disableStructuredClone ist standardmäßig false, also läuft jeder Change Trail auch im lokalen Modus durch cloneChangeTrail() und damit durch structuredClone. Bei hochfrequenten Property-Updates — Animationen, Pointer-Bewegungen — ist das pro Frame eine vollständige Tiefenkopie ohne Thread-Grenze, die sie rechtfertigen würde. Abschaltbar ist es nur über das Attribut no-structured-clone am <shae-worker>.",
-   "recommendation": "Entscheiden und dokumentieren: Bleibt der Klon Default (semantische Gleichheit zu Remote), gehört die Begründung in die Dokumentation und ein Hinweis auf no-structured-clone in den Performance-Abschnitt. Andernfalls den Default umdrehen. Siehe die zugehörige offene Frage."
-  },
-  {
-   "id": "DOM-OBS",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Bugs & Korrektheitsrisiken",
-   "effort": "M",
-   "status": "carried-over",
-   "title": "<shae-prop> bemerkt kein In-Place-Re-Parenting",
-   "location": "packages/shadow-objects/src/elements/ShaePropElement.ts:323-331, 353-355",
-   "description": "Die Host-Entity wird ausschließlich in connectedCallback() über findEntNode() gesucht. Wandert das <shae-prop> danach im DOM zu einem anderen <shae-ent>, ohne dabei getrennt und neu verbunden zu werden — was bei einer Umsortierung per insertBefore innerhalb desselben Elternknotens nicht garantiert ist —, schreibt es seine Property weiterhin in die alte Entity. Im Gegensatz zu ShaeEntElement, das für genau diesen Fall einen MutationObserver hält, gibt es hier keine Beobachtung.",
-   "recommendation": "Denselben Mechanismus wie in ShaeEntElement verwenden: einen MutationObserver auf dem Elternknoten, der bei Strukturänderungen findEntNode() erneut auswertet, oder die Suche in einen Effekt legen, der auf ein Re-Parent-Ereignis der Ent-Elemente hört."
   },
   {
    "id": "KERN-LEN",
@@ -1154,126 +1013,6 @@ Harness     0 high,  6 medium, 11 low, 1 info  →  82,5 / 100</div>
    "recommendation": "Die Closure in eine eigene Klasse überführen (etwa ShadowObjectScope), die Maps und Unsubscribe-Sets als Felder hält und je API-Bereich — Properties, Context, Signale/Effekte, Events — eine Methodengruppe bereitstellt. Der Teardown wird damit zu einer dispose()-Methode statt zu einem 50-Zeilen-Callback."
   },
   {
-   "id": "KERN-BFS-001",
-   "domain": "code",
-   "severity": "low",
-   "category": "Bugs & Korrektheitsrisiken",
-   "effort": "S",
-   "status": "new",
-   "title": "traverseLevelOrderBFS() gibt sein internes Cache-Array heraus",
-   "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:108-139, 836",
-   "description": "Die Methode liefert direkt #allEntities bzw. #allEntitiesReversed zurück. Jede Mutation durch einen Aufrufer trifft den Cache. Kernel.destroy() tut genau das: traverseLevelOrderBFS().reverse() dreht das gecachte Array in place. Nachgewiesen: nach einem reverse() beim Aufrufer liefert der nächste Aufruf die umgekehrte Reihenfolge. Aktuell folgenlos, weil destroy() terminal ist und die Invalidierung ohnehin greift — als öffentliche Methode ist die Aliasing-Falle trotzdem gestellt.",
-   "recommendation": "Eine Kopie zurückgeben (slice()) oder den Rückgabetyp auf readonly Entity[] setzen. In destroy() ohnehin besser traverseLevelOrderBFS(true) verwenden, statt das Ergebnis zu drehen — die umgekehrte Reihenfolge liegt bereits vor."
-  },
-  {
-   "id": "ENV-NS-001",
-   "domain": "code",
-   "severity": "low",
-   "category": "Bugs & Korrektheitsrisiken",
-   "effort": "S",
-   "status": "new",
-   "title": "Der view-Setter löscht die Namespace-Registrierung ohne Eigentumsprüfung",
-   "location": "packages/shadow-objects/src/view/ShadowEnv.ts:83-107",
-   "description": "Beim Wechsel des ComponentContext wird globalThis.__shadowEnvs.delete(ns) unbedingt ausgeführt — auch dann, wenn unter diesem Namespace inzwischen eine andere ShadowEnv registriert ist. Dass dieser Fall vorkommt, weiß der Code selbst: wenige Zeilen tiefer warnt er beim Überschreiben eines belegten Namespace. Räumt die zuerst registrierte Umgebung danach auf, nimmt sie die Registrierung der zweiten mit, und ShadowEnv.get(ns) liefert undefined. Der spiegelbildliche Block in destroy() prüft korrekt auf Identität und ist dadurch bereits unerreichbar.",
-   "recommendation": "Vor dem delete prüfen, ob der Eintrag auf diese Instanz zeigt — dieselbe Bedingung, die destroy() bereits verwendet. Damit wird der Block in destroy() zugleich wieder sinnvoll."
-  },
-  {
-   "id": "TRAVERSE-CYCLE-001",
-   "domain": "code",
-   "severity": "low",
-   "category": "Architektur & Struktur",
-   "effort": "S",
-   "status": "new",
-   "title": "Beide BFS-Traversierungen laufen ohne Zyklusschutz",
-   "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:112-124, packages/shadow-objects/src/view/ComponentContext.ts:517-530",
-   "description": "Beide Traversierungen rekursieren über die Kinderlisten ohne Besuchsmenge. Dass Zyklen als denkbar gelten, zeigt der Code an anderer Stelle selbst: ComponentContext.#removeSubTree() führt seit VIEW-15 ein visited-Set, und ViewComponent.addChild() prüft explizit gegen Vorfahren. Die Schutzmaßnahmen sind also punktuell, nicht durchgängig — ein Zyklus, der auf einem anderen Weg entsteht (etwa über die Entity-API im Kernel, die keine addChild-Prüfung kennt), führt hier zum Stack Overflow.",
-   "recommendation": "Beide Traversierungen mit derselben visited-Menge absichern wie #removeSubTree. Alternativ die Zyklusfreiheit an genau einer Stelle je Seite erzwingen und in den Traversierungen darauf verweisen — aber dann auch für den Entity-Pfad im Kernel."
-  },
-  {
-   "id": "API-FRAMELOOP-001",
-   "domain": "code",
-   "severity": "low",
-   "category": "Öffentliche API",
-   "effort": "S",
-   "status": "new",
-   "title": "FrameLoop wird gebraucht, aber nicht exportiert — und deshalb nachgebaut",
-   "location": "packages/shadow-objects/src/index.ts, packages/shae-offscreen-canvas/src/shared/FrameLoop.js",
-   "description": "utils/FrameLoop.ts trägt die Frame-Synchronisation von <shae-worker>, taucht aber in keinem Export von index.ts auf. shae-offscreen-canvas — die eigene Referenzanwendung — hat daraufhin eine zweite FrameLoop-Klasse geschrieben: 156 Zeilen, eigene FPS-Messung, und mit Symbol.for('onFrame') statt Symbol('onFrame') eine abweichende Ereignis-Identität. Zwei Implementierungen desselben Konzepts unter demselben Namen, die nicht zusammenarbeiten können.",
-   "recommendation": "FrameLoop aus index.ts exportieren und shae-offscreen-canvas darauf umstellen; die FPS-Messung als optionale Erweiterung in die Kern-Implementierung ziehen. Wenn FrameLoop bewusst intern bleiben soll, gehört das in die Dokumentation — dann ist die Zweitimplementierung im Beispielpaket allerdings die falsche Antwort darauf."
-  },
-  {
-   "id": "KERN-GET-001",
-   "domain": "code",
-   "severity": "low",
-   "category": "Konsistenz",
-   "effort": "S",
-   "status": "new",
-   "title": "getEntity() wirft, wird aber wie eine nullable Lookup-Funktion benutzt",
-   "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:93-99, 330",
-   "description": "getEntity() wirft bei unbekannter uuid. dispatchEventsToEntity() schreibt trotzdem 'this.getEntity(uuid)?.dispatchViewEvents(events)' — das Optional Chaining kann nie greifen, und ein Event an eine bereits entfernte Entity wird zur Exception statt zum No-op. changeProperties() daneben ruft getEntity() ohne Absicherung, changeToken() prüft dagegen vorab mit has(). Drei Aufrufer, drei Auffassungen davon, was der Vertrag ist.",
-   "recommendation": "Den Vertrag festlegen und durchziehen: entweder getEntity() wirft und alle Aufrufer prüfen vorher mit hasEntity(), oder es kommt eine zweite Methode findEntity() dazu, die undefined liefert und für Ereignispfade verwendet wird."
-  },
-  {
-   "id": "TYPO-001",
-   "domain": "code",
-   "severity": "low",
-   "category": "Lesbarkeit & Clean Code",
-   "effort": "S",
-   "status": "unchanged",
-   "title": "Tippfehler in Bezeichnern: #reReuestParentRoot, unsubcribe",
-   "location": "packages/shadow-objects/src/elements/ShaeEntElement.ts:83, 86, 297",
-   "description": "Die private Methode heißt #reReuestParentRoot statt #reRequestParentRoot; im selben Effekt steht die Variable unsubcribe. Beides ist funktional folgenlos, macht die Stellen aber unauffindbar für jede Suche nach 'request' oder 'unsubscribe' — und genau diese Suche führt jemand durch, der dem Re-Parenting-Pfad folgt.",
-   "recommendation": "Umbenennen. Beide Bezeichner sind lokal, das Risiko ist null."
-  },
-  {
-   "id": "TRAIL-MUT",
-   "domain": "code",
-   "severity": "low",
-   "category": "Bugs & Korrektheitsrisiken",
-   "effort": "S",
-   "status": "carried-over",
-   "title": "removeTransferables() mutiert den Change Trail des Aufrufers",
-   "location": "packages/shadow-objects/src/view/RemoteWorkerEnv.ts:23-40",
-   "description": "Die Funktion löscht mit 'delete changeItem.transferables' direkt auf den übergebenen Objekten. Der Trail stammt aus ComponentContext.buildChangeTrails() und wird nach applyChangeTrail() noch als AfterSync-Ereignis an die Consumer weitergereicht — die sehen dann einen Trail ohne die Transferables, die tatsächlich Teil der Nachricht waren. Für den lokalen Pfad gilt das nicht, dort bleibt der Trail unangetastet: schon wieder eine Asymmetrie zwischen den beiden Umgebungen.",
-   "recommendation": "Die Transferables einsammeln, ohne die Einträge zu verändern — flache Kopien der betroffenen Change-Items erzeugen und diese versenden. Der Trail, den der Aufrufer weiterreicht, bleibt damit vollständig."
-  },
-  {
-   "id": "NS-NORM",
-   "domain": "code",
-   "severity": "low",
-   "category": "Konsistenz",
-   "effort": "S",
-   "status": "carried-over",
-   "title": "changeTrailSerial wird auch ohne Bestätigungswunsch hochgezählt",
-   "location": "packages/shadow-objects/src/view/RemoteWorkerEnv.ts:103",
-   "description": "Der Zähler wird bei jedem applyChangeTrail() inkrementiert, die serial aber nur bei waitForConfirmation in die Nachricht geschrieben. Die Seriennummern, die tatsächlich über die Leitung gehen, haben dadurch Lücken. Da der Worker nur auf Gleichheit prüft, ist das heute folgenlos — für jede spätere Diagnose (Lücken erkennen, Nachrichten zuordnen) ist eine Sequenz mit unsichtbaren Sprüngen aber wertlos.",
-   "recommendation": "Nur inkrementieren, wenn die serial auch gesendet wird — oder den Zähler bewusst als reinen Instanz-Zähler dokumentieren und die gesendete serial davon trennen."
-  },
-  {
-   "id": "ENT-SORT",
-   "domain": "code",
-   "severity": "low",
-   "category": "Performance",
-   "effort": "S",
-   "status": "carried-over",
-   "title": "Entity.addChild sortiert die Kinderliste bei jedem Einfügen neu",
-   "location": "packages/shadow-objects/src/in-the-dark/Entity.ts:192, 202-204",
-   "description": "Jedes addChild() ruft resortChildren(), also einen vollständigen Array.sort. Beim Aufbau eines Teilbaums mit n Kindern ergibt das n Sortierläufe statt eines — O(n² log n) statt O(n log n). Bei den üblichen Kinderzahlen unauffällig, beim Aufbau großer Bäume aus einem einzelnen Change Trail messbar.",
-   "recommendation": "Die Liste als dirty markieren und einmal am Ende des Batches sortieren (Kernel.run läuft ohnehin in einem batch()), oder direkt an der richtigen Position einfügen, wie es ComponentContext.#appendToOrdered auf der View-Seite bereits tut."
-  },
-  {
-   "id": "TIMEOUT-CFG",
-   "domain": "code",
-   "severity": "low",
-   "category": "Öffentliche API",
-   "effort": "S",
-   "status": "carried-over",
-   "title": "Worker-Timeouts sind fest verdrahtet",
-   "location": "packages/shadow-objects/src/constants.ts:43-46",
-   "description": "WorkerLoadTimeout (60 s), WorkerConfigureTimeout (60 s), WorkerChangeTrailTimeout (5 s) und WorkerDestroyTimeout (5 s) sind Konstanten ohne Konfigurationsweg. Auf langsamen Geräten oder bei großen Modulen ist besonders der 5-Sekunden-Trail-Timeout knapp; ein Consumer kann ihn nicht anheben, ohne das Paket zu forken.",
-   "recommendation": "Die Werte als Default in ein Optionsobjekt heben, das RemoteWorkerEnv im Konstruktor entgegennimmt, und über <shae-worker> als Attribute zugänglich machen. Die Konstanten bleiben die Defaults."
-  },
-  {
    "id": "REG-DEPR-001",
    "domain": "code",
    "severity": "low",
@@ -1285,30 +1024,6 @@ Harness     0 high,  6 medium, 11 low, 1 info  →  82,5 / 100</div>
    "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:61-65",
    "description": "Fünf modulglobale Flags sorgen dafür, dass jede Deprecation-Warnung prozessweit genau einmal erscheint. In Tests, die mehrere Kernel-Instanzen anlegen, ist die Warnung dadurch reihenfolgeabhängig: der erste Test sieht sie, alle folgenden nicht. Zum Prüfen des Warnverhaltens muss der Modulzustand zurückgesetzt werden, wofür es keinen Weg gibt. Bewertung gegenüber dem Mai-Lauf gesenkt: die Warnungen sind Übergangs-Code mit absehbarer Lebensdauer, der Schaden bleibt auf die Testbarkeit beschränkt.",
    "recommendation": "Die Flags in ein Set am Kernel oder an der Registry halten. Alternativ eine kleine, exportierte resetDeprecationWarnings()-Funktion für Tests bereitstellen."
-  },
-  {
-   "id": "CHANGES-FE",
-   "domain": "code",
-   "severity": "low",
-   "category": "Lesbarkeit & Clean Code",
-   "effort": "S",
-   "status": "carried-over",
-   "title": "ComponentChanges: die Trail-dann-Clear-Invariante steht nirgends",
-   "location": "packages/shadow-objects/src/view/ComponentChanges.ts",
-   "description": "Die Klasse trägt mit #token/#nextToken, #parentUuid/#nextParentUuid, #order/#nextOrder und #properties/#nextProperties vier Paare aus geschriebenem und ausstehendem Zustand. Die make*-Methoden haben Seiteneffekte — sie schreiben den ausstehenden Wert in den bestätigten —, und clear() muss anschließend laufen. Diese Reihenfolge ist Voraussetzung für die Korrektheit der Klasse, steht aber nur implizit in buildChangeTrails(). Einzelne Methoden sind inzwischen gut kommentiert, die übergreifende Invariante nicht.",
-   "recommendation": "Einen Klassen-Kommentar ergänzen, der das Zustandspaar-Modell und die Reihenfolge buildChangeTrail → clear benennt, und in den make*-Methoden kenntlich machen, dass sie den bestätigten Zustand fortschreiben."
-  },
-  {
-   "id": "GLOBAL-SINGLETON",
-   "domain": "code",
-   "severity": "info",
-   "category": "Architektur & Struktur",
-   "effort": "M",
-   "status": "carried-over",
-   "title": "Singletons über globalThis.__shadowEntsContexts und __shadowEnvs",
-   "location": "packages/shadow-objects/src/view/ComponentContext.ts:16-19, 53-58; packages/shadow-objects/src/view/ShadowEnv.ts:10-13",
-   "description": "Beide Registries hängen an globalThis. Das ist bewusst — Custom Elements aus unterschiedlichen Modul-Instanzen sollen denselben Namespace finden — hat aber Folgen, die nirgends beschrieben sind: bei SSR wandert Zustand zwischen Requests, in Multi-Tenant-Umgebungen teilen sich Mandanten Namespaces, und der ComponentContext-Konstruktor gibt bei belegtem Namespace eine fremde Instanz zurück, was jeden Aufrufer von new überrascht.",
-   "recommendation": "Als Architekturentscheidung dokumentieren, mit den Konsequenzen für SSR und Multi-Tenancy. Das Rückgabeverhalten des Konstruktors gehört in den TSDoc der Klasse — ComponentContext.get() ist der Weg, den Consumer nehmen sollen."
   },
   {
    "id": "UUID-RND",
@@ -1335,18 +1050,6 @@ Harness     0 high,  6 medium, 11 low, 1 info  →  82,5 / 100</div>
    "recommendation": "Die globalThis-Zugriffe über eine deklarierte Schnittstelle führen (declare global mit typisierten Feldern für ConsoleLoggerStorage) und sharedConfig als Record mit festem Schlüsseltyp typisieren. Wo eine Unterdrückung bleiben muss: @ts-expect-error mit Begründung — das meldet sich, sobald der Fehler verschwindet."
   },
   {
-   "id": "TEST-001",
-   "domain": "harness",
-   "severity": "medium",
-   "category": "Testabdeckung & Teststrategie",
-   "effort": "M",
-   "status": "unchanged",
-   "title": "Die Worker-Brücke hat keine Unit-Tests",
-   "location": "packages/shadow-objects/src/{worker/MessageRouter.ts, worker/WorkerRuntime.ts, view/RemoteWorkerEnv.ts}",
-   "description": "Keine der drei Dateien hat eine Spec. Ihre einzige Absicherung ist die E2E-Suite — die laut CI-001 nicht in CI läuft. Dabei sind sie gut testbar: MessageRouter nimmt postMessage als Konstruktor-Option entgegen, RemoteWorkerEnv braucht lediglich ein Worker-Double mit addEventListener und postMessage. Dass es geht, zeigt dieser Audit selbst: ROUTER-001 und ROUTER-002 wurden in wenigen Zeilen Testcode nachgewiesen.",
-   "recommendation": "Specs für MessageRouter (Routing aller vier Nachrichtentypen, Fehlerpfad, Destroy) und für RemoteWorkerEnv gegen ein Worker-Double (Start-Timeout, Bestätigungs-Matching per serial, Verhalten nach destroy). Beides läuft unter happy-dom ohne echten Worker."
-  },
-  {
    "id": "TEST-COV-001",
    "domain": "harness",
    "severity": "medium",
@@ -1365,22 +1068,10 @@ Harness     0 high,  6 medium, 11 low, 1 info  →  82,5 / 100</div>
    "category": "Testabdeckung & Teststrategie",
    "effort": "M",
    "status": "new",
-   "title": "shae-offscreen-canvas hat genau einen Test — und der ist nicht eingecheckt",
-   "location": "packages/shae-offscreen-canvas/, packages/shae-offscreen-canvas/vitest.config.ts:6",
-   "description": "Das Paket bringt ein Custom Element, sieben Shadow Objects, einen eigenen FrameLoop und die Three-Renderer mit. Sein pnpm test findet genau eine Testdatei: src/shared/utils.specs.js — und die ist in git nicht erfasst (weder getrackt noch von .gitignore abgedeckt). Auf einem frischen Checkout läuft die Suite also gegen null Dateien. Hinzu kommt die abweichende Namenskonvention: die include-Zeile erlaubt spec, specs und test, während die übrigen Pakete allein bei .spec./.test. bleiben. Das Paket ist die publizierte Referenzanwendung des Frameworks.",
-   "recommendation": "Erst die Datei einchecken oder verwerfen — der aktuelle Zustand ist in beide Richtungen falsch. Danach die Namenskonvention auf .spec./.test. vereinheitlichen und Specs für ShaeOffscreenCanvasElement (Attribut-Handling, Canvas-Transfer) sowie den FrameLoop ergänzen."
-  },
-  {
-   "id": "DEP-EVENTIZE-001",
-   "domain": "harness",
-   "severity": "medium",
-   "category": "Dependencies",
-   "effort": "M",
-   "status": "new",
-   "title": "@spearwolf/eventize hängt eine volle Major-Version zurück",
-   "location": "pnpm-workspace.yaml:8",
-   "description": "Der Katalog pinnt ^5.0.0, aktuell ist 6.0.0. Es ist eine Laufzeit-Dependency, sie geht mit dem Paket an alle Consumer, und sie stammt vom selben Autor wie das Framework — die Migration liegt also im eigenen Einflussbereich. Alle vier Pakete des Monorepos hängen daran. Je länger die Lücke bleibt, desto wahrscheinlicher trifft ein Consumer auf zwei eventize-Versionen im selben Baum; da die Bibliothek Symbole und Modul-Singletons für Identität nutzt, bricht das Ereignisverhalten dann lautlos.",
-   "recommendation": "Auf 6.0.0 migrieren und dabei den Punkt aus dem Optimierungspotenzial gleich mitnehmen: eventize und signalize als peerDependencies deklarieren, damit Consumer die Auflösung kontrollieren."
+   "title": "shae-offscreen-canvas hat genau eine Spec-Datei",
+   "location": "packages/shae-offscreen-canvas/, packages/shae-offscreen-canvas/vitest.config.ts:7",
+   "description": "Das Paket bringt ein Custom Element, sieben Shadow Objects und die Three-Renderer mit. Sein pnpm test findet eine einzige Spec-Datei: src/elements/ShaeOffscreenCanvasElement.spec.js mit 7 Fällen, angelegt mit ab626ae. Die zuvor einzige Datei src/shared/utils.specs.js war getrackt und ist mit dc29a1b gelöscht worden, als die zweite FrameLoop-Implementierung des Pakets wegfiel; die abweichende Namensform specs ist mit ce24b9d aus dem include-Muster verschwunden. Was bleibt, ist die Deckung selbst: das Paket ist die publizierte Referenzanwendung des Frameworks und hat für Canvas-Transfer, Attribut-Handling und die Shadow Objects keine Spec.",
+   "recommendation": "Specs für ShaeOffscreenCanvasElement über das Namespace-Verhalten hinaus — Canvas-Transfer, Attribut-Handling — und für die Shadow Objects des Pakets ergänzen."
   },
   {
    "id": "CI-PR-001",
@@ -1395,54 +1086,6 @@ Harness     0 high,  6 medium, 11 low, 1 info  →  82,5 / 100</div>
    "recommendation": "pull_request als zweiten Trigger ergänzen (Branch main) und Branch-Protection auf den ci-Job setzen. Die paths-ignore-Regel für Pull Requests weglassen, damit Dokumentationsänderungen mindestens den Lint-Schritt durchlaufen."
   },
   {
-   "id": "SIDE-EFFECTS-001",
-   "domain": "harness",
-   "severity": "low",
-   "category": "Projektaufbau & Build",
-   "effort": "S",
-   "status": "carried-over",
-   "title": "sideEffects im Quell-package.json listet tote build/src/-Pfade",
-   "location": "packages/shadow-objects/package.json:41-58",
-   "description": "Acht der achtzehn Einträge zeigen auf build/src/… — ein Verzeichnis, das die aktuelle Pipeline nicht mehr erzeugt. Das ausgelieferte dist/package.json ist davon nicht betroffen: package.override.json ersetzt die Liste vollständig durch korrekte src/-Pfade, verifiziert gegen den gebauten Stand. Der Schaden ist damit auf das Quellmanifest begrenzt — dort steht allerdings eine Liste, die niemand mehr lesen kann, ohne sie mit der Override-Datei abzugleichen.",
-   "recommendation": "Die acht build/src/-Einträge streichen. Dass die Liste dreifach existiert (Quelle, Override, Snapshot), sollte im Build-Kommentar von build.mjs stehen — der erklärt aktuell nur, warum der Bundle-Einstieg der transpilierte ist."
-  },
-  {
-   "id": "DEPS-001",
-   "domain": "harness",
-   "severity": "low",
-   "category": "Dependencies",
-   "effort": "S",
-   "status": "unchanged",
-   "title": "Breiter Versionsdrift im DevDependency-Bereich",
-   "location": "pnpm-workspace.yaml (catalog:)",
-   "description": "pnpm outdated -r meldet sechzehn Einträge. Darunter drei Major-Sprünge: vite 6.2 → 8.2 (zwei Majors, betrifft Demo und E2E-Server), typescript 6.0 → 7.0, sinon 19 → 22 samt @types/sinon 17 → 22. Dazu jsdom 29 → 30, playwright 1.59 → 1.62, biome 2.4 → 2.5, turbo 2.9 → 2.10, vitest 4.1.5 → 4.1.10, happy-dom, @types/node 24 → 26.",
-   "recommendation": "Patch- und Minor-Sprünge in einem Zug aktualisieren, danach die Majors einzeln: vite zuerst (isoliert auf Demo und E2E), dann sinon samt Typen, typescript zuletzt. Der Katalog macht das zu einer Datei pro Schritt."
-  },
-  {
-   "id": "DEP-UNUSED-001",
-   "domain": "harness",
-   "severity": "low",
-   "category": "Dependencies",
-   "effort": "S",
-   "status": "new",
-   "title": "Ungenutzte Einträge in devDependencies und Katalog",
-   "location": "package.json:41, pnpm-workspace.yaml:31",
-   "description": "jsdom steht in den Root-devDependencies und im Katalog, wird aber von keinem Paket referenziert — alle vier vitest-Konfigurationen verwenden happy-dom. @types/react steht im Katalog und wird von keinem package.json verwendet; im Repo gibt es keine einzige React-Datei. jsdom zieht bei jedem Install einen erheblichen Abhängigkeitsbaum, der zu nichts führt.",
-   "recommendation": "jsdom aus den Root-devDependencies und dem Katalog entfernen, @types/react aus dem Katalog. Falls jsdom als Reserve für ein Szenario gedacht ist, das happy-dom nicht abdeckt, gehört ein Kommentar an den Katalog-Eintrag."
-  },
-  {
-   "id": "DEP-CATALOG-001",
-   "domain": "harness",
-   "severity": "low",
-   "category": "Dependencies",
-   "effort": "S",
-   "status": "new",
-   "title": "Zwei Dependencies umgehen den Katalog",
-   "location": "packages/shadow-objects-testing/package.json:23, packages/shae-offscreen-canvas/package.json:41, 44",
-   "description": "AGENTS.md und CLAUDE.md führen den Katalog als verbindliche einzige Quelle für Versionen: 'never write a plain version range in a per-package package.json'. Zwei Einträge tun genau das — @esm-bundle/chai mit '4.3.4-fix.0' in zwei Paketen und lil-gui mit '^0.21.0'. Bei @esm-bundle/chai steht die Version dadurch an zwei Stellen und kann auseinanderlaufen.",
-   "recommendation": "Beide in den Katalog aufnehmen und in den Paketen auf 'catalog:' umstellen. Wenn die exakte Version von @esm-bundle/chai bewusst gepinnt bleiben soll, gehört auch dieser Pin in den Katalog — dort kann er stehen, ohne die Regel zu brechen."
-  },
-  {
    "id": "TEST-WEBKIT-001",
    "domain": "harness",
    "severity": "low",
@@ -1453,30 +1096,6 @@ Harness     0 high,  6 medium, 11 low, 1 info  →  82,5 / 100</div>
    "location": "packages/shadow-objects-e2e/playwright.config.ts:36-38",
    "description": "Nur Chromium und Firefox sind aktiv, das webkit-Projekt steht auskommentiert daneben. Das Framework steht mit beiden Beinen in Bereichen, in denen WebKit historisch abweicht: Custom-Elements-Upgrade-Zeitpunkte, Shadow-DOM-Ereignisausbreitung über composed-Grenzen, OffscreenCanvas-Unterstützung und Worker-Modultypen. Genau diese Punkte prüfen die E2E-Specs — für zwei von drei Engine-Familien.",
    "recommendation": "Das webkit-Projekt aktivieren und playwright install um webkit ergänzen. Scheitern Specs dort, sind es Befunde, keine Konfigurationsprobleme — dann die betroffenen Fälle mit test.fixme markieren und als eigene Punkte führen, statt die Engine ganz auszublenden."
-  },
-  {
-   "id": "SNAPSHOT-001",
-   "domain": "harness",
-   "severity": "low",
-   "category": "Projektaufbau & Build",
-   "effort": "S",
-   "status": "new",
-   "title": "Die dist-Snapshots liegen hinter dem gebauten Stand",
-   "location": "docs/superpowers/specs/dist-package.json.snapshot, docs/superpowers/specs/dist-snapshot.txt",
-   "description": "CLAUDE.md führt beide Dateien als Verifikationsgrundlage für die als öffentlichen Vertrag geltende dist-Struktur. Der Abgleich gegen einen frischen Build zeigt drei Abweichungen: version 0.30.2 statt 0.33.0, @spearwolf/signalize ^0.29.0 statt ^0.30.0, und die Dateiliste führt ein tsconfig.lib.tsbuildinfo, das nicht mehr erzeugt wird. Die Struktur selbst stimmt — exports, main, types und sideEffects sind identisch. Ein Snapshot, der bei jedem Vergleich drei erwartete Abweichungen produziert, wird beim vierten nicht mehr genau gelesen.",
-   "recommendation": "Beide Snapshots neu erzeugen. Die Versionszeilen aus dem Vergleich herausnehmen (Snapshot ohne version-Feld, oder ein Skript, das es vor dem Diff normalisiert), damit künftig jede Abweichung eine echte ist."
-  },
-  {
-   "id": "CHANGELOG-001",
-   "domain": "harness",
-   "severity": "low",
-   "category": "Developer Experience",
-   "effort": "S",
-   "status": "new",
-   "title": "Der Unreleased-Abschnitt hat sich auf rund 20 Einträge aufgestaut",
-   "location": "packages/shadow-objects/CHANGELOG.md:10-30",
-   "description": "Unter [Unreleased] stehen etwa zwanzig Einträge, darunter zwei als Breaking gekennzeichnete und ein gutes Dutzend Bugfixes mit eigenen Kennungen (VIEW-23 bis VIEW-26, KERN-8, LOW-4). Die Einträge sind ungewöhnlich sorgfältig geschrieben — jeder benennt Ursache und Wirkung. Genau deshalb fällt auf, dass sie niemanden erreichen: die letzte veröffentlichte Version ist 0.33.0, und die Arbeit von Monaten liegt unveröffentlicht im Repo. Nach außen sieht das Projekt seit Monaten unverändert aus.",
-   "recommendation": "Eine Version schneiden. Angesichts der beiden Breaking-Einträge ist 0.34.0 die naheliegende Nummer. Die Veröffentlichung läuft automatisch, sobald die Version im Manifest steigt und die CI grün ist — vorher allerdings CI-001 lösen, sonst geht eine Version ohne E2E-Prüfung hinaus."
   },
   {
    "id": "DOC-TERM-001",
@@ -1503,18 +1122,6 @@ Harness     0 high,  6 medium, 11 low, 1 info  →  82,5 / 100</div>
    "recommendation": "Zeile entfernen oder durch einen ConsoleLogger-Aufruf ersetzen, der der üblichen enable-Konfiguration folgt."
   },
   {
-   "id": "TYPE-BOXED-001",
-   "domain": "harness",
-   "severity": "low",
-   "category": "Typsicherheit",
-   "effort": "S",
-   "status": "new",
-   "title": "Boxed String statt string in upgradeEntities()",
-   "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:158",
-   "description": "'new Map<String, Set<ShadowObjectConstructor>>()' verwendet den Wrapper-Typ String statt des primitiven string. Der Code funktioniert, weil die Map zur Laufzeit ohnehin primitive Schlüssel bekommt — aber der deklarierte Typ ist falsch, und jede Zuweisung an eine korrekt typisierte Map<string, …> würde einen Fehler erzeugen. Biome und tsc melden es in dieser Konfiguration nicht.",
-   "recommendation": "Auf 'string' ändern. Eine biome-Regel für Wrapper-Typen (noBannedTypes o. ä.) aktivieren, damit der Fall nicht wiederkehrt."
-  },
-  {
    "id": "VITEST-SETUP",
    "domain": "harness",
    "severity": "info",
@@ -1527,88 +1134,136 @@ Harness     0 high,  6 medium, 11 low, 1 info  →  82,5 / 100</div>
    "recommendation": "Keine Maßnahme. Die mocha-Aliase können entfallen, sobald die migrierten Specs auf die vitest-Namen umgestellt sind."
   },
   {
-   "id": "ROUTER-003",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Bugs & Korrektheitsrisiken",
-   "effort": "S",
-   "status": "new",
-   "title": "MessageRouter und WorkerRuntime dereferenzieren event.data ungeprüft",
-   "location": "packages/shadow-objects/src/worker/MessageRouter.ts:42, 56; packages/shadow-objects/src/worker/WorkerRuntime.ts:9, 13",
-   "description": "Beide Einstiegspunkte lesen event.data ohne Prüfung. Weil das Feld den Typ any trägt, sieht auch strictNullChecks das nicht. Ein postMessage(null) aus fremdem Code reißt den Worker mit einem ungefangenen TypeError auf — und seit RemoteWorkerEnv einen error-Hörer führt, eskaliert das zu einem WorkerFailedError und zerlegt die gesamte Umgebung, statt eine unbrauchbare Nachricht zu verwerfen. Der Blast Radius ist damit größer als vor der Härtung der Ausfallpfade.",
-   "recommendation": "Am Anfang beider Handler prüfen, ob event.data ein Objekt mit bekanntem type ist, und andernfalls verwerfen — mit einer Debug-Meldung, nicht mit einem Wurf. Der Guard, den #configure für die importModule-URL bereits führt, ist das Muster im Haus."
-  },
-  {
-   "id": "ELEM-OBS-002",
-   "domain": "code",
-   "severity": "medium",
-   "category": "Bugs & Korrektheitsrisiken",
-   "effort": "S",
-   "status": "new",
-   "title": "Der MutationObserver von <shae-ent> zerstört sich beim Umsortieren selbst",
-   "location": "packages/shadow-objects/src/elements/ShaeEntElement.ts:245-259",
-   "description": "Wird ein <shae-ent> innerhalb desselben Elternknotens umsortiert, feuert der Observer und trennt sich in :251 selbst — angelegt wird er ausschließlich in connectedCallback(). Das Element bleibt für den Rest seines verbundenen Lebens unbeobachtet; ein späteres Re-Parenting im DOM erreicht die Entity-Seite nicht mehr. In echtem Chromium verifiziert.",
-   "recommendation": "Den Observer nach dem Verarbeiten der Records neu anlegen, statt ihn terminal zu behandeln — oder gar nicht erst trennen, solange der Elternknoten derselbe geblieben ist. Ein Regressionsfall in packages/shadow-objects-testing/ deckt die Umsortierung innerhalb desselben Elternknotens ab."
-  },
-  {
-   "id": "ELEM-HOST-001",
+   "id": "URL-LOC-001",
    "domain": "code",
    "severity": "low",
    "category": "Bugs & Korrektheitsrisiken",
    "effort": "S",
    "status": "new",
-   "title": "findShadowRootHost() lässt einen veralteten Host stehen",
-   "location": "packages/shadow-objects/src/elements/ShaeEntElement.ts:188-205",
-   "description": "Die Methode trägt dasselbe Cast-Muster wie die benachbarte Elternknoten-Suche (current.parentNode as ShadowRoot, root.host as HTMLElement), wirft aber nicht und fiel deshalb aus der Nullreferenz-Prüfung heraus. An einem abgehängten Element läuft die Neuberechnung ins Leere, und #shadowRootHost behält seinen alten Wert, obwohl #shadowRootHostNeedsUpdate gesetzt war.",
-   "recommendation": "Die Suche denselben Weg gehen lassen wie getParentNodeForObserver(): über getRootNode(), mit undefined als möglichem Ergebnis — und #shadowRootHost auch dann überschreiben, wenn nichts gefunden wurde."
+   "title": "toUrlString greift ungeprüft auf globalThis.location zu",
+   "location": "packages/shadow-objects/src/utils/toUrlString.ts:3",
+   "description": "new URL(url, globalThis.location.href) liest location ohne Prüfung. Die drei Aufrufer — worker/MessageRouter.ts:69, view/LocalShadowObjectEnv.ts:64 und view/RemoteWorkerEnv.ts:255 — laufen alle in einem Fenster oder in einem Worker, wo location existiert; ein blanker Node-Kontext ohne DOM bekommt einen TypeError. Aufgefallen im Remediation-Lauf vom 2026-08-19 und dort gegen den Auditstand als vorbestehend nachgewiesen.",
+   "recommendation": "Entweder einen Guard, der ohne location auf die nackte URL zurückfällt, oder die Umgebungsannahme an der Funktion selbst festschreiben. Der Lauf hat keinen der beiden Wege genommen: kein Paket fasste die URL-Auflösung an, und ein Guard ohne einen Fall, der ihn fordert, wäre eine Änderung ins Blaue."
   },
   {
-   "id": "RWE-DESTROY-002",
+   "id": "MSG-GUARD-001",
+   "domain": "code",
+   "severity": "low",
+   "category": "Bugs & Korrektheitsrisiken",
+   "effort": "S",
+   "status": "new",
+   "title": "waitForMessageOfType liest event.data.type ungeprüft",
+   "location": "packages/shadow-objects/src/utils/waitForMessageOfType.ts:46",
+   "description": "Der Hörer dereferenziert event.data.type, ohne event.data zu prüfen. Es ist die View-Seite desselben Musters, das auf der Worker-Seite mit b045915 geschlossen wurde: ein self.postMessage(null) aus einem Shadow-Objects-Modul im Worker wirft hier einen TypeError, solange eine Anfrage unterwegs ist. RemoteWorkerEnv.onMessageFromWorker ist mit seinem event.data?.type dagegen gefeit, dieser Hörer nicht. Auslösen kann es allein handgeschriebener Worker-Code; im Repo gibt es dafür keinen Aufrufer. Vorbestehend, im Lauf vom 2026-08-19 nachgewiesen.",
+   "recommendation": "Dieselbe Eingangsprüfung wie auf der Worker-Seite: eine Nachricht, die kein lesbares type trägt, verwerfen statt sie zu dereferenzieren."
+  },
+  {
+   "id": "KERN-PARENT-001",
    "domain": "code",
    "severity": "low",
    "category": "Async & Concurrency",
-   "effort": "S",
+   "effort": "M",
    "status": "new",
-   "title": "destroy() bricht die pendenden Worker-Anfragen nicht ab",
-   "location": "packages/shadow-objects/src/view/RemoteWorkerEnv.ts:266-279",
-   "description": "#workerFailure.abort() steht ausschließlich im Ausfallpfad (handleWorkerFailure, :305); ein regulärer destroy() rührt den Controller nicht an. Ein applyChangeTrail, das beim Teardown schon unterwegs ist, wird deshalb nicht abgewickelt, sondern läuft in den vollen WorkerChangeTrailTimeout von fünf Sekunden. Über ShadowEnv fängt ShadowEnvDestroyedError den Fall ab; wer den Proxy direkt hält, wartet.",
-   "recommendation": "Den Controller in destroy() mit einem eigenen Grund abbrechen — WorkerDestroyedError statt WorkerFailedError, damit die beiden Ablehnungsgründe unterscheidbar bleiben. Der Destroyed-Wartelauf ist davon nicht betroffen, er bekommt das Signal ohnehin nicht übergeben. Regressionsfall: applyChangeTrail starten, destroy() aufrufen, auf sofortige Ablehnung prüfen."
+   "title": "onParentChanged wird einen Microtask später zugestellt und fällt hinter den Teardown",
+   "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:354-356",
+   "description": "setParent() stellt onParentChanged per queueMicrotask zu. Ein Handler, der von dort aus dispatchMessageToView() ruft, reiht seine Nachricht einen zweiten Microtask später ein und fällt damit hinter das Abhängen der Proxy-Callbacks, das mit ff55553 auf genau eine Ebene ausgelegt worden ist. Nirgends zugesagt, aber auch nicht hypothetisch; docs/api-reference.md:1352 beschreibt die Grenze bisher nur für den Worker-Teardown. Vorbestehend.",
+   "recommendation": "Entweder die Zustellzeit des Ereignisses ändern — eine Verhaltensänderung an einem öffentlichen Lebenszyklus-Ereignis mit eigener Changelog-Pflicht — oder die Grenze in der Dokumentation auf diesen Fall ausweiten."
   },
   {
-   "id": "WORKER-003",
+   "id": "ENT-WRITER-001",
    "domain": "code",
    "severity": "low",
-   "category": "Async & Concurrency",
-   "effort": "S",
+   "category": "Bugs & Korrektheitsrisiken",
+   "effort": "M",
    "status": "new",
-   "title": "Ein werfender WorkerFailed-Hörer verhindert das Retain des Ereignisses",
-   "location": "packages/shadow-objects/src/view/RemoteWorkerEnv.ts:318-324",
-   "description": "handleWorkerFailure emittiert WorkerFailed als letzten Schritt. eventize dispatcht erst und legt den Wert danach im Keeper ab — wirft ein Hörer, bricht der Dispatch ab und das Retain unterbleibt. Die Zustandsübergänge sind zu diesem Zeitpunkt alle abgeschlossen, aber ein Consumer, der sich später anmeldet, bekommt den Ausfall nicht mehr nachgereicht, obwohl das Ereignis als retained dokumentiert ist.",
-   "recommendation": "Den Dispatch gegen werfende Hörer absichern, wie es der onProxyFailed-Aufruf eine Zeile darüber bereits tut, oder das Retain unabhängig vom Dispatch setzen. Ohne Eingriff in eventize ist nur der erste Weg gangbar."
+   "title": "getPropertyWriter() gibt den Schreibkopf heraus und umgeht die Cache-Verwerfung",
+   "location": "packages/shadow-objects/src/in-the-dark/Entity.ts:296-298",
+   "description": "Wer den Schreibkopf einer Property wegspeichert und später ruft, schreibt an setProperty() vorbei und damit an der Verwerfung des truthyProps-Caches, die mit 8ad81f2 dort eingezogen ist; truthyProps() meldet danach wieder einen Satz, den es nicht mehr gibt. Im Repo gibt es keinen Aufrufer außer setProperty() selbst — auslösen kann es nur ein Worker-Modul eines Konsumenten, das sich den Schreibkopf über kernel.getEntity() holt. Vorbestehend.",
+   "recommendation": "Dicht wäre der Weg erst, wenn die Verwerfung am Signal hinge statt am Aufrufer — ein anderer Entwurf mit eigenen Kosten. Solange er nicht gebaut wird, gehört die Einschränkung an die Methode geschrieben."
   },
   {
-   "id": "TYPE-E2E-001",
-   "domain": "harness",
+   "id": "ENT-PARENT-001",
+   "domain": "code",
    "severity": "low",
-   "category": "Typsicherheit",
+   "category": "Bugs & Korrektheitsrisiken",
    "effort": "S",
    "status": "new",
-   "title": "playwright.config.ts liegt außerhalb des Typecheck-Umfangs",
-   "location": "packages/shadow-objects-e2e/tsconfig.json, packages/shadow-objects-e2e/playwright.config.ts",
-   "description": "Die tsconfig des E2E-Pakets führt include: [\"src\", \"tests\"]; die Konfigurationsdatei selbst liegt daneben. Ein Lauf über die Wurzelkonfiguration meldet dort vier TS4111-Fehler — Zugriff auf env.CI über eine Index-Signatur. Kein Kommando des Projekts sieht sie, weder der typecheck-Task des Pakets noch sein Build.",
-   "recommendation": "playwright.config.ts in include aufnehmen und die vier Zugriffe auf die Klammerschreibweise umstellen. Alternativ das Muster ausdrücklich dokumentieren — aber dann sichtbar, nicht dadurch, dass die Datei ungeprüft bleibt."
+   "title": "removeFromParent() prüft das Feld statt den parent-Getter",
+   "location": "packages/shadow-objects/src/in-the-dark/Entity.ts:229",
+   "description": "removeFromParent() prüft if (this.#parent), statt über den parent-Getter aufzulösen — dieselbe Halbkanten-Klasse wie die Sortiertheits-Bedingung daneben. Über die heutigen Pfade unerreichbar, weil Feld und Getter dort nicht auseinanderlaufen. Vorbestehend, aufgefallen im Lauf vom 2026-08-19.",
+   "recommendation": "Über den Getter auflösen, damit eine halbe Kante an derselben Stelle behandelt wird wie überall sonst in der Klasse."
   },
   {
-   "id": "KERN-DOC-001",
+   "id": "KERN-ROOT-001",
+   "domain": "code",
+   "severity": "low",
+   "category": "Bugs & Korrektheitsrisiken",
+   "effort": "M",
+   "status": "new",
+   "title": "Die Buchführung der Wurzel-Entities kennt nicht jeden Weg, der einen Elternteil setzt",
+   "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:176",
+   "description": "#rootEntities wird nur von createEntity(), destroyEntity() und setParent() gepflegt. Eine Entity, die über den entity.parent-Setter angehängt wird, bleibt darin stehen; vor d3c71da stand sie deshalb zweimal in der BFS-Liste, seit der Besuchsmenge einmal — der Eintrag selbst bleibt falsch. Vorbestehend.",
+   "recommendation": "Den Setter denselben Weg nehmen lassen wie setParent(), oder die Buchführung dort pflegen, wo die Elternbeziehung tatsächlich wechselt."
+  },
+  {
+   "id": "KERN-GRAPH-001",
    "domain": "code",
    "severity": "info",
+   "category": "Öffentliche API",
+   "effort": "M",
+   "status": "new",
+   "title": "getEntityGraph() verschweigt die Rückkante eines Rings",
+   "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:195-217",
+   "description": "Die Traversierung terminiert seit d3c71da auch über einem Ring, meldet die verschluckte Kante aber nicht: ein Ring liefert b.children === [], ein Diamant einen kinderlosen Zweig, beides von einem gesunden Baum nicht zu unterscheiden. Die Grenze steht in docs/api-reference.md:2065 und im Changelog ausgeschrieben — sie ist beschrieben, nicht behoben. Kein Defekt, aber der Punkt, an dem das Debug-Werkzeug seinen Benutzer im Stich lässt.",
+   "recommendation": "Ein Knoten, der die verschluckte Kante meldet, wäre eine Erweiterung von EntityGraphNode und damit eine eigene Entwurfsentscheidung."
+  },
+  {
+   "id": "KERN-MARK-001",
+   "domain": "code",
+   "severity": "low",
    "category": "Lesbarkeit & Clean Code",
    "effort": "S",
    "status": "new",
-   "title": "Abgebrochener Kommentar in constructShadowObject",
-   "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:784-786",
-   "description": "Der Kommentarblock endet mitten im Satz: »We want to keep track which shadow-objects are created by which constructors. / This will all«. Der Leser erfährt die Absicht, nicht das Verfahren.",
-   "recommendation": "Den Satz zu Ende schreiben oder den Block auf seinen ersten Satz kürzen."
+   "title": "Backlog-Marken im Quelltext verlieren ihre Auflösung",
+   "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:359, Kernel.spec.ts:1434, 1510, 1544, 1593, 1615, 1657, 1691, Registry.spec.ts:59",
+   "description": "Neun Stellen tragen Marken der Form (KERN-n), die auf Einträge in Backlog.md zeigen. Backlog.md ist ein lebendes Dokument, aus dem erledigte Einträge verschwinden; die Nummer ist damit kein dauerhafter Tracker, und der Kommentar wird unlesbar, sobald der Eintrag geht. Vorbestehend.",
+   "recommendation": "Die Marken durch das ersetzen, was sie meinen: die Regel als Satz, die Begründung daneben. Wo ein Verweis nötig bleibt, auf etwas Dauerhaftes zeigen — einen Abschnitt der Doku, ein Symbol, eine Datei samt Stelle."
+  },
+  {
+   "id": "OC-TEARDOWN-001",
+   "domain": "code",
+   "severity": "low",
+   "category": "Memory Leaks & Ressourcen",
+   "effort": "S",
+   "status": "new",
+   "title": "ShaeOffscreenCanvas hält Canvas und View-Kanal über den Teardown hinaus",
+   "location": "packages/shae-offscreen-canvas/src/shadow-objects/ShaeOffscreenCanvas.js:50-57",
+   "description": "Nach dem Teardown bleiben this.canvas — die vom View übergebene OffscreenCanvas — und this.dispatchMessageToView gesetzt. Ein Aufruf nach dem Abbau liefe in den abgebauten Router, das Canvas hängt bis zur GC an der Instanz. Vorbestehend und ohne Bezug zur Frame-Schleife, deren Abmeldung mit dc29a1b in denselben Block gekommen ist.",
+   "recommendation": "Im onDestroy-Block beide Felder freigeben, wie es der Block für Kontext und Schleife bereits tut."
+  },
+  {
+   "id": "DEP-ROOT-001",
+   "domain": "harness",
+   "severity": "low",
+   "category": "Dependencies",
+   "effort": "S",
+   "status": "new",
+   "title": "sinon und @types/sinon stehen im Wurzelmanifest ohne Benutzer",
+   "location": "package.json:35, 40",
+   "description": "Beide stehen in den devDependencies des Wurzelmanifests, ohne dass eine Datei der Wurzel sie benutzt; packages/shadow-objects-testing führt sinon selbst (package.json:29) und benutzt es in drei Specs. Vorbestehend und von diesem Lauf nachweislich unangetastet — die gleichlautenden Zeilen im Manifest von packages/shae-offscreen-canvas sind mit ce24b9d gefallen, das Wurzelmanifest ist eine eigene Frage an ein anderes Manifest.",
+   "recommendation": "Entscheiden statt aufräumen: ob eine Testbibliothek an der Wurzel stehen soll, damit ein Editor die JS-Specs eines Unterpakets typisieren kann, ist eine Festlegung — danach entweder streichen oder mit einem Satz begründen."
+  },
+  {
+   "id": "TEST-PROP-001",
+   "domain": "harness",
+   "severity": "low",
+   "category": "Testabdeckung & Teststrategie",
+   "effort": "S",
+   "status": "new",
+   "title": "Der JS-Property-Pfad von <shae-prop> ist nur für die werfenden Typen abgedeckt",
+   "location": "packages/shadow-objects-testing/test/prop-element-types.test.js:207-211",
+   "description": "reportCases prüft den Property-Pfad allein für bigint, json und die beiden BigInt-Arrays, für keinen numerischen Typ. Attribut- und Property-Pfad tragen denselben Effekt, das Risiko ist entsprechend klein — die Absicherung ist es auch. Aufgefallen beim Bewachen der numerischen Konverter (05cb1af).",
+   "recommendation": "Je einen numerischen Typ über den Property-Pfad mitprüfen, damit beide Eingänge dieselbe Zusage tragen."
   }
  ]
 }</script>
