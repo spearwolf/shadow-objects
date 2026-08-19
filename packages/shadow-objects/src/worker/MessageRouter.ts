@@ -18,6 +18,16 @@ interface ConfigurePayloadData {
   importModule?: string;
 }
 
+/**
+ * A payload this side can read is an object: every branch below takes a `type` off it and
+ * then reads further fields. `null`, `undefined`, a number or a string come from someone who
+ * does not speak this protocol, and reading through them takes the whole worker down over one
+ * message. Deliberately a plain boolean rather than a type predicate: `event.data` is `any` on
+ * both call sites, and narrowing it would only cost the branches below the payload types they
+ * already have.
+ */
+export const isReadableMessageData = (data: unknown): boolean => typeof data === 'object' && data !== null;
+
 export interface MessageRouterOptions {
   kernel?: Kernel;
   postMessage?: typeof self.postMessage;
@@ -25,6 +35,13 @@ export interface MessageRouterOptions {
 
 export class MessageRouter {
   #importedModules: Set<ShadowObjectsModule> = new Set();
+
+  #isDestroyed = false;
+
+  /** Whether this router has been torn down. Once it is, every message that reaches it is discarded. */
+  get isDestroyed(): boolean {
+    return this.#isDestroyed;
+  }
 
   kernel: Kernel;
 
@@ -39,21 +56,37 @@ export class MessageRouter {
   }
 
   route(event: MessageEvent) {
-    switch (event.data.type) {
+    const data = event.data;
+
+    if (!isReadableMessageData(data)) {
+      console.debug('[MessageRouter] discarding a message it cannot read', data);
+      return;
+    }
+
+    // After the teardown the kernel is empty and nothing of it reaches the view any more, so a
+    // change trail applied here would build entities nobody ever hears about. A second destroy
+    // meets the same barrier: the confirmation belongs to the destroy that was answered, and the
+    // one waiter there is settled on it.
+    if (this.#isDestroyed) {
+      console.debug('[MessageRouter] discarding a message that arrived after the teardown', data.type);
+      return;
+    }
+
+    switch (data.type) {
       case Configure:
-        this.#configure(event.data);
+        this.#configure(data);
         break;
 
       case ChangeTrail:
-        this.#onChangeTrail(event.data);
+        this.#onChangeTrail(data);
         break;
 
       case Destroy:
-        this.#onDestroy(event.data);
+        this.#onDestroy(data);
         break;
 
       default:
-        console.warn('[MessageRouter] unknown message', event.data.type ?? event.data);
+        console.warn('[MessageRouter] unknown message', data.type ?? data);
     }
   }
 
@@ -67,6 +100,14 @@ export class MessageRouter {
     try {
       if (!url) throw new Error('missing "importModule" url');
       const module = await import(/* @vite-ignore */ toUrlString(url));
+
+      // the import outlived a teardown that happened while it was in flight: registering it now
+      // would fill a kernel that is already down
+      if (this.#isDestroyed) {
+        console.debug('[MessageRouter] discarding a module that arrived after the teardown', url);
+        return;
+      }
+
       if (module[ShadowObjectsExport]) {
         await importModule(this.kernel, module[ShadowObjectsExport], this.#importedModules);
         this.postMessage({type: ImportedModule, url});
@@ -86,11 +127,17 @@ export class MessageRouter {
   #onChangeTrail(data: SyncEvent) {
     // console.debug('[MessageRouter] parseChangeTrail', {data, kernel: this.kernel});
 
+    // One change trail, one confirmation -- and only where a serial asked for one. A caller
+    // waiting on that serial decides between rejection and resolution on the first message it
+    // sees, so a second one behind it would make the outcome a matter of order.
     try {
       this.kernel.run(data);
     } catch (error) {
       console.error('[MessageRouter] failed to apply change trail', error);
-      this.postMessage({type: AppliedChangeTrail, serial: data.serial, error: `${error}`} as AppliedChangeTrailEvent);
+      if (data.serial) {
+        this.postMessage({type: AppliedChangeTrail, serial: data.serial, error: `${error}`} as AppliedChangeTrailEvent);
+      }
+      return;
     }
 
     if (data.serial) {
@@ -100,8 +147,28 @@ export class MessageRouter {
 
   #onDestroy(data: any) {
     console.debug('[MessageRouter] on destroy', data);
+
+    // `route()` is the barrier, so this runs once: every later message, a second destroy included,
+    // is discarded before it gets here.
+    this.#isDestroyed = true;
+
+    // taken off before the kernel goes down: a message a teardown callback dispatches reaches
+    // the view a microtask later, behind the confirmation this call is about to send. What an
+    // `onDestroy` sends to the view during a worker teardown is therefore dropped, where a
+    // local environment still delivers it.
     off(this.kernel, this);
+
+    try {
+      this.kernel.destroy();
+    } catch (error) {
+      // the confirmation is owed either way -- without it the view sits out its destroy
+      // timeout before terminating the worker, and learns nothing it could act on
+      console.error('[MessageRouter] failed to tear the kernel down', error);
+    }
+
+    // releases the module objects this router imported; nothing can import into it again
     this.#importedModules.clear();
+
     this.postMessage({type: Destroyed});
   }
 }

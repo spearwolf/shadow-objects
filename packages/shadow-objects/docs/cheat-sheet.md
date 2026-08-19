@@ -398,6 +398,7 @@ loop();
 
 ```typescript
 env.destroy();          // idempotent; env.isDestroyed === true
+                        // a worker tears its kernel down before it ends: the onDestroy callbacks run
 env.sync();             // no-op
 await env.syncWait();   // rejects with ShadowEnvDestroyedError
 await env.ready();      // rejects with ShadowEnvDestroyedError

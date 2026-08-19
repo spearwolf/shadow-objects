@@ -40,7 +40,7 @@
 3. ~~**`destroyEntity` rekursiert nicht über Kinder** — bei Eltern-Destruktion bleiben Nicht-Auto-Kinder als verwaiste Einträge im Kernel.~~ **Behoben (KERN-3)** — Variante C: Flagged-Kinder kaskadieren, ungeflaggte werden zu Roots befördert.
 4. **DOM-In-Place-Re-Parenting wird nur teilweise beobachtet** — bei `<shae-ent>` folgt die Beobachtung dem Element an seine neue Position, sieht aber einen zwischengeschobenen Container nicht (`subtree: false`, VIEW-6).
 5. ~~**CI lässt das gesamte E2E-Paket aus** — der Worker-Roundtrip wird damit faktisch nicht von CI verifiziert.~~ **Behoben** — eigener Job `e2e` in `.github/workflows/ci.yml`, Chromium und Firefox bei jedem Push; der Deployment-Workflow hängt über `workflow_run` daran.
-6. **`MessageRouter` schluckt Fehler** durch doppeltes `AppliedChangeTrail` im Catch-Pfad — Konsumenten sehen Erfolg trotz interner Exception.
+6. ~~**`MessageRouter` schluckt Fehler** durch doppeltes `AppliedChangeTrail` im Catch-Pfad — Konsumenten sehen Erfolg trotz interner Exception.~~ **Behoben (VIEW-3)** — ein Change Trail erzeugt genau eine Bestätigung, und nur dort, wo eine Seriennummer danach gefragt hat.
 
 Keiner dieser Punkte ist katastrophal; jeder einzelne sollte aber vor einem 1.0-Release adressiert werden.
 
@@ -129,10 +129,9 @@ Ein `AbortController` trägt beide Enden dieser Umgebung: `waitForMessageOfType`
 
 **[VIEW-2]** ~~Keine `error`/`messageerror`-Handler auf dem Worker.~~ **✅ Behoben** — beide werden abonniert, bevor der Load-Handshake beginnt. Ein Ausfall terminiert den Worker, setzt `isDestroyed` und meldet sich als `RemoteWorkerEnv.WorkerFailed` und `ShadowEnv.ProxyFailed` (samt `proxyfailed`-DOM-Event auf `<shae-worker>`). Der Weg zurück ist ein neuer `envProxy`: sobald er bereit ist, baut die View ihre Änderungen aus der Component Memory neu auf, und der nächste Sync stellt die Entities in der neuen Umgebung her.
 
-**[VIEW-3]** `MessageRouter` schluckt Fehler durch doppeltes `AppliedChangeTrail`.
-*Ort:* `MessageRouter.ts:86–98`.
-Im Catch-Block wird zuerst `{type: AppliedChangeTrail, serial, error}` gepostet (`:93`), dann fällt der Code in den Block bei Zeile 96 und postet erneut `{type: AppliedChangeTrail, serial}` **ohne** error-Feld. Die zweite Nachricht erfüllt das `serial`-Match in `RemoteWorkerEnv.ts:236` und der Konsument bekommt einen False-Positive.
-*Fix:* `return` nach dem Catch-Post oder Flag setzen.
+**[VIEW-3]** ~~`MessageRouter` schluckt Fehler durch doppeltes `AppliedChangeTrail`.~~ **✅ Behoben**
+Der Catch-Zweig von `#onChangeTrail()` postet die Fehlerbestätigung und kehrt zurück; pro Change Trail entsteht damit genau eine Nachricht, und der wartende Aufrufer in `RemoteWorkerEnv` entscheidet auf der ersten, die er sieht. Ein Trail ohne Seriennummer wird gar nicht bestätigt — auch im Fehlerfall nicht, weil niemand darauf wartet.
+Im selben Zug: Ein `Destroy` fährt den Kernel im Worker herunter und sperrt den Router für alles Weitere — ein zweites `Destroy` eingeschlossen, denn eine Bestätigung gehört zu der einen, auf die `RemoteWorkerEnv.destroy()` wartet, und ein zweites schickt die View nicht. `WorkerRuntime` nimmt ihren `message`-Hörer von `self` und bleibt unten: weder eine spätere Nachricht noch ein `start()` holt sie zurück. Beide Einstiegspunkte verwerfen eine Nachricht, die sie nicht lesen können, statt den Worker mit einem `TypeError` aufzureißen.
 
 **[VIEW-4]** Listener-Leak bei verwaisten Eltern-Knoten im DOM.
 *Ort:* `ShaeEntElement.ts:213–214, 285–288, 327`.
@@ -296,8 +295,8 @@ Quelltext samt Aufrufkommando steht wörtlich in `view-layer-remediation-plan-2.
 | `ShadowEnv` Setup/Teardown | ✅ **gründlich** — `syncWait()`/`AfterSync`, der `destroy()`-Kontrakt, `ProxyFailed` und der `envProxy`-Swap zur Laufzeit samt Wiederherstellung der Entities aus der Component Memory. Gefahren werden Doppelgänger → Doppelgänger und Doppelgänger → `LocalShadowObjectEnv` (`ShadowEnv.spec.ts:521`, `:536`) sowie Remote → Remote in der E2E-Seite `worker-failure`; Local → Remote fährt kein Fall |
 | `LocalShadowObjectEnv` | 🟡 **partiell** — Smoke + 1 Sync; `destroy()`-Registry-Kontrakt (geteilte Default-Registry vs. eigene Registry) jetzt gründlich getestet |
 | `RemoteWorkerEnv` | ✅ **gründlich** — `RemoteWorkerEnv.spec.ts` (34 Fälle über einen Worker-Doppelgänger) deckt Ausfall, Termination, Ablehnung des Ausstehenden und des Nachgereichten, den `destroy()`-Kontrakt samt Abbau während `start()` und die Logger-Konfiguration ohne benutzbare Storage sowie mit unbrauchbarem Storage-Wert (unparsbar, Array, `null`, Zahl- und String-Skalar); E2E-Seite `worker-failure` fährt denselben Weg über echtes `postMessage` inklusive Erholung. |
-| `MessageRouter` | ❌ keine direkten Tests |
-| `WorkerRuntime` | ❌ keine direkten Tests |
+| `MessageRouter` | ✅ **gründlich** — `MessageRouter.spec.ts` (30 Fälle) deckt Routing und Bestätigungen, Kernel-Nachrichten an die View, den Modul-Import samt Fehlerfällen, den fehlschlagenden Change Trail, den Teardown (Kernel-Abbau, `onDestroy`, Sperre, Import im Flug) und die unlesbare Nachricht |
+| `WorkerRuntime` | ✅ **gründlich** — `WorkerRuntime.spec.ts` (10 Fälle) deckt Handshake und Idempotenz, das Routing über den globalen Scope, die Logger-Konfiguration, den Teardown samt Abmelden des Hörers und die unlesbare Nachricht |
 | Custom Elements — `<shae-prop>` | ✅ **gründlich** — Host-Suche und Nachjustierung (`prop-element-host.test.js`), das Ende einer Bindung (`prop-element-lifecycle.test.js`), die unabhängige Registrierung (`prop-element-registration-order.test.js`), Markup-Upgrade-Pfad (E2E) und das Typ-Parsing tabellengetrieben über alle 42 Typnamen, beide Trennmuster, die fehlertoleranten und die vier fehlschlagenden Eingaben, `no-trim`, die Falsy-Werte über beide Pfade und den Change Trail (`prop-element-types.test.js`, dazu `propValueConverters.spec.ts` für die Tabelle ohne DOM) |
 | Custom Elements — `<shae-ent>`, `ShaeElement`, `<shae-worker>` | ✅ **gründlich** — Attribut-, Ereignis-, Namespace- und Upgrade-Pfade in `ent-element-attributes`, `ent-element-events`, `ent-element-namespace`, `ent-element-upgrade`, `ent-element-teardown`, `worker-element-attributes` und `worker-element-teardown`; die Entsprechungen über echte Worker in den e2e-Seiten `upgrade-timing`, `multi-env` und `dynamic-dom` |
 | Utils | 🟡 `props-utils.spec.ts`, `ConsoleLogger.spec.ts` und `ConsoleLogger.storage.spec.ts` (die fünf Formen, in denen ein Host `localStorage` anbietet) — `FrameLoop`, `waitForMessageOfType`, `cloneChangeTrail`, `attr-utils`, `array-utils`, `generateUUID`, `toNamespace`, `toUrlString`, `importModule` haben keine eigenen Tests. `array-utils` wird indirekt über `ComponentContext.spec.ts` und `ComponentChanges.spec.ts` mitgeprüft, `waitForMessageOfType` über `RemoteWorkerEnv.spec.ts` |
@@ -403,7 +402,7 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 
 1. ~~**Auto-Destroy-Feature komplett verdrahten** — Feld in `ICreateEntitiesChange`, durchreichen in `parse()`, Re-Parenting-Subscription pflegen, E2E-Test mit Worker. *(KERN-1, KERN-2)*~~ ✅ Erledigt (Kernel- und ViewComponent-Specs sowie Playwright-E2E `auto-destruct.spec.ts` mit echtem `RemoteWorkerEnv`).
 2. ~~**`destroyEntity` rekursiv über Kinder** — Politik definieren (kaskadieren oder zu Root befördern). *(KERN-3)*~~ ✅ Erledigt (Variante C).
-3. **`MessageRouter`-Doppel-Confirm im Catch-Pfad fixen.** *(VIEW-3)*
+3. ~~**`MessageRouter`-Doppel-Confirm im Catch-Pfad fixen.** *(VIEW-3)*~~ ✅ Erledigt — eine Bestätigung je Change Trail, und nur dort, wo eine Seriennummer danach gefragt hat. Im selben Zug: geordneter Teardown auf `Destroy` und geprüfter Nachrichteneingang an beiden Einstiegspunkten.
 4. ~~**Worker-Fehlerpfade härten:** `error`/`messageerror`-Handler, ausstehende Promises bei `destroy()` rejecten, expliziter `terminated`-Status.~~ *(VIEW-1, VIEW-2)* — ✅ Handler, `WorkerFailedError`/`WorkerDestroyedError`, `isDestroyed`, `RemoteWorkerEnv.WorkerFailed` und `ShadowEnv.ProxyFailed` stehen, und `destroy()` bricht das Ausstehende ab.
 5. ~~**CI lässt E2E nicht aus** — Playwright-Browser im CI-Image installieren, `test:ci` umstellen oder zweiten Job ergänzen.~~ ✅ Erledigt — eigener Job `e2e`, Chromium und Firefox, vor dem npm-Publish.
 6. ~~**Cache-Invalidierung von `traverseLevelOrderBFS` bei programmatischer Destruktion.** *(KERN-4)*~~ ✅ Erledigt.
@@ -451,8 +450,8 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 
 `shadow-objects` ist konzeptionell ausgereift und kompakt: das ECS-Modell, die View/Worker-Spiegelung über ein 4-Methoden-Proxy und das `ShadowObjectCreationAPI` bilden ein in sich konsistentes, gut testbares Framework. Der Code ist überwiegend klar geschrieben, das Reaktivitätsmodell stützt sich konsequent auf zwei eigene, aktiv gepflegte Bibliotheken.
 
-Die größten Risiken liegen weniger in der Architektur als in den **Fehler- und Lebenszyklus-Pfaden**: der `MessageRouter` schluckt Exceptions, und `MessageRouter`/`WorkerRuntime` haben nach wie vor keine eigenen Tests. Die Lebenszyklus-Punkte sind abgearbeitet, Worker-Ausfall und gewollter Abbau ebenso, die E2E-Suite läuft in CI.
+Die größten Risiken lagen weniger in der Architektur als in den **Fehler- und Lebenszyklus-Pfaden**; diese Seite ist inzwischen abgetragen: der `MessageRouter` bestätigt genau einmal, fährt seinen Kernel auf `Destroy` herunter und verwirft, was er nicht lesen kann, und beide Worker-Klassen haben eigene Specs. Die Lebenszyklus-Punkte sind abgearbeitet, Worker-Ausfall und gewollter Abbau ebenso, die E2E-Suite läuft in CI.
 
-Die empfohlene Reihenfolge ist: erst die verbliebenen **Muss-Punkte aus §7.1** angehen (`MessageRouter`-Doppel-Confirm), dann die **Test-Lücken aus §4.5/§7.2** schließen, dann die **Tooling-Modernisierung aus §7.3** in Angriff nehmen.
+Die §7.1-Liste ist damit abgearbeitet. Die empfohlene Reihenfolge ist: erst die **Test-Lücken aus §4.5/§7.2** schließen, dann die **Tooling-Modernisierung aus §7.3** in Angriff nehmen.
 
 In der jetzigen Version (0.30.2) ist das Framework für Demos, Spielwiesen und kleine Anwendungen einsetzbar; vor einem produktiven 1.0-Stempel sollte zumindest die §7.1-Liste abgearbeitet sein.

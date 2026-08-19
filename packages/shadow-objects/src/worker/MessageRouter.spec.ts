@@ -285,10 +285,10 @@ describe('MessageRouter', () => {
   });
 
   describe('a change trail that fails', () => {
-    // Recorded as it behaves today, not as it ought to behave: one change trail with a serial
-    // produces two confirmations for that serial -- first the failure, then the success. Which of
-    // the two the waiting caller sees first decides between rejection and resolution.
-    it('confirms a failed change trail twice -- once with the error and once without', () => {
+    // One serial, one confirmation: the error message ends the trail. The waiting caller resolves
+    // or rejects on the first message it sees, so its outcome does not hang on which of two
+    // messages reaches it first.
+    it('confirms a failed change trail once, with the error', () => {
       const {kernel, posted, router} = setup();
       const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
@@ -297,21 +297,18 @@ describe('MessageRouter', () => {
 
       const messages = posted.map((entry) => entry.message);
 
-      expect(messages).toHaveLength(3);
+      expect(messages).toHaveLength(2);
       expect(messages[0]).toEqual({type: AppliedChangeTrail, serial: 1});
       // What the failure says is the kernel's wording, and the kernel is not the subject here.
       // Asserted is what the router does with it: report it against the serial it came in on.
       expect(messages[1]).toEqual({type: AppliedChangeTrail, serial: 2, error: expect.stringMatching(/.+/)});
-      // And then the second confirmation for that same serial, this one carrying no error at all.
-      expect(messages[2]).toEqual({type: AppliedChangeTrail, serial: 2});
       expect(error).toHaveBeenCalledTimes(1);
       expect(error.mock.calls[0][0]).toBe('[MessageRouter] failed to apply change trail');
       expect(kernel.hasEntity('a')).toBe(true);
     });
 
-    // Two statements in one case. That a trail stops at the entry that throws is the intended
-    // behaviour. That the same serial is confirmed twice afterwards is recorded as it behaves
-    // today, not as it ought to behave.
+    // A trail is applied entry by entry and the throw ends it where it stands: what came before it
+    // stays, what came after it never runs.
     it('stops at the entry that throws and leaves the rest of the trail unapplied', () => {
       const {kernel, posted, router} = setup();
       const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -322,10 +319,23 @@ describe('MessageRouter', () => {
 
       expect(kernel.hasEntity('a')).toBe(true);
       expect(kernel.hasEntity('b')).toBe(false);
-      expect(messages).toHaveLength(2);
+      expect(messages).toHaveLength(1);
       expect(messages[0]).toEqual({type: AppliedChangeTrail, serial: 7, error: expect.stringMatching(/.+/)});
-      expect(messages[1]).toEqual({type: AppliedChangeTrail, serial: 7});
       expect(error).toHaveBeenCalledTimes(1);
+    });
+
+    // Confirmed is what was asked for: without a serial nobody is waiting, and an unsolicited
+    // confirmation carrying `serial: undefined` would meet a guard on the view side that throws
+    // every error message against whichever request is running at the time.
+    it('does not confirm a failing change trail that carries no serial', () => {
+      const {posted, router} = setup();
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      router.route(changeTrailMessage(undefined, setParent('a', 'ghost')));
+
+      expect(posted).toHaveLength(0);
+      expect(error).toHaveBeenCalledTimes(1);
+      expect(error.mock.calls[0][0]).toBe('[MessageRouter] failed to apply change trail');
     });
   });
 
@@ -339,65 +349,116 @@ describe('MessageRouter', () => {
       expect(posted.map((entry) => entry.message)).toEqual([{type: Destroyed}]);
     });
 
-    // Recorded as it behaves today, not as it ought to behave: the destroy unsubscribes from the
-    // kernel and clears the module set, and leaves the entities of that kernel standing.
-    it('leaves the entities of the kernel in place', () => {
+    // The teardown takes the kernel down with it, so the `onDestroy` callbacks of the shadow
+    // objects run while the thread is still alive rather than being thrown away with it.
+    it('clears the entities of the kernel', () => {
       const {kernel, router} = setup();
       vi.spyOn(console, 'debug').mockImplementation(() => undefined);
 
       router.route(changeTrailMessage(1, createEntity('a')));
       router.route(message({type: Destroy}));
 
-      expect(kernel.hasEntity('a')).toBe(true);
+      expect(kernel.hasEntity('a')).toBe(false);
     });
 
-    // Recorded as it behaves today, not as it ought to behave: the destroy sets no barrier, so a
-    // change trail that arrives afterwards is applied and confirmed like any other.
-    it('keeps routing change trails after the destroy', () => {
+    // Behind the teardown the kernel is empty and nothing of it reaches the view any more, so
+    // whatever arrives afterwards is dropped where it comes in.
+    it('discards the messages that arrive after the destroy', () => {
       const {kernel, posted, router} = setup();
-      vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+      const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
 
       router.route(message({type: Destroy}));
       router.route(changeTrailMessage(2, createEntity('b')));
+      router.route(message({type: Configure, importModule: 'data:text/javascript,export const shadowObjects = {define: {}}'}));
 
-      expect(kernel.hasEntity('b')).toBe(true);
-      expect(posted.map((entry) => entry.message)).toContainEqual({type: AppliedChangeTrail, serial: 2});
+      expect(kernel.hasEntity('b')).toBe(false);
+      expect(posted.map((entry) => entry.message)).toEqual([{type: Destroyed}]);
+      expect(router.isDestroyed).toBe(true);
+      expect(
+        debug.mock.calls.filter((call) => call[0] === '[MessageRouter] discarding a message that arrived after the teardown'),
+      ).toHaveLength(2);
     });
 
-    // Recorded as it behaves today, not as it ought to behave: a second destroy is answered like
-    // the first one.
-    it('confirms every destroy it is sent', () => {
-      const {posted, router} = setup();
-      vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    // One teardown, one confirmation. A second destroy meets the same barrier as everything else
+    // that arrives afterwards -- the reply belongs to the destroy that was answered, and there is
+    // nobody left waiting behind it.
+    it('confirms the first destroy and discards the second', () => {
+      const {kernel, posted, router} = setup();
+      const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+      const kernelDestroy = vi.spyOn(kernel, 'destroy');
 
       router.route(message({type: Destroy}));
       router.route(message({type: Destroy}));
 
-      expect(posted.map((entry) => entry.message)).toEqual([{type: Destroyed}, {type: Destroyed}]);
+      expect(posted.map((entry) => entry.message)).toEqual([{type: Destroyed}]);
+      expect(kernelDestroy).toHaveBeenCalledTimes(1);
+      expect(
+        debug.mock.calls.filter((call) => call[0] === '[MessageRouter] discarding a message that arrived after the teardown'),
+      ).toHaveLength(1);
     });
 
-    // The cases in this group that open with "recorded as it behaves today" are waiting to be
-    // turned around. This one is not: the destroy empties the set of imported modules, so a module
-    // that arrives again afterwards is registered again, and that is right as it stands. Were the
-    // clear to fall away, a second configure with the same url would be skipped -- its tokens never
-    // re-registered, its entities never upgraded -- and nothing else in this file would notice.
-    it('clears the set of imported modules so the same module registers again', async () => {
+    // The point of taking the kernel down while the thread is still alive: what a Shadow Object
+    // closes, reports or releases in its `onDestroy` actually gets the chance to run.
+    it('runs the onDestroy of a shadow object', async () => {
       const {posted, router} = setup();
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
       vi.spyOn(console, 'debug').mockImplementation(() => undefined);
-      const url = 'data:text/javascript,export const shadowObjects = {define: {}}';
+      // The module text is a string: neither type-checked nor formatted. The counter is written in
+      // dot notation and the token key in double quotes, so the single quotes stay with the spec.
+      const url =
+        'data:text/javascript,export const shadowObjects = {define: {"test-token": ' +
+        'function ShadowObjectDouble({onDestroy}) { onDestroy(() => { globalThis.shadowObjectsSpecCalls = ' +
+        '(globalThis.shadowObjectsSpecCalls ?? 0) + 1; }); }}}';
 
-      router.route(message({type: Configure, importModule: url}));
-      await waitForPosted(posted, 1);
+      try {
+        router.route(message({type: Configure, importModule: url}));
+        await waitForPosted(posted, 1);
+
+        router.route(changeTrailMessage(1, createEntity('a', 'test-token')));
+        expect((globalThis as unknown as Record<string, unknown>)[CALL_COUNTER]).toBeUndefined();
+
+        router.route(message({type: Destroy}));
+
+        expect((globalThis as unknown as Record<string, unknown>)[CALL_COUNTER]).toBe(1);
+      } finally {
+        delete (globalThis as unknown as Record<string, unknown>)[CALL_COUNTER];
+      }
+    });
+
+    // Without the confirmation the view sits out its destroy timeout and learns nothing it could
+    // act on.
+    it('confirms the destroy even when the kernel teardown throws', () => {
+      const {kernel, posted, router} = setup();
+      vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      vi.spyOn(kernel, 'destroy').mockImplementation(() => {
+        throw new Error('teardown failed');
+      });
 
       router.route(message({type: Destroy}));
 
-      router.route(message({type: Configure, importModule: url}));
-      await waitForPosted(posted, 3);
+      expect(posted.map((entry) => entry.message)).toEqual([{type: Destroyed}]);
+      expect(error).toHaveBeenCalledTimes(1);
+      expect(error.mock.calls[0][0]).toBe('[MessageRouter] failed to tear the kernel down');
+      expect(router.isDestroyed).toBe(true);
+    });
 
-      expect(posted.map((entry) => entry.message.type)).toEqual([ImportedModule, Destroyed, ImportedModule]);
-      expect(posted.map((entry) => entry.message.error)).toEqual([undefined, undefined, undefined]);
-      expect(warn).not.toHaveBeenCalled();
+    // The one window the barrier at the switch does not cover: the import is already in flight
+    // when the destroy comes in.
+    it('discards a module import that resolves after the destroy', async () => {
+      const {posted, router} = setup();
+      vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+      const url = 'data:text/javascript,export const shadowObjects = {define: {"test-token": function ShadowObjectDouble() {}}}';
+
+      router.route(changeTrailMessage(1, createEntity('a')));
+      router.route(message({type: Configure, importModule: url}));
+      router.route(message({type: Destroy}));
+
+      // the same url resolves from the same module job: once our own import is through, the
+      // one the router started before it is through as well, and its continuation ran first
+      await import(/* @vite-ignore */ url);
+      await flushMicrotasks();
+
+      expect(posted.map((entry) => entry.message.type)).toEqual([AppliedChangeTrail, Destroyed]);
     });
   });
 
@@ -411,24 +472,31 @@ describe('MessageRouter', () => {
   });
 
   describe('a message the router cannot read', () => {
-    // Recorded as it behaves today, not as it ought to behave: reading `.type` off the message
-    // data is the first thing the router does, and on a nullish payload that access throws.
-    it.each([null, undefined])('throws when the message data is %s', (value) => {
-      const {router} = setup();
+    // An unreadable message costs the message, not the worker.
+    it.each([null, undefined])('discards a message it cannot read: %s', (value) => {
+      const {posted, router} = setup();
+      const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
 
-      expect(() => router.route(message(value))).toThrow(TypeError);
+      expect(() => router.route(message(value))).not.toThrow();
+
+      expect(posted).toHaveLength(0);
+      expect(debug).toHaveBeenCalledTimes(1);
+      expect(debug).toHaveBeenCalledWith('[MessageRouter] discarding a message it cannot read', value);
     });
 
-    // The counterpart, and the line between the two: a primitive has no `type`, the access yields
-    // `undefined` and the message ends up in the default branch instead of tearing the worker up.
-    it.each(['changeTrail', 42, true])('warns about message data of %s instead of throwing', (value) => {
+    // The line runs between primitive and object: a primitive cannot be a message of this
+    // protocol, an object without a `type` can -- for the second one see
+    // `routing › names the whole payload when the message carries no type`.
+    it.each(['changeTrail', 42, true])('discards message data of %s', (value) => {
       const {posted, router} = setup();
+      const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
       expect(() => router.route(message(value))).not.toThrow();
 
-      expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn).toHaveBeenCalledWith('[MessageRouter] unknown message', value);
+      expect(debug).toHaveBeenCalledTimes(1);
+      expect(debug).toHaveBeenCalledWith('[MessageRouter] discarding a message it cannot read', value);
+      expect(warn).not.toHaveBeenCalled();
       expect(posted).toHaveLength(0);
     });
   });

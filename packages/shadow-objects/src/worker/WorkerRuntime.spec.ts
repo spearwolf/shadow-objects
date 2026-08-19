@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, describe, expect, it, type MockInstance, vi} from 'vitest';
-import {AppliedChangeTrail, ChangeTrail, ComponentChangeType, Loaded} from '../constants.js';
+import {AppliedChangeTrail, ChangeTrail, ComponentChangeType, Destroy, Destroyed, Loaded} from '../constants.js';
 import {CONSOLE_LOGGER, CONSOLE_LOGGER_STORAGE} from '../utils/ConsoleLogger.js';
 import {WorkerRuntime} from './WorkerRuntime.js';
 
@@ -17,9 +17,9 @@ let consoleLoggerStorage: unknown;
 let hadConsoleLoggerStorage = false;
 
 /**
- * `self` is one and the same object for the whole file, and the runtime offers no way to take its
- * `message` listener back off. A listener left behind by one case would receive the events of
- * every case after it, so every started runtime is written down here and unregistered by the
+ * `self` is one and the same object for the whole file, and a case only takes its own listener
+ * back off when it drives a destroy. A listener left behind by one case would receive the events
+ * of every case after it, so every started runtime is written down here and unregistered by the
  * `afterEach` -- which also covers the case that fails halfway through.
  */
 const startedRuntimes: WorkerRuntime[] = [];
@@ -102,25 +102,82 @@ describe('WorkerRuntime', () => {
     expect(router!.kernel.hasEntity('b')).toBe(true);
   });
 
-  // Recorded as it behaves today, not as it ought to behave: reading `event.data.type` is the
-  // first thing the runtime does, and it happens before the router is built -- so a nullish
-  // payload takes the runtime down before a kernel even exists.
-  it.each([null, undefined])('throws when the message data is %s', (value) => {
+  // The runtime reads the `type` before a router exists, so it checks for itself instead of
+  // leaning on the one that is not there yet.
+  it.each([null, undefined])('discards a message it cannot read: %s', (value) => {
     const runtime = new WorkerRuntime();
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
 
-    expect(() => runtime.onmessage(message(value))).toThrow(TypeError);
+    expect(() => runtime.onmessage(message(value))).not.toThrow();
+
     expect(runtime.router).toBeUndefined();
+    expect(debug).toHaveBeenCalledTimes(1);
+    expect(debug).toHaveBeenCalledWith('[WorkerRuntime] discarding a message it cannot read', value);
   });
 
-  // The runtime keeps no check of its own: everything that is not nullish goes to the router,
-  // which then decides what to do with it.
-  it('hands message data that is not an object to the router', () => {
+  // What the runtime cannot read costs no kernel.
+  it('discards message data that is not an object without building a router', () => {
     const runtime = new WorkerRuntime();
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     expect(() => runtime.onmessage(message('nonsense'))).not.toThrow();
 
-    expect(runtime.router).toBeDefined();
-    expect(warn).toHaveBeenCalledWith('[MessageRouter] unknown message', 'nonsense');
+    expect(runtime.router).toBeUndefined();
+    expect(debug).toHaveBeenCalledTimes(1);
+    expect(debug).toHaveBeenCalledWith('[WorkerRuntime] discarding a message it cannot read', 'nonsense');
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  // `addEventListener` de-dupes the listener on its own, the announcement to the view is de-duped
+  // by nobody -- a second `{type: Loaded}` would have the view celebrate a handshake it is long
+  // past.
+  it('announces itself as loaded only once, however often it is started', () => {
+    const addEventListener = vi.spyOn(self, 'addEventListener');
+
+    const runtime = startRuntime();
+    runtime.start();
+
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith({type: Loaded});
+    expect(addEventListener).toHaveBeenCalledTimes(1);
+    expect(runtime.isStarted).toBe(true);
+  });
+
+  it('takes its message listener off self and releases its router when a destroy comes through', () => {
+    const removeEventListener = vi.spyOn(self, 'removeEventListener');
+    vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    const runtime = startRuntime();
+
+    self.dispatchEvent(new MessageEvent('message', {data: {type: Destroy}}));
+
+    expect(postMessage).toHaveBeenCalledWith({type: Destroyed});
+    expect(removeEventListener).toHaveBeenCalledWith('message', runtime.onmessage);
+    expect(runtime.isStarted).toBe(false);
+    expect(runtime.router).toBeUndefined();
+
+    // the actual proof: the listener is off `self`, so nothing of this reaches a router any more
+    self.dispatchEvent(new MessageEvent('message', {data: changeTrail(9, createEntity('b'))}));
+
+    expect(runtime.router).toBeUndefined();
+  });
+
+  // A destroy is the end of this runtime, not a pause. Were it only a pause, a `start()` would
+  // announce a second handshake and the next message would build a kernel behind the barrier the
+  // destroy just raised.
+  it('stays down once a destroy has come through', () => {
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    const runtime = startRuntime();
+
+    self.dispatchEvent(new MessageEvent('message', {data: {type: Destroy}}));
+    postMessage.mockClear();
+
+    runtime.start();
+    runtime.onmessage(message(changeTrail(9, createEntity('b'))));
+
+    expect(postMessage).not.toHaveBeenCalled();
+    expect(runtime.isStarted).toBe(false);
+    expect(runtime.router).toBeUndefined();
+    expect(debug).toHaveBeenCalledWith('[WorkerRuntime] discarding a message that arrived after the teardown', ChangeTrail);
   });
 });
