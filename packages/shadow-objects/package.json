@@ -54,6 +54,10 @@
     "./ConsoleLogger.js": {
       "import": "./dist/src/utils/ConsoleLogger.js",
       "types": "./dist/src/utils/ConsoleLogger.d.ts"
+    },
+    "./FrameLoop.js": {
+      "import": "./dist/src/utils/FrameLoop.js",
+      "types": "./dist/src/utils/FrameLoop.d.ts"
     }
   },
   "sideEffects": [

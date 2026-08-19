@@ -1,4 +1,5 @@
 import {ConsoleLogger} from '@spearwolf/shadow-objects/ConsoleLogger.js';
+import {FrameLoop} from '@spearwolf/shadow-objects/FrameLoop.js';
 import {onViewEvent} from '@spearwolf/shadow-objects/shadow-objects.js';
 import {
   CanvasContext,
@@ -13,7 +14,6 @@ import {
   RequestOffscreenCanvas,
   RunFrameLoop,
 } from '../shared/constants.js';
-import {FrameLoop} from '../shared/FrameLoop.js';
 import {ShadowObjectBase} from './ShadowObjectBase.js';
 
 const vec3equals = (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
@@ -49,6 +49,12 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
 
     onDestroy(() => {
       offscreenCanvas$.set(undefined);
+
+      // The loop asks the browser for frames only while somebody listens, so a shadow object on its
+      // way out takes its subscription along — otherwise the last one to leave keeps the loop of
+      // its realm running for the lifetime of the page.
+      this.isRunning = false;
+      this.#frameLoop.stop(this);
     });
 
     const canvasSize$ = createSignal([0, 0, 0], {
@@ -63,7 +69,7 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
     const getFps = useProperty(Fps);
 
     createEffect(() => {
-      this.#frameLoop.setFps(getFps() ?? 60);
+      this.#frameLoop.maxFps = getFps() ?? 60;
     });
 
     createEffect(() => {
@@ -161,12 +167,7 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
     if (now - this.fpsCounterTime >= SHOW_FPS_COUNTER_INTERVAL_SECONDS) {
       this.fpsCounterTime = now;
       if (this.logger.isInfo) {
-        this.logger.info(
-          'fpsCounter=',
-          Math.round(this.fpsCounter / SHOW_FPS_COUNTER_INTERVAL_SECONDS),
-          'measuredFps=',
-          this.#frameLoop.measuredFps,
-        );
+        this.logger.info('fpsCounter=', Math.round(this.fpsCounter / SHOW_FPS_COUNTER_INTERVAL_SECONDS));
       }
       this.fpsCounter = 0;
     }

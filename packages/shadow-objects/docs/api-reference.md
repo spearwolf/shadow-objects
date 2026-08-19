@@ -22,6 +22,7 @@ This is the complete API reference for the Shadow Objects framework. Entities ar
 - [ComponentContext](#componentcontext)
 - [ShadowEnv](#shadowenv)
 - [Environment Proxies](#environment-proxies)
+- [FrameLoop](#frameloop)
 - [Web Components](#web-components)
   - [shae-worker](#shae-worker)
   - [shae-ent](#shae-ent)
@@ -1390,6 +1391,78 @@ import {
 
 ---
 
+## FrameLoop
+
+`FrameLoop` delivers a frame to every target that listens, driven by `requestAnimationFrame`. It is what `<shae-worker>` rides on when `auto-sync` is `frame`, and it is available on its own for any view or Shadow Object that wants to do work per frame.
+
+| Symbol | Signature | Meaning |
+| :--- | :--- | :--- |
+| `FrameLoop.OnFrame` | `symbol` | The event name. |
+| `FrameLoop.get()` | `(): FrameLoop` | The shared loop. Created on first read, the same instance afterwards, no cap on the frame rate. |
+| `new FrameLoop(maxFps?)` | `(maxFps?: number) => FrameLoop` | A loop of your own. `0`, negative and non-finite values mean: no cap. |
+| `maxFps` | `number`, get/set | The cap, writable while the loop runs. |
+| `subscriptionCount` | `number`, get | How many targets listen. Zero means the loop asks for no frames. |
+| `start(target)` | `(target: object \| ListenerFuncType) => (() => void) \| undefined` | Subscribes the target and arms the loop. Returns the function that takes it off again. `null` and `undefined` are a no-op without a return value. |
+| `stop(target)` | `(target: object \| ListenerFuncType) => void` | Takes the target off and cancels the pending frame once nobody listens any more. |
+| `FrameData` | `{now: number; lastNow: number; frameNo: number; deltaTime: number}` | The payload of `OnFrame`. |
+
+A loop with no subscribers asks for no frames: the last target to leave takes the loop off the browser, whether it leaves between two frames or from inside the frame handler itself. A target that subscribes while the last one leaves keeps the loop running with exactly one pending frame.
+
+```typescript
+import {FrameLoop, type FrameData} from '@spearwolf/shadow-objects';
+
+const unsubscribe = FrameLoop.get().start(({deltaTime}: FrameData) => {
+  advance(deltaTime);
+});
+
+unsubscribe();
+```
+
+A target can also be an object that carries the event name as a method:
+
+```typescript
+class Renderer {
+  [FrameLoop.OnFrame]({now, deltaTime}: FrameData) {
+    this.draw(now, deltaTime);
+  }
+}
+```
+
+`FrameLoop.OnFrame` is a `Symbol()`, not a `Symbol.for()`: subscribing through the global symbol registry with `Symbol.for('onFrame')` reaches nothing. Import the symbol from the class.
+
+### Frame data
+
+All four fields of `FrameData` carry seconds:
+
+| Field | Meaning |
+| :--- | :--- |
+| `now` | The timestamp of this frame. |
+| `lastNow` | The timestamp of the frame before it — equal to `now` on the first frame. |
+| `frameNo` | The number of this frame, counted from one at the start of every run. |
+| `deltaTime` | The time elapsed since the frame before it — `0` on the first frame. |
+
+The first frame reports no delta rather than a delta against an empty predecessor, so no listener ever receives a `NaN`. A loop that has gone idle starts a fresh run when the next target arrives: that frame is frame one and reports no delta again, rather than handing out the length of the pause.
+
+### Capping the frame rate
+
+`maxFps` holds back the frames that arrive too early. The distance is measured from the last frame that was actually emitted, and the threshold is three quarters of the nominal frame time. Animation frames do not arrive at the nominal distance, and browsers differ in how coarsely they round the timestamps they hand out, so the threshold has room for that jitter: a cap at or above the refresh rate of the display lets every frame through, and a cap at half the refresh rate drops every second frame. A held-back frame still arms the next one, so the cap slows the loop down instead of stopping it.
+
+```typescript
+const loop = new FrameLoop(30);
+loop.maxFps = 60; // takes effect on the next frame
+```
+
+### Two import paths
+
+```typescript
+import {FrameLoop} from '@spearwolf/shadow-objects';          // view side
+import {FrameLoop} from '@spearwolf/shadow-objects/FrameLoop.js'; // anywhere
+```
+
+The package entry point pulls the Custom Elements in with it and therefore needs a document. The subpath carries the class alone and works in a worker as well — use it in Shadow Objects, and the entry point only where the view layer is loaded anyway.
+
+---
+
 ## Web Components
 
 The framework ships a suite of Custom Elements that let you declare your Shadow Environment directly in HTML. These handle lifecycle, connection, and synchronization of the underlying `ViewComponent` and `ShadowEnv` classes.
@@ -1477,7 +1550,7 @@ not revive it — build a new one. `<shae-ent>` elements of the same namespace k
 | `autostart` | Whether the element may start on connect. Writable, defaults to `true`; the `no-autostart` attribute is the declarative half of the same decision. |
 | `shouldAutostart` | Read-only: `autostart` and the `no-autostart` attribute taken together. This is what the element asks when it connects. |
 | `autoSync` | The current `auto-sync` value. **Writing takes strings only:** any other value is read as a flag — a truthy one becomes `"frame"`, a falsy one `"no"`. `el.autoSync = 30` therefore syncs every frame, while `auto-sync="30"` is a 30-millisecond interval. Every value other than the frame default is reflected into the attribute; the frame default is written only when the attribute is already there. |
-| `frameLoop` | The `FrameLoop` driving the frame-based sync, taken on first read. There is one per process — every element that reads it gets the same instance. |
+| `frameLoop` | The [`FrameLoop`](#frameloop) driving the frame-based sync, taken on first read. There is one per process — every element that reads it gets the same instance. |
 | `ns` | The namespace, get and set, inherited from `ShaeElement`. Writing trims the value and reflects it back into the `ns` attribute; an empty value removes the attribute and returns the element to the Global Context. |
 | `isShaeWorkerElement` | `true`. `isShaeElement` is `true` as well, inherited from `ShaeElement`. |
 | `ShaeWorkerElement.DefaultAutoSync` | Static, `"frame"` — what an empty `auto-sync`, a removed one and any truthy non-string assignment fall back to. An unreadable value does *not* come here; it is reported and switches syncing off. |

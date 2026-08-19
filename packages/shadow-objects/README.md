@@ -57,6 +57,8 @@ export const shadowObjects = {
 
 Need to register a shadow object at runtime instead? `@spearwolf/shadow-objects/shadow-objects.js` exports a helper object of the same name for that, with a `define(token, constructor)` method. It is a separate thing from the registry a module exports: the helper writes into a `Registry`, the export declares one.
 
+`@spearwolf/shadow-objects/FrameLoop.js` is the same kind of subpath: it carries the `FrameLoop` class without the view layer, for code that runs inside a worker.
+
 ## The Five Domains
 
 | # | Domain | Responsibility | Where it lives |

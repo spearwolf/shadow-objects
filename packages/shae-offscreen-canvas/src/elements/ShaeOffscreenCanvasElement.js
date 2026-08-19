@@ -1,5 +1,5 @@
 import {on} from '@spearwolf/eventize';
-import {ContextLost} from '@spearwolf/shadow-objects';
+import {ContextLost, FrameLoop} from '@spearwolf/shadow-objects';
 import {ConsoleLogger} from '@spearwolf/shadow-objects/ConsoleLogger.js';
 import {createEffect} from '@spearwolf/signalize';
 import {
@@ -11,7 +11,6 @@ import {
   RequestOffscreenCanvas,
   RunFrameLoop,
 } from '../shared/constants.js';
-import {FrameLoop} from '../shared/FrameLoop.js';
 
 const DISPLAY_ID = 'display';
 const ENTITY_ID = 'entity';
@@ -52,7 +51,7 @@ const ATTR_FPS = 'fps';
 const ATTR_NS = 'ns';
 
 export class ShaeOffscreenCanvasElement extends HTMLElement {
-  #frameLoop = new FrameLoop();
+  #frameLoop = FrameLoop.get();
   #offscreenTransferred = false;
   #frameLoopIsRunning = false;
 

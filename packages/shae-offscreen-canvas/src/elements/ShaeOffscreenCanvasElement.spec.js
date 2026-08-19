@@ -1,4 +1,4 @@
-import {GlobalNS} from '@spearwolf/shadow-objects';
+import {FrameLoop, GlobalNS} from '@spearwolf/shadow-objects';
 import '@spearwolf/shadow-objects/shae-ent.js';
 import {describe, expect, it} from 'vitest';
 import {ShaeOffscreenCanvasElement} from './ShaeOffscreenCanvasElement.js';
@@ -8,11 +8,19 @@ import {ShaeOffscreenCanvasElement} from './ShaeOffscreenCanvasElement.js';
  * an upgrade replaces the node rather than reviving it. The namespace is read in the constructor,
  * so no markup in this runner reaches that read. The subclass answers the two attribute calls of
  * the constructor itself — both are prototype methods and resolve dynamically inside `super()` —
- * which puts the value under test exactly where the element looks for it.
+ * which puts the value under test exactly where the element looks for it. For the same reason the
+ * template travels the same way: `document.createElement()` calls the constructor without
+ * arguments, so the probe reads it from a variable and hands it to `super()` itself. Left at
+ * `undefined`, the default template of the element applies.
  */
 let nsAttributeValue = '';
+let initialHTMLValue;
 
 class NsProbeElement extends ShaeOffscreenCanvasElement {
+  constructor() {
+    super(initialHTMLValue);
+  }
+
   hasAttribute(name) {
     return name === 'ns' ? nsAttributeValue !== '' : super.hasAttribute(name);
   }
@@ -24,8 +32,9 @@ class NsProbeElement extends ShaeOffscreenCanvasElement {
 
 customElements.define('ns-probe-element', NsProbeElement);
 
-const createWithNamespace = (ns) => {
+const createWithNamespace = (ns, initialHTML) => {
   nsAttributeValue = ns;
+  initialHTMLValue = initialHTML;
   return document.createElement('ns-probe-element');
 };
 
@@ -64,16 +73,31 @@ describe('ShaeOffscreenCanvasElement', () => {
     expect(el.shadow.querySelectorAll('*').length).toBe(6);
   });
 
-  it('sets the namespace on a template that carries no placeholder for it', () => {
-    nsAttributeValue = 'my-namespace';
-    const el = new NsProbeElement('<canvas id="display"></canvas><shae-ent id="entity" token="ShaeOffscreenCanvas"></shae-ent>');
-
-    expect(el.shadowEntity.getAttribute('ns')).toBe('my-namespace');
-  });
-
   it('keeps the token of the entity when the namespace ends its attribute', () => {
     const el = createWithNamespace(NS_THAT_ENDS_ITS_ATTRIBUTE);
 
     expect(el.shadowEntity.getAttribute('token')).toBe('ShaeOffscreenCanvas');
+  });
+
+  it('sets the namespace on a template that carries no placeholder for it', () => {
+    const el = createWithNamespace(
+      'my-namespace',
+      '<canvas id="display"></canvas><shae-ent id="entity" token="ShaeOffscreenCanvas"></shae-ent>',
+    );
+
+    expect(el.shadowEntity.getAttribute('ns')).toBe('my-namespace');
+  });
+
+  describe('the frame loop', () => {
+    it('subscribes to the shared frame loop while it is in the document', () => {
+      const el = createWithNamespace('');
+      const subscriptionCountBefore = FrameLoop.get().subscriptionCount;
+
+      document.body.appendChild(el);
+      expect(FrameLoop.get().subscriptionCount).toBe(subscriptionCountBefore + 1);
+
+      el.remove();
+      expect(FrameLoop.get().subscriptionCount).toBe(subscriptionCountBefore);
+    });
   });
 });

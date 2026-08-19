@@ -41,7 +41,6 @@ export class ShaeWorkerElement extends ShaeElement {
   #destroyed = false;
   #started = false;
 
-  #frameLoop?: FrameLoop;
   #autoSync?: Effect;
   #importScript?: Effect;
 
@@ -139,8 +138,7 @@ export class ShaeWorkerElement extends ShaeElement {
   }
 
   get frameLoop(): FrameLoop {
-    this.#frameLoop ??= new FrameLoop();
-    return this.#frameLoop;
+    return FrameLoop.get();
   }
 
   /**

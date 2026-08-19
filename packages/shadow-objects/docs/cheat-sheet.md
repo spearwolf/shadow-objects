@@ -416,3 +416,19 @@ new ViewComponent('a', {context: ctx});    // throws ComponentContextDisposedErr
 Both destroy the components they hold — each one reports `isDestroyed === true` afterwards and has no context. The difference is the namespace: `clear()` keeps it and takes components back in (`vc.context = ctx`), `dispose()` releases it and rejects every join.
 
 Tear down in this order: `env.destroy()`, then `ctx.dispose()`.
+
+## FrameLoop
+
+```typescript
+import {FrameLoop, type FrameData} from '@spearwolf/shadow-objects';
+// in a worker, without the view layer:
+import {FrameLoop} from '@spearwolf/shadow-objects/FrameLoop.js';
+
+const unsubscribe = FrameLoop.get().start(this); // this[FrameLoop.OnFrame](frame) per frame
+unsubscribe();                                   // or FrameLoop.get().stop(this)
+
+const own = new FrameLoop(30);                   // an own loop, capped at 30 fps
+own.maxFps = 60;                                 // 0 means: no cap
+```
+
+`FrameData`: `{now, lastNow, frameNo, deltaTime}` — seconds, `frameNo` counted from one per run, `deltaTime === 0` on the first frame of a run. No subscribers, no frame requests.

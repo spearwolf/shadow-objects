@@ -7,6 +7,7 @@ export * from './elements/ShaeEntElement.js';
 export * from './elements/ShaePropElement.js';
 export * from './elements/ShaeWorkerElement.js';
 export type * from './types.js';
+export * from './utils/FrameLoop.js';
 export * from './utils/toNamespace.js';
 export * from './view/ComponentContext.js';
 export type * from './view/ComponentMemory.js';
