@@ -1105,7 +1105,7 @@ const env = new ShadowEnv();
 | `logger` | `ConsoleLogger` (read-only) | The logger this environment reports through. |
 | `ns$` | `Signal<NamespaceType \| undefined>` (read-only) | A signal slot the environment itself never writes -- it reads `undefined` for the whole lifetime of a `ShadowEnv`. Read the namespace from `env.view.ns`. |
 | `viewReady` | `boolean` | Set by the `view` setter to reflect whether a context is attached. |
-| `proxyReady` | `boolean` | Set to `true` once `envProxy.start()` has resolved, and back to `false` when the proxy fails. |
+| `proxyReady` | `boolean` | Set to `true` once the start of the currently assigned proxy has resolved, and back to `false` when that proxy fails. A start that finishes after its proxy has been replaced, cleared or destroyed writes nothing here. |
 
 `viewReady` and `proxyReady` are writable signal accessors, and together they are the input of the effect that emits `ContextCreated` and `ContextLost`. Assigning them by hand drives those events -- setting `proxyReady = false` is what a proxy failure does internally.
 
@@ -1120,6 +1120,12 @@ Retrieves an existing `ShadowEnv` instance by namespace. Returns `undefined` if 
 ```typescript
 const env = ShadowEnv.get('my-game');
 ```
+
+A namespace carries one environment at a time. Assigning a `view` registers the environment under
+`view.ns` and displaces whatever was registered there, with a warning through the `ConsoleLogger`.
+The registration is released by the environment that holds it -- when its `view` moves to another
+context or is cleared, and when it is destroyed. An environment that has been displaced releases
+nothing, so this lookup keeps answering the environment that is actually registered.
 
 ### Events
 
@@ -1244,6 +1250,8 @@ The `envProxy` property accepts any implementation of `IShadowObjectEnvProxy`. T
 | `onProxyFailed` | `(reason: unknown) => any` | no |
 
 The last two are callbacks rather than calls: `ShadowEnv` installs both on every proxy it is given -- `onMessageToView` for messages coming out of the Shadow Environment, `onProxyFailed` for the loss of that environment. An implementation that cannot fail simply never calls the latter.
+
+The environment takes both back off a proxy it lets go, which is what a proxy sees when it is replaced, cleared, or caught by `ShadowEnv.destroy()`. `onProxyFailed` is gone as soon as the proxy's own `destroy()` returns. `onMessageToView` outlives it by one microtask, so that a message the teardown itself hands to a microtask -- what an `onDestroy` sends towards the view -- still reaches the environment. After that the proxy is on its own: reading either field off itself finds `undefined`, and an implementation that instead keeps a reference to the callback it was given reports to an environment that has moved on.
 
 ### `LocalShadowObjectEnv`
 

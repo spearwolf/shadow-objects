@@ -85,9 +85,7 @@ export class ShadowEnv {
 
   set view(ctx: ComponentContext | null | undefined) {
     if (ctx !== this.#comCtx) {
-      if (this.#comCtx?.ns && globalThis.__shadowEnvs) {
-        globalThis.__shadowEnvs.delete(this.#comCtx.ns);
-      }
+      this.#releaseNamespace(this.#comCtx?.ns);
 
       this.#comCtx = ctx ?? undefined;
 
@@ -109,14 +107,34 @@ export class ShadowEnv {
     }
   }
 
+  /**
+   * Releases the namespace registration, but only while this environment holds it. A namespace
+   * carries one environment at a time, and an assignment that displaces another one leaves that
+   * other environment registered under nothing -- taking its entry along on the way out would
+   * make `ShadowEnv.get()` answer `undefined` for an environment that is very much alive.
+   */
+  #releaseNamespace(ns: NamespaceType | undefined): void {
+    if (ns == null) return;
+    const shadowEnvs = globalThis.__shadowEnvs;
+    if (shadowEnvs?.get(ns) === this) {
+      shadowEnvs.delete(ns);
+    }
+  }
+
   get envProxy(): IShadowObjectEnvProxy | undefined {
     return this.#shaObjEnvProxy;
   }
+
+  // Each assignment to `envProxy` opens a generation. A start that finishes outside the generation
+  // it belongs to speaks for a proxy this environment has already let go, and is discarded.
+  #proxyGeneration = 0;
 
   set envProxy(proxy: IShadowObjectEnvProxy | null | undefined) {
     if (proxy !== this.#shaObjEnvProxy) {
       const prevProxy = this.#shaObjEnvProxy;
       this.#shaObjEnvProxy = proxy ?? undefined;
+
+      const generation = ++this.#proxyGeneration;
 
       if (this.#shaObjEnvProxy) {
         this.#shaObjEnvProxy.onMessageToView = this.#onMessageToView.bind(this);
@@ -125,16 +143,33 @@ export class ShadowEnv {
 
       if (prevProxy) {
         prevProxy.destroy();
+
+        // a proxy this environment has let go speaks for an environment that is gone; whatever
+        // it makes of its own failure from here on is no longer this environment's business
+        prevProxy.onProxyFailed = undefined;
+
+        // one microtask later, not synchronously: a local environment hands a message an
+        // `onDestroy` sends towards the view to a microtask queued while `destroy()` runs, and
+        // that message is still addressed to this environment. The microtask queue is served in
+        // the order it was filled, so every message the teardown queued runs ahead of this line
+        // -- and the released proxy falls silent for everything after it
+        queueMicrotask(() => {
+          prevProxy.onMessageToView = undefined;
+        });
       }
 
       this.proxyReady = false;
 
+      // the catch stays behind the then: a listener of ContextCreated that throws is reported here,
+      // and turning this into `then(onFulfilled, onRejected)` would let it escape as an unhandled rejection
       proxy
         ?.start()
         .then(() => {
+          if (generation !== this.#proxyGeneration) return;
           this.proxyReady = true;
         })
         .catch((error) => {
+          if (generation !== this.#proxyGeneration) return;
           this.logger.error('failed to start envProxy', error);
           this.proxyReady = false;
         });
@@ -234,16 +269,10 @@ export class ShadowEnv {
     this.#syncAfterContextCreated = false;
     this.#syncWaitForConfirmation = false;
 
-    const ns = this.#comCtx?.ns;
-
     // the `envProxy` setter destroys the previous proxy, so it must not be destroyed here as well
     this.envProxy = undefined;
+    // the `view` setter releases the namespace registration on the way out, ownership-checked
     this.view = undefined;
-
-    const shadowEnvs = globalThis.__shadowEnvs;
-    if (ns && shadowEnvs?.get(ns) === this) {
-      shadowEnvs.delete(ns);
-    }
 
     // settle everyone still waiting before the listeners they depend on are removed
     this.#rejectWhenDestroyed?.(new ShadowEnvDestroyedError());
@@ -302,6 +331,10 @@ export class ShadowEnv {
     if (this.#isDestroyed) return;
 
     this.logger.error('the environment proxy failed', reason);
+
+    // the failure ends this proxy's turn the same way a reassignment would: a start of its own
+    // that resolves afterwards must not report a lost environment as ready
+    ++this.#proxyGeneration;
 
     try {
       // the reason before the consequence: ContextLost follows from dropping proxyReady

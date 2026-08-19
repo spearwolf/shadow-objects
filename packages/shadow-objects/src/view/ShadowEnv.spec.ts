@@ -573,4 +573,370 @@ describe('ShadowEnv', () => {
       env.destroy();
     });
   });
+
+  describe('a proxy that is replaced while it is starting', () => {
+    /**
+     * A proxy whose `start()` is held open until the case settles it. The race this pins is a race
+     * of microtasks -- which of two starts writes `proxyReady` last -- so the order is made by the
+     * case, not waited for.
+     */
+    class DeferredProxy implements IShadowObjectEnvProxy {
+      onMessageToView?: (event: any) => any;
+      onProxyFailed?: (reason: unknown) => any;
+
+      startCount = 0;
+      destroyCount = 0;
+
+      readonly #started: Promise<void>;
+      #resolve!: () => void;
+      #reject!: (reason: unknown) => void;
+
+      constructor() {
+        this.#started = new Promise<void>((resolve, reject) => {
+          this.#resolve = resolve;
+          this.#reject = reject;
+        });
+        // a case may reject a start the environment has already let go of, and by then nobody is listening
+        this.#started.catch(() => {});
+      }
+
+      start(): Promise<void> {
+        this.startCount++;
+        return this.#started;
+      }
+
+      async importScript(): Promise<void> {}
+
+      async applyChangeTrail(): Promise<void> {}
+
+      destroy(): void {
+        this.destroyCount++;
+      }
+
+      resolveStart(): void {
+        this.#resolve();
+      }
+
+      failStart(reason: unknown): void {
+        this.#reject(reason);
+      }
+
+      fail(reason: unknown): void {
+        this.onProxyFailed?.(reason);
+      }
+    }
+
+    /** Lets every microtask behind a settled start run before the case looks at the environment. */
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    const makeEnv = () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get();
+      return env;
+    };
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('ignores the resolved start of a proxy that has been replaced', async () => {
+      const env = makeEnv();
+      const first = new DeferredProxy();
+      const second = new DeferredProxy();
+      const contextCreated = vi.fn();
+      on(env, ShadowEnv.ContextCreated, contextCreated);
+
+      env.envProxy = first;
+      env.envProxy = second;
+
+      first.resolveStart();
+      await flush();
+
+      expect(env.proxyReady, 'the start of the replaced proxy must not report the current one ready').toBe(false);
+      expect(env.isReady).toBe(false);
+      expect(contextCreated).not.toHaveBeenCalled();
+      expect(second.startCount).toBe(1);
+
+      env.destroy();
+    });
+
+    it('ignores the rejected start of a proxy that has been replaced', async () => {
+      const env = makeEnv();
+      const first = new DeferredProxy();
+      const second = new DeferredProxy();
+      const contextLost = vi.fn();
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      on(env, ShadowEnv.ContextLost, contextLost);
+
+      env.envProxy = first;
+      env.envProxy = second;
+
+      second.resolveStart();
+      await flush();
+
+      expect(env.isReady).toBe(true);
+
+      first.failStart(new Error('the worker never came up'));
+      await flush();
+
+      expect(env.proxyReady, 'the failed start of the replaced proxy must not undo the current one').toBe(true);
+      expect(env.isReady).toBe(true);
+      expect(contextLost).not.toHaveBeenCalled();
+      expect(consoleError).not.toHaveBeenCalled();
+
+      env.destroy();
+    });
+
+    // no proxy that ships with this package reports a failure after its teardown: `RemoteWorkerEnv`
+    // takes its worker listeners off on every exit and `LocalShadowObjectEnv` cannot fail at all.
+    // A hand-written `IShadowObjectEnvProxy` can, and this is what it must not be able to do.
+    it('ignores a failure a replaced proxy reports after the swap', async () => {
+      const env = makeEnv();
+      const first = new DeferredProxy();
+      const second = new DeferredProxy();
+      const contextLost = vi.fn();
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      on(env, ShadowEnv.ContextLost, contextLost);
+
+      env.envProxy = first;
+      env.envProxy = second;
+
+      second.resolveStart();
+      await flush();
+
+      first.fail(new Error('too late'));
+
+      expect(env.proxyReady).toBe(true);
+      expect(contextLost).not.toHaveBeenCalled();
+      expect(consoleError).not.toHaveBeenCalled();
+
+      env.destroy();
+    });
+
+    it('ignores the resolved start of a proxy that has been cleared', async () => {
+      const env = makeEnv();
+      const first = new DeferredProxy();
+      const contextCreated = vi.fn();
+      on(env, ShadowEnv.ContextCreated, contextCreated);
+
+      env.envProxy = first;
+      env.envProxy = undefined;
+
+      first.resolveStart();
+      await flush();
+
+      expect(contextCreated).not.toHaveBeenCalled();
+      expect(env.proxyReady).toBe(false);
+      expect(first.destroyCount).toBe(1);
+
+      env.destroy();
+    });
+
+    it('ignores the rejected start of a proxy the destroy has released', async () => {
+      const env = makeEnv();
+      const first = new DeferredProxy();
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      env.envProxy = first;
+      env.destroy();
+
+      first.failStart(new Error('never mind'));
+      await flush();
+
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+
+    it('ignores the resolved start of a proxy that failed before it came up', async () => {
+      const env = makeEnv();
+      const proxy = new DeferredProxy();
+      const contextCreated = vi.fn();
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      on(env, ShadowEnv.ContextCreated, contextCreated);
+
+      env.envProxy = proxy;
+
+      // the failure ends this proxy's turn: what its start has to say afterwards is stale
+      proxy.fail(new Error('gone before it came up'));
+
+      proxy.resolveStart();
+      await flush();
+
+      expect(env.proxyReady).toBe(false);
+      expect(env.isReady).toBe(false);
+      expect(contextCreated).not.toHaveBeenCalled();
+
+      env.destroy();
+    });
+
+    it('reports the current proxy ready when its start resolves', async () => {
+      const env = makeEnv();
+      const proxy = new DeferredProxy();
+      const contextCreated = vi.fn();
+      on(env, ShadowEnv.ContextCreated, contextCreated);
+
+      env.envProxy = proxy;
+
+      proxy.resolveStart();
+      await flush();
+
+      expect(env.proxyReady).toBe(true);
+      expect(env.isReady).toBe(true);
+      expect(contextCreated).toHaveBeenCalledTimes(1);
+      expect(proxy.startCount).toBe(1);
+
+      env.destroy();
+    });
+  });
+
+  describe('the namespace registration', () => {
+    const NS_A = 'shadow-env-ns-a';
+    const NS_B = 'shadow-env-ns-b';
+
+    afterEach(() => {
+      // a named context outlives the outer afterEach, which only reaches the global namespace
+      ComponentContext.get(NS_A).dispose();
+      ComponentContext.get(NS_B).dispose();
+      globalThis.__shadowEnvs?.delete(NS_A);
+      globalThis.__shadowEnvs?.delete(NS_B);
+      vi.restoreAllMocks();
+    });
+
+    it('leaves a namespace registration alone that another environment has taken over', () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      const ctx = ComponentContext.get(NS_A);
+      const first = new ShadowEnv();
+      const second = new ShadowEnv();
+
+      first.view = ctx;
+      second.view = ctx;
+
+      expect(ShadowEnv.get(NS_A)).toBe(second);
+
+      first.view = undefined;
+
+      expect(ShadowEnv.get(NS_A), 'the environment that let go was not the registered one').toBe(second);
+
+      first.destroy();
+      second.destroy();
+    });
+
+    it('releases its own namespace registration when its context goes', () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get(NS_A);
+
+      expect(ShadowEnv.get(NS_A)).toBe(env);
+
+      env.view = undefined;
+
+      expect(ShadowEnv.get(NS_A)).toBeUndefined();
+
+      env.destroy();
+    });
+
+    it('releases its namespace registration on destroy', () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get(NS_A);
+
+      expect(ShadowEnv.get(NS_A)).toBe(env);
+
+      env.destroy();
+
+      expect(ShadowEnv.get(NS_A)).toBeUndefined();
+    });
+
+    it('takes its registration along when it moves to another namespace', () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get(NS_A);
+      env.view = ComponentContext.get(NS_B);
+
+      expect(ShadowEnv.get(NS_A)).toBeUndefined();
+      expect(ShadowEnv.get(NS_B)).toBe(env);
+
+      env.destroy();
+    });
+  });
+
+  describe('a proxy the environment has let go', () => {
+    /** A proxy that says something towards the view on demand -- during its teardown and after it. */
+    class SpeakingProxy implements IShadowObjectEnvProxy {
+      onMessageToView?: (event: any) => any;
+      onProxyFailed?: (reason: unknown) => any;
+
+      async start(): Promise<void> {}
+
+      async importScript(): Promise<void> {}
+
+      async applyChangeTrail(): Promise<void> {}
+
+      destroy(): void {}
+
+      say(type: string): void {
+        this.onMessageToView?.({uuid: 'speaker', type, data: undefined, traverseChildren: false});
+      }
+    }
+
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('delivers what an onDestroy sends towards the view while the proxy is torn down', async () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get();
+      env.envProxy = new LocalShadowObjectEnv();
+      await env.ready();
+
+      @ShadowObject({token: 'farewell'})
+      class Farewell implements OnDestroy {
+        readonly #dispatchMessageToView: ShadowObjectCreationAPI['dispatchMessageToView'];
+
+        constructor(api: ShadowObjectCreationAPI) {
+          this.#dispatchMessageToView = api.dispatchMessageToView;
+        }
+
+        [onDestroy]() {
+          this.#dispatchMessageToView('farewell', {said: 'goodbye'});
+        }
+      }
+
+      expect(Farewell).toBeDefined();
+
+      const component = new ViewComponent('farewell', {context: env.view});
+      const farewellSpy = vi.fn();
+      on(component, 'farewell', farewellSpy);
+
+      await env.syncWait();
+
+      // the teardown of the released environment runs the onDestroy callbacks, and a local
+      // environment delivers what they send towards the view
+      env.envProxy = new LocalShadowObjectEnv();
+      await flush();
+
+      expect(farewellSpy).toHaveBeenCalledTimes(1);
+      expect(farewellSpy).toHaveBeenCalledWith({said: 'goodbye'});
+
+      env.destroy();
+    });
+
+    it('hears nothing a released proxy says after its teardown', async () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get();
+      const dispatchMessage = vi.spyOn(env.view, 'dispatchMessage');
+
+      const first = new SpeakingProxy();
+      env.envProxy = first;
+      await env.ready();
+
+      env.envProxy = new SpeakingProxy();
+      await flush();
+
+      first.say('too late');
+
+      expect(dispatchMessage).not.toHaveBeenCalled();
+
+      env.destroy();
+    });
+  });
 });
