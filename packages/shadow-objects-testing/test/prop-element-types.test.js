@@ -120,7 +120,7 @@ describe('shae-prop type conversion — separator patterns (\\W+ vs \\s+)', () =
     ['uint32array', '1;2;3', ta(Uint32Array, [1, 2, 3])],
     ['bigint64array', '1 -2', ta(BigInt64Array, [1n, 2n])],
     ['biguint64array', '-1 2', ta(BigUint64Array, [0n, 1n, 2n])],
-    ['hex[]', '-ff 0a', [NaN, 255, 10]],
+    ['hex[]', '0-ff 0a', [0, 255, 10]],
     ['[]', '.a b', ['', 'a', 'b']],
     ['[]', 'a, b.', ['a', 'b', '']],
     ['float32array', '1.5 -2.5', ta(Float32Array, [1.5, -2.5])],
@@ -144,25 +144,62 @@ describe('shae-prop type conversion — separator patterns (\\W+ vs \\s+)', () =
   }
 });
 
-describe('shae-prop type conversion — malformed input that does not throw', () => {
+describe('shae-prop type conversion — numeric input without a number is reported and cleared', () => {
+  // Every numeric branch, scalar, list and typed array alike: an input whose conversion is not a
+  // number costs the property. The typed arrays are in here because their constructor turns a
+  // NaN into a 0 or writes it into the buffer, and neither answer is a value anyone asked for.
   const cases = [
-    ['number', 'abc', NaN],
-    ['float', 'abc', NaN],
-    ['int', 'abc', NaN],
-    ['hex', 'zz', NaN],
-    ['oct', '9', NaN],
-    ['bin', '2', NaN],
-    ['number[]', 'a b', [NaN, NaN]],
-    ['float[]', 'a b', [NaN, NaN]],
-    ['int[]', 'a b', [NaN, NaN]],
-    ['hex[]', 'zz', [NaN]],
-    ['oct[]', '9', [NaN]],
-    ['bin[]', '2', [NaN]],
-    // the typed array constructor coerces NaN to 0 — unlike float32array, which keeps NaN
-    ['int8array', 'a b', ta(Int8Array, [0, 0])],
-    ['float32array', 'a b', ta(Float32Array, [NaN, NaN])],
-    ['bool', 'nonsense', false],
+    ['number', 'abc'],
+    ['float', 'abc'],
+    ['int', 'abc'],
+    ['hex', 'zz'],
+    ['oct', '9'],
+    ['bin', '2'],
+    ['number[]', 'a b'],
+    ['float[]', 'a b'],
+    ['int[]', 'a b'],
+    ['hex[]', 'zz'],
+    ['oct[]', '9'],
+    ['bin[]', '2'],
+    ['int8array', 'a b'],
+    ['float32array', 'a b'],
   ];
+
+  for (const [type, value] of cases) {
+    it(`type="${type}" value="${value}"`, () => {
+      const prop = mount({type, value});
+      expect(prop.value).to.be.undefined;
+    });
+  }
+
+  it('type="number" value="NaN" is reported and cleared', () => {
+    // the rule reads the result of the conversion, not the spelling of the input
+    const prop = mount({type: 'number', value: 'NaN'});
+    expect(prop.value).to.be.undefined;
+  });
+
+  it('type="number" value="Infinity" reaches the entity', () => {
+    const prop = mount({type: 'number', value: 'Infinity'});
+    expect(prop.value).to.equal(Number.POSITIVE_INFINITY);
+  });
+
+  it('type="int" value="12abc" stays lenient', () => {
+    // `parseInt` reads the leading digits and returns a number, and a number is all that is asked
+    const prop = mount({type: 'int', value: '12abc'});
+    expect(prop.value).to.equal(12);
+  });
+
+  it('type="hex[]" value="-ff 0a" is reported and cleared', () => {
+    // `\W+` splits at the leading `-` and leaves an empty segment in front of it, and
+    // `parseInt('', 16)` is NaN — one such segment costs the whole list. The counterpart runs
+    // through `Number()` in the no-trim block below, where an empty segment is a 0.
+    const prop = mount({type: 'hex[]', value: '-ff 0a'});
+    expect(prop.value).to.be.undefined;
+  });
+});
+
+describe('shae-prop type conversion — lenient branches that convert anything', () => {
+  const cases = [['bool', 'nonsense', false]];
 
   for (const [type, value, expected] of cases) {
     it(`type="${type}" value="${value}"`, () => {
@@ -239,6 +276,27 @@ describe('shae-prop type conversion — malformed input that is reported instead
       const reports = error
         .getCalls()
         .filter((call) => call.args.some((arg) => typeof arg === 'string' && arg.includes('"json"')));
+      expect(reports, 'reports naming the type').to.have.lengthOf(1);
+    } finally {
+      error.restore();
+      ConsoleLogger.sharedConfig.enable = previousEnable;
+    }
+  });
+
+  it('the numeric failure is reported through the ConsoleLogger', () => {
+    // same channel and same gate as the case above: a numeric branch that cannot answer with a
+    // number is the same operating case as malformed JSON, and it has to be as visible
+    const previousEnable = ConsoleLogger.sharedConfig.enable;
+    ConsoleLogger.sharedConfig.enable = false;
+    const error = sinon.stub(console, 'error');
+    try {
+      const messages = withSwallowedErrors(() => {
+        mount({type: 'number', value: 'abc'});
+      });
+      expect(messages).to.have.lengthOf(0);
+      const reports = error
+        .getCalls()
+        .filter((call) => call.args.some((arg) => typeof arg === 'string' && arg.includes('"number"')));
       expect(reports, 'reports naming the type').to.have.lengthOf(1);
     } finally {
       error.restore();
@@ -344,6 +402,13 @@ describe('shae-prop type conversion — falsy values', () => {
     // the trim leaves the empty string behind, and Number('') is 0
     const prop = mount({type: 'number', value: '   '});
     expect(prop.value).to.equal(0);
+  });
+
+  it('a whitespace only value with a parseInt type clears the property', () => {
+    // the same empty string as above, read by the other conversion: parseInt('', 10) is NaN, so
+    // the same attribute that is a 0 for `number` is no value at all for `int`
+    const prop = mount({type: 'int', value: '   '});
+    expect(prop.value).to.be.undefined;
   });
 
   it('falsy values assigned through the JS property survive', () => {

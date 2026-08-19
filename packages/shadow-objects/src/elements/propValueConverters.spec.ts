@@ -88,7 +88,9 @@ describe('propValueConverters', () => {
     });
 
     it('number', () => {
-      expect(propValueConverters.get('number')!('12abc')).toBeNaN();
+      // `Number`, not `parseFloat` and not `parseInt`: those two read `'0x1f'` as 0, stopping at
+      // the `x`, while `Number` reads the hexadecimal literal whole
+      expect(propValueConverters.get('number')!('0x1f')).toBe(31);
     });
 
     it('bigint', () => {
@@ -102,7 +104,9 @@ describe('propValueConverters', () => {
     it('int, integer', () => {
       expect(propValueConverters.get('int')!('42.9')).toBe(42);
       expect(propValueConverters.get('integer')!('42.9')).toBe(42);
-      // `parseInt`, not `Math.trunc(Number(…))`: the latter would answer `NaN` here instead of 12
+      // `parseInt`, not `Math.trunc(Number(…))`: the latter would answer `NaN` here instead of 12.
+      // A trailing remainder is no obstacle, because a numeric branch asks what its conversion
+      // returns and not what the input looks like — and `parseInt` returns a number here.
       expect(propValueConverters.get('int')!('12abc')).toBe(12);
     });
 
@@ -133,7 +137,9 @@ describe('propValueConverters', () => {
     });
 
     it('number[]', () => {
-      expect(propValueConverters.get('number[]')!('1.5abc 2')).toEqual([NaN, 2]);
+      // `0x1f` tells the three conversions apart per segment, exactly as in the scalar `number`
+      // case: `parseFloat` and `parseInt` would answer 0 for it
+      expect(propValueConverters.get('number[]')!('0x1f 2')).toEqual([31, 2]);
     });
 
     it('float[]', () => {
@@ -236,6 +242,63 @@ describe('propValueConverters', () => {
 
     it('json', () => {
       expect(propValueConverters.get('json')!('{"a":1,"b":[2,3]}')).toEqual({a: 1, b: [2, 3]});
+    });
+  });
+
+  describe('numeric branches refuse a result that is not a number', () => {
+    // One row per guarded converter. The value is `'abc'` wherever that reaches no digit at all;
+    // `hex` reads it as 2748, so the sharper case there is a letter outside base 16, and for
+    // `oct`/`bin` a digit outside the base.
+    const cases: Array<[type: string, value: string]> = [
+      ['number', 'abc'],
+      ['float', 'abc'],
+      ['int', 'abc'],
+      ['hex', 'zz'],
+      ['oct', '9'],
+      ['bin', '2'],
+      ['number[]', 'abc'],
+      ['float[]', 'abc'],
+      ['int[]', 'abc'],
+      ['hex[]', 'zz'],
+      ['oct[]', '9'],
+      ['bin[]', '2'],
+      ['int8array', 'abc'],
+      ['uint8array', 'abc'],
+      ['uint8clampedarray', 'abc'],
+      ['int16array', 'abc'],
+      ['uint16array', 'abc'],
+      ['int32array', 'abc'],
+      ['uint32array', 'abc'],
+      ['float32array', 'abc'],
+      ['float64array', 'abc'],
+    ];
+
+    for (const [type, value] of cases) {
+      it(`${type} with "${value}"`, () => {
+        expect(() => propValueConverters.get(type)!(value)).toThrow(TypeError);
+      });
+    }
+
+    it('lets Infinity through, because it is a number', () => {
+      expect(propValueConverters.get('number')!('Infinity')).toBe(Number.POSITIVE_INFINITY);
+    });
+
+    it('counts an empty segment as zero where the split leaves one', () => {
+      // `fields()` turns the outer spaces into empty segments, and `Number('')` is 0 — a value,
+      // not a failure. Which conversion reads the segment decides the answer, see the case below.
+      expect(propValueConverters.get('number[]')!(' 1 2 ')).toEqual([0, 1, 2, 0]);
+    });
+
+    it('refuses an empty segment where parseFloat or parseInt reads it', () => {
+      // the same empty segment as above, and the same two producers of one: the outer spaces of
+      // an untrimmed value, and a leading separator — `words()` splits `'-ff 0a'` at the `-` and
+      // leaves an empty segment in front of it. `parseFloat('')` and `parseInt('', base)` are
+      // both `NaN`, so one such segment costs the whole list.
+      expect(() => propValueConverters.get('float[]')!(' 1 2 ')).toThrow(TypeError);
+      expect(() => propValueConverters.get('hex[]')!('-ff 0a')).toThrow(TypeError);
+      // and the scalar branches answer a value that is empty on its own the same way
+      expect(propValueConverters.get('number')!('')).toBe(0);
+      expect(() => propValueConverters.get('int')!('')).toThrow(TypeError);
     });
   });
 

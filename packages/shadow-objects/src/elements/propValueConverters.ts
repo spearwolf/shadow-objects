@@ -5,23 +5,42 @@ export type PropValueConverter = (value: string) => unknown;
 const words = (value: string): string[] => value.split(/\W+/);
 const fields = (value: string): string[] => value.split(/\s+/);
 
-const toRadix =
-  (base: number): PropValueConverter =>
-  (value) =>
-    parseInt(value, base);
+type NumberParser = (value: string) => number;
+type Splitter = (value: string) => string[];
 
-const toRadixList =
-  (base: number): PropValueConverter =>
+// The check sits here, ahead of every constructor: `new Int8Array([NaN])` is `[0]` and
+// `new Float32Array([NaN])` carries the `NaN` into its buffer, so once the array exists nothing
+// separates a token that could not be read from one that was meant. A numeric branch answers with
+// a number or it answers with nothing — the token is named rather than the whole attribute value,
+// so a list says which of its segments does not carry.
+const assertNumber = (value: number, token: string): number => {
+  if (Number.isNaN(value)) {
+    throw new TypeError(`not a number: "${token}"`);
+  }
+  return value;
+};
+
+const toNumber =
+  (parse: NumberParser): PropValueConverter =>
   (value) =>
-    words(value).map((v) => parseInt(v, base));
+    assertNumber(parse(value), value);
+
+const toNumberList =
+  (parse: NumberParser, split: Splitter): PropValueConverter =>
+  (value) =>
+    split(value).map((v) => assertNumber(parse(v), v));
+
+const toRadix = (base: number): PropValueConverter => toNumber((value) => parseInt(value, base));
+
+const toRadixList = (base: number): PropValueConverter => toNumberList((value) => parseInt(value, base), words);
 
 type NumericArrayCtor = new (values: number[]) => ArrayBufferView;
 type BigIntArrayCtor = new (values: bigint[]) => ArrayBufferView;
 
 const toNumericArray =
-  (Ctor: NumericArrayCtor, split: (value: string) => string[]): PropValueConverter =>
+  (Ctor: NumericArrayCtor, split: Splitter): PropValueConverter =>
   (value) =>
-    new Ctor(split(value).map((v) => Number(v)));
+    new Ctor(split(value).map((v) => assertNumber(Number(v), v)));
 
 const toBigIntArray =
   (Ctor: BigIntArrayCtor): PropValueConverter =>
@@ -32,21 +51,21 @@ const toBoolean: PropValueConverter = (value) => TRUTHY_VALUES.has(value.toLower
 
 // 29 groups: the names a group serves, then the one function they share. Alias marks (e.g.
 // `int`/`integer`) point at the same function object on purpose — the identity is structural, not
-// a matter of discipline.
+// a matter of discipline. Every row therefore builds its converter in a single call.
 const CONVERTER_GROUPS: ReadonlyArray<readonly [readonly string[], PropValueConverter]> = [
   [['string', 'text'], (value) => value],
-  [['number'], (value) => Number(value)],
+  [['number'], toNumber(Number)],
   [['bigint'], (value) => BigInt(value)],
-  [['float'], (value) => parseFloat(value)],
+  [['float'], toNumber(parseFloat)],
   [['int', 'integer'], toRadix(10)],
   [['hex', 'hexadecimal'], toRadix(16)],
   [['oct', 'octal'], toRadix(8)],
   [['bin', 'binary'], toRadix(2)],
   [['bool', 'boolean'], toBoolean],
   [['[]', 'text[]', 'string[]'], words],
-  [['number[]'], (value) => fields(value).map((v) => Number(v))],
-  [['float[]'], (value) => fields(value).map((v) => parseFloat(v))],
-  [['int[]', 'integer[]'], (value) => fields(value).map((v) => parseInt(v, 10))],
+  [['number[]'], toNumberList(Number, fields)],
+  [['float[]'], toNumberList(parseFloat, fields)],
+  [['int[]', 'integer[]'], toNumberList((value) => parseInt(value, 10), fields)],
   [['hex[]', 'hexadecimal[]'], toRadixList(16)],
   [['oct[]', 'octal[]'], toRadixList(8)],
   [['bin[]', 'binary[]'], toRadixList(2)],

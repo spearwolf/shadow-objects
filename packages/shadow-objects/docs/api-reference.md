@@ -1649,7 +1649,7 @@ stay on the view side.
 | `componentContext` | The `ComponentContext` of its namespace, read-only. |
 | `entParentNode` | The `<shae-ent>` this entity hangs on — the resolved entity ancestor, which is not the DOM parent node. A writable field; the next lookup decides it again. |
 | `isShaeEntElement` | `true`. `isShaeElement` is `true` as well, inherited from `ShaeElement`. |
-| `findShadowRootHost()` | The host element of the shadow root this element sits in, or `undefined` outside one. |
+| `findShadowRootHost()` | The host element of the shadow root this element sits in, or `undefined` outside one — the answer is decided again whenever the element enters or leaves the tree, and an element that has left it sits in no shadow root. |
 | `onParentChanged(newParent, oldParent)` | Called when the element leaves its parent node. Re-resolves the entity ancestor; an extension point for subclasses, which have to call `super`. |
 | `syncShadowObjects()` | Hands the environment of this element's namespace to the next sync, one microtask later. Inherited from `ShaeElement`. |
 | `ShaeEntElement.observedAttributes` | Static: `ns`, `token`, `forward-custom-events`. |
@@ -1952,8 +1952,31 @@ cannot parse, the same inside `bigint64array` and `biguint64array` — is report
 `ConsoleLogger` and sets the property to `undefined`. This holds for both paths, the attribute
 and the JavaScript property; neither throws. The report goes out at error level, which the
 logger does not gate behind `ConsoleLogger.sharedConfig.enable`, so it reaches the console on
-any host. Every other type is lenient by construction and reports nothing: the numeric ones
-yield `NaN`, the typed arrays yield a filled array.
+any host.
+
+A numeric type answers with a number or with nothing. Where its conversion comes out as `NaN`,
+the case is the same one: reported at error level, property set to `undefined`. That covers
+`number`, `float`, `int`, `hex`, `oct`, `bin`, their list forms and every numeric typed array —
+one unreadable segment costs the whole list, just as one unreadable entry costs a
+`bigint64array`.
+
+What is tested is the result, not the shape of the input. `parseInt` stays lenient as long as a
+number comes out of it, so `type="int" value="12abc"` is `12`. `Infinity` is a number and passes.
+
+The empty string is where the three conversions part company, and a split leaves one behind for
+every leading, trailing or doubled separator. `Number()` reads it as `0`, `parseFloat()` and
+`parseInt()` read it as no number at all:
+
+| Conversion | Types | An empty segment is |
+| :--- | :--- | :--- |
+| `Number()` | `number`, `number[]`, `int8array`, `uint8array`, `uint8clampedarray`, `int16array`, `uint16array`, `int32array`, `uint32array`, `float32array`, `float64array` | `0` |
+| `parseFloat()` | `float`, `float[]` | rejected |
+| `parseInt()` | `int`, `hex`, `oct`, `bin` and their list forms | rejected |
+
+So `type="number[]" no-trim value=" 1 2 "` is `[0, 1, 2, 0]`, while `type="hex[]" value="-ff 0a"`
+sets nothing at all — `-` is a separator for that type and leaves an empty segment in front of it.
+The scalar branches answer the same way to a value that the trim empties: `type="number"
+value="   "` is `0`, and `type="int" value="   "` sets no property.
 
 An unknown *type name* is a different case from an unconvertible value, and it is reported
 differently. `type="whatever"` names no conversion, so the element reports the name through

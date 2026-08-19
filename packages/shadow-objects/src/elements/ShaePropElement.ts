@@ -218,7 +218,9 @@ export class ShaePropElement extends HTMLElement {
         const convert = propValueConverters.get(type);
         if (convert != null) {
           // invalid input is an operating case for this element, not an exceptional state: it is
-          // reported and clears the value instead of throwing out of a reactive effect
+          // reported and clears the value instead of throwing out of a reactive effect. A numeric
+          // type throws when its conversion does not come out as a number, and takes the same way
+          // out of here as malformed JSON does.
           try {
             value = convert(value);
           } catch (error) {

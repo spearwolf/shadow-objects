@@ -404,17 +404,10 @@ export class ShaeEntElement extends ShaeElement {
     if (this.#shadowRootHostNeedsUpdate) {
       this.#shadowRootHostNeedsUpdate = false;
 
-      let current: HTMLElement = this;
-      while (current) {
-        if (current.parentElement == null) {
-          const root = current.parentNode as ShadowRoot;
-          if (root) {
-            this.#shadowRootHost = root.host as HTMLElement;
-          }
-          break;
-        }
-        current = current.parentElement;
-      }
+      // `getRootNode()` answers for every state of the tree — the shadow root for a node inside
+      // one, and the topmost node of its own chain for a node outside every tree. Only a shadow
+      // root has a host, so the assignment runs unconditionally: no host is an answer too
+      this.#shadowRootHost = (this.getRootNode() as ShadowRoot)?.host as HTMLElement | undefined;
     }
     return this.#shadowRootHost;
   }

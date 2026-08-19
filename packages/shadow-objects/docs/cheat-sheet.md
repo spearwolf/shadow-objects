@@ -298,7 +298,9 @@ A move within a single tick is a move, not a removal — the property travels wi
 Two failures, two channels. A value that does not convert is reported through the `ConsoleLogger`
 at **error** level and leaves the property `undefined` -- nothing throws. An unknown **type name**
 is reported at **warn** level and the string passes through unconverted; `warn` is gated behind
-`ConsoleLogger.sharedConfig.enable`, `error` is not.
+`ConsoleLogger.sharedConfig.enable`, `error` is not. A numeric type whose conversion is not a
+number belongs in the first channel — `type="int" value="12abc"` is `12`, because `parseInt`
+answers with a number, while `type="number" value="12abc"` sets nothing.
 Via the `el.value` property, `0`, `false` and `''` are values and reach the entity; only `null` and `undefined` clear it.
 
 ---
