@@ -1,5 +1,5 @@
-import {emit, getSubscriptionCount, on} from '@spearwolf/eventize';
-import {createSignal, type Signal, type SignalReader, value} from '@spearwolf/signalize';
+import {emit, eventize, getSubscriptionCount, on} from '@spearwolf/eventize';
+import {createSignal, getLinksCount, getSignalsCount, type Signal, type SignalReader, value} from '@spearwolf/signalize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {ChangeTrailPhase, ComponentChangeType, MessageToView} from '../constants.js';
 import type {ICreateEntitiesChange, ShadowObjectCreationAPI} from '../types.js';
@@ -273,6 +273,30 @@ describe('Kernel', () => {
   });
 
   describe('Shadow Object Creation API', () => {
+    describe('entity', () => {
+      it('hands out the entity the kernel holds for that uuid', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        let captured: ShadowObjectCreationAPI['entity'] | undefined;
+
+        @ShadowObject({registry, token: 'testEntityField'})
+        class TestEntityField {
+          constructor({entity}: ShadowObjectCreationAPI) {
+            captured = entity;
+          }
+        }
+        expect(TestEntityField).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testEntityField');
+
+        expect(captured).toBe(kernel.getEntity(uuid));
+
+        kernel.destroy();
+      });
+    });
+
     describe('useProperty', () => {
       it('should return a signal reader for entity property', () => {
         const registry = new Registry();
@@ -320,6 +344,38 @@ describe('Kernel', () => {
         kernel.createEntity(uuid, 'testUsePropertyCache');
 
         expect(reader1).toBe(reader2);
+
+        kernel.destroy();
+      });
+
+      it('destroys the property reader when the shadow-object leaves the set', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        let capturedPropertyReader: ReturnType<ShadowObjectCreationAPI['useProperty']> | undefined;
+
+        @ShadowObject({registry, token: 'propertyReaderBefore'})
+        class PropertyReaderBefore {
+          constructor({useProperty}: ShadowObjectCreationAPI) {
+            capturedPropertyReader = useProperty('testProp');
+          }
+        }
+
+        @ShadowObject({registry, token: 'propertyReaderAfter'})
+        class PropertyReaderAfter {}
+
+        expect(PropertyReaderBefore).toBeDefined();
+        expect(PropertyReaderAfter).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'propertyReaderBefore', undefined, 0, [['testProp', 'a']]);
+
+        expect(value(capturedPropertyReader!)).toBe('a');
+
+        kernel.changeToken(uuid, 'propertyReaderAfter');
+        kernel.changeProperties(uuid, [['testProp', 'b']]);
+
+        expect(value(capturedPropertyReader!)).toBe('a');
 
         kernel.destroy();
       });
@@ -492,6 +548,287 @@ describe('Kernel', () => {
 
         kernel.destroy();
       });
+
+      // Both cases below tear down through the path where the parent entity stays alive and its
+      // shadow-object leaves the constructor set (a token change) rather than the entity itself
+      // being destroyed -- the other of the two teardown paths a shadow-object can take.
+      // The five cases below all tear down through the path where the parent entity stays alive
+      // and its shadow-object leaves the constructor set (a token change), except the last one,
+      // which uses the other path (the entity itself is destroyed) on purpose -- see its own
+      // comment.
+      describe('clearOnDestroy', () => {
+        it('leaves the provider signal -- and what a child reads through useContext -- in place when clearOnDestroy is false', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          let provider: Signal<string | undefined> | undefined;
+
+          @ShadowObject({registry, token: 'contextKeptOnLeave'})
+          class ContextKeptOnLeave {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provider = provideContext('keptContext', 'first', {clearOnDestroy: false});
+            }
+          }
+          expect(ContextKeptOnLeave).toBeDefined();
+
+          const parentUuid = generateUUID();
+          const childUuid = generateUUID();
+
+          kernel.createEntity(parentUuid, 'contextKeptOnLeave');
+          kernel.createEntity(childUuid, 'contextKeptOnLeaveChild', parentUuid);
+
+          const childContext = kernel.getEntity(childUuid).useContext('keptContext');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(provider!)).toBe('first');
+          expect(value(childContext)).toBe('first');
+
+          kernel.changeToken(parentUuid, 'contextKeptOnLeaveEmpty');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(provider!)).toBe('first');
+          expect(value(childContext)).toBe('first');
+
+          kernel.destroy();
+        });
+
+        it('clears the provider signal back to undefined on this path when clearOnDestroy defaults to true', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          let provider: Signal<string | undefined> | undefined;
+
+          @ShadowObject({registry, token: 'contextDefaultProviderOnLeave'})
+          class ContextDefaultProviderOnLeave {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provider = provideContext('defaultProviderContext', 'first');
+            }
+          }
+          expect(ContextDefaultProviderOnLeave).toBeDefined();
+
+          const uuid = generateUUID();
+          kernel.createEntity(uuid, 'contextDefaultProviderOnLeave');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(provider!)).toBe('first');
+
+          kernel.changeToken(uuid, 'contextDefaultProviderOnLeaveEmpty');
+
+          expect(value(provider!)).toBeUndefined();
+
+          kernel.destroy();
+        });
+
+        it('reads clearOnDestroy on every call, not only on the one that creates the provider', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          let provider: Signal<string | undefined> | undefined;
+
+          @ShadowObject({registry, token: 'contextClearOnSecondCall'})
+          class ContextClearOnSecondCall {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              // The first call creates the provider and opts out of the clear. The second call for
+              // the same name finds the provider already there and takes the default, and its
+              // `clearOnDestroy` has to count all the same -- every call adds to the teardown, not
+              // just the one that allocated the signal.
+              provider = provideContext('secondCallContext', 'first', {clearOnDestroy: false});
+              provideContext('secondCallContext');
+            }
+          }
+          expect(ContextClearOnSecondCall).toBeDefined();
+
+          const uuid = generateUUID();
+          kernel.createEntity(uuid, 'contextClearOnSecondCall');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(provider!)).toBe('first');
+
+          kernel.changeToken(uuid, 'contextClearOnSecondCallEmpty');
+
+          expect(value(provider!)).toBeUndefined();
+
+          kernel.destroy();
+        });
+
+        it('does not carry that clear to a child reading through useContext', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          @ShadowObject({registry, token: 'contextDefaultOnLeave'})
+          class ContextDefaultOnLeave {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('defaultContext', 'first');
+            }
+          }
+          expect(ContextDefaultOnLeave).toBeDefined();
+
+          const parentUuid = generateUUID();
+          const childUuid = generateUUID();
+
+          kernel.createEntity(parentUuid, 'contextDefaultOnLeave');
+          kernel.createEntity(childUuid, 'contextDefaultOnLeaveChild', parentUuid);
+
+          const childContext = kernel.getEntity(childUuid).useContext('defaultContext');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('first');
+
+          // The teardown runs its cleanup callbacks in insertion order: the link that carries this
+          // provider's writes to the entity-level context signal was registered before the
+          // `clearOnDestroy` callback that sets the provider back to `undefined`, so the link is
+          // already destroyed by the time that callback runs. The write to `undefined` therefore
+          // never reaches the entity-level signal the child reads from, and the child keeps seeing
+          // the last value instead of `undefined` -- on *this* path only, the shadow-object leaving
+          // the constructor set while the parent entity survives. The next case below shows the
+          // other path, where the child does see the clear.
+          //
+          // `docs/api-reference.md` describes `clearOnDestroy` as setting the context to
+          // `undefined` for every consumer, without naming a path. This case pins the measured
+          // behaviour; which of the two sides gives way is an open decision.
+          kernel.changeToken(parentUuid, 'contextDefaultOnLeaveEmpty');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('first');
+
+          kernel.destroy();
+        });
+
+        it('does carry the clear to a child reading through useContext when the parent entity is destroyed instead of the shadow-object merely leaving the set', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          @ShadowObject({registry, token: 'contextDefaultOnParentDestroy'})
+          class ContextDefaultOnParentDestroy {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('defaultContextParentDestroy', 'first');
+            }
+          }
+          expect(ContextDefaultOnParentDestroy).toBeDefined();
+
+          const parentUuid = generateUUID();
+          const childUuid = generateUUID();
+
+          kernel.createEntity(parentUuid, 'contextDefaultOnParentDestroy');
+          kernel.createEntity(childUuid, 'contextDefaultOnParentDestroyChild', parentUuid);
+
+          const childContext = kernel.getEntity(childUuid).useContext('defaultContextParentDestroy');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('first');
+
+          // Unlike a token change, destroying the parent entity does not go through this
+          // shadow-object's own teardown link at all -- the entity-level context signal the child
+          // reads from is torn down as part of the *entity's* own destruction, which is what
+          // reaches the child here, not the `clearOnDestroy` callback from the case above.
+          kernel.destroyEntity(parentUuid);
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBeUndefined();
+
+          kernel.destroy();
+        });
+      });
+
+      // `useContext()` links its own local reader to the entity-level context signal. The two
+      // cases below hold the *reader* side of that wire (not a downstream consumer of it): it
+      // stops following the parent once this shadow-object's own teardown runs, on either of the
+      // two paths it can run through. Two independent pieces of `Kernel.ts` teardown code reach
+      // that same outcome -- the explicit link-destroy this shadow-object registered, and the
+      // fact that the reader's own signal is destroyed a few lines later, which severs any link
+      // still pointing at it as a side effect of that destruction. Either one alone already stops
+      // the reader from following; only removing both at once reproduces a reader that keeps
+      // updating past its own teardown.
+      describe('teardown', () => {
+        it('stops following the parent context when the shadow-object leaves the set', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          let provider: Signal<string | undefined> | undefined;
+
+          @ShadowObject({registry, token: 'readerFreezeParent'})
+          class ReaderFreezeParent {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provider = provideContext('readerFreezeCtx', 'first');
+            }
+          }
+          expect(ReaderFreezeParent).toBeDefined();
+
+          let reader: ReturnType<ShadowObjectCreationAPI['useContext']> | undefined;
+
+          @ShadowObject({registry, token: 'readerFreezeChildBefore'})
+          class ReaderFreezeChildBefore {
+            constructor({useContext}: ShadowObjectCreationAPI) {
+              reader = useContext('readerFreezeCtx');
+            }
+          }
+
+          @ShadowObject({registry, token: 'readerFreezeChildAfter'})
+          class ReaderFreezeChildAfter {}
+
+          expect(ReaderFreezeChildBefore).toBeDefined();
+          expect(ReaderFreezeChildAfter).toBeDefined();
+
+          const parentUuid = generateUUID();
+          const childUuid = generateUUID();
+
+          kernel.createEntity(parentUuid, 'readerFreezeParent');
+          kernel.createEntity(childUuid, 'readerFreezeChildBefore', parentUuid);
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(reader!)).toBe('first');
+
+          kernel.changeToken(childUuid, 'readerFreezeChildAfter');
+
+          provider!.set('second');
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(reader!)).toBe('first');
+
+          kernel.destroy();
+        });
+
+        it('stops following the parent context when the entity is destroyed', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          let provider: Signal<string | undefined> | undefined;
+
+          @ShadowObject({registry, token: 'readerFreezeParentA'})
+          class ReaderFreezeParentA {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provider = provideContext('readerFreezeCtxA', 'first');
+            }
+          }
+          expect(ReaderFreezeParentA).toBeDefined();
+
+          let reader: ReturnType<ShadowObjectCreationAPI['useContext']> | undefined;
+
+          @ShadowObject({registry, token: 'readerFreezeChildA'})
+          class ReaderFreezeChildA {
+            constructor({useContext}: ShadowObjectCreationAPI) {
+              reader = useContext('readerFreezeCtxA');
+            }
+          }
+          expect(ReaderFreezeChildA).toBeDefined();
+
+          const parentUuid = generateUUID();
+          const childUuid = generateUUID();
+
+          kernel.createEntity(parentUuid, 'readerFreezeParentA');
+          kernel.createEntity(childUuid, 'readerFreezeChildA', parentUuid);
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(reader!)).toBe('first');
+
+          kernel.destroyEntity(childUuid);
+
+          provider!.set('second');
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(reader!)).toBe('first');
+
+          kernel.destroy();
+        });
+      });
     });
 
     describe('useParentContext', () => {
@@ -583,6 +920,56 @@ describe('Kernel', () => {
 
         kernel.destroy();
       });
+
+      // Mirrors 'stops following the parent context when the shadow-object leaves the set' under
+      // `useContext` above -- `useParentContext()` links its own local reader to the entity-level
+      // source the exact same way, on the exact same teardown path.
+      it('stops following the parent context when the shadow-object leaves the set', async () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        let provider: Signal<string | undefined> | undefined;
+
+        @ShadowObject({registry, token: 'parentReaderFreezeParent'})
+        class ParentReaderFreezeParent {
+          constructor({provideContext}: ShadowObjectCreationAPI) {
+            provider = provideContext('parentReaderFreezeCtx', 'first');
+          }
+        }
+        expect(ParentReaderFreezeParent).toBeDefined();
+
+        let reader: ReturnType<ShadowObjectCreationAPI['useParentContext']> | undefined;
+
+        @ShadowObject({registry, token: 'parentReaderFreezeChildBefore'})
+        class ParentReaderFreezeChildBefore {
+          constructor({useParentContext}: ShadowObjectCreationAPI) {
+            reader = useParentContext('parentReaderFreezeCtx');
+          }
+        }
+
+        @ShadowObject({registry, token: 'parentReaderFreezeChildAfter'})
+        class ParentReaderFreezeChildAfter {}
+
+        expect(ParentReaderFreezeChildBefore).toBeDefined();
+        expect(ParentReaderFreezeChildAfter).toBeDefined();
+
+        const parentUuid = generateUUID();
+        const childUuid = generateUUID();
+
+        kernel.createEntity(parentUuid, 'parentReaderFreezeParent');
+        kernel.createEntity(childUuid, 'parentReaderFreezeChildBefore', parentUuid);
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(reader!)).toBe('first');
+
+        kernel.changeToken(childUuid, 'parentReaderFreezeChildAfter');
+
+        provider!.set('second');
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(reader!)).toBe('first');
+
+        kernel.destroy();
+      });
     });
 
     describe('provideGlobalContext', () => {
@@ -661,6 +1048,99 @@ describe('Kernel', () => {
 
         kernel.destroy();
       });
+
+      // Mirrors the `clearOnDestroy` cases under `provideContext and useContext` above --
+      // `provideGlobalContext` runs through the same `clearOnDestroy ?? true` check on its own
+      // map (`contextRootProviders`), so it earns the same three cases on its own provider signal.
+      // Whether a downstream consumer's `useContext` reader sees the clear is the same
+      // path-dependent story documented there; it is not repeated here. That both members' own
+      // signal (not just their downstream readers) actually gets torn down on both teardown paths
+      // is covered together, for all five context/property members at once, by
+      // 'signal cleanup on teardown' below.
+      describe('clearOnDestroy', () => {
+        it('leaves the provider signal in place when clearOnDestroy is false', () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          let provider: Signal<string | undefined> | undefined;
+
+          @ShadowObject({registry, token: 'globalContextKeptOnLeave'})
+          class GlobalContextKeptOnLeave {
+            constructor({provideGlobalContext}: ShadowObjectCreationAPI) {
+              provider = provideGlobalContext('globalKeptContext', 'first', {clearOnDestroy: false});
+            }
+          }
+          expect(GlobalContextKeptOnLeave).toBeDefined();
+
+          const uuid = generateUUID();
+          kernel.createEntity(uuid, 'globalContextKeptOnLeave');
+
+          expect(value(provider!)).toBe('first');
+
+          kernel.changeToken(uuid, 'globalContextKeptOnLeaveEmpty');
+
+          expect(value(provider!)).toBe('first');
+
+          kernel.destroy();
+        });
+
+        it('clears the provider signal back to undefined on this path when clearOnDestroy defaults to true', () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          let provider: Signal<string | undefined> | undefined;
+
+          @ShadowObject({registry, token: 'globalContextDefaultOnLeave'})
+          class GlobalContextDefaultOnLeave {
+            constructor({provideGlobalContext}: ShadowObjectCreationAPI) {
+              provider = provideGlobalContext('globalDefaultContext', 'first');
+            }
+          }
+          expect(GlobalContextDefaultOnLeave).toBeDefined();
+
+          const uuid = generateUUID();
+          kernel.createEntity(uuid, 'globalContextDefaultOnLeave');
+
+          expect(value(provider!)).toBe('first');
+
+          kernel.changeToken(uuid, 'globalContextDefaultOnLeaveEmpty');
+
+          expect(value(provider!)).toBeUndefined();
+
+          kernel.destroy();
+        });
+
+        it('reads clearOnDestroy on every call, not only on the one that creates the provider', () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          let provider: Signal<string | undefined> | undefined;
+
+          @ShadowObject({registry, token: 'globalContextClearOnSecondCall'})
+          class GlobalContextClearOnSecondCall {
+            constructor({provideGlobalContext}: ShadowObjectCreationAPI) {
+              // The first call creates the provider and opts out of the clear. The second call for
+              // the same name finds the provider already there and takes the default, and its
+              // `clearOnDestroy` has to count all the same -- every call adds to the teardown, not
+              // just the one that allocated the signal.
+              provider = provideGlobalContext('globalSecondCallContext', 'first', {clearOnDestroy: false});
+              provideGlobalContext('globalSecondCallContext');
+            }
+          }
+          expect(GlobalContextClearOnSecondCall).toBeDefined();
+
+          const uuid = generateUUID();
+          kernel.createEntity(uuid, 'globalContextClearOnSecondCall');
+
+          expect(value(provider!)).toBe('first');
+
+          kernel.changeToken(uuid, 'globalContextClearOnSecondCallEmpty');
+
+          expect(value(provider!)).toBeUndefined();
+
+          kernel.destroy();
+        });
+      });
     });
 
     describe('createResource', () => {
@@ -714,6 +1194,39 @@ describe('Kernel', () => {
         kernel.destroyEntity(uuid);
 
         expect(cleanupFn).not.toHaveBeenCalled();
+      });
+
+      it('runs the resource cleanup when the shadow-object leaves the set', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const createFn = vi.fn(() => ({id: 'resource1'}));
+        const cleanupFn = vi.fn();
+
+        @ShadowObject({registry, token: 'resourceCleanupBefore'})
+        class ResourceCleanupBefore {
+          constructor({createResource}: ShadowObjectCreationAPI) {
+            createResource(createFn, cleanupFn);
+          }
+        }
+
+        @ShadowObject({registry, token: 'resourceCleanupAfter'})
+        class ResourceCleanupAfter {}
+
+        expect(ResourceCleanupBefore).toBeDefined();
+        expect(ResourceCleanupAfter).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'resourceCleanupBefore');
+
+        expect(createFn).toHaveBeenCalledTimes(1);
+
+        kernel.changeToken(uuid, 'resourceCleanupAfter');
+
+        expect(cleanupFn).toHaveBeenCalledTimes(1);
+        expect(cleanupFn).toHaveBeenCalledWith({id: 'resource1'});
+
+        kernel.destroy();
       });
     });
 
@@ -773,6 +1286,42 @@ describe('Kernel', () => {
 
         testSignal.set(2);
         expect(effectFn).not.toHaveBeenCalled();
+      });
+
+      it('stops the effects when the shadow-object leaves the set', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const effectFn = vi.fn();
+        const testSignal = createSignal(0);
+
+        @ShadowObject({registry, token: 'effectLeaveBefore'})
+        class EffectLeaveBefore {
+          constructor({createEffect}: ShadowObjectCreationAPI) {
+            createEffect(() => {
+              effectFn(testSignal.get());
+            });
+          }
+        }
+
+        @ShadowObject({registry, token: 'effectLeaveAfter'})
+        class EffectLeaveAfter {}
+
+        expect(EffectLeaveBefore).toBeDefined();
+        expect(EffectLeaveAfter).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'effectLeaveBefore');
+
+        expect(effectFn).toHaveBeenCalledTimes(1);
+
+        kernel.changeToken(uuid, 'effectLeaveAfter');
+        effectFn.mockClear();
+
+        testSignal.set(2);
+        expect(effectFn).not.toHaveBeenCalled();
+
+        kernel.destroy();
       });
     });
 
@@ -881,6 +1430,35 @@ describe('Kernel', () => {
 
         kernel.destroy();
       });
+
+      it('destroys the signal when the shadow-object leaves the set', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        @ShadowObject({registry, token: 'createSignalLeaveBefore'})
+        class CreateSignalLeaveBefore {
+          constructor({createSignal: cs}: ShadowObjectCreationAPI) {
+            cs<string>('leaveValue');
+          }
+        }
+
+        @ShadowObject({registry, token: 'createSignalLeaveAfter'})
+        class CreateSignalLeaveAfter {}
+
+        expect(CreateSignalLeaveBefore).toBeDefined();
+        expect(CreateSignalLeaveAfter).toBeDefined();
+
+        const baselineSignals = getSignalsCount();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'createSignalLeaveBefore');
+
+        expect(getSignalsCount()).toBeGreaterThan(baselineSignals);
+
+        kernel.changeToken(uuid, 'createSignalLeaveAfter');
+
+        expect(getSignalsCount()).toBe(baselineSignals);
+      });
     });
 
     describe('createMemo', () => {
@@ -909,6 +1487,37 @@ describe('Kernel', () => {
         expect(value(memoReader!)).toBe(14);
 
         kernel.destroy();
+      });
+
+      it('stops recomputing when the shadow-object leaves the set', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const sourceSignal = createSignal(1);
+        let memoReader: SignalReader<number> | undefined;
+
+        @ShadowObject({registry, token: 'memoLeaveBefore'})
+        class MemoLeaveBefore {
+          constructor({createMemo}: ShadowObjectCreationAPI) {
+            memoReader = createMemo<number>(() => sourceSignal.get() * 2);
+          }
+        }
+
+        @ShadowObject({registry, token: 'memoLeaveAfter'})
+        class MemoLeaveAfter {}
+
+        expect(MemoLeaveBefore).toBeDefined();
+        expect(MemoLeaveAfter).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'memoLeaveBefore');
+
+        expect(value(memoReader!)).toBe(2);
+
+        kernel.changeToken(uuid, 'memoLeaveAfter');
+
+        sourceSignal.set(100);
+        expect(value(memoReader!)).toBe(2);
       });
     });
 
@@ -939,6 +1548,79 @@ describe('Kernel', () => {
 
         emit(emitter, 'testEvent', 'data2');
         expect(eventHandler).not.toHaveBeenCalled();
+      });
+
+      it('subscribes on the entity when the first argument is an event name', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const handler = vi.fn();
+
+        @ShadowObject({registry, token: 'onEventNameBefore'})
+        class OnEventNameBefore {
+          constructor({on: subscribe}: ShadowObjectCreationAPI) {
+            subscribe('ping', handler);
+          }
+        }
+
+        @ShadowObject({registry, token: 'onEventNameAfter'})
+        class OnEventNameAfter {}
+
+        expect(OnEventNameBefore).toBeDefined();
+        expect(OnEventNameAfter).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'onEventNameBefore');
+
+        emit(kernel.getEntity(uuid), 'ping', 'data1');
+        expect(handler).toHaveBeenCalledWith('data1');
+
+        kernel.changeToken(uuid, 'onEventNameAfter');
+        handler.mockClear();
+
+        emit(kernel.getEntity(uuid), 'ping', 'data2');
+        expect(handler).not.toHaveBeenCalled();
+
+        kernel.destroy();
+      });
+
+      it('hands back an unsubscribe that takes the listener off on its own', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const emitter = {};
+        const handler = vi.fn();
+        let unsubscribe: (() => void) | undefined;
+
+        @ShadowObject({registry, token: 'onUnsubscribeSelf'})
+        class OnUnsubscribeSelf {
+          constructor({on: subscribe}: ShadowObjectCreationAPI) {
+            unsubscribe = subscribe(emitter, 'ping', handler);
+          }
+        }
+        expect(OnUnsubscribeSelf).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'onUnsubscribeSelf');
+
+        expect(getSubscriptionCount(emitter)).toBe(1);
+
+        unsubscribe!();
+
+        expect(getSubscriptionCount(emitter)).toBe(0);
+
+        emit(emitter, 'ping');
+        expect(handler).not.toHaveBeenCalled();
+
+        // Whether the returned function also takes itself off the teardown's own internal
+        // bookkeeping (so a later entity destruction has nothing left to call again) is not
+        // something a test outside `Kernel.ts` can observe: eventize's own unsubscribe closures
+        // null out their held state after the first call, so a second call -- whether it comes
+        // from a stale entry here or anywhere else -- is a guaranteed no-op with no side effect to
+        // catch. What is observable, and what this closes with, is the externally visible
+        // contract: the listener is gone after the manual call above, and destroying the entity
+        // afterwards is still safe.
+        expect(() => kernel.destroyEntity(uuid)).not.toThrow();
       });
     });
 
@@ -994,6 +1676,383 @@ describe('Kernel', () => {
 
         emit(emitter, 'neverFiredEvent', 'afterDestroy');
         expect(eventHandler).not.toHaveBeenCalled();
+      });
+
+      it('subscribes on the entity when the first argument is an event name', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const handler = vi.fn();
+
+        @ShadowObject({registry, token: 'onceEventName'})
+        class OnceEventName {
+          constructor({once: subscribeOnce}: ShadowObjectCreationAPI) {
+            subscribeOnce('ping', handler);
+          }
+        }
+        expect(OnceEventName).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'onceEventName');
+
+        emit(kernel.getEntity(uuid), 'ping', 'data1');
+        expect(handler).toHaveBeenCalledWith('data1');
+
+        // `once` unsubscribes itself after the first call -- no token change needed here, unlike
+        // the equivalent case for `on`.
+        handler.mockClear();
+        emit(kernel.getEntity(uuid), 'ping', 'data2');
+        expect(handler).not.toHaveBeenCalled();
+
+        kernel.destroy();
+      });
+
+      // Mirrors 'hands back an unsubscribe that takes the listener off on its own' under `on`
+      // above, in the form with a target object rather than an event name -- see that case's
+      // trailing comment for what is and is not observable about the returned function's self-
+      // removal from the teardown's own bookkeeping.
+      it('hands back an unsubscribe that takes the listener off on its own', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const emitter = {};
+        const handler = vi.fn();
+        let unsubscribe: (() => void) | undefined;
+
+        @ShadowObject({registry, token: 'onceUnsubscribeSelf'})
+        class OnceUnsubscribeSelf {
+          constructor({once: subscribeOnce}: ShadowObjectCreationAPI) {
+            unsubscribe = subscribeOnce(emitter, 'ping', handler);
+          }
+        }
+        expect(OnceUnsubscribeSelf).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'onceUnsubscribeSelf');
+
+        expect(getSubscriptionCount(emitter)).toBe(1);
+
+        unsubscribe!();
+
+        expect(getSubscriptionCount(emitter)).toBe(0);
+
+        emit(emitter, 'ping');
+        expect(handler).not.toHaveBeenCalled();
+
+        expect(() => kernel.destroyEntity(uuid)).not.toThrow();
+      });
+    });
+
+    describe('emit', () => {
+      it('emits on the entity when the first argument is an event name', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        // `emit` is already the name of the top-level import from `@spearwolf/eventize` in this
+        // file, so the destructured creation-API member is renamed on the way in.
+        @ShadowObject({registry, token: 'testEmitOnEntity'})
+        class TestEmitOnEntity {
+          emitFromApi: ShadowObjectCreationAPI['emit'];
+          constructor({emit: emitFromApi}: ShadowObjectCreationAPI) {
+            this.emitFromApi = emitFromApi;
+          }
+        }
+        expect(TestEmitOnEntity).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testEmitOnEntity');
+
+        const spy = vi.fn();
+        on(kernel.getEntity(uuid), 'pong', spy);
+
+        // `emitFromApi` lives on this test's own class, not on the generic `ShadowObjectType` --
+        // the two share no structure, so the cast has to go through `unknown` first.
+        const shadowObject = kernel.findShadowObjects(uuid)[0] as unknown as TestEmitOnEntity;
+        shadowObject.emitFromApi('pong', 42);
+
+        expect(spy).toHaveBeenCalledWith(42);
+
+        kernel.destroy();
+      });
+
+      it('emits on the target when the first argument is an object', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        @ShadowObject({registry, token: 'testEmitOnTarget'})
+        class TestEmitOnTarget {
+          emitFromApi: ShadowObjectCreationAPI['emit'];
+          constructor({emit: emitFromApi}: ShadowObjectCreationAPI) {
+            this.emitFromApi = emitFromApi;
+          }
+        }
+        expect(TestEmitOnTarget).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testEmitOnTarget');
+
+        // `emitFromApi`'s target-object overload wants an `EventizedObject`, which a plain `{}`
+        // is not -- `eventize({})` here is what actually satisfies that at the type level, not a
+        // cast (the earlier attempt used `target: {}` behind an `any`-cast `shadowObject`, which
+        // made the mismatch on `target` compile without ever having been resolved).
+        const target = eventize({});
+        const targetSpy = vi.fn();
+        const entitySpy = vi.fn();
+        on(target, 'pong', targetSpy);
+        on(kernel.getEntity(uuid), 'pong', entitySpy);
+
+        const shadowObject = kernel.findShadowObjects(uuid)[0] as unknown as TestEmitOnTarget;
+        shadowObject.emitFromApi(target, 'pong', 42);
+
+        expect(targetSpy).toHaveBeenCalledWith(42);
+        expect(entitySpy).not.toHaveBeenCalled();
+
+        kernel.destroy();
+      });
+    });
+
+    describe('onViewEvent', () => {
+      it('hears the view events the kernel dispatches to the entity', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const spy = vi.fn();
+
+        @ShadowObject({registry, token: 'testOnViewEvent'})
+        class TestOnViewEvent {
+          constructor({onViewEvent}: ShadowObjectCreationAPI) {
+            onViewEvent(spy);
+          }
+        }
+        expect(TestOnViewEvent).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'testOnViewEvent');
+
+        kernel.dispatchEventsToEntity(uuid, [{type: 'hello', data: {x: 1}}]);
+
+        expect(spy).toHaveBeenCalledWith('hello', {x: 1});
+
+        kernel.destroy();
+      });
+
+      it('stops hearing them when the shadow-object leaves the set', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const spy = vi.fn();
+
+        @ShadowObject({registry, token: 'viewEventBefore'})
+        class ViewEventBefore {
+          constructor({onViewEvent}: ShadowObjectCreationAPI) {
+            onViewEvent(spy);
+          }
+        }
+
+        @ShadowObject({registry, token: 'viewEventAfter'})
+        class ViewEventAfter {}
+
+        expect(ViewEventBefore).toBeDefined();
+        expect(ViewEventAfter).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'viewEventBefore');
+
+        kernel.dispatchEventsToEntity(uuid, [{type: 'hello', data: {x: 1}}]);
+        expect(spy).toHaveBeenCalledTimes(1);
+
+        kernel.changeToken(uuid, 'viewEventAfter');
+        spy.mockClear();
+
+        kernel.dispatchEventsToEntity(uuid, [{type: 'hello', data: {x: 1}}]);
+        expect(spy).not.toHaveBeenCalled();
+
+        kernel.destroy();
+      });
+    });
+
+    // Cross-cutting: `provideContext`, `provideGlobalContext`, `useContext`, `useParentContext`
+    // and `useProperty` each keep a signal (and, past the first call per name, a link to the
+    // entity-level source) alive for as long as the shadow-object lives. The two cases below
+    // exercise all five members on one shadow-object and check the *global* signalize registry
+    // before and after teardown, on both of the paths a shadow-object can leave by -- catching a
+    // dropped cleanup line regardless of which of the five it belongs to.
+    //
+    // Each case runs a throwaway "warm-up" shadow-object through the same names first. Reading or
+    // providing a context for the first time on an entity also lazily allocates an entity-level (or,
+    // for `provideGlobalContext`, kernel-level) signal that outlives any single shadow-object and
+    // would otherwise show up as noise in the registry counts; the warm-up settles that allocation
+    // before the baseline is taken, so the counts that remain are the shadow-object's own.
+    //
+    // `getSignalsCount()` and `getLinksCount()` are registry-wide counters, one pair per process,
+    // not per test. The two counting cases below take a baseline and compare against it, which
+    // only holds while nothing else in the process allocates or frees a signal in between -- so
+    // these two must run sequentially. Marking this file (or this block) `concurrent` breaks them.
+    describe('signal cleanup on teardown', () => {
+      it('destroys every signal and link the five members allocated when the shadow-object leaves the set', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        @ShadowObject({registry, token: 'signalCleanupWarmupB'})
+        class SignalCleanupWarmupB {
+          constructor({
+            provideContext,
+            provideGlobalContext,
+            useContext,
+            useParentContext,
+            useProperty,
+          }: ShadowObjectCreationAPI) {
+            provideContext('signalCleanupCtxB', 'a');
+            provideGlobalContext('signalCleanupGlobalCtxB', 'b');
+            useContext('signalCleanupCtxB');
+            useParentContext('signalCleanupCtxB');
+            useProperty('signalCleanupPropB');
+          }
+        }
+
+        @ShadowObject({registry, token: 'signalCleanupProbeB'})
+        class SignalCleanupProbeB {
+          constructor({
+            provideContext,
+            provideGlobalContext,
+            useContext,
+            useParentContext,
+            useProperty,
+          }: ShadowObjectCreationAPI) {
+            provideContext('signalCleanupCtxB', 'a');
+            provideGlobalContext('signalCleanupGlobalCtxB', 'b');
+            useContext('signalCleanupCtxB');
+            useParentContext('signalCleanupCtxB');
+            useProperty('signalCleanupPropB');
+          }
+        }
+
+        @ShadowObject({registry, token: 'signalCleanupEmptyB'})
+        class SignalCleanupEmptyB {}
+
+        expect(SignalCleanupWarmupB).toBeDefined();
+        expect(SignalCleanupProbeB).toBeDefined();
+        expect(SignalCleanupEmptyB).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'signalCleanupWarmupB', undefined, 0, [['signalCleanupPropB', 'x']]);
+        kernel.changeToken(uuid, 'signalCleanupEmptyB');
+
+        const baselineSignals = getSignalsCount();
+        const baselineLinks = getLinksCount();
+
+        kernel.changeToken(uuid, 'signalCleanupProbeB');
+        expect(getSignalsCount()).toBeGreaterThan(baselineSignals);
+        expect(getLinksCount()).toBeGreaterThan(baselineLinks);
+
+        kernel.changeToken(uuid, 'signalCleanupEmptyB');
+        expect(getSignalsCount()).toBe(baselineSignals);
+        expect(getLinksCount()).toBe(baselineLinks);
+
+        kernel.destroy();
+      });
+
+      it('destroys every signal and link the five members allocated when the entity is destroyed', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        @ShadowObject({registry, token: 'signalCleanupWarmupA'})
+        class SignalCleanupWarmupA {
+          constructor({
+            provideContext,
+            provideGlobalContext,
+            useContext,
+            useParentContext,
+            useProperty,
+          }: ShadowObjectCreationAPI) {
+            provideContext('signalCleanupCtxA', 'a');
+            provideGlobalContext('signalCleanupGlobalCtxA', 'b');
+            useContext('signalCleanupCtxA');
+            useParentContext('signalCleanupCtxA');
+            useProperty('signalCleanupPropA');
+          }
+        }
+
+        @ShadowObject({registry, token: 'signalCleanupProbeA'})
+        class SignalCleanupProbeA {
+          constructor({
+            provideContext,
+            provideGlobalContext,
+            useContext,
+            useParentContext,
+            useProperty,
+          }: ShadowObjectCreationAPI) {
+            provideContext('signalCleanupCtxA', 'a');
+            provideGlobalContext('signalCleanupGlobalCtxA', 'b');
+            useContext('signalCleanupCtxA');
+            useParentContext('signalCleanupCtxA');
+            useProperty('signalCleanupPropA');
+          }
+        }
+
+        expect(SignalCleanupWarmupA).toBeDefined();
+        expect(SignalCleanupProbeA).toBeDefined();
+
+        const warmupUuid = generateUUID();
+        kernel.createEntity(warmupUuid, 'signalCleanupWarmupA', undefined, 0, [['signalCleanupPropA', 'x']]);
+        kernel.destroyEntity(warmupUuid);
+
+        const baselineSignals = getSignalsCount();
+        const baselineLinks = getLinksCount();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'signalCleanupProbeA', undefined, 0, [['signalCleanupPropA', 'x']]);
+        expect(getSignalsCount()).toBeGreaterThan(baselineSignals);
+        expect(getLinksCount()).toBeGreaterThan(baselineLinks);
+
+        kernel.destroyEntity(uuid);
+        expect(getSignalsCount()).toBe(baselineSignals);
+        expect(getLinksCount()).toBe(baselineLinks);
+
+        kernel.destroy();
+      });
+
+      // The teardown walks the two callback sets first and destroys those five signal maps only
+      // afterwards. A destroyed signal keeps its value but stops notifying, so a write made from an
+      // `onDestroy` callback travels down the link to the entity-level context signal -- and on to
+      // a child reading it -- only as long as the signals outlive the callbacks.
+      it('runs the onDestroy callbacks before it destroys the signals the creation API handed out', async () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        @ShadowObject({registry, token: 'farewellProvider'})
+        class FarewellProvider {
+          constructor({provideContext, onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
+            const provider = provideContext('farewellContext', 'first', {clearOnDestroy: false});
+            registerDestroy(() => {
+              provider.set('farewell');
+            });
+          }
+        }
+
+        @ShadowObject({registry, token: 'farewellProviderEmpty'})
+        class FarewellProviderEmpty {}
+
+        expect(FarewellProvider).toBeDefined();
+        expect(FarewellProviderEmpty).toBeDefined();
+
+        const parentUuid = generateUUID();
+        const childUuid = generateUUID();
+
+        kernel.createEntity(parentUuid, 'farewellProvider');
+        kernel.createEntity(childUuid, 'farewellProviderChild', parentUuid);
+
+        const childContext = kernel.getEntity(childUuid).useContext('farewellContext');
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(childContext)).toBe('first');
+
+        kernel.changeToken(parentUuid, 'farewellProviderEmpty');
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(childContext)).toBe('farewell');
+
+        kernel.destroy();
       });
     });
 
@@ -1278,6 +2337,36 @@ describe('Kernel', () => {
         kernel.destroyEntity(uuid);
 
         expect(calls).toBe(1);
+      });
+
+      it('runs the onDestroy callbacks before it takes the creation-API subscriptions off', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        const emitter = {};
+        const handler = vi.fn();
+
+        @ShadowObject({registry, token: 'orderOfTeardown'})
+        class OrderOfTeardown {
+          constructor({on: subscribe, onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
+            subscribe(emitter, 'ping', handler);
+            registerDestroy(() => {
+              // If the creation-API's own subscriptions were already gone by this point, this
+              // emit would reach nobody.
+              emit(emitter, 'ping', 'last call');
+            });
+          }
+        }
+        expect(OrderOfTeardown).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'orderOfTeardown');
+
+        kernel.destroyEntity(uuid);
+
+        expect(handler).toHaveBeenCalledWith('last call');
+
+        kernel.destroy();
       });
     });
   });
