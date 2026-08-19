@@ -187,7 +187,7 @@ export class Kernel {
   }
 
   upgradeEntities(): void {
-    const entityConstructors = new Map<String, Set<ShadowObjectConstructor>>();
+    const entityConstructors = new Map<string, Set<ShadowObjectConstructor>>();
 
     // Both loops walk a snapshot of the entity tree, and a lifecycle callback is free to destroy
     // an entity while the upgrade is running. An entry from the snapshot can therefore be gone by

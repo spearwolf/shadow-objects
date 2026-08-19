@@ -47,10 +47,10 @@
     "update": "pnpm dlx npm-check --update"
   },
   "devDependencies": {
-    "@esm-bundle/chai": "4.3.4-fix.0",
+    "@esm-bundle/chai": "catalog:",
     "esbuild-plugin-inline-worker": "catalog:",
     "happy-dom": "catalog:",
-    "lil-gui": "^0.21.0",
+    "lil-gui": "catalog:",
     "lit-html": "catalog:",
     "sinon": "catalog:",
     "vite": "catalog:",

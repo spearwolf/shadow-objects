@@ -184,7 +184,7 @@ export interface ShadowObjectCreationAPI {
 }
 
 export interface ShadowObjectConstructor {
-  new (params: ShadowObjectCreationAPI): {};
+  new (params: ShadowObjectCreationAPI): object;
   displayName?: string;
 }
 

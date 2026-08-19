@@ -9,6 +9,15 @@
 // Note: the bundle entry is the TRANSPILED dist/src/bundle.js (not src/bundle.ts) so
 // the package.json sideEffects array (which references dist/src/* paths) keeps the
 // element-registering imports from being tree-shaken away.
+//
+// The sideEffects list itself exists in two places: package.json carries it for
+// consumers of the repository (package-root-relative paths that point into
+// dist/src/), while package.override.json carries the publish-ready equivalent
+// (paths relative to the published package root, under which dist/src/ appears
+// as src/). makePackageJson.mjs applies the override on top of package.json
+// when it writes dist/package.json, so the override's list fully replaces the
+// source one in the published output — the two never need to agree on path
+// prefixes, only on which files carry side effects.
 
 import {execSync} from 'node:child_process';
 import {mkdirSync, readFileSync, rmSync} from 'node:fs';

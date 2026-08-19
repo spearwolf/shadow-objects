@@ -14,11 +14,14 @@ export default defineConfig({
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
-  forbidOnly: !!process.env.CI,
+  // biome-ignore lint/complexity/useLiteralKeys: process.env is typed via an index signature; noPropertyAccessFromIndexSignature (TS4111) requires the bracket form.
+  forbidOnly: !!process.env['CI'],
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  // biome-ignore lint/complexity/useLiteralKeys: process.env is typed via an index signature; noPropertyAccessFromIndexSignature (TS4111) requires the bracket form.
+  retries: process.env['CI'] ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  // biome-ignore lint/complexity/useLiteralKeys: process.env is typed via an index signature; noPropertyAccessFromIndexSignature (TS4111) requires the bracket form.
+  workers: process.env['CI'] ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   // Only keep test artifacts for failures. Stale artifacts from a passing run
@@ -76,6 +79,7 @@ export default defineConfig({
   webServer: {
     command: 'pnpm run preview', //  'pnpm run build:n:serve',
     url: 'http://localhost:4174',
-    reuseExistingServer: !process.env.CI,
+    // biome-ignore lint/complexity/useLiteralKeys: process.env is typed via an index signature; noPropertyAccessFromIndexSignature (TS4111) requires the bracket form.
+    reuseExistingServer: !process.env['CI'],
   },
 });

@@ -20,7 +20,7 @@
     "@spearwolf/shadow-objects": "workspace:*"
   },
   "devDependencies": {
-    "@esm-bundle/chai": "4.3.4-fix.0",
+    "@esm-bundle/chai": "catalog:",
     "@playwright/test": "catalog:",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",

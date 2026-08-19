@@ -47,6 +47,10 @@ catalog:
   sinon: ^22.1.0
   '@types/sinon': ^22.0.0
   lit-html: ^3.3.3
+  # Pinned exact: 4.3.4-fix.0 is a prerelease tag above 4.3.4, and a caret range
+  # against 4.3.4 would not resolve to a prerelease on its own — the exact
+  # version is the only way to land on this particular fix build.
+  '@esm-bundle/chai': 4.3.4-fix.0
 
   # --- e2e ---
   '@playwright/test': ^1.62.1
@@ -55,7 +59,7 @@ catalog:
   vite: ^7.3.6
 
   # --- lint/format ---
-  '@biomejs/biome': ^2.5.8
+  '@biomejs/biome': ^2.5.9
 
   # --- types ---
   # Pinned to the 24.x line to match `engines.node` (>=24.13.0) — the type
@@ -67,6 +71,10 @@ catalog:
   # default) holds back releases younger than that. Pinning the newest patch
   # would force a `minimumReleaseAgeExclude` entry that rots within a day.
   turbo: ^2.10.9
+
+  # --- demo (shae-offscreen-canvas) ---
+  # The GUI panel on the package's demo page (index.html), not a test tool.
+  lil-gui: ^0.21.0
 
   # --- misc ---
   rimraf: ^6.1.3

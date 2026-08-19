@@ -57,14 +57,6 @@
     }
   },
   "sideEffects": [
-    "build/src/view/ComponentContext.js",
-    "build/src/view/ShadowEnv.js",
-    "build/src/utils/ConsoleLogger.js",
-    "build/src/shae-ent.js",
-    "build/src/shae-prop.js",
-    "build/src/shae-worker.js",
-    "build/src/bundle.js",
-    "build/src/index.js",
     "dist/src/view/ComponentContext.js",
     "dist/src/view/ShadowEnv.js",
     "dist/src/utils/ConsoleLogger.js",

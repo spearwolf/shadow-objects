@@ -5,7 +5,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": ["src/**", "tsconfig*.json", "build.mjs", "package.json", "package.override.json"],
+      "inputs": ["src/**", "tsconfig*.json", "playwright.config.ts", "build.mjs", "package.json", "package.override.json"],
       "outputs": ["dist/**", "build/**", ".npm-pkg/**"]
     },
     "test": {
@@ -23,7 +23,7 @@
     },
     "typecheck": {
       "dependsOn": ["^build"],
-      "inputs": ["src/**", "test/**", "tests/**", "tsconfig*.json"],
+      "inputs": ["src/**", "test/**", "tests/**", "tsconfig*.json", "playwright.config.ts"],
       "outputs": []
     },
     "dev": {

@@ -1,4 +1,4 @@
-import {emit, eventize, getSubscriptionCount, off, on} from '@spearwolf/eventize';
+import {emit, eventize, getSubscriptionCount, type ListenerFuncType, off, on} from '@spearwolf/eventize';
 
 let gUniqInstance: FrameLoop | null = null;
 
@@ -13,7 +13,7 @@ export class FrameLoop {
     gUniqInstance = this;
   }
 
-  start(target: object | Function) {
+  start(target: object | ListenerFuncType) {
     if (target == null) return;
 
     if (getSubscriptionCount(this) === 0) {
@@ -27,7 +27,7 @@ export class FrameLoop {
     };
   }
 
-  stop(target: object | Function) {
+  stop(target: object | ListenerFuncType) {
     off(this, FrameLoop.OnFrame, target);
 
     if (getSubscriptionCount(this) === 0) {

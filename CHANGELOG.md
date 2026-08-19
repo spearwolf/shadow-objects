@@ -4,6 +4,54 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-19 — the tools see what they are meant to see
+
+- **`packages/shadow-objects-e2e/tsconfig.json`:** `include` gains `playwright.config.ts`,
+  so the package's own `typecheck` task and its `build` (`tsc && vite build`) now check the
+  file that configures the suite. It carries `compilerOptions.types: ["node"]` — without it
+  the file's `process.env` accesses report "Cannot find name 'process'" rather than the
+  `noPropertyAccessFromIndexSignature` diagnostic that motivated the change, because this
+  workspace's TypeScript does not scan `node_modules/@types` for ambient types on its own.
+  `@types/node` moves from a phantom, transitively-hoisted dependency (pulled in by `vite`'s
+  own peer dependency on it) to a declared `"catalog:"` devDependency of the package, so the
+  type package this config now names is one the package actually depends on rather than one
+  that happened to be reachable.
+- **`packages/shadow-objects-e2e/playwright.config.ts`:** the four `process.env.CI` reads
+  become `process.env['CI']` — bracket notation, required once the file is type-checked
+  because `process.env` is typed via an index signature. Each of the four carries a
+  `biome-ignore lint/complexity/useLiteralKeys` comment: that rule prefers dot notation for a
+  literal key, the opposite of what type-checking this file now requires.
+- **`turbo.json`:** `playwright.config.ts` joins the `inputs` of the `build` and the
+  `typecheck` task. A task's `inputs` list is the set of files whose contents decide whether
+  turbo replays a cached result instead of running the task, so a file missing from it is a
+  file whose edits go unnoticed — an error introduced into this config would be answered with
+  a cache hit on the last green run until something else in the package happened to change.
+- **`packages/shadow-objects/package.json`:** the `sideEffects` array drops its eight
+  `build/src/…` entries — `build/` is a directory no stage of the current pipeline writes to,
+  so nothing before this pointed at it. The ten `dist/…` entries stay, and the published
+  package is unaffected: `scripts/makePackageJson.mjs` replaces the whole array with
+  `package.override.json`'s `src/…`-relative list when it writes `dist/package.json`.
+- **`packages/shadow-objects/build.mjs`:** the header comment now says why the `sideEffects`
+  list exists twice — once in `package.json` for anyone importing the repository directly,
+  once in `package.override.json` for the published package — and that the second fully
+  replaces the first in the build's output rather than merging with it.
+- **`pnpm-workspace.yaml`:** the `catalog:` block gains `@esm-bundle/chai` (pinned exact to
+  `4.3.4-fix.0` — a prerelease tag above `4.3.4` that a caret range would not resolve to on
+  its own) and `lil-gui` (`^0.21.0`). Both used to carry a plain version range directly in
+  `packages/shadow-objects-testing/package.json` and `packages/shae-offscreen-canvas/package.json`,
+  which the two now reference as `"catalog:"` instead — `@esm-bundle/chai`'s version stood in
+  two files before this and could have drifted between them. `@biomejs/biome` moves
+  `^2.5.8` → `^2.5.9`.
+- **`biome.json`:** `linter.rules.complexity.noBannedTypes` moves from `"off"` to `"error"`.
+  It found three wrapper-type declarations: `Map<String, …>` in
+  `packages/shadow-objects/src/in-the-dark/Kernel.ts`, and two uses of the bare `Function`
+  type in `packages/shadow-objects/src/utils/FrameLoop.ts` — all three fixed as part of this
+  change (`Kernel.ts` to the primitive `string`; `FrameLoop.ts` to eventize's own
+  `ListenerFuncType`, reused rather than hand-rolling a callback signature). A fourth banned
+  type turned up in a publicly exported type — `ShadowObjectConstructor` in
+  `packages/shadow-objects/src/types.ts` — and is described from the package's own side in
+  `packages/shadow-objects/CHANGELOG.md`, since its emitted declaration changes.
+
 ## 2026-08-18 — the lint run covers what the project writes
 
 - **`biome.json`:** `.claude/` is outside the checked file set. The directory holds tool

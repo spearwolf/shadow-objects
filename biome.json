@@ -90,7 +90,7 @@
       },
       "complexity": {
         "noForEach": "off",
-        "noBannedTypes": "off",
+        "noBannedTypes": "error",
         "noUselessConstructor": "off",
         "noThisInStatic": "off",
         "useOptionalChain": "warn",

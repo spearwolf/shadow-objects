@@ -347,7 +347,6 @@ Ein Skript: `node build.mjs`. Drei Stages — esbuild-Transpile (`src/**` → `d
 Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements.js`, `./shae-ent.js`, `./shae-prop.js`, `./shae-worker.js`, `./shadow-objects.js`, `./shadow-objects.worker.js`, `./bundle.js`).
 
 **Verbleibende Auffälligkeiten:**
-- `package.override.json` und `package.json#sideEffects` enthalten noch tote `build/src/...`-Pfade aus der alten Pipeline. Folgenlos (doppelte Wahrheit), sollte aber konsolidiert werden.
 - `exports`-Konditionen: Reihenfolge `import` vor `types`. Unter strikter Node-ESM-Resolution (`moduleResolution: node16/nodenext`) sollte `types` zuerst stehen. Aktuell unter `bundler` toleriert, aber latentes Risiko für Konsumenten.
 
 ### 5.2 Dependency-Hygiene
@@ -366,7 +365,7 @@ Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements
 - Biome-Root deaktiviert (analog zur alten ESLint-Config) `noExplicitAny`, `noTsIgnore`, `noNonNullAssertion`, `noImplicitAnyLet`. Bewusste Lockerung; `noNonNullAssertion` wiegt am schwersten, weil ein `!` die eingeschaltete Null-Prüfung wieder aushebelt.
 - `any`-Hotspots (heuristisch): `ConsoleLogger.ts` (~20), `Kernel.ts` (~11), `ShadowObject.ts` (~4).
 - Biome meldet aktuell ~30 Warnings im Source (z. B. `useIterableCallbackReturn`, `noShadowRestrictedNames`, `useNodejsImportProtocol`). Schrittweise abarbeiten oder bewusst weiter unterdrücken.
-- `pnpm lint` endet mit rc=0 und zwei Infos zu `biome.json` selbst: `biome.json:2` hält `$schema` auf 2.4.14, installiert ist Biome 2.5.8, und `biome.json:57` benutzt das deprecated `linter.rules.recommended` (Nachfolger: `preset`). Beides hebt ein `biome migrate` — das dabei aber den wirksamen Regelsatz anfassen kann und deshalb einen eigenen, geprüften Lauf braucht, keinen Beifang.
+- `pnpm lint` endet mit rc=0 und zwei Infos zu `biome.json` selbst: `biome.json:2` hält `$schema` auf 2.4.14, installiert ist Biome 2.5.9, und `biome.json:57` benutzt das deprecated `linter.rules.recommended` (Nachfolger: `preset`). Beides hebt ein `biome migrate` — das dabei aber den wirksamen Regelsatz anfassen kann und deshalb einen eigenen, geprüften Lauf braucht, keinen Beifang.
 
 ### 5.4 Sonstige Stolperfallen auf frischer Maschine
 
@@ -425,7 +424,7 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 15. **`peerDependencies` für `@spearwolf/eventize`/`signalize`** dokumentiert beschließen.
 16. **API-Aufräumen:** `appendRoute` aufteilen, `onDestroy`-Tripel-Bedeutung dokumentieren oder trennen, `IShadowObjectEnvProxy.isDestroyed`/`error`-Surface ergänzen, Worker-Timeouts konfigurierbar machen.
 17. **Performance-Knopf:** `disableStructuredClone` als Default für `LocalShadowObjectEnv`; optionales RAF-Coalescing bei hoher Update-Frequenz.
-18. **`sideEffects`-Listen konsolidieren:** `package.json` und `package.override.json` haben noch tote `build/src/...`-Einträge aus der alten Build-Pipeline — auf `dist/src/...` reduzieren.
+18. ~~**`sideEffects`-Listen konsolidieren.**~~ ✅ Erledigt — `package.json` verliert seine acht toten `build/src/...`-Einträge, `package.override.json` trug nie welche.
 19. **Biome-Warnings abarbeiten** (~30 Stück): `useIterableCallbackReturn`, `noShadowRestrictedNames` etc. — entweder fixen oder Regel bewusst abschalten.
 20. **`Entity` ist aus keinem Entry exportiert**, obwohl die vier Lebenszyklus-Interfaces ihn in ihrer Signatur verlangen (`in-the-dark/events.d.ts`). Weder `index.d.ts` noch `shadow-objects.d.ts` führen `in-the-dark/Entity.js`, ein Konsument kann den geforderten Typ also nicht benennen. Der Ausweg ist heute `EntityApi` plus Methoden-Bivarianz — entweder wird er zum dokumentierten Weg, oder `Entity` wird exportiert.
 21. **`EntityGraphNode` ist nicht exportiert**, obwohl `kernel.getEntityGraph()` ihn zurückgibt: in `Kernel.d.ts` steht das `interface` ohne `export`, die Datei endet auf `export {}`. Wer den Rückgabewert typisieren will, kann den Typ nicht benennen.
