@@ -74,6 +74,79 @@ export class WorkerDestroyedError extends Error {
   }
 }
 
+/**
+ * How long a {@link RemoteWorkerEnv} waits for each of the four replies a worker owes it,
+ * in milliseconds.
+ */
+export interface WorkerTimeouts {
+  /** the `Loaded` handshake at the start */
+  loadTimeout: number;
+  /** the `ImportedModule` reply to an `importScript()` */
+  configureTimeout: number;
+  /** the `AppliedChangeTrail` confirmation of a change trail sent with `waitForConfirmation` */
+  changeTrailTimeout: number;
+  /** the `Destroyed` acknowledgement of a teardown */
+  destroyTimeout: number;
+}
+
+/**
+ * What {@link RemoteWorkerEnv} takes. Every value left out keeps its default — the four
+ * `Worker*Timeout` constants. A value that is not a number of milliseconds from 1 to
+ * 2147483647 — close to 25 days, the longest delay a timer keeps — is reported through the
+ * logger and the default applies.
+ */
+export type RemoteWorkerEnvOptions = Partial<WorkerTimeouts>;
+
+const DefaultWorkerTimeouts: WorkerTimeouts = {
+  loadTimeout: WorkerLoadTimeout,
+  configureTimeout: WorkerConfigureTimeout,
+  changeTrailTimeout: WorkerChangeTrailTimeout,
+  destroyTimeout: WorkerDestroyTimeout,
+};
+
+/**
+ * The largest delay a timer actually keeps. `setTimeout()` truncates its delay into a signed
+ * 32-bit field, so a larger number comes back out as some other, shorter one: a millisecond
+ * past this bound already fires at once. Whatever it lands on, it is not the wait that was
+ * asked for, and nothing says so.
+ */
+const MaxWorkerTimeout = 2_147_483_647;
+
+const isTimeout = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= MaxWorkerTimeout;
+
+/**
+ * Resolves the options against the defaults. A timeout is a number of milliseconds from 1 to
+ * {@link MaxWorkerTimeout}; anything else is refused and reported, and the default stays.
+ *
+ * Zero and Infinity are refused along with the rest, and that is the point of the rule rather
+ * than an oversight: `waitForMessageOfType()` arms no timer for either of them, so a teardown
+ * given one of the two would wait for an acknowledgement a dead worker never sends — and the
+ * `terminate()` that ends the teardown hangs on that very chain. One rule for all four values
+ * is easier to hold on to than three that allow it and one that does not, and {@link MaxWorkerTimeout}
+ * — close to 25 days — is as long as a wait can honestly be made.
+ */
+const resolveTimeouts = (options: RemoteWorkerEnvOptions | undefined, logger: ConsoleLogger): WorkerTimeouts => {
+  const resolved: WorkerTimeouts = {...DefaultWorkerTimeouts};
+  if (options == null) return resolved;
+
+  for (const key of Object.keys(DefaultWorkerTimeouts) as (keyof WorkerTimeouts)[]) {
+    // own keys only: what an object inherits from its prototype is not what its author wrote down
+    if (!Object.hasOwn(options, key)) continue;
+
+    const value = options[key];
+    if (value === undefined) continue;
+
+    if (isTimeout(value)) {
+      resolved[key] = value;
+    } else {
+      logger.error(`ignoring the ${key} option: expected a number of milliseconds from 1 to ${MaxWorkerTimeout}, got`, value);
+    }
+  }
+
+  return resolved;
+};
+
 /** What {@link RemoteWorkerEnv.WorkerFailed} carries. */
 export interface WorkerFailedEvent {
   /** the environment whose worker failed */
@@ -105,6 +178,9 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   readonly #workerFailure = new AbortController();
 
   readonly logger = new ConsoleLogger('RemoteWorkerEnv');
+
+  /** The four timeouts this environment holds itself to, resolved once when it is built. */
+  readonly timeouts: Readonly<WorkerTimeouts>;
 
   get isDestroyed(): boolean {
     return this.#isDestroyed;
@@ -151,7 +227,10 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     });
   }
 
-  constructor() {
+  constructor(options?: RemoteWorkerEnvOptions) {
+    // the logger is a field initializer and is therefore already in place
+    this.timeouts = Object.freeze(resolveTimeouts(options, this.logger));
+
     retain(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerLoaded);
     // a consumer that subscribes only after the failure still gets to hear about it
     retain(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerFailed);
@@ -186,7 +265,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     this.configureConsoleLogger(worker);
 
     try {
-      await waitForMessageOfType(worker, Loaded, WorkerLoadTimeout, undefined, signal);
+      await waitForMessageOfType(worker, Loaded, this.timeouts.loadTimeout, undefined, signal);
 
       // the handshake completed but the environment ended while its reply was on the way here.
       // The reason of that ending is what the caller gets — a fresh error of our own would read
@@ -248,7 +327,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     return waitForMessageOfType(
       worker,
       AppliedChangeTrail,
-      WorkerChangeTrailTimeout,
+      this.timeouts.changeTrailTimeout,
       (data: AppliedChangeTrailEvent) => {
         // the serial decides who a confirmation concerns -- an error belonging to another
         // trail would otherwise reject the request that happens to be waiting here
@@ -272,7 +351,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     return waitForMessageOfType(
       worker,
       ImportedModule,
-      WorkerConfigureTimeout,
+      this.timeouts.configureTimeout,
       (data: ImportedModuleEvent) => {
         if (data.url !== url) return false;
         if (data.error) throw data.error;
@@ -293,7 +372,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     this.#worker = undefined;
 
     // settles everything still waiting for a reply: a start() in the middle of its load handshake
-    // would otherwise sit out WorkerLoadTimeout, and workerLoaded would never hear anything again
+    // would otherwise sit out its load timeout, and workerLoaded would never hear anything again
     this.#workerFailure.abort(new WorkerDestroyedError());
 
     if (worker == null) return;
@@ -302,10 +381,10 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
 
     worker.postMessage({type: Destroy});
 
-    waitForMessageOfType(worker, Destroyed, WorkerDestroyTimeout)
+    waitForMessageOfType(worker, Destroyed, this.timeouts.destroyTimeout)
       .catch((error) => {
         // `.finally()` passes a rejection on, so without this the silence of a worker ends as an
-        // unhandled rejection five seconds after the teardown. It is terminated either way, and
+        // unhandled rejection once the destroy timeout is up. It is terminated either way, and
         // by then there is nobody left to hand the error to
         this.logger.warn('the worker did not acknowledge the teardown', error);
       })

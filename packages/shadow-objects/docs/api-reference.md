@@ -1308,7 +1308,27 @@ Runs the Shadow Environment in a Web Worker. Recommended for:
 import { RemoteWorkerEnv } from '@spearwolf/shadow-objects';
 
 const remoteEnv = new RemoteWorkerEnv();
+
+// or with one or more of the four timeouts set explicitly
+const patientEnv = new RemoteWorkerEnv({ changeTrailTimeout: 15000 });
 ```
+
+**The constructor options are the four timeouts, and nothing else.** `loadTimeout`,
+`configureTimeout`, `changeTrailTimeout` and `destroyTimeout` correspond one to one to the four
+[Worker Timeout Constants](#worker-timeout-constants), and every key is decided on its own: a key
+left out — or set to `undefined` — keeps its constant, so `new RemoteWorkerEnv()`,
+`new RemoteWorkerEnv({})` and the example above differ only in the one value that was named. A
+valid value is a number of milliseconds from `1` to `2147483647` — close to 25 days, and as long
+as a wait can honestly be made. Anything else — `0`, `Infinity`, `NaN`, a negative number, a number
+above the upper bound, something that is not a number at all — is reported through
+`env.logger.error` and the constant applies. `0` and `Infinity` are refused on purpose: neither
+arms a timer, so a `destroyTimeout` set to one of them would leave `destroy()` waiting for an
+acknowledgement a dead worker never sends, and the `terminate()` at the end of that chain would
+never run. The upper bound is refused for the mirror image of the same reason: `setTimeout()`
+truncates its delay into a signed 32-bit field, so a larger number comes back out as some other,
+shorter one — `loadTimeout: 2147483648` fires at once rather than waiting its 24.9 days. A value
+that quietly means something else than it says is turned away rather than honoured. The declarative half of the same decision is the four
+`<shae-worker>` attributes; see [`<shae-worker>` Attributes](#shae-worker).
 
 **Properties:**
 
@@ -1316,6 +1336,7 @@ const remoteEnv = new RemoteWorkerEnv();
 | :--- | :--- |
 | `isDestroyed` | `boolean` (read-only). Also `true` once the worker has failed. |
 | `workerLoaded` | Promise that resolves once the worker is ready. It rejects with a `WorkerFailedError` when the worker fails and with a `WorkerDestroyedError` when the environment is torn down. Every read hands out a promise that can reject, so attach a `catch()` even when you do not await it -- otherwise the rejection surfaces as an unhandled one. |
+| `timeouts` | `Readonly<WorkerTimeouts>`. The four timeouts this environment holds itself to, resolved once when it is built. This is what a diagnosis asks when the values come from a template rather than from a call. The object is frozen, so writing `env.timeouts.loadTimeout` throws in strict mode and does nothing outside it; the property slot itself is not — like `logger`, it is `readonly` to the type layer only, and an assignment to `env.timeouts` goes through and bypasses the check above. |
 | `logger` | `ConsoleLogger` (read-only). The logger this environment reports through. Its enabled state travels into the worker together with the shared logger configuration when the worker starts. A JSON object stored under `ConsoleLogger.RemoteWorkerEnv.workerConfig` is merged on top of that configuration; see [Console Logger](#console-logger). |
 
 **Methods:**
@@ -1379,6 +1400,10 @@ These constants control how long the framework waits for worker responses:
 | `WorkerDestroyTimeout` | 5000ms | Time to wait for worker destruction. |
 
 They are the last line of defence, not the first: a worker that dies or sends something unreadable rejects the waiting calls immediately.
+
+They are also the default rather than the law: a single environment moves any of the four with the
+[`RemoteWorkerEnv` constructor options](#remoteworkerenv), and a declarative one with the four
+`<shae-worker>` [attributes](#shae-worker) that carry the same names.
 
 ```typescript
 import {
@@ -1483,6 +1508,10 @@ The root of any Shadow Objects application. Initializes the Shadow Environment (
 | `ns` | Namespace (Component Context). Defaults to the Global Context. |
 | `no-structured-clone` | Presence attribute. Disables `structuredClone` for a performance boost. Objects are passed by reference. Use with caution. Only takes effect together with `local`; without it, it is silently ignored. |
 | `no-autostart` | Keeps the element from creating the Shadow Environment on connect. Call `start()` yourself. Read as a truthy value, not as a presence — see below. |
+| `load-timeout` | How long the worker environment waits for the load handshake, in milliseconds. Default: `WorkerLoadTimeout` (60000). |
+| `configure-timeout` | How long it waits for a module import to be confirmed, in milliseconds. Default: `WorkerConfigureTimeout` (60000). |
+| `change-trail-timeout` | How long it waits for the confirmation of a change trail, in milliseconds. Default: `WorkerChangeTrailTimeout` (5000). |
+| `destroy-timeout` | How long it waits for the worker to acknowledge the teardown before terminating it, in milliseconds. Default: `WorkerDestroyTimeout` (5000). |
 
 **Truthy attributes are not presence attributes.** `local` and `no-autostart` read their value:
 the attribute counts as set when it carries `on`, `true`, `yes`, `local` or `1` (case-insensitive,
@@ -1493,6 +1522,15 @@ all: `no-structured-clone="false"` disables `structuredClone` just as the bare a
 
 `no-autostart` is not observed and is read exactly once, when the element connects. Setting or
 removing it afterwards changes nothing.
+
+**The four timeout attributes.** Each takes a number of milliseconds from `1` to `2147483647`
+(close to 25 days); anything else — including `0`, `Infinity` and anything above the upper bound —
+is reported to the console and the constant applies.
+They are the declarative half of the [`RemoteWorkerEnv` constructor options](#remoteworkerenv),
+which is where the rule and the reason behind it are written out. Like `no-autostart` they are not
+observed: they are read at the one moment they matter, when the worker environment is built, and
+setting one afterwards changes nothing about an environment that already exists. Under `local` they
+do nothing and say nothing — a local environment waits for no reply and has none of the four.
 
 Changing `local` after the environment has been created is refused. The attribute callback throws,
 and a throw from a Custom Elements reaction does not reach the caller of `setAttribute` — the
@@ -1554,7 +1592,7 @@ not revive it — build a new one. `<shae-ent>` elements of the same namespace k
 | `ns` | The namespace, get and set, inherited from `ShaeElement`. Writing trims the value and reflects it back into the `ns` attribute; an empty value removes the attribute and returns the element to the Global Context. |
 | `isShaeWorkerElement` | `true`. `isShaeElement` is `true` as well, inherited from `ShaeElement`. |
 | `ShaeWorkerElement.DefaultAutoSync` | Static, `"frame"` — what an empty `auto-sync`, a removed one and any truthy non-string assignment fall back to. An unreadable value does *not* come here; it is reported and switches syncing off. |
-| `ShaeWorkerElement.observedAttributes` | Static: `ns`, `local`, `src`, `no-structured-clone`, `auto-sync`. `no-autostart` is deliberately not among them. |
+| `ShaeWorkerElement.observedAttributes` | Static: `ns`, `local`, `src`, `no-structured-clone`, `auto-sync`. `no-autostart` and the four timeout attributes — `load-timeout`, `configure-timeout`, `change-trail-timeout`, `destroy-timeout` — are deliberately not among them. |
 
 The four signals `isConnected$`, `autoSync$`, `src$` and the inherited `ns$` are part of the
 surface as well: read them with `.value` or subscribe to them. They are what the attributes feed —

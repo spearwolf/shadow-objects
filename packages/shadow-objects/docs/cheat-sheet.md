@@ -225,6 +225,7 @@ ent.addEventListener('login-success', (e) => console.log(e.detail.user));
 | `auto-sync` | `"frame"`/`"on"`/`"yes"`/`"true"`/`"auto-sync"`, `"60fps"`, `"100"`, `"no"`/`"off"`/`"false"` | Sync frequency. Default and fallback for an empty value: `"frame"`. `Nfps` with N ≤ 0 warns and does not sync; anything unreadable logs an error and switches off |
 | `no-structured-clone` | boolean (presence) | Skip data cloning (local only, performance opt); silently without effect when `local` is missing |
 | `no-autostart` | truthy value | Do not create the environment on connect, call `start()` yourself. Not observed: read once, at connect |
+| `load-timeout`, `configure-timeout`, `change-trail-timeout`, `destroy-timeout` | milliseconds | How long the worker environment waits for each of the four replies a worker owes it. Defaults: 60000 / 60000 / 5000 / 5000. A number from 1 to 2147483647 (close to 25 days), anything else is reported and the default stays. Not observed, read once when the environment is built; no effect under `local` |
 
 **Truthy value ≠ presence.** `local`, `no-autostart` and `no-trim` count as set for `on`, `true`,
 `yes`, `local`, `1` (case-insensitive) or for the bare attribute — and as unset for everything

@@ -313,6 +313,7 @@ This element owns the Shadow Environment. It initializes the Kernel (ECS System 
 | `no-autostart` | Do not create the Shadow Environment on connect -- call `start()` yourself |
 | `auto-sync` | Sync frequency: every animation frame (`"frame"`, the default, also `"on"`/`"yes"`/`"true"`/`"auto-sync"`), every `1000/N` ms (`"60fps"`), every N ms (`"100"`), or off (`"off"`/`"no"`/`"false"`) |
 | `no-structured-clone` | Disable cloning for local environments (performance optimization, local only) |
+| `load-timeout`, `configure-timeout`, `change-trail-timeout`, `destroy-timeout` | How long the worker environment waits for the load handshake, a module import, a change trail confirmation and the teardown acknowledgement -- in milliseconds, from 1 to 2147483647 |
 
 The full rules -- which of these read a truthy value rather than mere presence, and what an unparseable `auto-sync` does -- are in the [`<shae-worker>` reference](./api-reference.md#shae-worker).
 

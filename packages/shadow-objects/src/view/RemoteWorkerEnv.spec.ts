@@ -9,13 +9,15 @@ import {
   ImportedModule,
   Loaded,
   MessageToView,
+  WorkerChangeTrailTimeout,
+  WorkerConfigureTimeout,
   WorkerDestroyTimeout,
   WorkerLoadTimeout,
 } from '../constants.js';
 import type {ChangeTrailType, ISendEvents, IUpdateOrderChange} from '../types.js';
 import {CONSOLE_LOGGER, CONSOLE_LOGGER_STORAGE} from '../utils/ConsoleLogger.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
-import {RemoteWorkerEnv} from './RemoteWorkerEnv.js';
+import {RemoteWorkerEnv, type RemoteWorkerEnvOptions} from './RemoteWorkerEnv.js';
 
 const {FakeWorker, workers} = vi.hoisted(() => {
   class FakeWorker {
@@ -110,8 +112,8 @@ const expectWorkerDestroyedRejection = (promise: Promise<unknown>) => expectReje
 /** Lets a `.finally()` chained onto an already settled promise run. */
 const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-const startEnv = async () => {
-  const env = new RemoteWorkerEnv();
+const startEnv = async (options?: RemoteWorkerEnvOptions) => {
+  const env = new RemoteWorkerEnv(options);
   const started = env.start();
   const worker = workers.at(-1)!;
   worker.reply({type: Loaded});
@@ -840,6 +842,187 @@ describe('RemoteWorkerEnv', () => {
           vi.resetModules();
         }
       });
+    });
+  });
+  describe('the timeouts', () => {
+    /**
+     * The four resolved timeouts of a fresh environment, so a case can name the one key it is
+     * about and let the assertion carry the other three.
+     */
+    const defaultTimeouts = {
+      loadTimeout: WorkerLoadTimeout,
+      configureTimeout: WorkerConfigureTimeout,
+      changeTrailTimeout: WorkerChangeTrailTimeout,
+      destroyTimeout: WorkerDestroyTimeout,
+    };
+
+    it('default to the four constants', () => {
+      expect(new RemoteWorkerEnv().timeouts).toEqual(defaultTimeouts);
+    });
+
+    it.each(Object.keys(defaultTimeouts) as (keyof typeof defaultTimeouts)[])(
+      'take the %s option and leave the other three on their constant',
+      (key) => {
+        const env = new RemoteWorkerEnv({[key]: 1234});
+
+        expect(env.timeouts).toEqual({...defaultTimeouts, [key]: 1234});
+      },
+    );
+
+    // The four cases below are the only proof that a value taken in is also a value acted on.
+    // Each of them asserts both sides of its deadline: still open one millisecond before it,
+    // over one millisecond later. Only the second half tells the configured number apart from
+    // the constant it stands in for -- with the constant in force, nothing happens at either mark.
+    //
+    // None of them awaits the call it is about. A call that never settles would suspend the
+    // case instead of failing it, and a suspended case takes the whole file with it, so the
+    // outcome is parked in `settled` and asserted from there.
+    const trackSettled = (promise: Promise<unknown>) => {
+      const state = {value: 'pending' as unknown};
+      void promise.then(
+        (value) => {
+          state.value = value ?? 'resolved';
+        },
+        (error: Error) => {
+          state.value = error;
+        },
+      );
+      return state;
+    };
+
+    const expectTimedOut = (settled: {value: unknown}) => {
+      expect((settled.value as Error)?.message, 'and then, by its own clock').toContain('Timeout waiting for message of type');
+    };
+
+    it('cut the load handshake off at the loadTimeout', async () => {
+      try {
+        // inside the try, so a throw anywhere below still hands the real timers back
+        vi.useFakeTimers();
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        const env = new RemoteWorkerEnv({loadTimeout: 1234});
+        const settled = trackSettled(env.start());
+
+        await vi.advanceTimersByTimeAsync(1233);
+        expect(settled.value, 'not before its time').toBe('pending');
+
+        await vi.advanceTimersByTimeAsync(1);
+        expectTimedOut(settled);
+      } finally {
+        vi.restoreAllMocks();
+        vi.useRealTimers();
+      }
+    });
+
+    it('cut a change trail that waits for confirmation off at the changeTrailTimeout', async () => {
+      try {
+        vi.useFakeTimers();
+
+        const {env} = await startEnv({changeTrailTimeout: 1234});
+        const settled = trackSettled(env.applyChangeTrail([], true));
+
+        await vi.advanceTimersByTimeAsync(1233);
+        expect(settled.value, 'not before its time').toBe('pending');
+
+        await vi.advanceTimersByTimeAsync(1);
+        expectTimedOut(settled);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('cut a module import off at the configureTimeout', async () => {
+      try {
+        vi.useFakeTimers();
+
+        const {env} = await startEnv({configureTimeout: 1234});
+        const settled = trackSettled(env.importScript('/mod.js'));
+
+        await vi.advanceTimersByTimeAsync(1233);
+        expect(settled.value, 'not before its time').toBe('pending');
+
+        await vi.advanceTimersByTimeAsync(1);
+        expectTimedOut(settled);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('terminate a worker that does not acknowledge the teardown at the destroyTimeout', async () => {
+      try {
+        vi.useFakeTimers();
+        // the silence of the worker is reported; without this it writes into the test output
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+        const {env, worker} = await startEnv({destroyTimeout: 1234});
+        env.destroy();
+
+        await vi.advanceTimersByTimeAsync(1233);
+        expect(worker.terminateCount, 'not before its time').toBe(0);
+
+        await vi.advanceTimersByTimeAsync(1);
+        expect(worker.terminateCount, 'and then, by its own clock').toBe(1);
+      } finally {
+        vi.restoreAllMocks();
+        vi.useRealTimers();
+      }
+    });
+
+    // The rule is the same for all four keys, so one key stands in for them -- and it is the
+    // teardown, because that is where a refused value has teeth: nothing but the timeout gets
+    // the worker terminated once the acknowledgement stays away.
+    it.each([0, Infinity, -1, NaN, 'nope'])('refuse %s and report it, and the constant stays', (value) => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      try {
+        const env = new RemoteWorkerEnv({destroyTimeout: value as number});
+
+        expect(env.timeouts.destroyTimeout).toBe(WorkerDestroyTimeout);
+        expect(error, 'a value that quietly disappears is the one nobody goes looking for').toHaveBeenCalledTimes(1);
+        expect(error.mock.calls[0].join(' '), 'the report names the option').toContain('destroyTimeout');
+      } finally {
+        vi.restoreAllMocks();
+      }
+    });
+
+    // Where the scale ends. `setTimeout()` truncates its delay to a signed 32-bit field, so a
+    // value above that fires after about a millisecond rather than waiting -- a timeout meant
+    // generously would be an immediate one, and nothing would say so. The two cases pin both
+    // sides of the largest delay a timer keeps.
+    it('take 2147483647, the largest delay a timer keeps', () => {
+      expect(new RemoteWorkerEnv({loadTimeout: 2_147_483_647}).timeouts.loadTimeout).toBe(2_147_483_647);
+    });
+
+    it('refuse the millisecond past it and report it, and the constant stays', () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      try {
+        const env = new RemoteWorkerEnv({loadTimeout: 2_147_483_648});
+
+        expect(env.timeouts.loadTimeout, 'a value that would fire at once is not a longer wait').toBe(WorkerLoadTimeout);
+        expect(error).toHaveBeenCalledTimes(1);
+        expect(error.mock.calls[0].join(' '), 'the report names the option').toContain('loadTimeout');
+      } finally {
+        vi.restoreAllMocks();
+      }
+    });
+
+    // The guard for the case above: this one is green either way today, and turns red the day
+    // somebody lets a value through that arms no timer at all.
+    it('terminate the worker after the default when the destroy timeout was refused', async () => {
+      try {
+        vi.useFakeTimers();
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+        const {env, worker} = await startEnv({destroyTimeout: Infinity});
+        env.destroy();
+
+        await vi.advanceTimersByTimeAsync(WorkerDestroyTimeout);
+
+        expect(worker.terminateCount, 'a teardown reaches its terminate() by a clock of its own').toBe(1);
+      } finally {
+        vi.restoreAllMocks();
+        vi.useRealTimers();
+      }
     });
   });
 });

@@ -11,3 +11,11 @@ export const readBooleanAttribute = (el: HTMLElement, name: string) => {
   }
   return false;
 };
+
+/**
+ * The attribute read as a number, or `undefined` where the element does not carry it.
+ * `Number()` does the reading, so a value that is not a number reads as `NaN` while an empty
+ * or blank one reads as `0` — whoever asks decides what either of those means.
+ */
+export const readNumberAttribute = (el: HTMLElement, name: string): number | undefined =>
+  el.hasAttribute(name) ? Number(el.getAttribute(name)) : undefined;

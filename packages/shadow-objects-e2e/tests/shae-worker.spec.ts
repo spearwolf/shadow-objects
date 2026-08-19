@@ -6,6 +6,7 @@ test.describe('shae-worker', () => {
     'shae-worker-whenDefined',
     'worker0-ns',
     'worker0-is-remote-env',
+    'worker0-timeouts-from-attributes',
     'worker0-env-contextCreated',
     'worker0-env-ready',
     'worker1-ns',

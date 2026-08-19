@@ -19,6 +19,10 @@ export const ATTR_NO_AUTOSTART = 'no-autostart';
 export const ATTR_NO_STRUCTURED_CLONE = 'no-structured-clone';
 export const ATTR_AUTO_SYNC = 'auto-sync';
 export const ATTR_SRC = 'src';
+export const ATTR_LOAD_TIMEOUT = 'load-timeout';
+export const ATTR_CONFIGURE_TIMEOUT = 'configure-timeout';
+export const ATTR_CHANGE_TRAIL_TIMEOUT = 'change-trail-timeout';
+export const ATTR_DESTROY_TIMEOUT = 'destroy-timeout';
 
 // <shae-prop> attributes
 export const ATTR_NAME = 'name';

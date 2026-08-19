@@ -3,7 +3,7 @@
 Status: 2026-08-17. Analysis of the Playwright suite in this package, the gaps it leaves, and a
 ticket-ready list of test cases to close them.
 
-> **Where the suite stands.** 402 tests across Chromium and Firefox — 201 per project, ten spec
+> **Where the suite stands.** 404 tests across Chromium and Firefox — 202 per project, ten spec
 > files over ten pages. The harness fixes and the P1 blocks of every group below are in place. One
 > framework defect is open, `DEFECT-1` in [`KNOWN-DEFECTS.md`](KNOWN-DEFECTS.md), and
 > `create-element.spec.ts` is the only spec that registers `knownFailures` for it.
@@ -20,7 +20,7 @@ layers. This file is E2E-only and goes one level deeper: it names pages, fixture
 
 ## 1. What exists today
 
-Ten spec files, 201 registered test cases per project — 402 across Chromium and Firefox. The specs
+Ten spec files, 202 registered test cases per project — 404 across Chromium and Firefox. The specs
 themselves contain almost no logic: they name a page and a list of ids, and `runPageTests` turns
 each id into one Playwright test that asserts `data-testresult="ok"` on the node the page wrote.
 All real assertions live in `src/*.js`.
@@ -29,7 +29,7 @@ All real assertions live in `src/*.js`.
 |---|---|---|---|
 | `dynamic-dom.spec.ts` | `pages/dynamic-dom.html` | 38 | Runtime mutations against a real worker: `appendChild`, a subtree assigned via `innerHTML`, a move, `remove()`, a subtree removal, a `<shae-prop>` added, changed, removed and moved between entities, and a remove-and-re-append inside one microtask (DOM-1 … DOM-4, DOM-6 … DOM-8). |
 | `multi-env.spec.ts` | `pages/multi-env.html` | 34 | Three environments side by side (two remote, one local): distinct instances and contexts, the same token in two namespaces, cross-namespace nesting, property isolation, simultaneous changes in one tick, a request answered only in its own namespace, and a `ns` change at runtime and back (MULTI-1 … MULTI-8). |
-| `shae-worker.spec.ts` | `pages/shae-worker.html` | 30 | `<shae-worker>` is defined; two workers (remote+autostart, local+no-autostart) report the right `ns`, the right env type, their `contextCreated` event and reach `ready()`; both workers' kernels are asked for their entity graph and every parent-child relation, slot projection and namespace boundary in the tree is checked against it. |
+| `shae-worker.spec.ts` | `pages/shae-worker.html` | 31 | `<shae-worker>` is defined; two workers (remote+autostart, local+no-autostart) report the right `ns`, the right env type, their `contextCreated` event and reach `ready()`; the remote one carries the four timeout attributes and its environment holds itself to them; both workers' kernels are asked for their entity graph and every parent-child relation, slot projection and namespace boundary in the tree is checked against it. |
 | `upgrade-timing.spec.ts` | `pages/upgrade-timing.html` | 28 | Markup parsed before the definitions, markup injected before them, elements added after them, and an element whose own definition arrives after the first sync — a `ShaeEntElement` subclass, a wrapper projecting through a `<slot>`, and a `<shae-prop>` following the entity that upgrades between it and its host (UPG-1, UPG-2, UPG-4, UPG-5, UPG-7, UPG-9). |
 | `async-events.spec.ts` | `pages/async-events.html` | 23 | `contextCreated` / `contextLost` as DOM CustomEvents, a property change echoed back as a message, `auto-sync` in its forms, a burst of changes coalescing into the final value, `traverseChildren` across the worker boundary, and `forward-custom-events` with and without a filter list (ASYNC-1, ASYNC-3 … ASYNC-7, ASYNC-9). |
 | `bundle.spec.ts` | `pages/bundle.html` | 13 | The single-file build: the load flag, the element definitions, the five-entity tree, the cross-namespace child that becomes a root, three property types, and a round-trip through the inlined worker (BUNDLE-1 … BUNDLE-4). |

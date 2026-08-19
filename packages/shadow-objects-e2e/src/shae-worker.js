@@ -70,6 +70,20 @@ async function main() {
   testBooleanAction('worker0-ns', worker0.ns === GlobalNS);
 
   await testAsyncAction('worker0-is-remote-env', shadowEnv0.envProxy.workerLoaded);
+
+  // The four timeout attributes on the element, read once when the worker environment was built.
+  // The optional chains are deliberate: this has to report false rather than throw, so that a
+  // page which does not carry the values keeps its "no uncaught or logged errors" guard green.
+  testBooleanAction('worker0-timeouts-from-attributes', () => {
+    const timeouts = shadowEnv0.envProxy?.timeouts;
+    return (
+      timeouts?.loadTimeout === 61000 &&
+      timeouts?.configureTimeout === 62000 &&
+      timeouts?.changeTrailTimeout === 6000 &&
+      timeouts?.destroyTimeout === 6500
+    );
+  });
+
   await worker0ContextCreated('worker0-env-contextCreated');
   await testAsyncAction('worker0-env-ready', shadowEnv0.ready);
 

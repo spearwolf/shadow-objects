@@ -1,14 +1,31 @@
 import {on} from '@spearwolf/eventize';
 import {batch, createEffect, createSignal, destroySignal, Effect} from '@spearwolf/signalize';
-import {readBooleanAttribute} from '../utils/attr-utils.js';
+import {readBooleanAttribute, readNumberAttribute} from '../utils/attr-utils.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {FrameLoop} from '../utils/FrameLoop.js';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {LocalShadowObjectEnv} from '../view/LocalShadowObjectEnv.js';
-import {RemoteWorkerEnv} from '../view/RemoteWorkerEnv.js';
+import {RemoteWorkerEnv, type RemoteWorkerEnvOptions} from '../view/RemoteWorkerEnv.js';
 import {ShadowEnv, ShadowEnvDestroyedError} from '../view/ShadowEnv.js';
-import {ATTR_AUTO_SYNC, ATTR_LOCAL, ATTR_NO_AUTOSTART, ATTR_NO_STRUCTURED_CLONE, ATTR_SRC} from './constants.js';
+import {
+  ATTR_AUTO_SYNC,
+  ATTR_CHANGE_TRAIL_TIMEOUT,
+  ATTR_CONFIGURE_TIMEOUT,
+  ATTR_DESTROY_TIMEOUT,
+  ATTR_LOAD_TIMEOUT,
+  ATTR_LOCAL,
+  ATTR_NO_AUTOSTART,
+  ATTR_NO_STRUCTURED_CLONE,
+  ATTR_SRC,
+} from './constants.js';
 import {ShaeElement} from './ShaeElement.js';
+
+const WorkerTimeoutAttributes: [keyof RemoteWorkerEnvOptions, string][] = [
+  ['loadTimeout', ATTR_LOAD_TIMEOUT],
+  ['configureTimeout', ATTR_CONFIGURE_TIMEOUT],
+  ['changeTrailTimeout', ATTR_CHANGE_TRAIL_TIMEOUT],
+  ['destroyTimeout', ATTR_DESTROY_TIMEOUT],
+];
 
 export class ShaeWorkerElement extends ShaeElement {
   static override observedAttributes = [
@@ -215,12 +232,32 @@ export class ShaeWorkerElement extends ShaeElement {
     }
   }
 
+  /**
+   * The timeout attributes, read at the one moment they are needed: when the worker environment
+   * is built. An attribute that is not there is left out, so the environment keeps its default,
+   * and a value the environment does not accept is reported there. They are not observed —
+   * setting one afterwards changes nothing about an environment that already exists, and a
+   * `local` element builds no worker environment at all, so they do nothing there.
+   */
+  #readWorkerTimeouts(): RemoteWorkerEnvOptions {
+    const options: RemoteWorkerEnvOptions = {};
+
+    for (const [key, attr] of WorkerTimeoutAttributes) {
+      const value = readNumberAttribute(this, attr);
+      if (value !== undefined) options[key] = value;
+    }
+
+    return options;
+  }
+
   start(): Promise<ShadowEnv> {
     if (!this.#started) {
       this.shadowEnv.view ??= ComponentContext.get(this.ns);
 
       if (this.shadowEnv.envProxy == null) {
-        const envProxy = readBooleanAttribute(this, ATTR_LOCAL) ? new LocalShadowObjectEnv() : new RemoteWorkerEnv();
+        const envProxy = readBooleanAttribute(this, ATTR_LOCAL)
+          ? new LocalShadowObjectEnv()
+          : new RemoteWorkerEnv(this.#readWorkerTimeouts());
         this.shadowEnv.envProxy = envProxy;
         this.#disableStructuredClone();
       }
