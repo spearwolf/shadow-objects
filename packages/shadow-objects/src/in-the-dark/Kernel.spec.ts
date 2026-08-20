@@ -549,9 +549,6 @@ describe('Kernel', () => {
         kernel.destroy();
       });
 
-      // Both cases below tear down through the path where the parent entity stays alive and its
-      // shadow-object leaves the constructor set (a token change) rather than the entity itself
-      // being destroyed -- the other of the two teardown paths a shadow-object can take.
       // The five cases below all tear down through the path where the parent entity stays alive
       // and its shadow-object leaves the constructor set (a token change), except the last one,
       // which uses the other path (the entity itself is destroyed) on purpose -- see its own
@@ -651,7 +648,7 @@ describe('Kernel', () => {
           kernel.destroy();
         });
 
-        it('does not carry that clear to a child reading through useContext', async () => {
+        it('carries that clear to a child reading through useContext', async () => {
           const registry = new Registry();
           const kernel = new Kernel(registry);
 
@@ -674,27 +671,20 @@ describe('Kernel', () => {
           await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
           expect(value(childContext)).toBe('first');
 
-          // The teardown runs its cleanup callbacks in insertion order: the link that carries this
-          // provider's writes to the entity-level context signal was registered before the
-          // `clearOnDestroy` callback that sets the provider back to `undefined`, so the link is
-          // already destroyed by the time that callback runs. The write to `undefined` therefore
-          // never reaches the entity-level signal the child reads from, and the child keeps seeing
-          // the last value instead of `undefined` -- on *this* path only, the shadow-object leaving
-          // the constructor set while the parent entity survives. The next case below shows the
-          // other path, where the child does see the clear.
-          //
-          // `docs/api-reference.md` describes `clearOnDestroy` as setting the context to
-          // `undefined` for every consumer, without naming a path. This case pins the measured
-          // behaviour; which of the two sides gives way is an open decision.
+          // On this path nothing but the write itself carries the clear: the parent entity lives
+          // on, keeps its context signal, and the child stays linked to it throughout. The write
+          // to `undefined` gets through because the link from this provider to the entity-level
+          // context signal is cut after every other cleanup callback. The case below reaches the
+          // same `undefined` over the other path, and by an entirely different route.
           kernel.changeToken(parentUuid, 'contextDefaultOnLeaveEmpty');
 
           await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
-          expect(value(childContext)).toBe('first');
+          expect(value(childContext)).toBeUndefined();
 
           kernel.destroy();
         });
 
-        it('does carry the clear to a child reading through useContext when the parent entity is destroyed instead of the shadow-object merely leaving the set', async () => {
+        it('carries that clear to a child reading through useContext when the parent entity is destroyed', async () => {
           const registry = new Registry();
           const kernel = new Kernel(registry);
 
@@ -717,10 +707,13 @@ describe('Kernel', () => {
           await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
           expect(value(childContext)).toBe('first');
 
-          // Unlike a token change, destroying the parent entity does not go through this
-          // shadow-object's own teardown link at all -- the entity-level context signal the child
-          // reads from is torn down as part of the *entity's* own destruction, which is what
-          // reaches the child here, not the `clearOnDestroy` callback from the case above.
+          // Here neither the `clearOnDestroy` callback nor the teardown of the parent's context
+          // signal is what the child sees. `Kernel.destroyEntity()` detaches every surviving child
+          // first, and detaching re-binds the child's inherited signal from the parent to the
+          // kernel's root context, which holds nothing under this name -- that is the `undefined`.
+          // Only afterwards does the parent emit `onDestroy`, by which time no link points at the
+          // child any more. The case stands as the counterpart to the one above: both paths end at
+          // `undefined`, each for its own reason.
           kernel.destroyEntity(parentUuid);
 
           await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
@@ -1051,11 +1044,10 @@ describe('Kernel', () => {
 
       // Mirrors the `clearOnDestroy` cases under `provideContext and useContext` above --
       // `provideGlobalContext` runs through the same `clearOnDestroy ?? true` check on its own
-      // map (`contextRootProviders`), so it earns the same three cases on its own provider signal.
-      // Whether a downstream consumer's `useContext` reader sees the clear is the same
-      // path-dependent story documented there; it is not repeated here. That both members' own
-      // signal (not just their downstream readers) actually gets torn down on both teardown paths
-      // is covered together, for all five context/property members at once, by
+      // map (`contextRootProviders`), so it earns the same cases on its own provider signal, plus
+      // one for a consumer entity that reads the cleared value through `useContext`. That both
+      // members' own signal (not just their downstream readers) actually gets torn down on both
+      // teardown paths is covered together, for all five context/property members at once, by
       // 'signal cleanup on teardown' below.
       describe('clearOnDestroy', () => {
         it('leaves the provider signal in place when clearOnDestroy is false', () => {
@@ -1137,6 +1129,42 @@ describe('Kernel', () => {
           kernel.changeToken(uuid, 'globalContextClearOnSecondCallEmpty');
 
           expect(value(provider!)).toBeUndefined();
+
+          kernel.destroy();
+        });
+
+        it('carries that clear to a consumer entity reading through useContext', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          @ShadowObject({registry, token: 'globalContextClearedOnLeave'})
+          class GlobalContextClearedOnLeave {
+            constructor({provideGlobalContext}: ShadowObjectCreationAPI) {
+              provideGlobalContext('globalClearedContext', 'first');
+            }
+          }
+          expect(GlobalContextClearedOnLeave).toBeDefined();
+
+          // Two unrelated root entities. The consumer has no shadow-object of its own; it reads
+          // the global context straight off the entity.
+          const providerUuid = generateUUID();
+          const consumerUuid = generateUUID();
+
+          kernel.createEntity(providerUuid, 'globalContextClearedOnLeave');
+          kernel.createEntity(consumerUuid, 'globalContextClearedOnLeaveConsumer');
+
+          const consumerContext = kernel.getEntity(consumerUuid).useContext('globalClearedContext');
+
+          // The value travels to the consumer through the entity's deferred context update, which
+          // is why this case is async where the three above, reading the provider signal itself,
+          // are not.
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(consumerContext)).toBe('first');
+
+          kernel.changeToken(providerUuid, 'globalContextClearedOnLeaveEmpty');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(consumerContext)).toBeUndefined();
 
           kernel.destroy();
         });
@@ -1873,10 +1901,12 @@ describe('Kernel', () => {
 
     // Cross-cutting: `provideContext`, `provideGlobalContext`, `useContext`, `useParentContext`
     // and `useProperty` each keep a signal (and, past the first call per name, a link to the
-    // entity-level source) alive for as long as the shadow-object lives. The two cases below
+    // entity-level source) alive for as long as the shadow-object lives. The first two cases below
     // exercise all five members on one shadow-object and check the *global* signalize registry
     // before and after teardown, on both of the paths a shadow-object can leave by -- catching a
-    // dropped cleanup line regardless of which of the five it belongs to.
+    // dropped cleanup line regardless of which of the five it belongs to. The third takes the
+    // remaining way into a teardown: a constructor that allocates and then throws, leaving a scope
+    // the kernel tears down without a shadow-object ever coming out of it.
     //
     // Each case runs a throwaway "warm-up" shadow-object through the same names first. Reading or
     // providing a context for the first time on an entity also lazily allocates an entity-level (or,
@@ -1885,9 +1915,9 @@ describe('Kernel', () => {
     // before the baseline is taken, so the counts that remain are the shadow-object's own.
     //
     // `getSignalsCount()` and `getLinksCount()` are registry-wide counters, one pair per process,
-    // not per test. The two counting cases below take a baseline and compare against it, which
+    // not per test. The three counting cases below take a baseline and compare against it, which
     // only holds while nothing else in the process allocates or frees a signal in between -- so
-    // these two must run sequentially. Marking this file (or this block) `concurrent` breaks them.
+    // these three must run sequentially. Marking this file (or this block) `concurrent` breaks them.
     describe('signal cleanup on teardown', () => {
       it('destroys every signal and link the five members allocated when the shadow-object leaves the set', () => {
         const registry = new Registry();
@@ -2012,10 +2042,82 @@ describe('Kernel', () => {
         kernel.destroy();
       });
 
-      // The teardown walks the two callback sets first and destroys those five signal maps only
+      it('destroys every signal and link a constructor allocated before it threw', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        @ShadowObject({registry, token: 'signalCleanupWarmupC'})
+        class SignalCleanupWarmupC {
+          constructor({
+            provideContext,
+            provideGlobalContext,
+            useContext,
+            useParentContext,
+            useProperty,
+          }: ShadowObjectCreationAPI) {
+            provideContext('signalCleanupCtxC', 'a');
+            provideGlobalContext('signalCleanupGlobalCtxC', 'b');
+            useContext('signalCleanupCtxC');
+            useParentContext('signalCleanupCtxC');
+            useProperty('signalCleanupPropC');
+          }
+        }
+
+        // The constructor allocates all five members and only then throws, so the scope the kernel
+        // tears down is one that was never handed to a shadow-object.
+        @ShadowObject({registry, token: 'signalCleanupThrowingC'})
+        class SignalCleanupThrowingC {
+          constructor({
+            provideContext,
+            provideGlobalContext,
+            useContext,
+            useParentContext,
+            useProperty,
+          }: ShadowObjectCreationAPI) {
+            provideContext('signalCleanupCtxC', 'a');
+            provideGlobalContext('signalCleanupGlobalCtxC', 'b');
+            useContext('signalCleanupCtxC');
+            useParentContext('signalCleanupCtxC');
+            useProperty('signalCleanupPropC');
+            throw new Error('this constructor fails');
+          }
+        }
+
+        @ShadowObject({registry, token: 'signalCleanupEmptyC'})
+        class SignalCleanupEmptyC {}
+
+        expect(SignalCleanupWarmupC).toBeDefined();
+        expect(SignalCleanupThrowingC).toBeDefined();
+        expect(SignalCleanupEmptyC).toBeDefined();
+
+        // The warm-up settles the lazy entity-level and kernel-level allocations for these names,
+        // as in the two cases above. It runs on an entity of its own, because the entity carrying
+        // the failing constructor is rolled back and cannot serve as the one holding the baseline.
+        const warmupUuid = generateUUID();
+        kernel.createEntity(warmupUuid, 'signalCleanupWarmupC', undefined, 0, [['signalCleanupPropC', 'x']]);
+        kernel.changeToken(warmupUuid, 'signalCleanupEmptyC');
+
+        const baselineSignals = getSignalsCount();
+        const baselineLinks = getLinksCount();
+
+        const uuid = generateUUID();
+        expect(() => kernel.createEntity(uuid, 'signalCleanupThrowingC', undefined, 0, [['signalCleanupPropC', 'x']])).toThrow(
+          'this constructor fails',
+        );
+
+        expect(getSignalsCount(), 'nothing the failed constructor allocated is left behind').toBe(baselineSignals);
+        expect(getLinksCount()).toBe(baselineLinks);
+
+        kernel.destroy();
+      });
+
+      // The teardown walks the three callback sets first and destroys those five signal maps only
       // afterwards. A destroyed signal keeps its value but stops notifying, so a write made from an
       // `onDestroy` callback travels down the link to the entity-level context signal -- and on to
-      // a child reading it -- only as long as the signals outlive the callbacks.
+      // a child reading it -- only as long as the signals outlive the callbacks. The link carrying
+      // that write is cut in the last of the three sets, after every other cleanup callback, so the
+      // same reach belongs to a write from a `createEffect` cleanup or a `createResource` teardown,
+      // which are called from the set before it.
       it('runs the onDestroy callbacks before it destroys the signals the creation API handed out', async () => {
         const registry = new Registry();
         const kernel = new Kernel(registry);

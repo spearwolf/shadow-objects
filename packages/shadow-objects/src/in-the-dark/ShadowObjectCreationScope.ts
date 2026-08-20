@@ -64,6 +64,18 @@ export class ShadowObjectCreationScope {
   // insertion order: which cleanup runs before which is observable behaviour.
   readonly #unsubscribeSecondary = new Set<() => any>();
 
+  // The links that feed a provider signal into the entity-side signal of that context. They fall
+  // after every other cleanup callback, so a write the teardown still makes -- the `undefined` of
+  // a `clearOnDestroy`, or one from an `onDestroy` callback -- reaches the entity-side signal
+  // instead of stopping at the provider. Where the entity lives on, that is what makes the write
+  // count: the entity hands it on to its own context signal one microtask later, and from there to
+  // its readers and to the entities below it. Where the entity is destroyed, the write reaches the
+  // entity-side signal and stays there -- the microtask that would hand it on falls after the
+  // entity has cleared and destroyed its context signals, and the children that outlive it were
+  // re-bound before the teardown even began. The ordering is kept for the path on which it is
+  // observable.
+  readonly #unsubscribeContextFeeds = new Set<() => any>();
+
   readonly #contextReaders = new Map<string | symbol, SignalReader<any>>();
   readonly #contextReaderCompares = new Map<string | symbol, CompareFunc<any> | undefined>();
   readonly #contextParentReaders = new Map<string | symbol, SignalReader<any>>();
@@ -149,8 +161,12 @@ export class ShadowObjectCreationScope {
    *
    * Three lead here. Two belong to a shadow-object that lived: its entity is destroyed, or it leaves the
    * constructor set of an entity that stays. On the third, the kernel calls this directly on a scope that
-   * `bindTo()` never saw, because the constructor threw -- there is no shadow-object then, and the two
-   * handles below are still unset, which is why both are called optionally.
+   * `bindTo()` never saw, because the constructor threw -- there is no shadow-object then, and three of the
+   * handles below are still unset (`#releaseScope` and `#unsubscribeFromEntityDestroy` at the start,
+   * `#forgetShadowObject` at the end), which is why all three are called optionally.
+   *
+   * The links feeding the entity-side context signals fall after everything else, so that a write made on
+   * the way out reaches that signal rather than stopping at the provider.
    *
    * The flag makes the teardown a one-time act: a destroy callback reaching back into the kernel finds no
    * way to start it a second time. Releasing both handles right after ends the retention in both directions
@@ -167,7 +183,9 @@ export class ShadowObjectCreationScope {
     this.#releaseScope?.();
     this.#unsubscribeFromEntityDestroy?.();
 
-    if (this.#logger.isInfo) {
+    // Without a shadow-object there is nothing to report here: none ever came to be, because the
+    // constructor threw before it could.
+    if (this.#logger.isInfo && this.#shadowObject !== undefined) {
       this.#logger.info('destroy shadow-object', this.#displayName, {shadowObject: this.#shadowObject, entity: this.#entity});
     }
 
@@ -176,6 +194,10 @@ export class ShadowObjectCreationScope {
     }
 
     for (const callback of this.#unsubscribeSecondary) {
+      callback();
+    }
+
+    for (const callback of this.#unsubscribeContextFeeds) {
       callback();
     }
 
@@ -201,6 +223,7 @@ export class ShadowObjectCreationScope {
 
     this.#unsubscribePrimary.clear();
     this.#unsubscribeSecondary.clear();
+    this.#unsubscribeContextFeeds.clear();
     this.#contextReaders.clear();
     this.#contextParentReaders.clear();
     this.#propertyReaders.clear();
@@ -278,8 +301,8 @@ export class ShadowObjectCreationScope {
   /**
    * The body the two context providers share: one provider signal per name, created on the first
    * call, linked to the entity-side context signal, and cleared on teardown unless the caller opted
-   * out. A source signal handed in instead of an initial value feeds the provider through a link of
-   * its own.
+   * out -- a clearing that finds the way to the entity side still open. A source signal handed in
+   * instead of an initial value feeds the provider through a link of its own.
    *
    * `entitySignal` is a thunk because the entity-side signal may only be requested when a provider
    * is actually created. The `clearOnDestroy` check sits outside that branch: every call is allowed
@@ -305,10 +328,10 @@ export class ShadowObjectCreationScope {
         this.#unsubscribeSecondary.add(ln.destroy.bind(ln));
       }
 
-      // Destroying this link is registered before any `clearOnDestroy` callback below: the write to
-      // `undefined` then no longer reaches the context signal on the entity side.
+      // This link is destroyed after every `clearOnDestroy` callback below, so a write to
+      // `undefined` still reaches the context signal on the entity side.
       const ln = link(ctxProvider, entitySignal());
-      this.#unsubscribeSecondary.add(ln.destroy.bind(ln));
+      this.#unsubscribeContextFeeds.add(ln.destroy.bind(ln));
       providers.set(name, ctxProvider);
     }
 

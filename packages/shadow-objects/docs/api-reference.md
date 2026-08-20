@@ -130,7 +130,7 @@ Makes a value available to all descendant Entities in the subtree, and to all ot
 - **Signature:** `provideContext<T>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>, options?: ProvideContextOptions<T> | CompareFunc<T | undefined>): Signal<Maybe<T>>`
 - **Returns:** The context signal. Write to it with `.set(...)` to push a new value to all consumers.
 - **Note:** Pass a signal as the source to keep the context in sync with existing reactive state.
-- **Options:** `ProvideContextOptions<T>` adds `clearOnDestroy?: boolean` to the `compare` of `SignalValueOptions<T>`. It defaults to `true`: when the Shadow Object goes away, the context is set to `undefined` and every consumer sees that.
+- **Options:** `ProvideContextOptions<T>` adds `clearOnDestroy?: boolean` to the `compare` of `SignalValueOptions<T>`. It defaults to `true`: when the Shadow Object goes away, the context is set to `undefined` and every consumer sees that. "Goes away" covers both ways it can happen — the Entity is destroyed, or the Shadow Object leaves the constructor set of an Entity that lives on, as a token change or a route change makes it do.
 
 The signal is cached per name and per Shadow Object like the readers above, and here the second call is silent about it: it hands back the first signal and drops both the `sourceOrInitialValue` and the `compare` it was given, with nothing on the console. `clearOnDestroy` is the exception — it is read on every call, so one call asking for it is enough to have the context cleared.
 
