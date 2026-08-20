@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 > **Next release: minor.** The package is below `1.0.0`, so the accumulated breaking
-> changes below bump the minor position — `0.33.0` → `0.34.0`. Thirty-three changes reach existing
+> changes below bump the minor position — `0.33.0` → `0.34.0`. Thirty-four changes reach existing
 > consumers: both runtime dependencies take a major step and carry behaviour changes of their
 > own; the emitted declarations carry `| undefined` where a value can be missing, so a
 > build with `strictNullChecks` sees new errors; `RemoteWorkerEnv` rejects with
@@ -103,7 +103,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > hears such a cycle at all; and a context left behind by a Shadow Object that merely leaves the
 > constructor set of an entity that stays reads `undefined` for every consumer, where the clearing
 > used to stop at the provider signal — a child that kept the last value across a token change now
-> sees nothing there.
+> sees nothing there; and where such an entity has another Shadow Object providing the same name,
+> consumers read that one's value instead of `undefined`, where the departure used to decide the
+> name for everyone — which also means `{clearOnDestroy: false}` no longer keeps the value of a
+> Shadow Object that is gone standing on an entity that still provides the name elsewhere.
 > Everything else in this section is additive or a bugfix.
 
 ### ⚠️ Breaking Changes
@@ -153,7 +156,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Behavior (view):** a consumer listening for `ShadowEnv.ProxyFailed` can no longer stop the environment from noticing its own loss — `isReady` drops and `ContextLost` fires even when that listener throws.
 - **Behavior (view components, VIEW-20):** the destroyed state of a `ViewComponent` is now a defined contract instead of an accident of which call site used `?.`. Previously `order`, `setProperty`, `removeProperty`, `dispatchShadowObjectsEvent` and `dispatchEvent(…, true)` threw a `TypeError` after `destroy()`, while `token`, `removeFromParent` and `destroy` were silent no-ops and `addChild` threw a misleading "from another context". Now every mutation that only concerns the component itself is ignored, `dispatchEvent` still notifies the component's own listeners without traversing children, and `addChild` / `parent = …` throw a `ViewComponentError` that names the destruction. Assigning a `context` still revives the component under the same uuid.
 - **Behavior (worker environments):** a `start()` that fails now terminates the worker it created instead of just dropping the reference.
-- **Behavior (kernel):** `clearOnDestroy` sets the provided context to `undefined` and every consumer sees that, on both teardown paths — the entity is destroyed, or the Shadow Object leaves the constructor set of an entity that lives on (a token change, a route change). On the second path the clearing used to reach the provider signal alone and never the `useContext` readers below it. Applies to `provideContext` and `provideGlobalContext` alike. Whoever relied on a child keeping the last value after a token change now reads `undefined` there; the way back to the old reading is `{clearOnDestroy: false}`.
+- **Behavior (kernel):** `clearOnDestroy` sets the provided context to `undefined` and every consumer sees that, on both teardown paths — the entity is destroyed, or the Shadow Object leaves the constructor set of an entity that lives on (a token change, a route change). On the second path the clearing used to reach the provider signal alone and never the `useContext` readers below it. Applies to `provideContext` and `provideGlobalContext` alike. Whoever relied on a child keeping the last value after a token change now reads `undefined` there; the way back to the old reading is `{clearOnDestroy: false}`, on an entity that has no second provider of the name — see the entry below.
+- **Behavior (kernel):** an entity that has several Shadow Objects providing the same context name hands that name over when one of them leaves. Consumers then read the value of a provider that is still there — the one attached last that holds a value, which falls back on the order in which the providers took the name rather than on the order in which they last wrote to it — and `undefined` only once the last provider of the name on that entity is gone. This decides the name regardless of what the leaving Shadow Object wrote on its way out, so `{clearOnDestroy: false}` no longer holds the name for a Shadow Object that is gone. It covers `provideContext` and `provideGlobalContext` alike; for the latter the chain across entities is unchanged and still resolves to the first non-empty contribution. Whoever wants the old reading keeps one provider per name and entity.
 
 ### Bugfixes
 

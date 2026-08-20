@@ -132,6 +132,10 @@ Makes a value available to all descendant Entities in the subtree, and to all ot
 - **Note:** Pass a signal as the source to keep the context in sync with existing reactive state.
 - **Options:** `ProvideContextOptions<T>` adds `clearOnDestroy?: boolean` to the `compare` of `SignalValueOptions<T>`. It defaults to `true`: when the Shadow Object goes away, the context is set to `undefined` and every consumer sees that. "Goes away" covers both ways it can happen — the Entity is destroyed, or the Shadow Object leaves the constructor set of an Entity that lives on, as a token change or a route change makes it do.
 
+An Entity may have several Shadow Objects providing the same name, and then the departure of one of them is not the end of the context. Whichever way the Shadow Object goes away, the Entity hands the name over to a provider that is still attached: the one attached last that holds a value (`!= null`). That order is the order in which the providers took the name: attaching one writes its value through, so a provider that attached later has written over an earlier one, and the hand-over falls back on that order rather than inventing a new one. It is not the order of the writes — a provider that writes to its signal after attaching carries the name until the next departure, and the hand-over does not restore that write, because what the Entity keeps on file is its providers and not the sequence in which they wrote. A provider holding nothing is passed over, because it has nothing to say about the name and electing it would clear a name that is still being provided; so is one whose signal has been destroyed, which is what a Shadow Object does when it ends the signal it was handed. `undefined` reaches the consumers once the last provider of the name on that Entity is gone — and it reaches them then even where the one that left had opted out of `clearOnDestroy`, because that option decides what the leaving provider writes, not who owns the name afterwards.
+
+This is the opposite of what two `<shae-prop>` elements declaring one name do (see `<shae-prop>` → "Lifecycle"): there nothing is re-read when one of them goes, and the value of the element that left stays. A provider remains attached to the name and can be asked again; an element writes a value and lets go of it.
+
 The signal is cached per name and per Shadow Object like the readers above, and here the second call is silent about it: it hands back the first signal and drops both the `sourceOrInitialValue` and the `compare` it was given, with nothing on the console. `clearOnDestroy` is the exception — it is read on every call, so one call asking for it is enough to have the context cleared.
 
 #### `provideGlobalContext(name, sourceOrInitialValue?, options?)`
@@ -140,6 +144,7 @@ Makes a value available to all Entities in the entire Shadow Environment, regard
 
 - **Signature:** `provideGlobalContext<T>(name: string | symbol, sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>, options?: ProvideContextOptions<T> | CompareFunc<T | undefined>): Signal<Maybe<T>>`
 - **Options:** the same as `provideContext`, `clearOnDestroy` included — and the same caching, one signal per name and Shadow Object, with a second call dropping its value and `compare` just as silently.
+- **Departure:** on one Entity exactly as `provideContext` above — every Shadow Object of that Entity feeds the one signal the Entity contributes under this name, and a departure hands the name over to a provider that stays. Across Entities a second level decides: the global value is the first non-empty contribution in the chain, so an Entity whose contribution falls empty lets the next Entity through on its own.
 
 ---
 
@@ -2098,6 +2103,14 @@ Two elements may declare the same name on the same entity. The one that writes l
 value, and the property is cleared only once the last of them lets go. Nothing is re-read when one
 of them goes: the value stays where it was, even if the element that wrote it is the one that left.
 If you need a defined winner, give each declaration its own name.
+
+The same collision under `provideContext` (§2, "Entity Context") ends differently, and on purpose:
+a context keeps its providers on file and hands the name to one that stays, a property does not. A
+provider stays attached to the name for as long as its Shadow Object lives, which is what makes it
+answerable afterwards; a `<shae-prop>` writes a value and is then done with it, and the entity holds
+the value, not the writer. Both readings after a departure are defined, and they are defined
+differently: a context is decided anew among the providers that remain, a property keeps the value
+that stands until the last declaration of the name lets go.
 
 On the Shadow Object side, a cleared property reads `undefined` — the key itself stays visible in
 `propKeys()` and `propEntries()`. A reader taken from `useProperty()` keeps working across the

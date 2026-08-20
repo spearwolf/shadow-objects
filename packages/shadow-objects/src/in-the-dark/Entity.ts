@@ -5,6 +5,7 @@ import {
   link,
   Signal,
   SignalAutoMap,
+  type SignalLink,
   type SignalReader,
   type SignalWriter,
   value,
@@ -23,8 +24,26 @@ interface IContextValue {
   context: Signal<unknown>;
   valuePath: SignalsPath;
 
+  /**
+   * The links that feed `provide`, one per provider of this name on this entity. They all write
+   * into that one signal, so the value standing there is the one written last -- and the set is
+   * what makes it possible to ask a provider that is still here for its value once another one
+   * lets go. See {@link Entity.attachContextProvider}.
+   */
+  providerFeeds: Set<SignalLink<any>>;
+
   unsubscribePathValue: () => void;
   unsubscribeFromParent?: () => void;
+}
+
+interface IRootContextValue {
+  signal: Signal<any>;
+
+  /** The links that feed `signal`, exactly as {@link IContextValue.providerFeeds} feeds `provide`. */
+  providerFeeds: Set<SignalLink<any>>;
+
+  /** Takes the entity's signal back out of the kernel-wide chain of this name. */
+  cleanup: () => void;
 }
 
 const updateContextValues: Map<Signal<unknown>, unknown> = new Map();
@@ -59,7 +78,7 @@ export class Entity {
   #props = new SignalAutoMap();
   #context: Map<ContextNameType, IContextValue> = new Map();
 
-  #rootContexts: Map<ContextNameType, {cleanup: () => void; signal: Signal<any>}> = new Map();
+  #rootContexts: Map<ContextNameType, IRootContextValue> = new Map();
 
   #parentUuid?: string;
   #parent?: Entity;
@@ -434,17 +453,103 @@ export class Entity {
   }
 
   provideGlobalContext<T = unknown>(name: ContextNameType): Signal<T> {
+    // The signal behind it is created without an initial value — a context signal does start out
+    // empty and holds no `T` until a provider writes one. The cast keeps the same contract
+    // `provideContext()` hands out; callers see the `undefined` through `Maybe<T>` in the
+    // shadow-object API.
+    return this.#findOrCreateGlobalContext(name).signal as Signal<T>;
+  }
+
+  /**
+   * Attaches a provider signal to the context of `name` on this entity and answers with the release
+   * that detaches it again.
+   *
+   * Every provider of one name writes into the single signal that `provideContext()` hands out, so
+   * what a consumer reads is what was written last. The release therefore does two things: it cuts
+   * this feed, and it then lets a provider that is still attached write its value once more. Without
+   * that second step the context would keep whatever the departure left standing -- the `undefined`
+   * of a clearing provider, or the last value of one that opted out of it -- even though this entity
+   * still has a provider of the name that says otherwise.
+   *
+   * A value written straight into the signal from `provideContext()` is not a feed and is therefore
+   * overwritten by the next release. Feeding a value in through this method is what makes it survive
+   * one.
+   */
+  attachContextProvider(name: ContextNameType, provider: Signal<any>): () => void {
+    const ctx = this.#findOrCreateContext(name);
+    return Entity.#attachProviderFeed(provider, ctx.provide, ctx.providerFeeds);
+  }
+
+  /**
+   * The counterpart of {@link attachContextProvider} for the global context of `name`.
+   *
+   * Within one entity the situation is the same one: every provider feeds the single signal this
+   * entity contributes to the kernel-wide chain of that name, and a release hands the name back to a
+   * provider that stays. Across entities the chain decides on its own -- it resolves to the first
+   * entry that holds something, so an entity whose signal falls empty lets the next one through.
+   */
+  attachGlobalContextProvider(name: ContextNameType, provider: Signal<any>): () => void {
+    const rootCtx = this.#findOrCreateGlobalContext(name);
+    return Entity.#attachProviderFeed(provider, rootCtx.signal, rootCtx.providerFeeds);
+  }
+
+  static #attachProviderFeed(provider: Signal<any>, target: Signal<any>, feeds: Set<SignalLink<any>>): () => void {
+    const feed = link(provider, target);
+    feeds.add(feed);
+
+    return () => {
+      // A release called a second time finds nothing of its own left and leaves the context to
+      // whoever holds it by then.
+      if (!feeds.delete(feed)) return;
+      feed.destroy();
+      Entity.#handOverToRemainingProvider(feeds);
+    };
+  }
+
+  /**
+   * Lets the provider that stays write its value into the context signal again.
+   *
+   * The set iterates in the order the providers were attached and the loop keeps the last hit, so the
+   * winner is the one attached last that still holds a value. Attachment order is the order in which the
+   * providers took the name: attaching feeds the value straight through, so a later attachment writes
+   * over an earlier one, and the hand-over falls back on that order instead of inventing one of its own.
+   * It is not the order of the writes -- a provider that writes to its signal after attaching carries
+   * the name until the next departure, and the hand-over does not restore that write, because what this
+   * entity keeps on file is its providers and not the sequence in which they wrote. Providers holding
+   * nothing are passed over -- by the same `!= null` rule with which `SignalsPath` resolves a context
+   * chain, and for the same reason: a provider without a value has nothing to say about the name, and
+   * electing it would clear a name that is still being provided.
+   *
+   * A feed whose link is destroyed is passed over as well. A shadow-object owns the signal it was
+   * handed and may end it early, which destroys the link without the release ever having run: such a
+   * feed still reports a value through its source while its writes go nowhere, so electing it would
+   * leave the write of the departure standing, silently and over a provider that is alive.
+   *
+   * `touch()` is what makes the winner write, because `SignalLink.write()` is protected: touching is
+   * the only public way to push the current value of a source through its link again, and the source
+   * of a provider that merely stays has no reason to change.
+   *
+   * Where no remaining feed qualifies, nothing is written: then what the departure left stands,
+   * which is the `undefined` of a clearing provider or the last value of one that opted out.
+   */
+  static #handOverToRemainingProvider(feeds: Set<SignalLink<any>>): void {
+    let winner: SignalLink<any> | undefined;
+    for (const feed of feeds) {
+      if (!feed.isDestroyed && feed.source.value != null) winner = feed;
+    }
+    winner?.touch();
+  }
+
+  #findOrCreateGlobalContext(name: ContextNameType): IRootContextValue {
     if (this.#rootContexts.has(name)) {
-      return this.#rootContexts.get(name)!.signal as Signal<T>;
+      return this.#rootContexts.get(name)!;
     }
     const rootCtx = this.#kernel.findOrCreateRootContext(name);
-    // `createSignal<T>()` is a `Signal<T | undefined>` since signalize 1.0 — a context
-    // signal does start out empty. The cast keeps the same contract `provideContext()`
-    // hands out; callers see the `undefined` through `Maybe<T>` in the shadow-object API.
-    const signal = createSignal<T>() as Signal<T>;
+    const signal = createSignal() as Signal<any>;
     const cleanup = rootCtx.add(signal);
-    this.#rootContexts.set(name, {cleanup, signal});
-    return signal;
+    const ctx: IRootContextValue = {cleanup, signal, providerFeeds: new Set()};
+    this.#rootContexts.set(name, ctx);
+    return ctx;
   }
 
   #findOrCreateContext(name: ContextNameType): IContextValue {
@@ -462,7 +567,7 @@ export class Entity {
       deferContextValueUpdate(context, val);
     });
 
-    const ctx: IContextValue = {name, inherited, provide, context, valuePath, unsubscribePathValue};
+    const ctx: IContextValue = {name, inherited, provide, context, valuePath, providerFeeds: new Set(), unsubscribePathValue};
     this.#context.set(name, ctx);
 
     this.#subscribeToParent(ctx);

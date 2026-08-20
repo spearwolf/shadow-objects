@@ -1,5 +1,14 @@
 import {emit, eventize, getSubscriptionCount, on} from '@spearwolf/eventize';
-import {createSignal, getLinksCount, getSignalsCount, type Signal, type SignalReader, value} from '@spearwolf/signalize';
+import {
+  createEffect,
+  createSignal,
+  destroySignal,
+  getLinksCount,
+  getSignalsCount,
+  type Signal,
+  type SignalReader,
+  value,
+} from '@spearwolf/signalize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {ChangeTrailPhase, ComponentChangeType, MessageToView} from '../constants.js';
 import type {ICreateEntitiesChange, ShadowObjectCreationAPI} from '../types.js';
@@ -9,7 +18,7 @@ import type {Entity} from './Entity.js';
 import {type OnCreate, type OnDestroy, onCreate, onDestroy} from './events.js';
 import {Kernel, type MessageToViewEvent} from './Kernel.js';
 import {Registry} from './Registry.js';
-import {ShadowObject} from './ShadowObject.js';
+import {ShadowObject, shadowObjects} from './ShadowObject.js';
 
 // A chain r -> a -> b under one kernel. The breadth-first order over it is exactly the order the
 // three entities are created in, which makes a reversed result easy to tell apart from a fresh one.
@@ -723,6 +732,442 @@ describe('Kernel', () => {
         });
       });
 
+      // Several shadow-objects of one entity may provide the same context name. They all feed the
+      // one entity-side signal of that name, so a consumer reads whatever was written last -- after
+      // construction that is the value of the last constructor in the set. When one of them leaves,
+      // the entity hands the name back to a provider that is still there, rather than leaving the
+      // consumers with what the departure wrote.
+      //
+      // The constructor sets below are built without the decorator: `@ShadowObject` takes exactly
+      // one token, and these cases need two tokens pointing at the same class, so that a token
+      // change drops one constructor and leaves the other in place. `updateShadowObjects()` does
+      // not re-run a constructor that is already in use, so the staying shadow-object is untouched.
+      describe('two shadow-objects providing the same context name', () => {
+        it('hands the context to the provider that stays when the other one leaves the constructor set', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          class BaseTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'dark');
+            }
+          }
+
+          class OverlayTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'overlay');
+            }
+          }
+
+          shadowObjects.define('themeBoth', BaseTheme, registry);
+          shadowObjects.define('themeBoth', OverlayTheme, registry);
+          shadowObjects.define('themeBaseOnly', BaseTheme, registry);
+
+          const parentUuid = generateUUID();
+          const childUuid = generateUUID();
+
+          kernel.createEntity(parentUuid, 'themeBoth');
+          kernel.createEntity(childUuid, 'themeChild', parentUuid);
+
+          const childContext = kernel.getEntity(childUuid).useContext('theme');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext), 'the last constructor of the set wrote last').toBe('overlay');
+
+          kernel.changeToken(parentUuid, 'themeBaseOnly');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext), 'the provider that stays pushes its value again').toBe('dark');
+
+          kernel.destroy();
+        });
+
+        it('takes the value of the provider attached last among several that stay', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          class BaseTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'dark');
+            }
+          }
+
+          class MidTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'mid');
+            }
+          }
+
+          class OverlayTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'overlay');
+            }
+          }
+
+          shadowObjects.define('themeAll', BaseTheme, registry);
+          shadowObjects.define('themeAll', MidTheme, registry);
+          shadowObjects.define('themeAll', OverlayTheme, registry);
+          shadowObjects.define('themeWithoutOverlay', BaseTheme, registry);
+          shadowObjects.define('themeWithoutOverlay', MidTheme, registry);
+
+          const parentUuid = generateUUID();
+          const childUuid = generateUUID();
+
+          kernel.createEntity(parentUuid, 'themeAll');
+          kernel.createEntity(childUuid, 'themeChild', parentUuid);
+
+          const childContext = kernel.getEntity(childUuid).useContext('theme');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('overlay');
+
+          kernel.changeToken(parentUuid, 'themeWithoutOverlay');
+
+          // Two providers stay and both hold a value, so the hand-over has to choose between them.
+          // It goes to the one attached last, which keeps the precedence that holds among living
+          // providers: the later attachment already outranked the earlier one before the departure.
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('mid');
+
+          kernel.destroy();
+        });
+
+        it('hands the context over even where both providers hold the same value', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          class BaseTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'dark');
+            }
+          }
+
+          class OverlayTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'dark');
+            }
+          }
+
+          shadowObjects.define('themeBoth', BaseTheme, registry);
+          shadowObjects.define('themeBoth', OverlayTheme, registry);
+          shadowObjects.define('themeBaseOnly', BaseTheme, registry);
+
+          const parentUuid = generateUUID();
+          const childUuid = generateUUID();
+
+          kernel.createEntity(parentUuid, 'themeBoth');
+          kernel.createEntity(childUuid, 'themeChild', parentUuid);
+
+          const childContext = kernel.getEntity(childUuid).useContext('theme');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('dark');
+
+          kernel.changeToken(parentUuid, 'themeBaseOnly');
+
+          // Nothing about the staying provider changes here: its value was already the one the
+          // context is meant to end up with, and its signal is never written to. Only the hand-over
+          // pushes it through again, so this case fails wherever the departure is allowed to have
+          // the last word just because the two providers were indistinguishable.
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('dark');
+
+          kernel.destroy();
+        });
+
+        it('takes the context from a provider that opted out of clearOnDestroy', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          class BaseTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'dark');
+            }
+          }
+
+          class OverlayTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'overlay', {clearOnDestroy: false});
+            }
+          }
+
+          shadowObjects.define('themeBoth', BaseTheme, registry);
+          shadowObjects.define('themeBoth', OverlayTheme, registry);
+          shadowObjects.define('themeBaseOnly', BaseTheme, registry);
+
+          const parentUuid = generateUUID();
+          const childUuid = generateUUID();
+
+          kernel.createEntity(parentUuid, 'themeBoth');
+          kernel.createEntity(childUuid, 'themeChild', parentUuid);
+
+          const childContext = kernel.getEntity(childUuid).useContext('theme');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('overlay');
+
+          kernel.changeToken(parentUuid, 'themeBaseOnly');
+
+          // `clearOnDestroy: false` keeps the leaving provider from writing `undefined`, but it does
+          // not entitle its value to outlive it on an entity that still has a provider of the name.
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('dark');
+
+          kernel.destroy();
+        });
+
+        it('skips a remaining provider that holds nothing', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          class BaseTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'dark');
+            }
+          }
+
+          class EmptyTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme');
+            }
+          }
+
+          class OverlayTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'overlay');
+            }
+          }
+
+          shadowObjects.define('themeAll', BaseTheme, registry);
+          shadowObjects.define('themeAll', EmptyTheme, registry);
+          shadowObjects.define('themeAll', OverlayTheme, registry);
+          shadowObjects.define('themeWithoutOverlay', BaseTheme, registry);
+          shadowObjects.define('themeWithoutOverlay', EmptyTheme, registry);
+
+          const parentUuid = generateUUID();
+          const childUuid = generateUUID();
+
+          kernel.createEntity(parentUuid, 'themeAll');
+          kernel.createEntity(childUuid, 'themeChild', parentUuid);
+
+          const childContext = kernel.getEntity(childUuid).useContext('theme');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('overlay');
+
+          kernel.changeToken(parentUuid, 'themeWithoutOverlay');
+
+          // The empty provider is the one attached last, but it holds nothing, so the hand-over
+          // walks past it to the one that does.
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('dark');
+
+          kernel.destroy();
+        });
+
+        it('passes over a provider whose signal was destroyed', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          class BaseTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'dark');
+            }
+          }
+
+          // A Shadow Object owns the signal it is handed and may end it early. That kills the feed
+          // without the release the entity handed out ever running, so the entity still lists a feed
+          // whose source holds a value and whose writes go nowhere.
+          class ZombieTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              destroySignal(provideContext('theme', 'zombie'));
+            }
+          }
+
+          class OverlayTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'overlay');
+            }
+          }
+
+          shadowObjects.define('themeAll', BaseTheme, registry);
+          shadowObjects.define('themeAll', ZombieTheme, registry);
+          shadowObjects.define('themeAll', OverlayTheme, registry);
+          shadowObjects.define('themeWithoutOverlay', BaseTheme, registry);
+          shadowObjects.define('themeWithoutOverlay', ZombieTheme, registry);
+
+          const parentUuid = generateUUID();
+          const childUuid = generateUUID();
+
+          kernel.createEntity(parentUuid, 'themeAll');
+          kernel.createEntity(childUuid, 'themeChild', parentUuid);
+
+          const childContext = kernel.getEntity(childUuid).useContext('theme');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('overlay');
+
+          kernel.changeToken(parentUuid, 'themeWithoutOverlay');
+
+          // The dead feed is the last one holding a value, so a hand-over that only looked at the
+          // value would elect it and then write nothing at all, leaving the clear of the departing
+          // provider standing over a provider that is very much alive.
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('dark');
+
+          kernel.destroy();
+        });
+
+        it('walks back over several providers that leave in one token change', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          class BaseTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'dark');
+            }
+          }
+
+          class MidTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'mid');
+            }
+          }
+
+          class OverlayTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'overlay');
+            }
+          }
+
+          shadowObjects.define('themeAll', BaseTheme, registry);
+          shadowObjects.define('themeAll', MidTheme, registry);
+          shadowObjects.define('themeAll', OverlayTheme, registry);
+          shadowObjects.define('themeBaseOnly', BaseTheme, registry);
+
+          const parentUuid = generateUUID();
+          const childUuid = generateUUID();
+
+          kernel.createEntity(parentUuid, 'themeAll');
+          kernel.createEntity(childUuid, 'themeChild', parentUuid);
+
+          const childContext = kernel.getEntity(childUuid).useContext('theme');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+          const seen: unknown[] = [];
+          const effect = createEffect(() => {
+            seen.push(childContext());
+          });
+
+          kernel.changeToken(parentUuid, 'themeBaseOnly');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+          // Two departures in one synchronous run, so the walk runs twice and has to land on a different feed
+          // the second time -- first on the overlay provider at the top, which is itself about to leave, then
+          // on the base one at the bottom. The departures follow the order in which the constructors were
+          // used, so the middle one goes first and leaves the top one as the last attachment still holding a
+          // value. What a consumer sees of that is only where it ended, because the entity collects the writes
+          // to its context signal and flushes them one microtask later; `seen` therefore holds the value that
+          // stood before the token change and the one that stands after it, never a value from in between: the
+          // context signal takes only the last of the buffered writes, whichever way the walk went.
+          expect(seen).toEqual(['overlay', 'dark']);
+
+          effect.destroy();
+          kernel.destroy();
+        });
+
+        it('writes undefined once the last provider of the name is gone', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          class BaseTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'dark');
+            }
+          }
+
+          class OverlayTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'overlay');
+            }
+          }
+
+          shadowObjects.define('themeBoth', BaseTheme, registry);
+          shadowObjects.define('themeBoth', OverlayTheme, registry);
+
+          const parentUuid = generateUUID();
+          const childUuid = generateUUID();
+
+          kernel.createEntity(parentUuid, 'themeBoth');
+          kernel.createEntity(childUuid, 'themeChild', parentUuid);
+
+          const childContext = kernel.getEntity(childUuid).useContext('theme');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('overlay');
+
+          kernel.changeToken(parentUuid, 'themeNone');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBeUndefined();
+
+          kernel.destroy();
+        });
+
+        it('hands the context back when a later provider throws in its constructor', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          class BaseTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'dark');
+            }
+          }
+
+          class OverlayTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'overlay');
+            }
+          }
+
+          class ThrowingTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'half-built');
+              throw new Error('no theme for you');
+            }
+          }
+
+          shadowObjects.define('themeBoth', BaseTheme, registry);
+          shadowObjects.define('themeBoth', OverlayTheme, registry);
+          shadowObjects.define('themeWithThrower', BaseTheme, registry);
+          shadowObjects.define('themeWithThrower', ThrowingTheme, registry);
+
+          const parentUuid = generateUUID();
+          const childUuid = generateUUID();
+
+          kernel.createEntity(parentUuid, 'themeBoth');
+          kernel.createEntity(childUuid, 'themeChild', parentUuid);
+
+          const childContext = kernel.getEntity(childUuid).useContext('theme');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('overlay');
+
+          // The scope of a constructor that throws is torn down on the spot, and that teardown runs
+          // the same hand-over: the half-built provider goes, the entity keeps the one that stays.
+          expect(() => kernel.changeToken(parentUuid, 'themeWithThrower')).toThrow('no theme for you');
+
+          expect(kernel.hasEntity(parentUuid)).toBe(true);
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('dark');
+
+          kernel.destroy();
+        });
+      });
+
       // `useContext()` links its own local reader to the entity-level context signal. The two
       // cases below hold the *reader* side of that wire (not a downstream consumer of it): it
       // stops following the parent once this shadow-object's own teardown runs, on either of the
@@ -1038,6 +1483,91 @@ describe('Kernel', () => {
         sourceSignal.set('globalUpdated');
         await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
         expect(value(capturedGlobalCtx!)).toBe('globalUpdated');
+
+        kernel.destroy();
+      });
+
+      // A global context is resolved on two levels. Within one entity every shadow-object that
+      // provides the name feeds the one signal that entity contributes to the kernel-wide chain, so
+      // the hand-over of `provideContext` applies unchanged. Across entities the chain itself
+      // decides: it takes the first entry that holds something, so an entity falling empty lets the
+      // next one through on its own.
+      it('hands the global context to the provider that stays on the same entity', async () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        class BaseTheme {
+          constructor({provideGlobalContext}: ShadowObjectCreationAPI) {
+            provideGlobalContext('globalTheme', 'dark');
+          }
+        }
+
+        class OverlayTheme {
+          constructor({provideGlobalContext}: ShadowObjectCreationAPI) {
+            provideGlobalContext('globalTheme', 'overlay');
+          }
+        }
+
+        shadowObjects.define('globalThemeBoth', BaseTheme, registry);
+        shadowObjects.define('globalThemeBoth', OverlayTheme, registry);
+        shadowObjects.define('globalThemeBaseOnly', BaseTheme, registry);
+
+        const providerUuid = generateUUID();
+        const consumerUuid = generateUUID();
+
+        kernel.createEntity(providerUuid, 'globalThemeBoth');
+        kernel.createEntity(consumerUuid, 'globalThemeConsumer');
+
+        const consumerContext = kernel.getEntity(consumerUuid).useContext('globalTheme');
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(consumerContext)).toBe('overlay');
+
+        kernel.changeToken(providerUuid, 'globalThemeBaseOnly');
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(consumerContext)).toBe('dark');
+
+        kernel.destroy();
+      });
+
+      it('lets another entity hold the global context when the one that had it goes', async () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+
+        class BaseTheme {
+          constructor({provideGlobalContext}: ShadowObjectCreationAPI) {
+            provideGlobalContext('globalTheme', 'dark');
+          }
+        }
+
+        class OverlayTheme {
+          constructor({provideGlobalContext}: ShadowObjectCreationAPI) {
+            provideGlobalContext('globalTheme', 'overlay');
+          }
+        }
+
+        shadowObjects.define('globalThemeOverlay', OverlayTheme, registry);
+        shadowObjects.define('globalThemeBase', BaseTheme, registry);
+
+        const overlayUuid = generateUUID();
+        const baseUuid = generateUUID();
+        const consumerUuid = generateUUID();
+
+        // The overlay entity joins the chain first, so it is the first entry that holds a value.
+        kernel.createEntity(overlayUuid, 'globalThemeOverlay');
+        kernel.createEntity(baseUuid, 'globalThemeBase');
+        kernel.createEntity(consumerUuid, 'globalThemeConsumer');
+
+        const consumerContext = kernel.getEntity(consumerUuid).useContext('globalTheme');
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(consumerContext)).toBe('overlay');
+
+        kernel.changeToken(overlayUuid, 'globalThemeNone');
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(consumerContext)).toBe('dark');
 
         kernel.destroy();
       });

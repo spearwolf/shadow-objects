@@ -274,8 +274,8 @@ das ganze Rezept, aus dem sie sich wieder aufbauen lässt.
 
 ### 4.1 Inventar
 
-**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 20 Dateien, 600 Fälle):
-`Kernel.spec.ts` (3249 LoC), `Entity.spec.ts`, `Registry.spec.ts`, `ShadowObject.spec.ts`, `ShadowObjectCreationScope.spec.ts`, `SignalsPath.spec.ts`, `ShadowEnv.spec.ts`, `LocalShadowObjectEnv.spec.ts`, `RemoteWorkerEnv.spec.ts`, `MessageRouter.spec.ts`, `WorkerRuntime.spec.ts`, `ViewComponent.spec.ts`, `ComponentContext.spec.ts`, `ComponentChanges.spec.ts`, `ComponentMemory.spec.ts`, `props-utils.spec.ts`, `FrameLoop.spec.ts`, `ConsoleLogger.spec.ts`, `ConsoleLogger.storage.spec.ts`, `elements/propValueConverters.spec.ts`.
+**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 20 Dateien, 620 Fälle):
+`Kernel.spec.ts` (4008 LoC), `Entity.spec.ts`, `Registry.spec.ts`, `ShadowObject.spec.ts`, `ShadowObjectCreationScope.spec.ts`, `SignalsPath.spec.ts`, `ShadowEnv.spec.ts`, `LocalShadowObjectEnv.spec.ts`, `RemoteWorkerEnv.spec.ts`, `MessageRouter.spec.ts`, `WorkerRuntime.spec.ts`, `ViewComponent.spec.ts`, `ComponentContext.spec.ts`, `ComponentChanges.spec.ts`, `ComponentMemory.spec.ts`, `props-utils.spec.ts`, `FrameLoop.spec.ts`, `ConsoleLogger.spec.ts`, `ConsoleLogger.storage.spec.ts`, `elements/propValueConverters.spec.ts`.
 
 **`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 24 Dateien, 345 Fälle — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `ent-element-attributes`, `ent-element-context-clear`, `ent-element-events`, `ent-element-namespace`, `ent-element-shadow-root-host`, `ent-element-slot-move`, `ent-element-teardown`, `ent-element-upgrade`, `forward-custom-events`, `local-env-entities`, `prop-element-host`, `prop-element-lifecycle`, `prop-element-registration-order`, `prop-element-types`, `remove-and-append-e`, `send-events`, `view-component-context-switch`, `worker-element-attributes`, `worker-element-teardown`, `emit-helper/emit-helper`.
 

@@ -297,7 +297,7 @@ Shadow Objects are not nodes in this tree. They are ECS components attached to E
 
 - An Entity can have multiple Shadow Objects (via routing rules in the Registry).
 - All Shadow Objects attached to the same Entity share its properties, its contexts and its event bus.
-- They do not share a lifecycle. When a token change or a route switch drops one constructor from the set, only that one Shadow Object is torn down; the others on the entity keep running untouched.
+- They do not share a lifecycle. When a token change or a route switch drops one constructor from the set, only that one Shadow Object is torn down; the others on the entity keep running untouched, and so does what they provide — a context name another Shadow Object on the entity still provides is handed over to it rather than falling empty.
 
 ### Entity Context (Dependency Injection)
 

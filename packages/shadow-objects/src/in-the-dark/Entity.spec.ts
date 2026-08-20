@@ -1,4 +1,4 @@
-import {createEffect, value} from '@spearwolf/signalize';
+import {createEffect, createSignal, value} from '@spearwolf/signalize';
 import {describe, expect, it} from 'vitest';
 import {generateUUID} from '../utils/generateUUID.js';
 import {Kernel} from './Kernel.js';
@@ -246,6 +246,57 @@ describe('Entity', () => {
       await nextMicrotask();
 
       expect(value(consumer)).toBe('from-parent');
+
+      kernel.destroy();
+    });
+
+    // Every provider of one context name feeds the same entity-side signal, so the value that
+    // stands there is the one written last. `attachContextProvider()` keeps the feeds of a name
+    // together and, when one of them is released, gives the name back to a feed that is still
+    // attached and still holds something.
+    it('attachContextProvider hands the context to the feed that stays when an earlier release runs', () => {
+      const kernel = makeKernel();
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'entity');
+      const entity = kernel.getEntity(uuid);
+
+      const providerA = createSignal('from-a');
+      const providerB = createSignal('from-b');
+
+      const releaseA = entity.attachContextProvider('ctx', providerA);
+      entity.attachContextProvider('ctx', providerB);
+
+      const provided = entity.provideContext('ctx');
+      expect(value(provided), 'the feed attached last wrote last').toBe('from-b');
+
+      // A write straight into the signal `provideContext()` hands out is not a feed, so the next
+      // release overwrites it.
+      provided.set('written-directly');
+
+      releaseA();
+
+      expect(value(provided)).toBe('from-b');
+
+      kernel.destroy();
+    });
+
+    it('attachContextProvider leaves the last written value alone when no attached provider holds one', () => {
+      const kernel = makeKernel();
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'entity');
+      const entity = kernel.getEntity(uuid);
+
+      const provider = createSignal<string>();
+      const release = entity.attachContextProvider('ctx', provider);
+
+      const provided = entity.provideContext('ctx');
+      provided.set('left-behind');
+
+      release();
+
+      expect(value(provided)).toBe('left-behind');
 
       kernel.destroy();
     });
