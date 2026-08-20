@@ -16,11 +16,23 @@ import {toMaybe} from '../utils/toMaybe.js';
 import type {Entity} from './Entity.js';
 import {onDestroy, onViewEvent} from './events.js';
 
-let provideContextOptionsDeprecatedShown = false;
-let provideGlobalContextOptionsDeprecatedShown = false;
-let useContextOptionsDeprecatedShown = false;
-let useParentContextOptionsDeprecatedShown = false;
-let usePropertyOptionsDeprecatedShown = false;
+// The deprecated call form is worth exactly one console line per realm and member name: a
+// shadow-object that calls a member inside a loop would otherwise flood the console. The set holds
+// the member names that have already warned, one entry each -- a single shared flag would swallow
+// the warnings of the four members that come after the first one.
+const isEqualDeprecationShown = new Set<string>();
+
+/**
+ * Warns about the deprecated call form in which a bare compare function stands where the options
+ * object belongs, at most once per realm and member name.
+ */
+function warnDeprecatedIsEqualOption(options: unknown, apiName: string): void {
+  if (typeof options !== 'function' || isEqualDeprecationShown.has(apiName)) return;
+  console.warn(
+    `[shadow-objects] Deprecation Warning: The "isEqual" option of "${apiName}()" is now passed as {compare} argument. Please update your code accordingly.`,
+  );
+  isEqualDeprecationShown.add(apiName);
+}
 
 /**
  * Everything a single shadow-object was given at construction time, and the end of all of it.
@@ -30,6 +42,13 @@ let usePropertyOptionsDeprecatedShown = false;
  * sees the API object, never the scope behind it.
  *
  * One scope belongs to exactly one shadow-object, and it ends with it.
+ *
+ * Eight methods share their name with a module-level import: `on`, `once`, `emit`, `onDestroy`,
+ * `onViewEvent`, `createSignal`, `createEffect` and `createMemo`. They are named that way deliberately,
+ * because those names are part of the `ShadowObjectCreationAPI` contract a shadow-object destructures by
+ * name. Seven of them call or reference their namesake inside their own body; `onDestroy` is the exception,
+ * as its import is the entity event that `bindTo()` subscribes to. A bare name inside a body is therefore
+ * always the import, and a call on the method of the same name always carries `this.`.
  */
 export class ShadowObjectCreationScope {
   readonly #entity: Entity;
@@ -184,31 +203,55 @@ export class ShadowObjectCreationScope {
     this.#forgetShadowObject?.();
   }
 
-  useProperty<T = any>(name: string, options?: SignalValueOptions<T> | CompareFunc<T | undefined>): SignalReader<Maybe<T>> {
-    if (!usePropertyOptionsDeprecatedShown && options != null && typeof options === 'function') {
+  /**
+   * The body the three cached readers share: one reader per name, created on the first call and fed
+   * from the entity-side source, plus a warning when a later call brings a different {compare}
+   * function than the one the reader was created with.
+   *
+   * `linkSource` is a thunk because the source may only be read when a reader is actually created.
+   */
+  #cachedReader<K extends string | symbol>(
+    name: K,
+    readers: Map<K, SignalReader<any>>,
+    compares: Map<K, CompareFunc<any> | undefined>,
+    linkSource: () => SignalReader<any>,
+    opts: SignalValueOptions<any> | undefined,
+    apiName: string,
+    subject: string,
+  ): SignalReader<any> {
+    let reader = readers.get(name);
+
+    if (reader === undefined) {
+      reader = createSignal<any>(undefined, opts).get;
+      readers.set(name, reader);
+      compares.set(name, opts?.compare);
+      // Destroying this link is what ends the feed: the entity-side signal must not go on writing
+      // into a reader that the teardown has already destroyed.
+      const ln = link(linkSource(), reader);
+      this.#unsubscribeSecondary.add(ln.destroy.bind(ln));
+    } else if (opts?.compare != null && compares.get(name) !== opts.compare) {
       console.warn(
-        '[shadow-objects] Deprecation Warning: The "isEqual" option of "useProperty()" is now passed as {compare} argument. Please update your code accordingly.',
+        `[shadow-objects] ${apiName}("${String(name)}"): the cached signal already exists with a different (or no) {compare} function — the new options are ignored. Pass options only on the first call per ${subject}.`,
       );
-      usePropertyOptionsDeprecatedShown = true;
     }
+
+    return reader;
+  }
+
+  useProperty<T = any>(name: string, options?: SignalValueOptions<T> | CompareFunc<T | undefined>): SignalReader<Maybe<T>> {
+    warnDeprecatedIsEqualOption(options, 'useProperty');
 
     const opts = typeof options === 'function' ? {compare: options} : options;
 
-    let propReader = this.#propertyReaders.get(name);
-
-    if (propReader === undefined) {
-      propReader = createSignal<any>(undefined, opts).get;
-      this.#propertyReaders.set(name, propReader);
-      this.#propertyCompares.set(name, opts?.compare);
-      const con = link(this.#entity.getPropertyReader(name), propReader);
-      this.#unsubscribeSecondary.add(con.destroy.bind(con));
-    } else if (opts?.compare != null && this.#propertyCompares.get(name) !== opts.compare) {
-      console.warn(
-        `[shadow-objects] useProperty("${name}"): the cached signal already exists with a different (or no) {compare} function — the new options are ignored. Pass options only on the first call per property.`,
-      );
-    }
-
-    return propReader;
+    return this.#cachedReader(
+      name,
+      this.#propertyReaders,
+      this.#propertyCompares,
+      () => this.#entity.getPropertyReader(name),
+      opts,
+      'useProperty',
+      'property',
+    );
   }
 
   useProperties<T extends Record<string, unknown> = Record<string, unknown>>(
@@ -225,38 +268,41 @@ export class ShadowObjectCreationScope {
     return result;
   }
 
-  provideContext<T = unknown>(
+  /**
+   * The body the two context providers share: one provider signal per name, created on the first
+   * call, linked to the entity-side context signal, and cleared on teardown unless the caller opted
+   * out. A source signal handed in instead of an initial value feeds the provider through a link of
+   * its own.
+   *
+   * `entitySignal` is a thunk because the entity-side signal may only be requested when a provider
+   * is actually created. The `clearOnDestroy` check sits outside that branch: every call is allowed
+   * to ask for the clearing, not only the one that created the signal.
+   */
+  #provideContextSignal(
     name: string | symbol,
-    sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>,
-    options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
-  ) {
-    if (!provideContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
-      console.warn(
-        '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideContext()" is now passed as {compare} argument. Please update your code accordingly.',
-      );
-      provideContextOptionsDeprecatedShown = true;
-    }
-
-    const opts = typeof options === 'function' ? {compare: options} : options;
-
-    let ctxProvider = this.#contextProviders.get(name);
+    providers: Map<string | symbol, Signal<any>>,
+    entitySignal: () => Signal<any>,
+    sourceOrInitialValue: unknown,
+    opts: ProvideContextOptions<any> | undefined,
+  ): Signal<any> {
+    let ctxProvider = providers.get(name);
 
     if (ctxProvider == null) {
       const isSig = isSignal(sourceOrInitialValue);
-      const initialValue = isSig ? undefined : toMaybe(sourceOrInitialValue as T);
+      const initialValue = isSig ? undefined : toMaybe(sourceOrInitialValue);
 
       ctxProvider = createSignal(initialValue, opts?.compare ? {compare: opts.compare} : undefined);
 
       if (isSig) {
-        const ln = link(sourceOrInitialValue as SignalReader<T>, ctxProvider);
+        const ln = link(sourceOrInitialValue as SignalReader<any>, ctxProvider);
         this.#unsubscribeSecondary.add(ln.destroy.bind(ln));
       }
 
       // Destroying this link is registered before any `clearOnDestroy` callback below: the write to
-      // `undefined` then no longer reaches the entity's own context signal.
-      const ln = link(ctxProvider, this.#entity.provideContext(name));
+      // `undefined` then no longer reaches the context signal on the entity side.
+      const ln = link(ctxProvider, entitySignal());
       this.#unsubscribeSecondary.add(ln.destroy.bind(ln));
-      this.#contextProviders.set(name, ctxProvider);
+      providers.set(name, ctxProvider);
     }
 
     if (ctxProvider != null && (opts?.clearOnDestroy ?? true)) {
@@ -266,6 +312,24 @@ export class ShadowObjectCreationScope {
     }
 
     return ctxProvider;
+  }
+
+  provideContext<T = unknown>(
+    name: string | symbol,
+    sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>,
+    options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
+  ) {
+    warnDeprecatedIsEqualOption(options, 'provideContext');
+
+    const opts = typeof options === 'function' ? {compare: options} : options;
+
+    return this.#provideContextSignal(
+      name,
+      this.#contextProviders,
+      () => this.#entity.provideContext(name),
+      sourceOrInitialValue,
+      opts,
+    );
   }
 
   provideGlobalContext<T = unknown>(
@@ -273,96 +337,49 @@ export class ShadowObjectCreationScope {
     sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>,
     options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
   ) {
-    if (!provideGlobalContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
-      console.warn(
-        '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideGlobalContext()" is now passed as {compare} argument. Please update your code accordingly.',
-      );
-      provideGlobalContextOptionsDeprecatedShown = true;
-    }
+    warnDeprecatedIsEqualOption(options, 'provideGlobalContext');
 
     const opts = typeof options === 'function' ? {compare: options} : options;
 
-    let ctxProvider = this.#contextRootProviders.get(name);
-
-    if (ctxProvider == null) {
-      const isSig = isSignal(sourceOrInitialValue);
-      const initialValue = isSig ? undefined : toMaybe(sourceOrInitialValue as T);
-
-      ctxProvider = createSignal(initialValue, opts?.compare ? {compare: opts.compare} : undefined);
-
-      if (isSig) {
-        const ln = link(sourceOrInitialValue as SignalReader<T>, ctxProvider);
-        this.#unsubscribeSecondary.add(ln.destroy.bind(ln));
-      }
-
-      // Destroying this link is registered before any `clearOnDestroy` callback below: the write to
-      // `undefined` then no longer reaches the root context signal.
-      const ln = link(ctxProvider, this.#entity.provideGlobalContext(name));
-      this.#unsubscribeSecondary.add(ln.destroy.bind(ln));
-      this.#contextRootProviders.set(name, ctxProvider);
-    }
-
-    if (ctxProvider != null && (opts?.clearOnDestroy ?? true)) {
-      this.#unsubscribeSecondary.add(() => {
-        ctxProvider.set(undefined);
-      });
-    }
-
-    return ctxProvider;
+    return this.#provideContextSignal(
+      name,
+      this.#contextRootProviders,
+      () => this.#entity.provideGlobalContext(name),
+      sourceOrInitialValue,
+      opts,
+    );
   }
 
   useContext<T = unknown>(name: string | symbol, options?: SignalValueOptions<T> | CompareFunc<T | undefined>) {
-    if (!useContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
-      console.warn(
-        '[shadow-objects] Deprecation Warning: The "isEqual" option of "useContext()" is now passed as {compare} argument. Please update your code accordingly.',
-      );
-      useContextOptionsDeprecatedShown = true;
-    }
+    warnDeprecatedIsEqualOption(options, 'useContext');
 
     const opts = typeof options === 'function' ? {compare: options} : options;
 
-    let ctxReader = this.#contextReaders.get(name);
-
-    if (ctxReader === undefined) {
-      ctxReader = createSignal<any>(undefined, opts).get;
-      this.#contextReaders.set(name, ctxReader);
-      this.#contextReaderCompares.set(name, opts?.compare);
-      const ln = link(this.#entity.useContext(name), ctxReader);
-      this.#unsubscribeSecondary.add(ln.destroy.bind(ln));
-    } else if (opts?.compare != null && this.#contextReaderCompares.get(name) !== opts.compare) {
-      console.warn(
-        `[shadow-objects] useContext("${String(name)}"): the cached signal already exists with a different (or no) {compare} function — the new options are ignored. Pass options only on the first call per context.`,
-      );
-    }
-
-    return ctxReader;
+    return this.#cachedReader(
+      name,
+      this.#contextReaders,
+      this.#contextReaderCompares,
+      () => this.#entity.useContext(name),
+      opts,
+      'useContext',
+      'context',
+    );
   }
 
   useParentContext<T = unknown>(name: string | symbol, options?: SignalValueOptions<T> | CompareFunc<T | undefined>) {
-    if (!useParentContextOptionsDeprecatedShown && options != null && typeof options === 'function') {
-      console.warn(
-        '[shadow-objects] Deprecation Warning: The "isEqual" option of "useParentContext()" is now passed as {compare} argument. Please update your code accordingly.',
-      );
-      useParentContextOptionsDeprecatedShown = true;
-    }
+    warnDeprecatedIsEqualOption(options, 'useParentContext');
 
     const opts = typeof options === 'function' ? {compare: options} : options;
 
-    let ctxReader = this.#contextParentReaders.get(name);
-
-    if (ctxReader === undefined) {
-      ctxReader = createSignal<any>(undefined, opts).get;
-      this.#contextParentReaders.set(name, ctxReader);
-      this.#contextParentReaderCompares.set(name, opts?.compare);
-      const ln = link(this.#entity.useParentContext(name), ctxReader);
-      this.#unsubscribeSecondary.add(ln.destroy.bind(ln));
-    } else if (opts?.compare != null && this.#contextParentReaderCompares.get(name) !== opts.compare) {
-      console.warn(
-        `[shadow-objects] useParentContext("${String(name)}"): the cached signal already exists with a different (or no) {compare} function — the new options are ignored. Pass options only on the first call per parent context.`,
-      );
-    }
-
-    return ctxReader;
+    return this.#cachedReader(
+      name,
+      this.#contextParentReaders,
+      this.#contextParentReaderCompares,
+      () => this.#entity.useParentContext(name),
+      opts,
+      'useParentContext',
+      'parent context',
+    );
   }
 
   createSignal(...args: any[]): any {
