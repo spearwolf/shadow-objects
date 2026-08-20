@@ -3451,7 +3451,7 @@ describe('Kernel', () => {
     });
   });
 
-  describe('KERN-1: autoDestructionOnParentRemoval flows through change trail', () => {
+  describe('autoDestructionOnParentRemoval flows through change trail', () => {
     it('ComponentChanges.create() carries the autoDestructionOnParentRemoval flag in the trail entry', () => {
       const uuid = generateUUID();
       const parentUuid = generateUUID();
@@ -3527,7 +3527,7 @@ describe('Kernel', () => {
     });
   });
 
-  describe('KERN-2: re-parenting maintains autoDestructionOnParentRemoval subscription', () => {
+  describe('re-parenting maintains autoDestructionOnParentRemoval subscription', () => {
     it('child re-parented away survives destruction of the original parent', () => {
       const kernel = new Kernel(new Registry());
 
@@ -3561,7 +3561,7 @@ describe('Kernel', () => {
     });
   });
 
-  describe('KERN-3: destroyEntity does not leak children', () => {
+  describe('destroyEntity does not leak children', () => {
     it('children without auto-destruct flag are promoted to root, not orphaned', () => {
       const kernel = new Kernel(new Registry());
 
@@ -3610,7 +3610,7 @@ describe('Kernel', () => {
     });
   });
 
-  describe('KERN-4: BFS cache is invalidated on programmatic destruction', () => {
+  describe('BFS cache is invalidated on programmatic destruction', () => {
     it('traverseLevelOrderBFS does not return stale entities after auto-destruct cascade', () => {
       const kernel = new Kernel(new Registry());
 
@@ -3632,7 +3632,7 @@ describe('Kernel', () => {
     });
   });
 
-  describe('KERN-5: setParent with unknown UUID does not orphan the entity', () => {
+  describe('setParent with unknown UUID does not orphan the entity', () => {
     it('Kernel.setParent with non-existent parent UUID throws and preserves the original parent link', () => {
       const kernel = new Kernel(new Registry());
 
@@ -3674,7 +3674,7 @@ describe('Kernel', () => {
     });
   });
 
-  describe('KERN-8: setParent without an order keeps the current one', () => {
+  describe('setParent without an order keeps the current one', () => {
     it('re-parenting an entity does not reset its order to 0', () => {
       const kernel = new Kernel(new Registry());
 
@@ -3708,7 +3708,7 @@ describe('Kernel', () => {
     });
   });
 
-  describe('KERN-7: cache-hit on creation-API helpers warns when options would be dropped', () => {
+  describe('cache-hit on creation-API helpers warns when options would be dropped', () => {
     it('useProperty warns on a second call with a different compare function', () => {
       const registry = new Registry();
       const kernel = new Kernel(registry);

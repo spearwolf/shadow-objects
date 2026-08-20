@@ -381,8 +381,9 @@ export class Kernel {
 
     if (e.parentUuid === parentUuid && e.order === nextOrder) return;
 
-    // Validate the new parent before detaching the current one, so a bad UUID
-    // never leaves the entity orphaned (KERN-5).
+    // The new parent is resolved before the current one is detached: an unknown UUID throws, and
+    // a throw after the detachment would leave the entity with no parent at all instead of the
+    // one it came in with.
     if (parentUuid && !this.#entities.has(parentUuid)) {
       throw new Error(`entity with uuid "${parentUuid}" not found!`);
     }

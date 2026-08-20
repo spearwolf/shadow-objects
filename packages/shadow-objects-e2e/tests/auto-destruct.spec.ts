@@ -1,7 +1,7 @@
 import {test} from '@playwright/test';
 import {runPageTests} from './runPageTests.js';
 
-test.describe('auto-destruct (KERN-1)', () => {
+test.describe('auto-destruct', () => {
   runPageTests('/pages/auto-destruct.html', [
     'auto-destruct-env-ready',
     'auto-destruct-import-module',

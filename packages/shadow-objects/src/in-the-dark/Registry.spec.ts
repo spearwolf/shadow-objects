@@ -56,7 +56,7 @@ describe('Registry', () => {
     expect(Array.from(registry.findTokensByRoute('foo', new Set(['x']))).sort()).toEqual(['abc', 'foo', 'xyz']);
   });
 
-  describe('KERN-6: clear()', () => {
+  describe('clear()', () => {
     it('clears prop-based (truthy) routes too, not only plain routes', () => {
       const registry = new Registry();
 
