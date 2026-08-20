@@ -247,15 +247,16 @@
             </div>
           </div>
           <div class="scorebox">
-            <div class="score-main">73,5</div>
-            <div class="score-sub">Code &amp; Laufzeit 85,5 · Projekt-Harness 88</div>
+            <div class="score-main">84,5</div>
+            <div class="score-sub">Code &amp; Laufzeit 88,5 · Projekt-Harness 96</div>
             <div class="trend">
-              <span class="down">▼ −0,5</span> gegenüber 74 vom 19. August 2026 · 2 behoben, 17 neu
+              <span class="up">▲ +11</span> gegenüber 73,5 vom 20. August 2026 · 7 behoben, 7 neu — die Ursache
+              ist ein zweiter Remediation-Lauf, kein neues Audit
             </div>
             <div class="score-scale">
-              Skala 0–100. Der Stand vom 20. August 2026 stammt aus einem Remediation-Lauf, nicht aus einem
-              neuen Audit: der Code wurde seither nicht erneut gelesen, nachgetragen sind allein die beiden
-              geschlossenen Befunde und die Beifänge des Laufs.
+              Skala 0–100. Der Stand vom 20. August 2026 stammt aus zwei Remediation-Läufen, nicht aus einem
+              neuen Audit: der Code wurde seither nicht erneut gelesen, nachgetragen sind allein die
+              geschlossenen Befunde und die Beifänge der Läufe.
             </div>
           </div>
         </div>
@@ -410,40 +411,42 @@
         <h2>Executive Summary</h2>
         <div class="domain-grid">
           <div class="domain-card">
-            <div class="domain-head"><h3>Code &amp; Laufzeit</h3><div class="domain-score">85,5</div></div>
+            <div class="domain-head"><h3>Code &amp; Laufzeit</h3><div class="domain-score">88,5</div></div>
             <div class="prose">
               <p>
-                Der Bereich hat keinen <em>high</em>-Befund mehr. Das Gewicht tragen zwei mittlere: die Zusage von
-                <code>clearOnDestroy</code>, die auf dem Weg „Shadow Object verlässt die Konstruktorenmenge" keinen
-                Konsumenten erreicht, obwohl die Dokumentation sie jedem verspricht, und
-                <code>createEntity()</code>, das die Entity registriert, bevor ihre Shadow Objects stehen — wirft
-                einer der Konstruktoren, bleibt sie halbfertig im Worker-Kernel zurück, dem View unbekannt und von
-                keinem Aufräumweg erreicht.
+                Der Bereich hat keinen <em>high</em>-Befund mehr und nur noch einen mittleren:
+                <code>updateShadowObjects()</code> nimmt einen Tokenwechsel nicht zurück, dessen Konstruktor
+                wirft — die Entity steht danach mit dem neuen Token, abgebauten alten und fehlenden neuen Shadow
+                Objects da. Die beiden anderen mittleren sind gefallen: <code>clearOnDestroy</code> erreicht
+                seine Konsumenten jetzt auf beiden Abbauwegen, und <code>createEntity()</code> hinterlässt keine
+                halbfertige Entity mehr.
               </p>
               <p>
                 Darunter wird es ruhig. Fünf Befunde hängen an einer einzigen ungeklärten Frage — ob zwei
                 <code>ViewComponent</code> in einem Context dieselbe uuid tragen dürfen; heute erzeugt dieser Fall
-                eine Entity, die niemand mehr abbaut. Dazu zwei Konstruktoren, die aus dem Rahmen fallen, und eine
-                Handvoll Halbkanten, die über die heutigen Pfade unerreichbar sind und beim nächsten Umbau an
-                derselben Stelle zur Falle werden.
+                eine Entity, die niemand mehr abbaut. Dazu die Halbkanten rund um die Creation API, die über die
+                heutigen Pfade unerreichbar sind und beim nächsten Umbau an derselben Stelle zur Falle werden, und
+                drei Stellen im Canvas-Paket, die der Remediation-Lauf gemessen und ausdrücklich nicht
+                gutgeheißen hat.
               </p>
             </div>
             <div class="bars" id="bars-code"></div>
             <div class="cats" id="cats-code"></div>
           </div>
           <div class="domain-card">
-            <div class="domain-head"><h3>Projekt-Harness</h3><div class="domain-score">88,0</div></div>
+            <div class="domain-head"><h3>Projekt-Harness</h3><div class="domain-score">96,0</div></div>
             <div class="prose">
               <p>
-                Die Werkzeugkette ist in einem Zustand, den man selten sieht: Lint grün, Typecheck grün, 952 Fälle
-                in <code>test:ci</code> und 426 in der E2E-Suite über zwei Browser, alle grün, und jede
-                zurückgehaltene Dependency trägt ihre Begründung als Kommentar neben sich. Was fehlt, fehlt
-                planvoll an denselben vier Stellen wie beim letzten Lauf: es wird nirgends Coverage gemessen, das
-                zweite publizierte Paket hat eine einzige Spec-Datei, die CI läuft nur auf <code>push</code> und
-                nicht auf Pull Requests, und <code>ConsoleLogger.ts</code> unterdrückt vierzehnmal den Typprüfer.
+                Die vier Stellen, die zwei Läufe lang planvoll fehlten, sind besetzt: vitest misst die Abdeckung
+                beider Node-Suiten und turbo kennt die Ausgabe als Artefakt, das Canvas-Paket ist von einer
+                einzigen Spec-Datei auf 101 Fälle gewachsen (79,67 % Statements gegenüber 16,26 %), die CI löst
+                auf <code>push</code> und auf <code>pull_request</code> aus, ohne <code>paths-ignore</code>, und
+                <code>ConsoleLogger.ts</code> kommt ohne eine einzige Unterdrückung des Typprüfers aus. Lint
+                grün, Typecheck grün, 1078 Fälle in <code>test:ci</code> und 426 in der E2E-Suite über zwei
+                Browser, alle grün; kein Befund des Bereichs steht mehr über <em>low</em>.
               </p>
               <p>
-                Dazu, was beim Blick auf das zweite Paket auffällt:
+                Offen bleibt, was nie im Auftrag war:
                 <code>@spearwolf/shae-offscreen-canvas</code> wird als reines JavaScript ohne
                 <code>types</code>-Eintrag publiziert und hat kein <code>typecheck</code>-Skript — zwei der vier
                 Packages sieht der Typprüfer nie. Dazu vier tote <code>.eslintrc.json</code> aus der Zeit vor
@@ -466,39 +469,42 @@
               <text x="44" y="174" text-anchor="end" font-size="10" fill="#6b6560">0</text>
 
               <polyline
-                points="72,72.5 155.33,92.75 238.67,137.75 322,111.5 405.33,48.5 488.67,59 572,59.75"
+                points="72,72.5 143.43,92.75 214.86,137.75 286.29,111.5 357.71,48.5 429.14,59 500.57,59.75 572,43.25"
                 fill="none" stroke="#4338ca" stroke-width="2" />
 
               <circle cx="72" cy="72.5" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
-              <circle cx="155.33" cy="92.75" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
-              <circle cx="238.67" cy="137.75" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
-              <circle cx="322" cy="111.5" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
-              <circle cx="405.33" cy="48.5" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
-              <circle cx="488.67" cy="59" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
-              <circle cx="572" cy="59.75" r="5" fill="#4338ca" />
+              <circle cx="143.43" cy="92.75" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
+              <circle cx="214.86" cy="137.75" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
+              <circle cx="286.29" cy="111.5" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
+              <circle cx="357.71" cy="48.5" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
+              <circle cx="429.14" cy="59" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
+              <circle cx="500.57" cy="59.75" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
+              <circle cx="572" cy="43.25" r="5" fill="#4338ca" />
 
               <text x="72" y="63" text-anchor="middle" font-size="10" fill="#57534e">65</text>
-              <text x="155.33" y="83" text-anchor="middle" font-size="10" fill="#57534e">51,5</text>
-              <text x="238.67" y="128" text-anchor="middle" font-size="10" fill="#57534e">21,5</text>
-              <text x="322" y="102" text-anchor="middle" font-size="10" fill="#57534e">39</text>
-              <text x="405.33" y="39" text-anchor="middle" font-size="10" fill="#57534e">81</text>
-              <text x="488.67" y="49.5" text-anchor="middle" font-size="10" fill="#57534e">74</text>
-              <text x="572" y="47" text-anchor="middle" font-size="11" font-weight="600" fill="#1c1917">73,5</text>
+              <text x="143.43" y="83" text-anchor="middle" font-size="10" fill="#57534e">51,5</text>
+              <text x="214.86" y="128" text-anchor="middle" font-size="10" fill="#57534e">21,5</text>
+              <text x="286.29" y="102" text-anchor="middle" font-size="10" fill="#57534e">39</text>
+              <text x="357.71" y="39" text-anchor="middle" font-size="10" fill="#57534e">81</text>
+              <text x="429.14" y="49.5" text-anchor="middle" font-size="10" fill="#57534e">74</text>
+              <text x="500.57" y="50.25" text-anchor="middle" font-size="10" fill="#57534e">73,5</text>
+              <text x="572" y="30.5" text-anchor="middle" font-size="11" font-weight="600" fill="#1c1917">84,5</text>
 
               <text x="72" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">14.05.</text>
-              <text x="155.33" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">14.05.</text>
-              <text x="238.67" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">13.08.</text>
-              <text x="322" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">14.08.</text>
-              <text x="405.33" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">19.08.</text>
-              <text x="488.67" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">19.08.</text>
+              <text x="143.43" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">14.05.</text>
+              <text x="214.86" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">13.08.</text>
+              <text x="286.29" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">14.08.</text>
+              <text x="357.71" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">19.08.</text>
+              <text x="429.14" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">19.08.</text>
+              <text x="500.57" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">20.08.</text>
               <text x="572" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">20.08.</text>
               <text x="336" y="204" text-anchor="middle" font-size="9.5" fill="#6b6560">Audit- und Remediation-Stände, gleichabständig aufgetragen</text>
             </svg>
           </div>
           <figcaption>
-            Verlauf der Health-Scores seit dem 14. Mai 2026. Die vierte, die fünfte und die siebte Marke stammen
-            aus Remediation-Läufen, die sechste aus dem Audit vom 19. August 2026 — der letzte Punkt, an dem der
-            Code vollständig gelesen wurde.
+            Verlauf der Health-Scores seit dem 14. Mai 2026. Die vierte, die fünfte, die siebte und die achte
+            Marke stammen aus Remediation-Läufen — die letzten beiden vom selben Tag —, die sechste aus dem Audit
+            vom 19. August 2026: der letzte Punkt, an dem der Code vollständig gelesen wurde.
           </figcaption>
         </figure>
       </section>
@@ -570,9 +576,11 @@
           <div class="opt-item">
             <h3>Coverage als Instrument, nicht als Note</h3>
             <p>
-              Die Suiten sind dicht genug, dass eine Coverage-Messung kein Armutszeugnis ausstellen würde. Ihr
-              Wert liegt woanders: sie zeigt einem Remediation-Lauf, welche der neu berührten Zweige noch kein
-              Wächter hält — heute muss man das raten.
+              Die Messung steht seit dem zweiten Remediation-Lauf, ohne Schwellenwert: Kernpaket 69,88 %
+              Statements, <code>shae-offscreen-canvas</code> 79,67 %. Ihr Wert liegt nicht in der Note, sondern
+              darin, dass ein Folgelauf sieht, welche der neu berührten Zweige noch kein Wächter hält. Was die
+              Zahl nicht sagt: die Browser-Suite läuft als eigenes vitest-Projekt und geht in keine von beiden
+              ein.
             </p>
           </div>
           <div class="opt-item">
@@ -668,12 +676,12 @@
               Start bei 100, Abzug je Finding: critical −10, high −5, medium −2, low −0,5, info 0, Untergrenze
               0. Dieselbe Formel läuft dreimal — einmal über alle Findings, einmal je Bereich. Die beiden
               Teilscores sind keine Aufteilung des Gesamtscores, sondern derselbe Maßstab auf einer kleineren
-              Menge; <code>85 / 89</code> summiert sich nicht zu 74 und soll es nicht.
+              Menge; <code>88,5 / 96</code> summiert sich nicht zu 84,5 und soll es nicht.
             </p>
             <table class="calc">
-              <tr><td>Gesamt</td><td>7 × −2, 25 × −0,5, 21 × 0</td><td>= 73,5</td></tr>
-              <tr><td>Code &amp; Laufzeit</td><td>3 × −2, 17 × −0,5, 10 × 0</td><td>= 85,5</td></tr>
-              <tr><td>Projekt-Harness</td><td>4 × −2, 8 × −0,5, 11 × 0</td><td>= 88,0</td></tr>
+              <tr><td>Gesamt</td><td>1 × −2, 27 × −0,5, 25 × 0</td><td>= 84,5</td></tr>
+              <tr><td>Code &amp; Laufzeit</td><td>1 × −2, 19 × −0,5, 13 × 0</td><td>= 88,5</td></tr>
+              <tr><td>Projekt-Harness</td><td>0 × −2, 8 × −0,5, 12 × 0</td><td>= 96,0</td></tr>
             </table>
             <p style="margin-top: 12px">
               Zum Delta von −7 des Audits vom 19. August: es stammt nicht aus verfallendem Code. Rund vier Punkte kommen daher, dass der
@@ -681,10 +689,11 @@
               jetzt in derselben Rechnung steht, und fünf aus dem neuen <em>high</em>-Befund, der in beiden
               Vorläufern niemandem aufgefallen ist. Dagegen steht, was seither behoben und verbessert wurde.
               Ein Folgelauf vergleicht seinen Prüfumfang gegen den Abschnitt oben und seine Zahlen gegen
-              73,5 / 85,5 / 88 — den Stand nach dem Remediation-Lauf, der im nächsten Abschnitt steht.
+              84,5 / 88,5 / 96 — den Stand nach den beiden Remediation-Läufen, die in den nächsten beiden
+              Abschnitten stehen.
             </p>
 
-            <h3>Remediation-Lauf vom 20. August 2026</h3>
+            <h3>Erster Remediation-Lauf vom 20. August 2026</h3>
             <p>
               Nach diesem Audit lief ein Remediation-Lauf über zwei namentlich beauftragte Befunde. Er steht in
               sechs Commits auf <code>main</code>: <code>fe11219</code>, <code>510443e</code>,
@@ -727,6 +736,61 @@
               Browser.
             </p>
 
+            <h3>Zweiter Remediation-Lauf vom 20. August 2026</h3>
+            <p>
+              Am selben Tag folgte ein zweiter Remediation-Lauf, beauftragt über „alle Issues mit Schweregrad
+              mittel oder höher". Er steht in elf Commits auf <code>main</code>: <code>2ef4911</code>,
+              <code>95d2dab</code>, <code>1a092c0</code>, <code>5950e00</code>, <code>eb2339d</code>,
+              <code>4f0056a</code>, <code>d434a3a</code>, <code>0739b59</code>, <code>2b38c05</code>,
+              <code>6452b29</code> und <code>04e953c</code>. <strong>Der Code ist seit dem Audit vom 19. August
+              2026 nicht erneut geprüft worden</strong> — auch dieser Abschnitt bucht, was das Protokoll des
+              Laufs belegt, und bewertet nichts neu. Die 84,5 sind eine Neuberechnung derselben Formel auf einem
+              veränderten Backlog, kein frisches Urteil über den Code.
+            </p>
+            <p>
+              <strong>Geschlossen</strong> sind alle sieben beauftragten Befunde — der Report kennt keinen über
+              <em>medium</em>. Jeder trägt das Urteil eines unabhängigen Reviewers an der Fundstelle und den
+              Commit seines Pakets: <code>BUILD-001</code> (<code>2ef4911</code>), <code>TEST-001</code>
+              (<code>95d2dab</code>), <code>BUG-010</code> (<code>1a092c0</code>), <code>API-002</code>
+              (<code>5950e00</code>), <code>ARCH-001</code> und <code>TYPE-001</code> (<code>4f0056a</code>)
+              sowie <code>TEST-002</code>, das über zwei Pakete lief (<code>0739b59</code> und
+              <code>2b38c05</code>). Ohne Beleg offen geblieben ist keiner. Die 25 <em>low</em> und 21
+              <em>info</em> waren nie im Auftrag und stehen unverändert; ein zwölftes Paket, das ein Zahlwort im
+              Paket-CHANGELOG korrigiert, ist noch offen und berührt keinen Eintrag dieses Reports.
+            </p>
+            <p>
+              <strong>Neu</strong> sind sieben Einträge: Nebenbefunde und kleine Review-Befunde der elf Pakete,
+              soweit der Lauf sie ausdrücklich offen gelassen hat und sie eine Fundstelle mit Datei und Zeile
+              tragen. Drei davon hält das Canvas-Paket als „Measured, not endorsed" fest — Wächter, die heutiges
+              Verhalten beschreiben, ohne es gutzuheißen. Nicht aufgenommen wurde, was keine Zeilenangabe hat:
+              die fehlende Atomarität eines Change Trails in <code>Kernel.run()</code>, der nie erreichte
+              <code>onDestroy</code> von <code>ThreeMultiViewRenderer</code> samt dem WebGL-Renderer, den er
+              nicht freigibt, die Closure, die <code>ShadowObjectCreationScope</code> bei jedem
+              <code>provideContext</code>-Aufruf anlegt, die Lücke der Fähigkeitsprüfung in
+              <code>ConsoleLogger.ts</code> und der <code>pixelRatio</code>-Vergleich in
+              <code>ShaeOffscreenCanvasElement.js</code>, der ab <code>pixel-zoom</code> über eins in jedem Frame
+              greift. Die 46 übernommenen Einträge behalten die Statusmarke, die ihnen das Audit gegeben hat;
+              im Datenmodell stehen sie als 40 unverändert, 5 übernommen und 1 verbessert.
+            </p>
+            <p>
+              <strong>Geerbte Abweichung.</strong> Die Zähler im <code>summary</code> fallen nicht mit einer
+              Auszählung der Statusmarken zusammen, und das war schon vor diesem Lauf so: der
+              <code>summary</code> nannte 17 neu und 36 unverändert, während die Liste 23 neu, 24 unverändert,
+              5 übernommen und 1 verbessert trug. Die Zähler beschreiben das Delta eines Laufs, die Marken den
+              Stand jedes Eintrags gegenüber dem Vorgängerreport — zwei Buchhaltungen über derselben Menge.
+              Dieser Lauf hat sie nicht angeglichen, weil er kein Urteil über fremde Einträge fällt; er hat
+              lediglich darauf geachtet, keinen der überlieferten Werte zu tilgen. Die Wahrheit setzt der
+              nächste Audit-Lauf, wenn er den Report neu rendert.
+            </p>
+            <p>
+              <strong>Zahlen.</strong> Sieben geschlossene <em>medium</em> bringen +14, die sieben neuen kosten
+              −3 (ein <em>medium</em>, zwei <em>low</em>, vier <em>info</em>): der Score steigt von 73,5 auf
+              84,5. Code &amp; Laufzeit geht von 85,5 auf 88,5, der Projekt-Harness von 88 auf 96 — dort steht
+              kein Befund mehr über <em>low</em>. Die Suiten sind mitgewachsen: 1078 Fälle in
+              <code>test:ci</code> (632 Kern, 101 Canvas, 345 Integration) und 426 in der E2E-Suite über zwei
+              Browser, dazu erstmals eine gemessene Abdeckung.
+            </p>
+
             <h3>Theme</h3>
             <p>Light — übernommen aus den beiden Vorgängern desselben Projekts, damit der Report wiedererkennbar bleibt.</p>
           </div>
@@ -734,8 +798,8 @@
       </section>
 
       <p class="footnote">
-        Erstellt am 19. August 2026 als vollständiges Monorepo-Audit · Stand vom 20. August 2026 nach einem
-        Remediation-Lauf über sechs Commits, ohne erneute Prüfung des Codes · Datenmodell eingebettet als
+        Erstellt am 19. August 2026 als vollständiges Monorepo-Audit · Stand vom 20. August 2026 nach zwei
+        Remediation-Läufen über sechs und elf Commits, ohne erneute Prüfung des Codes · Datenmodell eingebettet als
         <code>#audit-data</code>
       </p>
     </div>
@@ -748,29 +812,28 @@
     "scope": "full monorepo: 4 packages — src, build pipeline, tooling, CI, docs",
     "stack": ["TypeScript 7", "pnpm 11", "turborepo 2.10", "esbuild 0.28", "vitest 4", "Playwright 1.62", "Biome 2.5", "Web Components", "@spearwolf/signalize", "@spearwolf/eventize"],
     "date": "2026-08-20",
-    "previousDate": "2026-08-19",
-    "previousScore": 74,
-    "score": 73.5,
-    "scoreDelta": -0.5,
-    "resolvedCount": 2,
-    "improvedCount": 0,
-    "newCount": 17,
-    "unchangedCount": 36,
-    "carriedOverCount": 0,
+    "previousDate": "2026-08-20",
+    "previousScore": 73.5,
+    "score": 84.5,
+    "scoreDelta": 11,
+    "resolvedCount": 7,
+    "improvedCount": 1,
+    "newCount": 7,
+    "unchangedCount": 40,
+    "carriedOverCount": 5,
     "theme": "light",
-    "bySeverity": {"critical": 0, "high": 0, "medium": 7, "low": 25, "info": 21},
+    "bySeverity": {"critical": 0, "high": 0, "medium": 1, "low": 27, "info": 25},
     "byCategory": {
-      "Bugs & Korrektheitsrisiken": 10,
+      "Bugs & Korrektheitsrisiken": 12,
       "Konsistenz": 9,
-      "Testabdeckung & Teststrategie": 8,
-      "Developer Experience": 7,
+      "Developer Experience": 8,
+      "Testabdeckung & Teststrategie": 6,
+      "Lesbarkeit & Clean Code": 5,
       "Async & Concurrency": 4,
-      "Projektaufbau & Build": 3,
-      "Typsicherheit": 3,
-      "Lesbarkeit & Clean Code": 2,
+      "Projektaufbau & Build": 2,
+      "Typsicherheit": 2,
       "Sicherheit": 2,
-      "Öffentliche API": 2,
-      "Architektur & Struktur": 1,
+      "Öffentliche API": 1,
       "Dependencies": 1,
       "Memory Leaks & Ressourcen": 1
     },
@@ -781,55 +844,42 @@
       {"date": "2026-08-14", "score": 39, "source": "remediation"},
       {"date": "2026-08-19", "score": 81, "source": "remediation"},
       {"date": "2026-08-19", "score": 74, "source": "audit"},
-      {"date": "2026-08-20", "score": 73.5, "source": "remediation"}
+      {"date": "2026-08-20", "score": 73.5, "source": "remediation"},
+      {"date": "2026-08-20", "score": 84.5, "source": "remediation"}
     ],
     "domains": {
       "code": {
         "label": "Code & Laufzeit",
-        "score": 85.5,
-        "bySeverity": {"critical": 0, "high": 0, "medium": 3, "low": 17, "info": 10},
+        "score": 88.5,
+        "bySeverity": {"critical": 0, "high": 0, "medium": 1, "low": 19, "info": 13},
         "byCategory": {
-          "Bugs & Korrektheitsrisiken": 10,
+          "Bugs & Korrektheitsrisiken": 12,
           "Konsistenz": 9,
+          "Lesbarkeit & Clean Code": 5,
           "Async & Concurrency": 4,
-          "Lesbarkeit & Clean Code": 2,
-          "Öffentliche API": 2,
-          "Architektur & Struktur": 1,
+          "Öffentliche API": 1,
           "Memory Leaks & Ressourcen": 1,
           "Sicherheit": 1
         },
-        "executiveSummary": "Der Bereich hat keinen high-Befund mehr. Das Gewicht tragen zwei mittlere: die Zusage von clearOnDestroy, die auf dem Weg »Shadow Object verlässt die Konstruktorenmenge« keinen Konsumenten erreicht, und createEntity(), das eine Entity registriert, bevor ihre Shadow Objects stehen — wirft einer der Konstruktoren, bleibt sie halbfertig im Worker-Kernel zurück. Darunter der uuid-Cluster: fünf Befunde hängen an einer einzigen ungeklärten Frage, ob zwei ViewComponent in einem Context dieselbe uuid tragen dürfen; heute erzeugt dieser Fall eine Entity, die niemand mehr abbaut. Dazu zwei Konstruktoren, die aus dem Rahmen fallen, und eine Handvoll Halbkanten, die über die heutigen Pfade unerreichbar sind und beim nächsten Umbau an derselben Stelle zur Falle werden."
+        "executiveSummary": "Der Bereich hat keinen high-Befund mehr und nur noch einen mittleren: updateShadowObjects() nimmt einen Tokenwechsel nicht zurück, dessen Konstruktor wirft — die Entity steht danach mit dem neuen Token, abgebauten alten und fehlenden neuen Shadow Objects da. Die beiden anderen mittleren sind gefallen: clearOnDestroy erreicht seine Konsumenten jetzt auf beiden Abbauwegen, und createEntity() hinterlässt keine halbfertige Entity mehr. Darunter der uuid-Cluster: fünf Befunde hängen an einer einzigen ungeklärten Frage, ob zwei ViewComponent in einem Context dieselbe uuid tragen dürfen; heute erzeugt dieser Fall eine Entity, die niemand mehr abbaut. Dazu die Halbkanten rund um die Creation API, die über die heutigen Pfade unerreichbar sind, und drei Stellen im Canvas-Paket, die der Remediation-Lauf gemessen und ausdrücklich nicht gutgeheißen hat."
       },
       "harness": {
         "label": "Projekt-Harness",
-        "score": 88.0,
-        "bySeverity": {"critical": 0, "high": 0, "medium": 4, "low": 8, "info": 11},
+        "score": 96.0,
+        "bySeverity": {"critical": 0, "high": 0, "medium": 0, "low": 8, "info": 12},
         "byCategory": {
-          "Testabdeckung & Teststrategie": 8,
-          "Developer Experience": 7,
-          "Projektaufbau & Build": 3,
-          "Typsicherheit": 3,
+          "Developer Experience": 8,
+          "Testabdeckung & Teststrategie": 6,
+          "Projektaufbau & Build": 2,
+          "Typsicherheit": 2,
           "Dependencies": 1,
           "Sicherheit": 1
         },
-        "executiveSummary": "Die Werkzeugkette ist in einem Zustand, den man selten sieht: Lint grün, Typecheck grün, 952 Fälle in test:ci und 426 in der E2E-Suite über zwei Browser, alle grün, und jede zurückgehaltene Dependency trägt ihre Begründung als Kommentar neben sich. Was fehlt, fehlt planvoll an denselben vier Stellen wie beim letzten Lauf: es wird nirgends Coverage gemessen, das zweite publizierte Paket hat eine einzige Spec-Datei, die CI läuft nur auf push und nicht auf Pull Requests, und ConsoleLogger.ts unterdrückt vierzehnmal den Typprüfer. Dazu @spearwolf/shae-offscreen-canvas, das als reines JavaScript ohne types-Eintrag publiziert wird und kein typecheck-Skript hat — zwei der vier Packages sieht der Typprüfer nie —, vier tote .eslintrc.json aus der Zeit vor Biome und zwei Konfigurationsstellen, die beim nächsten Major fallen."
+        "executiveSummary": "Die vier Stellen, die zwei Läufe lang planvoll fehlten, sind besetzt: vitest misst die Abdeckung beider Node-Suiten und turbo kennt die Ausgabe als Artefakt, das Canvas-Paket ist von einer Spec-Datei auf 101 Fälle gewachsen (79,67 % Statements gegenüber 16,26 %), die CI löst auf push und auf pull_request aus, ohne paths-ignore, und ConsoleLogger.ts kommt ohne eine einzige Unterdrückung des Typprüfers aus. Lint grün, Typecheck grün, 1078 Fälle in test:ci und 426 in der E2E-Suite über zwei Browser, alle grün; kein Befund des Bereichs steht mehr über low. Offen bleibt, was nie im Auftrag war: @spearwolf/shae-offscreen-canvas wird als reines JavaScript ohne types-Eintrag publiziert und hat kein typecheck-Skript — zwei der vier Packages sieht der Typprüfer nie —, dazu vier tote .eslintrc.json aus der Zeit vor Biome und zwei Konfigurationsstellen, die beim nächsten Major fallen."
       }
     }
   },
   "findings": [
-    {
-      "id": "ARCH-001",
-      "category": "Architektur & Struktur",
-      "domain": "code",
-      "severity": "medium",
-      "status": "unchanged",
-      "title": "ConsoleLogger schreibt bei jeder Instanziierung in den localStorage",
-      "location": "packages/shadow-objects/src/utils/ConsoleLogger.ts:225-236",
-      "description": "Der Konstruktor liest nicht nur Konfiguration, er schreibt sie unbedingt zurück (saveConfigValue). Jedes new ConsoleLogger(namespace) — und die Klasse wird in Kernel, ShadowEnv, RemoteWorkerEnv, ShaeWorkerElement und ShaePropElement je Instanz angelegt, bei <shae-prop> also einmal pro Element — setzt damit einen Schlüssel im localStorage der Anwendung. Eine Bibliothek beschreibt so ungefragt den Speicher ihres Consumers, synchron im Konstruktionspfad. Der Zugriff selbst ist inzwischen gehärtet: gLocalStorage wird beim Modulstart mit einem Schreib-Lese-Zyklus geprüft und fällt sonst auf ein Objekt unter globalThis zurück. Das unbedingte Zurückschreiben bleibt.",
-      "recommendation": "Nur schreiben, wenn der Schlüssel fehlt, oder ausschließlich beim expliziten Setzen über die globalThis.ConsoleLogger-Schnittstelle. Mittelfristig die Logger pro Namespace zwischenspeichern, statt sie pro Instanz neu zu bauen — das nimmt dem Punkt auch seine Häufigkeit.",
-      "effort": "M",
-      "evidence": "Bestand aus dem Audit vom 2026-08-19, an der Fundstelle nachgeprüft; die Zeilen sind von 181-192 auf 225-236 gewandert."
-    },
     {
       "id": "BUG-002",
       "category": "Bugs & Korrektheitsrisiken",
@@ -1092,58 +1142,6 @@
       "evidence": "Von low auf info herabgestuft (2026-08-19). Die Frame-Schleife des Pakets ist mit dc29a1b vereinheitlicht worden und meldet sich beim Abbau ab; der Kernel räumt die Kontextsignale. Was der Befund noch beschreibt, ist der gesetzte Handle."
     },
     {
-      "id": "TEST-001",
-      "category": "Testabdeckung & Teststrategie",
-      "domain": "harness",
-      "severity": "medium",
-      "status": "unchanged",
-      "title": "Testabdeckung wird in keinem Paket gemessen",
-      "location": "packages/*/vitest.config.ts, turbo.json",
-      "description": "Keine der vier vitest-Konfigurationen aktiviert coverage, kein Skript ruft --coverage, turbo.json führt keine Coverage-Ausgabe, und die CI lädt keinen Bericht hoch. 908 Fälle in test:ci und 404 in der E2E-Suite laufen grün — welche Zweige sie berühren, weiß niemand. Für ein Projekt mit dieser Testdichte ist das kein Deckungsproblem, sondern ein blinder Fleck bei jeder Änderung: ein Remediation-Lauf kann heute nicht sehen, welche der neu berührten Zweige noch kein Wächter hält.",
-      "recommendation": "coverage: {provider: 'v8', reporter: ['text', 'html']} in die vitest-Konfiguration des Kernpakets, die Ausgabe als turbo-Output eintragen und in der CI als Artefakt hochladen. Schwellenwerte erst danach, wenn die Zahl bekannt ist — eine Schwelle vor der ersten Messung ist geraten.",
-      "effort": "M",
-      "evidence": "Bestand aus dem Audit vom 2026-08-19; in diesem Lauf in allen vier Konfigurationen und in turbo.json nachgeprüft."
-    },
-    {
-      "id": "TEST-002",
-      "category": "Testabdeckung & Teststrategie",
-      "domain": "harness",
-      "severity": "medium",
-      "status": "unchanged",
-      "title": "shae-offscreen-canvas hat genau eine Spec-Datei",
-      "location": "packages/shae-offscreen-canvas/src/elements/ShaeOffscreenCanvasElement.spec.js",
-      "description": "Das Paket bringt ein Custom Element, fünf registrierte Shadow Objects, drei Beispiel-Shadow-Objects und die Three-Renderer mit. Sein pnpm test findet eine einzige Spec-Datei mit sieben Fällen, und die prüfen das Namespace-Verhalten. Ohne Wächter sind: der Canvas-Transfer samt Wiederherstellung nach ContextLost, das Attribut-Handling für fps und pixel-zoom, der Frame-Vergleich in [FrameLoop.OnFrame], die Kontextkette der Renderer und die Größenlogik von ThreeMultiViewRenderer. Das Paket ist die publizierte Referenzanwendung des Frameworks.",
-      "recommendation": "Zuerst die Stellen, an denen dieser Lauf einen Befund gefunden hat — ASYNC-002 und MEM-001 —, dann Canvas-Transfer und Attribut-Handling. happy-dom trägt das Element ohne WebGL, wenn der Transfer über einen Stub läuft; alles Weitere gehört in den Browser-Modus, den das Nachbarpaket bereits fährt.",
-      "effort": "L",
-      "evidence": "Bestand aus dem Audit vom 2026-08-19; in diesem Lauf nachgezählt: »Test Files 1 passed (1) · Tests 7 passed (7)«."
-    },
-    {
-      "id": "BUILD-001",
-      "category": "Projektaufbau & Build",
-      "domain": "harness",
-      "severity": "medium",
-      "status": "unchanged",
-      "title": "Die CI läuft nur auf push, nicht auf Pull Requests",
-      "location": ".github/workflows/ci.yml:3-6",
-      "description": "Der Workflow reagiert allein auf push. Ein Pull Request aus einem Fork löst damit nichts aus: sein Code wird erst geprüft, wenn er auf einem Branch dieses Repositories liegt — also nach dem Merge. Für ein Projekt, das seinen Publish an einen erfolgreichen CI-Lauf auf main hängt, ist das die Reihenfolge verkehrt herum. Dazu überspringt paths-ignore ['**.md'] jeden reinen Doku-Push, obwohl die Doku laut AGENTS.md §4 Teil des API-Vertrags ist.",
-      "recommendation": "pull_request als zweiten Trigger aufnehmen. Die concurrency-Gruppe trägt das bereits, weil sie auf github.ref schlüsselt. Ob paths-ignore für Markdown bleiben soll, ist eine eigene Frage — bei einer Doku, die als Vertragsbestandteil gilt, spricht wenig dafür.",
-      "effort": "S",
-      "evidence": "Bestand aus dem Audit vom 2026-08-19, in ci.yml nachgelesen."
-    },
-    {
-      "id": "TYPE-001",
-      "category": "Typsicherheit",
-      "domain": "harness",
-      "severity": "medium",
-      "status": "unchanged",
-      "title": "ConsoleLogger.ts enthält 14 @ts-ignore-Unterdrückungen",
-      "location": "packages/shadow-objects/src/utils/ConsoleLogger.ts:59, 70, 72, 74, 77, 152, 157, 165, 167, 203, 205, 209, 212, 217",
-      "description": "Vierzehn von 26 @ts-ignore des gesamten Repositories stehen in dieser einen Datei. Sie unterdrücken durchweg dieselbe Ursache: der Zugriff auf globalThis[CONSOLE_LOGGER_STORAGE] und die dynamische Indizierung von sharedConfig und sharedStyles sind nirgends typisiert. Der Typprüfer sieht damit die eine Datei nicht, die sowohl in den Worker als auch in den Main Thread geladen wird und deren Konfiguration über eine Speicherschnittstelle kommt.",
-      "recommendation": "Eine declare global-Deklaration für den Storage-Slot und ein Record<string, string | boolean> für sharedConfig ersetzen zwölf der vierzehn Stellen. Die Reihenfolge lohnt sich: die Datei ist klein, der Gewinn ist die Hälfte aller Unterdrückungen im Repository.",
-      "effort": "M",
-      "evidence": "Bestand aus dem Audit vom 2026-08-19; in diesem Lauf nachgezählt (14 in dieser Datei, 26 im gesamten Repository)."
-    },
-    {
       "id": "BUILD-002",
       "category": "Projektaufbau & Build",
       "domain": "harness",
@@ -1285,32 +1283,6 @@
       "recommendation": "Entweder einen Fall bauen, der die Ersparnis misst statt das Ergebnis, oder im Code festhalten, dass das Gate bewusst nicht testbar ist. Ein Wächter, der nur das Ergebnis prüft, hält es nie.",
       "effort": "S",
       "evidence": "Gemessen (2026-08-18): mit auf void this.#reSubscribePending; entschärftem Gate bleibt das Integrationspaket vollständig grün."
-    },
-    {
-      "id": "API-002",
-      "category": "Öffentliche API",
-      "domain": "code",
-      "severity": "medium",
-      "status": "new",
-      "title": "clearOnDestroy erreicht keinen Konsumenten, wenn ein Shadow Object die Konstruktorenmenge verlässt",
-      "location": "packages/shadow-objects/docs/api-reference.md:133; packages/shadow-objects/src/in-the-dark/Kernel.spec.ts:654, :697",
-      "description": "Die Dokumentation sagt zu, dass beim Abbau eines Shadow Objects der bereitgestellte Kontext auf undefined gesetzt wird »and every consumer sees that«. Auf dem Weg, bei dem das Shadow Object die Konstruktorenmenge einer weiter lebenden Entity verlässt — Tokenwechsel, Routenwechsel —, stimmt das nicht. Die sekundäre Aufräum-Menge läuft in Einfügereihenfolge, die Verbindung zum entitätseigenen Kontextsignal wird vor dem clearOnDestroy-Rückruf gelöst, und die Schreibung auf undefined findet den Weg zum Kind nicht mehr. Stirbt dagegen die Entity selbst, sieht das Kind die Löschung. Damit steht eine Zusage der öffentlichen API gegen ein wegabhängiges Verhalten, und wer auf die Löschung baut, liest nach einem Tokenwechsel einen veralteten Wert.",
-      "recommendation": "Eine der beiden Seiten gibt nach, und die Wahl gehört dem Nutzer: entweder wird der clearOnDestroy-Rückruf vor der Verbindung eingetragen — dann gilt die Zusage auf beiden Wegen und die beiden Fälle werden umgeschrieben —, oder die Dokumentation nennt den Weg, auf dem die Löschung nicht ankommt. Beides ist eine API-Entscheidung mit Changelog-Eintrag, kein Beifang einer anderen Arbeit.",
-      "effort": "M",
-      "evidence": "Gemessen und in zwei Fällen festgehalten: Kernel.spec.ts:654 hält das Ausbleiben der Löschung beim Tokenwechsel, :697 die Gegenprobe über die zerstörte Entity."
-    },
-    {
-      "id": "BUG-010",
-      "category": "Bugs & Korrektheitsrisiken",
-      "domain": "code",
-      "severity": "medium",
-      "status": "new",
-      "title": "Eine Entity steht im Kernel, bevor ihre Shadow Objects stehen",
-      "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:286, :302 (createEntity)",
-      "description": "createEntity() trägt den Eintrag in #entities ein und baut erst danach über createShadowObjects() die Shadow Objects. Wirft einer ihrer Konstruktoren, verlässt der Fehler createEntity(), der Eintrag bleibt aber stehen: eine Entity, die im Worker-Kernel registriert ist, keine Shadow Objects trägt und von der der View nichts weiß. Sie fällt in keinen Aufräumweg — erst ein späteres DestroyEntities für genau diese uuid räumt sie weg, und das schickt der View nur für Entities, die er kennt.",
-      "recommendation": "Den Eintrag erst nach createShadowObjects() setzen oder ihn im Fehlerfall zurücknehmen. Welche der beiden Reihenfolgen gilt, entscheidet zugleich, was ein Shadow-Object-Konstruktor über den Kernel während seiner eigenen Erzeugung sieht — dafür braucht es einen Fall, bevor sich die Zeilen bewegen.",
-      "effort": "M",
-      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
     },
     {
       "id": "BUG-011",
@@ -1506,6 +1478,97 @@
       "recommendation": "Die beiden Fehlerpfad-Seiten in den Einleitungssatz aufnehmen. Zwei Wörter, und die Übersicht deckt wieder ab, was die Suite tut.",
       "effort": "S",
       "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
+    },
+    {
+      "id": "BUG-012",
+      "category": "Bugs & Korrektheitsrisiken",
+      "domain": "code",
+      "severity": "medium",
+      "status": "new",
+      "title": "updateShadowObjects() nimmt einen gescheiterten Tokenwechsel nicht zurück",
+      "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:454-489",
+      "description": "Wirft der Konstruktor eines Shadow Objects während eines Tokenwechsels — über changeToken() oder upgradeEntities() —, bricht updateShadowObjects() mitten im Umbau ab. changeToken() setzt entry.token schon vor dem Aufruf (:439), die Schleife bei :467-476 baut die Shadow Objects des alten Tokens ab, und wirft danach constructShadowObject() bei :483, fehlen die neuen. Die Entity steht dann mit neuem Token, abgebauten alten und fehlenden neuen Shadow Objects da. Einen Rücknahmepfad gibt es nicht: die Erzeugung hat seit 1a092c0 einen (#rollbackFailedCreation, :331), der Änderungsweg nicht.",
+      "recommendation": "Zuerst entscheiden, was ein halb vollzogener Tokenwechsel bedeuten soll: auf den alten Token zurückrollen oder den halben Wechsel stehenlassen und melden. Das ist eine Semantikfrage an der Lebenszyklus-API, keine Aufräumarbeit — erst danach lohnt der Code.",
+      "effort": "M",
+      "evidence": "Aus dem Remediation-Lauf vom 20. August 2026 übernommen: Nebenbefund unter Paket 3 (Commit 1a092c0), vom Reviewer geprüft und ausdrücklich offen gelassen. Die Schwere ist per Analogie zum geschlossenen Befund derselben Klasse auf dem Erzeugungsweg vergeben, nicht neu bewertet. Die Fundstelle ist am heutigen Stand nachgezogen: der Lauf hat Kernel.ts auf 625 Zeilen gebracht, die im Protokoll notierte Zeile 444 trägt heute dispatchMessageToView."
+    },
+    {
+      "id": "BUG-013",
+      "category": "Bugs & Korrektheitsrisiken",
+      "domain": "code",
+      "severity": "low",
+      "status": "new",
+      "title": "Ein werfendes onCreate fällt nicht unter den Scope-Teardown",
+      "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:496-504 gegenüber :536",
+      "description": "Der try in constructShadowObject() umfasst allein den Konstruktoraufruf (:496-504); attachShadowObject() folgt erst bei :536 und ruft dort den onCreate-Hook (:563-565). Wirft onCreate, greift der Scope-Teardown der Erzeugung nicht mehr: über changeToken() bleibt ein bereits gebundenes Shadow Object mit gescheitertem onCreate an der Entity stehen. Vorbestehend — der Kommentar bei :499-501 benennt die Grenze selbst, begründet sie aber nur für den Konstruktor.",
+      "recommendation": "Erst die Vertragsfrage: soll ein werfendes onCreate das Shadow Object mitreißen, oder bleibt es angehängt? Danach entweder den try über attachShadowObject() ziehen oder die Grenze im Kommentar begründen.",
+      "effort": "M",
+      "evidence": "Aus dem Remediation-Lauf vom 20. August 2026 übernommen: Nebenbefund unter Paket 3 (Commit 1a092c0), als vorbestehend eingestuft und offen gelassen. Die Fundstelle ist am heutigen Stand nachgezogen: die im Protokoll notierte Zeile 530 trägt inzwischen die Buchführung über entry.usedConstructors."
+    },
+    {
+      "id": "BUG-014",
+      "category": "Bugs & Korrektheitsrisiken",
+      "domain": "code",
+      "severity": "low",
+      "status": "new",
+      "title": "Der Abbau einer ThreeRenderView kostet eine überzählige Ansicht",
+      "location": "packages/shae-offscreen-canvas/src/shadow-objects/ThreeRenderView.js:80-82",
+      "description": "Beim Abbau schreibt ThreeRenderView undefined in das Ansichtssignal, während Renderer- und Größenkontext noch stehen. Der Effekt läuft daraufhin ein weiteres Mal und legt eine Ansicht an, die sofort wieder zerstört wird: createView und destroyView laufen je zweimal statt je einmal. Ein Wächter des Canvas-Pakets hält diesen Ablauf als »Measured, not endorsed« fest — er beschreibt das heutige Verhalten, er behauptet nicht, dass es richtig sei.",
+      "recommendation": "Die Abmeldung vor die Kontextlöschung ziehen, statt das Ansichtssignal beim Abbau zu beschreiben. Der zugehörige Fall in ThreeRenderView.spec.js wird dabei rot und gehört umgeschrieben, nicht gelöscht.",
+      "effort": "M",
+      "evidence": "Aus dem Remediation-Lauf vom 20. August 2026 übernommen: in Paket 7 (Commit 2b38c05) gemessen und als »Measured, not endorsed« festgehalten. Die Fundstelle ist am heutigen Stand bestätigt; bewertet wurde der Code nicht neu."
+    },
+    {
+      "id": "CLEAN-004",
+      "category": "Lesbarkeit & Clean Code",
+      "domain": "code",
+      "severity": "info",
+      "status": "new",
+      "title": "Der explizite onDestroy-Block im CanvasRenderingContext ist von der Kernel-Räumung nicht zu trennen",
+      "location": "packages/shae-offscreen-canvas/src/shadow-objects/CanvasRenderingContext.js:29-31",
+      "description": "Der Block räumt beim Abbau den bereitgestellten Kontext — dasselbe, was der Kernel unter clearOnDestroy ohnehin tut. Kein Wächter kann die beiden auseinanderhalten: löscht man den Block, bleibt jeder Fall grün. In der Spec des Pakets steht deshalb bewusst kein Fall »räumt seinen Kontext beim Abbau«, und die drei Zeilen stehen ohne Netz da.",
+      "recommendation": "Entweder streichen, weil clearOnDestroy der Standard ist, oder mit einem Satz begründen, warum die Räumung hier nicht dem Kernel überlassen wird.",
+      "effort": "S",
+      "evidence": "Aus dem Remediation-Lauf vom 20. August 2026 übernommen: Nebenbefund unter Paket 7 (Commit 2b38c05), gemessen und außerhalb des Auftrags gelassen. Die Fundstelle ist am heutigen Stand bestätigt; bewertet wurde der Code nicht neu."
+    },
+    {
+      "id": "CLEAN-005",
+      "category": "Lesbarkeit & Clean Code",
+      "domain": "code",
+      "severity": "info",
+      "status": "new",
+      "title": "new FrameLoop(90) ist ein toter Wert",
+      "location": "packages/shae-offscreen-canvas/src/shadow-objects/ShaeOffscreenCanvas.js:26",
+      "description": "Die Bildrate 90 wird nie wirksam: der Effekt überschreibt maxFps schon während der Konstruktion mit 60. Sichtbar ist die Zahl nur noch als Kontrastwert in dem Wächter, der genau daran zeigt, dass der Effekt greift.",
+      "recommendation": "Den Konstruktorwert auf das setzen, was der Effekt ohnehin schreibt, oder den Parameter weglassen. Der Wächter braucht dann einen anderen Kontrastwert.",
+      "effort": "S",
+      "evidence": "Aus dem Remediation-Lauf vom 20. August 2026 übernommen: Nebenbefund unter Paket 7 (Commit 2b38c05), gemessen und außerhalb des Auftrags gelassen. Die Fundstelle ist am heutigen Stand bestätigt; bewertet wurde der Code nicht neu."
+    },
+    {
+      "id": "CLEAN-006",
+      "category": "Lesbarkeit & Clean Code",
+      "domain": "code",
+      "severity": "info",
+      "status": "new",
+      "title": "Zwei benachbarte Kommentare erklären denselben überzähligen Umlauf",
+      "location": "packages/shae-offscreen-canvas/src/shadow-objects/ThreeRenderView.spec.js:188-193, :204-209",
+      "description": "Beide Blöcke beschreiben, warum createView und destroyView im Abbau je zweimal laufen — derselbe Sachverhalt, zweimal ausformuliert, sechs Zeilen auseinander. Wird der Ablauf einmal repariert, muss man an zwei Stellen daran denken.",
+      "recommendation": "Die Erklärung einmal über den ersten der beiden Fälle setzen; der zweite verweist darauf.",
+      "effort": "S",
+      "evidence": "Aus dem Remediation-Lauf vom 20. August 2026 übernommen: kleiner, ausdrücklich nicht blockierender Reviewer-Befund aus Paket 7 (Commit 2b38c05), offen geblieben. Die Fundstelle ist am heutigen Stand nachgezogen: der erste der beiden Blöcke beginnt bei :188, nicht bei :187."
+    },
+    {
+      "id": "DX-008",
+      "category": "Developer Experience",
+      "domain": "harness",
+      "severity": "info",
+      "status": "new",
+      "title": "Zwei Backlog-Absätze tragen denselben fetten Vorspann",
+      "location": "Backlog.md:277, :279",
+      "description": "Zwei aufeinanderfolgende Absätze beginnen beide mit **vitest**, während die beiden darunter ihr Verzeichnis nennen. Wer den Abschnitt überfliegt, liest denselben Vorspann zweimal und muss den Unterschied aus dem Fließtext holen.",
+      "recommendation": "Den zweiten Vorspann auf das benennen, was den Absatz vom ersten unterscheidet — dieselbe Machart wie die beiden folgenden.",
+      "effort": "S",
+      "evidence": "Aus dem Remediation-Lauf vom 20. August 2026 übernommen: Nebenbefund unter Paket 8 (Commit 6452b29), vom Reviewer als nicht blockierend eingestuft und bewusst nicht behoben. Die Fundstelle ist am heutigen Stand bestätigt."
     }
   ],
   "acknowledged": [],
