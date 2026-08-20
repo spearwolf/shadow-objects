@@ -47,6 +47,20 @@ jobs:
       - name: Build, typecheck, test and lint
         run: pnpm run ci
 
+      # The coverage report is written by the test task inside `pnpm run ci`.
+      # A failing suite writes none (reportOnFailure is off), so the upload
+      # is allowed to find nothing rather than turning the job red twice.
+      - name: Upload coverage report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            packages/shadow-objects/coverage/
+            packages/shae-offscreen-canvas/coverage/
+          if-no-files-found: ignore
+          retention-days: 7
+
   e2e:
     name: Run the e2e test suite
     runs-on: ubuntu-latest

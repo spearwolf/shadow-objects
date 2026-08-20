@@ -43,6 +43,17 @@ catalog:
   vitest: ^4.1.10
   '@vitest/browser': ^4.1.10
   '@vitest/browser-playwright': ^4.1.10
+  # Version-exact on purpose, and the version has to equal the resolved
+  # `vitest` above. vitest declares the provider as an optional peer with an
+  # exact range (`"@vitest/coverage-v8": "4.1.10"`) and loads it with a bare
+  # `import('@vitest/coverage-v8')` from inside its own dist. A caret range
+  # here would let pnpm resolve 4.1.11 against the locked vitest 4.1.10;
+  # pnpm still links a peer past its declared range, it only reports the
+  # range as unmet, so the import would still resolve — just to a
+  # coverage-v8 build one patch ahead of the vitest internals it runs
+  # against. Pinning exact keeps the two in lockstep. Bump this with
+  # `vitest`.
+  '@vitest/coverage-v8': 4.1.10
   happy-dom: ^20.11.2
   sinon: ^22.1.0
   '@types/sinon': ^22.0.0

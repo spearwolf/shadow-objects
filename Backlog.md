@@ -282,7 +282,9 @@ das ganze Rezept, aus dem sie sich wieder aufbauen lässt.
 
 **`shadow-objects-e2e/`** (Playwright, Chromium + Firefox): 11 Dateien, 213 Fälle je Projekt und damit 426 insgesamt — `async-events`, `auto-destruct`, `bundle`, `create-element`, `dynamic-dom`, `multi-env`, `remote-worker-env`, `shae-worker`, `sync-failure`, `upgrade-timing`, `worker-failure`. Assertions liegen in den Test-Pages, der gemeinsame `runPageTests`-Helper macht daraus je einen Playwright-Test pro `data-testresult`.
 
-### 4.2 Coverage-Heuristik
+### 4.2 Testabdeckung
+
+`vitest --coverage` misst die beiden Node-Suiten (v8-Provider, kein Schwellenwert): 69,21 % Statements im Kernpaket (`packages/shadow-objects/coverage/index.html`), 16,26 % in `shae-offscreen-canvas` (`packages/shae-offscreen-canvas/coverage/index.html`). `shadow-objects-testing` (Browser-Modus, eigenes vitest-Projekt) und `shadow-objects-e2e` (Playwright) laufen außerhalb dieser Zahl — die Kernpaket-Zahl untertreibt entsprechend, was der Workspace tatsächlich prüft. Die folgende Tabelle bleibt der gebietsweise Blick, den eine reine Prozentzahl nicht liefert — welche Pfade geprüft sind, nicht wie viele Zeilen.
 
 | Bereich | Status |
 |---|---|
@@ -355,7 +357,7 @@ Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements
 ### 5.2 Dependency-Hygiene
 
 - Versionen leben jetzt zentral in `pnpm-workspace.yaml#catalog:` — keine Drift mehr möglich. ✅
-- Tooling auf modernen Major-Versionen: vitest 4, biome 2.5, turbo 2.10, esbuild 0.28, Playwright 1.62, TypeScript 7, happy-dom 20, pnpm 11. ✅
+- Tooling auf modernen Major-Versionen: vitest 4, `@vitest/coverage-v8` (version-exakt zu vitest gepinnt), biome 2.5, turbo 2.10, esbuild 0.28, Playwright 1.62, TypeScript 7, happy-dom 20, pnpm 11. ✅
 - Zwei bewusste Holdbacks, jeweils mit Begründung im Kommentar in `pnpm-workspace.yaml`: `vite` (Override auf 7.x, weil Oxc keine nativen Decorators absenkt), `turbo` (2.10.9 wegen `minimumReleaseAge`).
 - signalize 1.0.0-beta.0 + eventize 6.0.0 sind drin; der alte 5.x-Holdback ist erledigt, weil signalize jetzt auf `^6.0.0` peert. Beide Pakete werden nur gemeinsam gehoben, und `pnpm why -r @spearwolf/eventize` muss danach genau eine Version melden. ✅
 - **Offen:** signalize von `1.0.0-beta.0` auf das finale `1.0.0` ziehen, sobald es da ist — dann auch den `minimumReleaseAgeExclude`-Eintrag mitziehen oder streichen.

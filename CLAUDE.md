@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Monorepo orchestrator | `turborepo` 2.10 (`turbo.json` defines the pipeline) |
 | TypeScript | `tsc` 7.x — only used to emit `.d.ts` |
 | Bundler / transpiler | `esbuild` 0.28 (lib transpile + single-file bundle) |
-| Unit / integration tests | `vitest` 4 (happy-dom for unit, `@vitest/browser` + Playwright provider for DOM-integration) |
+| Unit / integration tests | `vitest` 4 (happy-dom for unit, `@vitest/browser` + Playwright provider for DOM-integration, `@vitest/coverage-v8` for coverage) |
 | E2E | `@playwright/test` 1.62 |
 | Lint + format | `biome` 2.5 (replaces eslint + prettier) |
 | Dev server | `vite` 7 (only `shae-offscreen-canvas` demo and `shadow-objects-e2e`) |
@@ -47,11 +47,13 @@ Per-package commands (`pnpm -F <pkg-name> <script>` or `cd` and `pnpm <script>`)
 
 - **`packages/shadow-objects`** (core lib, TS):
   - `pnpm build` — runs `node build.mjs`. One script: esbuild transpile (`src/**` → `dist/src/**`) + tsc emit-only declarations (`tsconfig.lib.json`) + esbuild bundle with inline-worker (`dist/src/bundle.js` → `dist/bundle.js`) + `scripts/makePackageJson.mjs` (writes `dist/package.json`).
-  - `pnpm test` — `vitest --run`. Specs are `*.spec.ts` next to source in `src/`; vitest reads them directly via vite/esbuild — **no precompile step**. Single test: `pnpm exec vitest src/path/to/File.spec.ts --run`. Watch: `pnpm watch`.
+  - `pnpm test` — `vitest --run --coverage`. Specs are `*.spec.ts` next to source in `src/`; vitest reads them directly via vite/esbuild — **no precompile step**. The v8 coverage report lands in `packages/shadow-objects/coverage/` — a text summary in the console, an HTML report on disk. `pnpm watch` and a single-file run leave it out. Single test: `pnpm exec vitest src/path/to/File.spec.ts --run`. Watch: `pnpm watch`.
   - `pnpm typecheck` — `tsc -p tsconfig.json --noEmit` (whole tree, including specs).
 - **`packages/shadow-objects-testing`** (functional/integration, vitest browser mode + Playwright provider): `pnpm test`, watch `pnpm watch`. Specs are `test/**/*.test.js` and run in real Chromium for accurate Custom Elements semantics. Chai assertion style is preserved (`@esm-bundle/chai`); `describe`/`it`/`beforeEach`/`afterEach` come from vitest globals (with `after`/`before` shimmed for legacy mocha specs).
-- **`packages/shae-offscreen-canvas`** (vitest happy-dom): `pnpm test`. Dev server: `pnpm dev`. Build (publish bundle): `pnpm build`.
+- **`packages/shae-offscreen-canvas`** (vitest happy-dom): `pnpm test` — `vitest --run --coverage`, report in `packages/shae-offscreen-canvas/coverage/`. Dev server: `pnpm dev`. Build (publish bundle): `pnpm build`.
 - **`packages/shadow-objects-e2e`** (Playwright + Vite): `pnpm test`, UI mode `pnpm test:ui`. **First-time setup requires** `pnpm exec playwright install chromium firefox` — browsers are not installed by `pnpm install`.
+
+**Coverage.** `@vitest/coverage-v8` measures `packages/shadow-objects` and `packages/shae-offscreen-canvas`; the report lands in `coverage/` inside each of them. No thresholds are configured — read the number, don't gate on it. `packages/shadow-objects-testing` is left out: it runs as its own vitest project, with its own browser-mode Chromium run and its own `reportsDirectory`. A coverage run there would produce a second report over the same `packages/shadow-objects/src/` files as the core package's report — the two don't add up on their own, and merging them into one number is work this package doesn't do. The core package's number understates what the workspace actually exercises by exactly that suite. `packages/shadow-objects-e2e` is Playwright, not vitest, and needs a different mechanism entirely.
 
 Vitest shares a single `setupFiles` between core, integration, and offscreen-canvas: `packages/shadow-objects/vitest.setup.ts`. It (a) replaces Node's inert `localStorage`/`sessionStorage` globals (Node 24+ ships these as no-op stubs that shadow happy-dom's working Storage), and (b) shims mocha's `after`/`before` to vitest's `afterAll`/`beforeAll` for migrated specs.
 

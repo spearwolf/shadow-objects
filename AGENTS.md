@@ -93,6 +93,7 @@ Documentation that invents plausible-sounding names is the most dangerous kind. 
     - Check `packages/shadow-objects-testing/` for functional/integration tests.
     - Check `packages/shadow-objects-e2e/` for end-to-end tests.
     - Public API changes must be tested in E2E if possible.
+    - Coverage: `pnpm test` writes a v8 report to `coverage/` in `packages/shadow-objects` and `packages/shae-offscreen-canvas`. No thresholds — `packages/shadow-objects-testing`'s `test` script doesn't run `--coverage`, so it stays out of the number; it also runs as its own vitest project and would get its own `reportsDirectory`, so a second report over the same `src/` files wouldn't add to the first without a merge step this package doesn't do.
 
 # Toolchain (post-2026-renewal)
 
@@ -102,7 +103,7 @@ Documentation that invents plausible-sounding names is the most dangerous kind. 
 | Monorepo orchestrator | `turborepo` 2.10 — pipeline in `turbo.json` |
 | TypeScript | `tsc` 7 — only emits `.d.ts` (declaration-only) |
 | Bundler / transpiler | `esbuild` 0.28 (lib transpile + single-file inline-worker bundle) |
-| Unit / integration tests | `vitest` 4 (happy-dom for unit, `@vitest/browser` + Playwright provider for DOM-integration) |
+| Unit / integration tests | `vitest` 4 (happy-dom for unit, `@vitest/browser` + Playwright provider for DOM-integration, `@vitest/coverage-v8` for coverage) |
 | E2E | `@playwright/test` 1.62 |
 | Lint + format | `biome` 2.5 (replaces eslint + prettier) |
 | Dev server | `vite` 7 (only `shae-offscreen-canvas` demo and `shadow-objects-e2e`) |

@@ -37,16 +37,17 @@
   ],
   "scripts": {
     "dev": "vite --host",
-    "test": "vitest --run",
+    "test": "vitest --run --coverage",
     "watch": "vitest",
     "build:copyFiles": "node ./build.mjs",
     "build:packageJson": "node ../../scripts/makePackageJson.mjs",
     "build": "pnpm clean && pnpm build:copyFiles && pnpm build:packageJson",
-    "clean": "rimraf .npm-pkg",
+    "clean": "rimraf .npm-pkg coverage",
     "publishNpmPkg": "node ../../scripts/publishNpmPkg.mjs .npm-pkg",
     "update": "pnpm dlx npm-check --update"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "catalog:",
     "esbuild-plugin-inline-worker": "catalog:",
     "happy-dom": "catalog:",
     "lil-gui": "catalog:",

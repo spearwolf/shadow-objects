@@ -264,11 +264,11 @@ Run these commands from the root directory:
 | :--- | :--- |
 | `pnpm cbt` | **Clean, Build, Test.** Runs a full cycle: clean, build, and test the entire workspace. |
 | `pnpm start` | Starts the **shae-offscreen-canvas** demo server. |
-| `pnpm test` | Runs all tests (Unit, Integration, E2E) across all packages. |
+| `pnpm test` | Runs all tests (Unit, Integration, E2E) across all packages. The two Node suites (`shadow-objects`, `shae-offscreen-canvas`) also write a v8 coverage report to `coverage/` in each package — no thresholds, the number is a map, not a gate. |
 | `pnpm test:ci` | Runs tests excluding E2E (faster, for CI pipelines). |
 | `pnpm build` | Builds all packages. |
 | `pnpm lint` | Runs linter across the entire workspace. |
-| `pnpm clean` | Deletes all build artifacts (`dist`, `build` folders). |
+| `pnpm clean` | Deletes build artifacts (`dist`, `build`, `coverage`, `.npm-pkg`, depending on the package). |
 
 ---
 

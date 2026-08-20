@@ -33,4 +33,4 @@ The `src` attribute points to your shadow environment entry file -- the script t
 ## Development
 
 - **Start Demo Server:** `pnpm start` (from root) or `pnpm dev` (inside this package)
-- **Run Tests:** `pnpm test`
+- **Run Tests:** `pnpm test` -- `vitest --run --coverage`; the v8 report lands in `coverage/` (console summary plus an HTML report), no thresholds configured

@@ -35,7 +35,7 @@
         "index.html",
         "package.json"
       ],
-      "outputs": []
+      "outputs": ["coverage/**"]
     },
     "typecheck": {
       "dependsOn": ["^build"],
