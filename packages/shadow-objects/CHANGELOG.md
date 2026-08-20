@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 > **Next release: minor.** The package is below `1.0.0`, so the accumulated breaking
-> changes below bump the minor position — `0.33.0` → `0.34.0`. Thirty-five changes reach existing
+> changes below bump the minor position — `0.33.0` → `0.34.0`. Thirty-seven changes reach existing
 > consumers: both runtime dependencies take a major step and carry behaviour changes of their
 > own; the emitted declarations carry `| undefined` where a value can be missing, so a
 > build with `strictNullChecks` sees new errors; `RemoteWorkerEnv` rejects with
