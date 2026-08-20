@@ -9,7 +9,7 @@ const IS_LOCALHOST = Boolean(globalThis.location?.host?.startsWith('localhost') 
 // object on `globalThis`, and a browser with disabled cookies throws a `SecurityError` -- on the
 // property access or on the first write. So the capability is probed, not looked up, and the
 // storage that passes is kept by reference. Whatever fails here falls back to the plain object
-// under `globalThis[CONSOLE_LOGGER_STORAGE]`.
+// under `globalThis.ConsoleLoggerStorage`.
 const gLocalStorage: Storage | undefined = (() => {
   try {
     const storage = (globalThis as {localStorage?: Storage}).localStorage;
@@ -21,12 +21,21 @@ const gLocalStorage: Storage | undefined = (() => {
       return undefined;
     }
     // The write is what separates a Storage that only looks usable from one that is: cookies
-    // may be off, or the quota full. It costs one `storage` event pair for the other tabs of
-    // this origin, and a full quota sends an otherwise readable Storage into the fallback --
-    // both accepted, because every logger writes its own `enable` key in its constructor anyway.
+    // may be off, or the quota full. This probe key is the only thing the library writes into a
+    // host's storage on its own, and it is removed in the same breath -- everything past this
+    // point only reads, until a caller reaches through the handle under `globalThis.ConsoleLogger`.
+    // Two costs are accepted for the probe itself: one `storage` event pair for the other tabs of
+    // this origin, and a full quota that sends an otherwise readable Storage into the fallback.
     const probeKey = `${CONSOLE_LOGGER}.probe`;
-    storage.setItem(probeKey, probeKey);
-    storage.removeItem(probeKey);
+    try {
+      storage.setItem(probeKey, probeKey);
+    } finally {
+      // reached even when `setItem` throws: a storage that takes the write and then fails would
+      // otherwise fall through to the fallback with the probe key left behind. One way past
+      // "removed in the same breath" stays open -- a `removeItem` that throws is the very call
+      // this `finally` makes, and the key survives.
+      storage.removeItem(probeKey);
+    }
     return storage;
   } catch {
     return undefined;
@@ -35,7 +44,39 @@ const gLocalStorage: Storage | undefined = (() => {
 
 const HAS_LOCAL_STORAGE = gLocalStorage != null;
 
-const ConsoleLogger$ = Symbol.for(CONSOLE_LOGGER);
+const ConsoleLogger$: unique symbol = Symbol.for(CONSOLE_LOGGER);
+
+export interface ConsoleLoggerConfig {
+  [ConsoleLogger$]?: boolean;
+  enable: boolean;
+  debug: boolean;
+  info: boolean;
+  warn: boolean;
+  'styles.debug': string;
+  'styles.info': string;
+  'styles.warn': string;
+  'styles.error': string;
+  [key: string]: string | boolean | undefined;
+}
+
+export interface ConsoleLoggerControl {
+  [ConsoleLogger$]?: boolean;
+  enable: boolean;
+  debug: boolean;
+  info: boolean;
+  warn: boolean;
+}
+
+// A module-local view of the two globals this library touches, in place of a `declare global`:
+// the re-exports in this package's emitted `dist/src/index.d.ts`, published as `src/index.d.ts`,
+// reach every consumer's global type space through `ShadowEnv.d.ts`'s import of this module, and
+// `ConsoleLogger` is too common a name to claim there uninvited -- an ambient `var ConsoleLogger`
+// would collide with a consumer's own global of that name (`TS2403`) and turn a forgotten import
+// of this class into a silent pass against the handle instead of a compile error.
+const gGlobalSlots = globalThis as typeof globalThis & {
+  ConsoleLogger?: ConsoleLoggerControl;
+  ConsoleLoggerStorage?: ConsoleLoggerConfig;
+};
 
 let gInitialized = false;
 
@@ -54,28 +95,21 @@ const asBoolean = (val: string | boolean) => {
 const getKeyPath = (key: string | string[]): string =>
   [HAS_LOCAL_STORAGE ? CONSOLE_LOGGER : undefined, ...(Array.isArray(key) ? key : [key])].filter(Boolean).join('.');
 
-function loadConfigValue<T>(key: string | string[], as: ((val: string) => T) | undefined, defaultValue: T): T {
+function loadConfigValue<T>(key: string | string[], as: ((val: string | boolean) => T) | undefined, defaultValue: T): T {
   const _key = getKeyPath(key);
-  // @ts-ignore
-  const value = gLocalStorage ? gLocalStorage.getItem(_key) : globalThis[CONSOLE_LOGGER_STORAGE]?.[_key];
+  const value = gLocalStorage ? gLocalStorage.getItem(_key) : gGlobalSlots.ConsoleLoggerStorage?.[_key];
   if (value == undefined) return defaultValue;
   // without a converter the stored value is the value: that is how the styles are read
   return as ? as(value) : (value as T);
 }
 
+// The four setters of the `globalThis.ConsoleLogger` handle below are the only callers, and those
+// exist only inside the `HAS_LOCAL_STORAGE` branch of `loadConfig()` -- so `gLocalStorage` is
+// always set whenever this runs. The fallback store under `globalThis.ConsoleLoggerStorage` is
+// written by `loadConfig()` alone, and in the worker through `setConsoleLoggerStorage()`.
 function saveConfigValue(key: string | string[], val: any) {
   if (gLocalStorage) {
     gLocalStorage.setItem(getKeyPath(key), val);
-  } else {
-    // @ts-ignore
-    if (globalThis[CONSOLE_LOGGER_STORAGE] == undefined) {
-      // @ts-ignore
-      globalThis[CONSOLE_LOGGER_STORAGE] = {};
-      // @ts-ignore
-      console.debug(`${CONSOLE_LOGGER}: Initialize`, {[CONSOLE_LOGGER_STORAGE]: globalThis[CONSOLE_LOGGER_STORAGE]});
-    }
-    // @ts-ignore
-    globalThis[CONSOLE_LOGGER_STORAGE][getKeyPath(key)] = val;
   }
 }
 
@@ -93,12 +127,21 @@ export const consoleLoggerConfigKey = (key: string | string[]): string => getKey
 export const loadConsoleLoggerConfig = (key: string | string[], defaultValue: string): string =>
   loadConfigValue(key, undefined, defaultValue);
 
+/**
+ * Installs a config object as the fallback store, bypassing the storage probe. `WorkerRuntime`
+ * calls this with the config a `RemoteWorkerEnv` forwards from the main thread, where there is no
+ * `localStorage` to probe in the first place.
+ */
+export function setConsoleLoggerStorage(config: ConsoleLoggerConfig): void {
+  gGlobalSlots.ConsoleLoggerStorage = config;
+}
+
 export class ConsoleLogger {
   namespace?: string;
 
   enable = true;
 
-  static sharedConfig = {
+  static sharedConfig: ConsoleLoggerConfig = {
     enable: IS_LOCALHOST,
 
     debug: false,
@@ -148,13 +191,11 @@ export class ConsoleLogger {
 
   static loadConfig() {
     if (HAS_LOCAL_STORAGE) {
-      ['enable', 'debug', 'info', 'warn'].forEach((key) => {
-        // @ts-ignore
+      (['enable', 'debug', 'info', 'warn'] as const).forEach((key) => {
         this.sharedConfig[key] = loadConfigValue(key, asBoolean, this.sharedConfig[key]);
       });
 
-      ['debug', 'info', 'warn', 'error'].forEach((key) => {
-        // @ts-ignore
+      (['debug', 'info', 'warn', 'error'] as const).forEach((key) => {
         this.sharedStyles[key] = loadConfigValue(['styles', key], undefined, this.sharedStyles[key]);
       });
 
@@ -162,10 +203,8 @@ export class ConsoleLogger {
         console.debug(`${CONSOLE_LOGGER}: Load config from localStorage`, ConsoleLogger.sharedConfig);
       }
 
-      // @ts-ignore
-      if (!globalThis[CONSOLE_LOGGER]?.[ConsoleLogger$]) {
-        // @ts-ignore
-        globalThis[CONSOLE_LOGGER] ??= {
+      if (!gGlobalSlots.ConsoleLogger?.[ConsoleLogger$]) {
+        gGlobalSlots.ConsoleLogger ??= {
           [ConsoleLogger$]: true,
 
           get enable() {
@@ -199,24 +238,16 @@ export class ConsoleLogger {
         };
       }
     } else {
-      // no localStorage available: in this case we just use globalThis[STORAGE_KEY]
-      // @ts-ignore
-      if (!globalThis[CONSOLE_LOGGER_STORAGE]?.[ConsoleLogger$]) {
-        // @ts-ignore
-        globalThis[CONSOLE_LOGGER_STORAGE] = {
+      // no localStorage available: in this case we just use gGlobalSlots.ConsoleLoggerStorage
+      if (!gGlobalSlots.ConsoleLoggerStorage?.[ConsoleLogger$]) {
+        gGlobalSlots.ConsoleLoggerStorage = {
           [ConsoleLogger$]: true,
           ...ConsoleLogger.sharedConfig,
-          // @ts-ignore
-          ...globalThis[CONSOLE_LOGGER_STORAGE],
+          ...gGlobalSlots.ConsoleLoggerStorage,
         };
-        // @ts-ignore
-        ConsoleLogger.sharedConfig = globalThis[CONSOLE_LOGGER_STORAGE];
+        ConsoleLogger.sharedConfig = gGlobalSlots.ConsoleLoggerStorage;
         if (ConsoleLogger.isDebug) {
-          console.debug(
-            `${CONSOLE_LOGGER}: Load config from ${CONSOLE_LOGGER_STORAGE}`,
-            // @ts-ignore
-            globalThis[CONSOLE_LOGGER_STORAGE],
-          );
+          console.debug(`${CONSOLE_LOGGER}: Load config from ${CONSOLE_LOGGER_STORAGE}`, gGlobalSlots.ConsoleLoggerStorage);
         }
       }
     }
@@ -230,9 +261,10 @@ export class ConsoleLogger {
       gInitialized = true;
     }
 
+    // reads only: the storage of the host is never written here. The only way this library
+    // writes to it is through the four setters of the `globalThis.ConsoleLogger` handle above.
     const key = [this.namespace, 'enable'];
     this.enable = loadConfigValue(key, asBoolean, this.enable);
-    saveConfigValue(key, HAS_LOCAL_STORAGE ? (this.enable ? 'true' : 'false') : this.enable);
   }
 
   get isEnabled() {

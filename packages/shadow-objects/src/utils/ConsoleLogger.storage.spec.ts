@@ -66,17 +66,27 @@ describe('ConsoleLogger storage capability', () => {
     expect(globalRecord[CONSOLE_LOGGER_STORAGE], 'the config falls back to the global object store').toBeTypeOf('object');
   });
 
-  it('keeps using a localStorage that works', async () => {
+  it('keeps using a localStorage that works without writing to it', async () => {
     const key = `${CONSOLE_LOGGER}.usable-storage.enable`;
     try {
       const {ConsoleLogger} = await importWithLocalStorage(localStorageDescriptor);
 
       new ConsoleLogger('usable-storage');
 
-      expect(localStorage.getItem(key), 'the logger config is written to localStorage').toBe('true');
+      expect(localStorage.getItem(key), 'the constructor writes no key to localStorage').toBeNull();
       expect(globalRecord[CONSOLE_LOGGER_STORAGE], 'no fallback store is created').toBeUndefined();
     } finally {
       localStorage.removeItem(key);
     }
+  });
+
+  it('adds no per-namespace key to the fallback store', async () => {
+    const {ConsoleLogger} = await importWithLocalStorage({value: {}});
+
+    new ConsoleLogger('quiet-namespace');
+
+    const fallbackStore = globalRecord[CONSOLE_LOGGER_STORAGE];
+    expect(fallbackStore, 'the config falls back to the global object store').toBeTypeOf('object');
+    expect(Object.keys(fallbackStore as object)).not.toContain('quiet-namespace.enable');
   });
 });

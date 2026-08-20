@@ -2593,6 +2593,8 @@ There is no log level to set. Logging is decided by four independent switches sh
 | `ConsoleLogger.sharedConfig` | `debug` | off |
 | `ConsoleLogger.sharedConfig` | `info`, `warn` | on |
 | the instance | `enable` | `true` |
+| `globalThis.ConsoleLogger` | typed `ConsoleLoggerControl` | — |
+| `globalThis.ConsoleLoggerStorage` | typed `ConsoleLoggerConfig` | — |
 
 `isEnabled` combines the two `enable` flags: the instance's own and the shared one. The other three getters take `isEnabled` and add the switch for their level, so `debug` is the one that needs turning on before anything else matters.
 
@@ -2609,7 +2611,11 @@ if (kernel.logger.isDebug) {
 
 **The getters are the caller's job.** `logger.debug(...)` prints unconditionally -- it does not consult `isDebug` itself. Ask first, as the Kernel does, or the message goes to the console whatever the switches say.
 
-In the browser this is reachable without a rebuild: on first use the logger installs a live config object at `globalThis.ConsoleLogger` whose setters write through to `localStorage`, so `ConsoleLogger.debug = true` typed into the console survives a reload.
+In the browser this is reachable without a rebuild: on first use the logger installs a live config object at `globalThis.ConsoleLogger` whose setters write through to `localStorage`, so `ConsoleLogger.debug = true` typed into the console survives a reload. Past the one-time storage-capability probe at module load -- which writes and immediately removes a single throwaway key -- these four setters are the only place the library writes to the storage of its host on its own; a `ConsoleLogger` instance reads its own `<namespace>.enable` flag and never creates the key, so the switch has to be turned on once through the handle, or by hand in the storage, before it shows up.
+
+`ConsoleLoggerConfig` types the fallback store behind `globalThis.ConsoleLoggerStorage`, and `ConsoleLoggerControl` types the handle behind `globalThis.ConsoleLogger` -- see the table above. Neither global is declared ambiently: a consumer that wants a typed reference to either casts `globalThis` locally, the way `ConsoleLogger.ts` does for its own access. `consoleLoggerConfigKey()` builds the storage key a given config value lives under, and `setConsoleLoggerStorage()` installs a config object as the fallback store directly, bypassing the storage probe -- what `WorkerRuntime` calls in a worker, where there is no `localStorage` to probe in the first place. All four -- the two types and the two functions -- are reachable only through the `@spearwolf/shadow-objects/ConsoleLogger.js` subpath used in the example above; `src/index.ts` does not re-export `utils/ConsoleLogger.js`.
+
+`ConsoleLogger.<namespace>.enable` turns a single logger off on its own, independent of the four shared switches above -- the key a `Kernel`, a `ShadowEnv` or an element's own logger reads on construction. Set through the storage of the host directly (there is no handle for a per-namespace flag), it is read once and never written by the library.
 
 The worker of a `RemoteWorkerEnv` is configured from the same origin: a JSON object stored under `ConsoleLogger.RemoteWorkerEnv.workerConfig` is merged on top of the shared config when the worker starts, so the second thread can be made talkative without touching the code that spawns it. The key is read, not trusted -- a value that does not parse to a plain JSON object counts as no config at all, and the key is named once through `remoteEnv.logger.warn`, which is not gated behind `ConsoleLogger.sharedConfig.enable`.
 

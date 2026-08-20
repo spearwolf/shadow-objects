@@ -1,5 +1,5 @@
 import {Destroy, Loaded} from '../constants.js';
-import {CONSOLE_LOGGER, CONSOLE_LOGGER_STORAGE} from '../utils/ConsoleLogger.js';
+import {CONSOLE_LOGGER, setConsoleLoggerStorage} from '../utils/ConsoleLogger.js';
 import {isReadableMessageData, MessageRouter} from './MessageRouter.js';
 
 export class WorkerRuntime {
@@ -37,8 +37,7 @@ export class WorkerRuntime {
     }
 
     if (data.type === CONSOLE_LOGGER) {
-      // @ts-ignore
-      globalThis[CONSOLE_LOGGER_STORAGE] = data.config;
+      setConsoleLoggerStorage(data.config);
       return;
     }
 
