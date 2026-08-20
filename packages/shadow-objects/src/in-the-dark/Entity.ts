@@ -203,6 +203,7 @@ export class Entity {
       ctx.provide.destroy();
       ctx.context.destroy();
     }
+    this.#context.clear();
 
     this.#parentUuid = undefined;
     this.#parent = undefined;

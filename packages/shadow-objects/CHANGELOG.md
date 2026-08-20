@@ -109,7 +109,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Shadow Object that is gone standing on an entity that still provides the name elsewhere;
 > and a `ConsoleLogger` no longer writes its per-namespace `enable` key to the storage of its
 > host when it is constructed, so a switch that used to show up in `localStorage` on its own now
-> has to be turned on once through the `globalThis.ConsoleLogger` handle, or by hand.
+> has to be turned on once through the `globalThis.ConsoleLogger` handle, or by hand;
+> and a Shadow Object's `onDestroy` callback or `createResource` cleanup that throws no longer
+> aborts the rest of the teardown — the remaining cleanup of the same Shadow Object, the teardown
+> of the other Shadow Objects on the same entity, and the destruction of the entity itself all
+> still run, where a throw used to stop everything behind it — and the error goes to the
+> `ConsoleLogger` instead of reaching whichever call set the teardown going: `destroyEntity()`,
+> `changeToken()`, `changeProperties()` or `upgradeEntities()`; and a
+> listener one Shadow Object put on another's own `onDestroy` notification no longer costs that
+> other Shadow Object its teardown or its removal as an entity listener when the listener throws
+> — the error goes to the `ConsoleLogger` instead of reaching the `changeToken()`,
+> `changeProperties()` or `upgradeEntities()` that re-resolved the constructor set, where it used
+> to abort both.
 > Everything else in this section is additive or a bugfix.
 
 ### ⚠️ Breaking Changes
@@ -162,6 +173,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Behavior (worker environments):** a `start()` that fails now terminates the worker it created instead of just dropping the reference.
 - **Behavior (kernel):** `clearOnDestroy` sets the provided context to `undefined` and every consumer sees that, on both teardown paths — the entity is destroyed, or the Shadow Object leaves the constructor set of an entity that lives on (a token change, a route change). On the second path the clearing used to reach the provider signal alone and never the `useContext` readers below it. Applies to `provideContext` and `provideGlobalContext` alike. Whoever relied on a child keeping the last value after a token change now reads `undefined` there; the way back to the old reading is `{clearOnDestroy: false}`, on an entity that has no second provider of the name — see the entry below.
 - **Behavior (kernel):** an entity that has several Shadow Objects providing the same context name hands that name over when one of them leaves. Consumers then read the value of a provider that is still there — the one attached last that holds a value, which falls back on the order in which the providers took the name rather than on the order in which they last wrote to it — and `undefined` only once the last provider of the name on that entity is gone. This decides the name regardless of what the leaving Shadow Object wrote on its way out, so `{clearOnDestroy: false}` no longer holds the name for a Shadow Object that is gone. It covers `provideContext` and `provideGlobalContext` alike; for the latter the chain across entities is unchanged and still resolves to the first non-empty contribution. Whoever wants the old reading keeps one provider per name and entity.
+- **Behavior (kernel):** an `onDestroy` callback or a `createResource` cleanup that throws no longer stops the rest of `tearDown()` — not the remaining cleanup of the same Shadow Object, not the teardown of the other Shadow Objects on the same entity, and not the destruction of the entity itself. The error is reported through the `ConsoleLogger` instead of reaching whichever call set the teardown going: `destroyEntity()`, `changeToken()`, `changeProperties()` or `upgradeEntities()`. Two things stand outside this guarantee: the class-side `[onDestroy]` hook, where a throw still stops everything behind it, and a callback registered through `on(onDestroy, …)` or `once(onDestroy, …)` on the creation API instead of `onDestroy(callback)` — with no priority of its own it runs ahead of every Shadow Object's teardown and the Entity's own destruction, so a throw there stops all of it. That listener is only reached where the Entity is destroyed; where a Shadow Object leaves the constructor set of an entity that lives on, the entity sends no such notification, and the class-side hook is the only one of the two that runs at all.
+- **Behavior (kernel):** a shadow-object that leaves the constructor set of an entity that stays alive can carry a listener another shadow-object put on its own `onDestroy` notification (`on(otherShadowObject, onDestroy, …)`). A throw from such a listener is reported through the `ConsoleLogger` instead of reaching the call that re-resolved the constructor set — `changeToken()`, `changeProperties()` or `upgradeEntities()` — and no longer stops the leaving shadow-object's own teardown or its removal as an entity listener.
 - **Behavior (logging):** a `ConsoleLogger` no longer writes its per-namespace `enable` key into the storage of its host when it is constructed; the key is still read there. Past the storage-capability probe at module load, the only remaining write path is the `globalThis.ConsoleLogger` handle's four setters, which write the four shared switches. A namespace that was turned off through a previous key already sitting in storage keeps reading it as before — what disappears is the key a mere construction used to leave behind.
 
 ### Bugfixes
@@ -233,6 +246,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bugfix (worker environments):** `RemoteWorkerEnv.applyChangeTrail()` and `importScript()` reached for a worker that a regular `destroy()` had already released, and threw a `TypeError` out of a method that promises a `Promise`. Both reject with a new `WorkerDestroyedError` now, and a `start()` that is torn down while it waits does the same instead of throwing a bare string.
 - **Bugfix (worker environments):** `RemoteWorkerEnv.start()` on a destroyed environment spawned a fresh worker thread. It only noticed the teardown after the load handshake — up to `WorkerLoadTimeout` later — and then skipped the `terminate()`, leaving a thread running that no reference reached any more. A destroyed environment now turns `start()` away with a `WorkerDestroyedError` before it creates anything.
 - **Bugfix (worker environments):** `RemoteWorkerEnv` only listened for `message`. A worker that died on an unhandled error, or sent something the structured clone algorithm could not read back, went unnoticed — `applyChangeTrail()` sat out the full 5s, `importScript()` and `start()` the full 60s, and no consumer had any way of learning that the environment was gone. `error` and `messageerror` are now subscribed before the load handshake begins; a failure terminates the worker, sets `isDestroyed`, and rejects everything pending and everything later with a new `WorkerFailedError`.
+- **Bugfix (kernel):** `Entity.hasContext()` reads `false` for every context name once the Entity is destroyed. Destruction cleared every context signal but left the map itself standing, so a name the Entity used to carry kept answering `true` after there was nothing left to ask.
 
 ### Types
 

@@ -103,6 +103,18 @@ export class ShadowObjectCreationScope {
 
   #isTornDown = false;
 
+  /**
+   * The name the kernel gave this scope, taken from the constructor it belongs to rather than from
+   * the shadow-object that came out of it. The two agree for most forms -- a class and a function
+   * that returns nothing both leave their own name on the instance's `constructor` -- but not for a
+   * function that returns an object literal: `new` hands that literal back, and it reports `Object`.
+   * Reports about the shadow-object are keyed by this name, so the kernel reads it here instead of
+   * asking the instance.
+   */
+  get displayName(): string {
+    return this.#displayName;
+  }
+
   constructor(entity: Entity, logger: ConsoleLogger, displayName: string) {
     this.#entity = entity;
     this.#logger = logger;
@@ -186,13 +198,20 @@ export class ShadowObjectCreationScope {
    *
    * The kernel is told to forget the shadow-object at the very end, so a destroy callback that reaches back
    * into the kernel still finds its shadow-object listed among the ones the constructor created.
+   *
+   * Every step below runs behind its own guard, so a callback or signal teardown that throws does not stop
+   * the ones after it: the remaining callbacks, the remaining signal releases, and the provider feed
+   * hand-over all still happen. A caught error goes to the logger by displayName and the label of the step
+   * that failed, and is not re-thrown -- neither `changeToken()` nor `destroyEntity()` deliver it to their
+   * caller, nor does it stop the destroy notification the entity is still delivering to whatever comes after
+   * this shadow-object in the same run.
    */
   tearDown(): void {
     if (this.#isTornDown) return;
     this.#isTornDown = true;
 
-    this.#releaseScope?.();
-    this.#unsubscribeFromEntityDestroy?.();
+    this.#runGuarded('scope release', () => this.#releaseScope?.());
+    this.#runGuarded('entity destroy subscription', () => this.#unsubscribeFromEntityDestroy?.());
 
     // Without a shadow-object there is nothing to report here: none ever came to be, because the
     // constructor threw before it could.
@@ -201,35 +220,35 @@ export class ShadowObjectCreationScope {
     }
 
     for (const callback of this.#unsubscribePrimary) {
-      callback();
+      this.#runGuarded('onDestroy callback', callback);
     }
 
     for (const callback of this.#unsubscribeSecondary) {
-      callback();
+      this.#runGuarded('creation-api cleanup', callback);
     }
 
     for (const callback of this.#unsubscribeContextFeeds) {
-      callback();
+      this.#runGuarded('context feed release', callback);
     }
 
     for (const sig of this.#contextReaders.values()) {
-      destroySignal(sig);
+      this.#runGuarded('context reader', () => destroySignal(sig));
     }
 
     for (const sig of this.#contextParentReaders.values()) {
-      destroySignal(sig);
+      this.#runGuarded('parent context reader', () => destroySignal(sig));
     }
 
     for (const sig of this.#propertyReaders.values()) {
-      destroySignal(sig);
+      this.#runGuarded('property reader', () => destroySignal(sig));
     }
 
     for (const sig of this.#contextProviders.values()) {
-      destroySignal(sig);
+      this.#runGuarded('context provider', () => destroySignal(sig));
     }
 
     for (const sig of this.#contextRootProviders.values()) {
-      destroySignal(sig);
+      this.#runGuarded('global context provider', () => destroySignal(sig));
     }
 
     this.#unsubscribePrimary.clear();
@@ -241,7 +260,20 @@ export class ShadowObjectCreationScope {
     this.#contextProviders.clear();
     this.#contextRootProviders.clear();
 
-    this.#forgetShadowObject?.();
+    this.#runGuarded('forget shadow-object', () => this.#forgetShadowObject?.());
+  }
+
+  /**
+   * Isolates one teardown step from the ones around it: a step that throws is reported through the
+   * logger -- ungated, so the report stays visible outside localhost -- and does not stop `tearDown()`
+   * from reaching the steps that follow.
+   */
+  #runGuarded(step: string, run: () => void): void {
+    try {
+      run();
+    } catch (error) {
+      this.#logger.error(`shadow-object teardown failed (${step}):`, this.#displayName, error);
+    }
   }
 
   /**
@@ -471,9 +503,15 @@ export class ShadowObjectCreationScope {
     });
 
     this.#unsubscribeSecondary.add(() => {
-      effect.destroy();
-      resourceSignal.set(undefined);
-      destroySignal(resourceSignal);
+      // `effect.destroy()` runs the consumer's `cleanup`, which may throw. The two releases below
+      // still have to run in that case -- a `finally` reaches them without swallowing the throw, so
+      // `#runGuarded()` in `tearDown()` still sees and reports it.
+      try {
+        effect.destroy();
+      } finally {
+        resourceSignal.set(undefined);
+        destroySignal(resourceSignal);
+      }
     });
 
     return resourceSignal;

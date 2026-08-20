@@ -250,6 +250,8 @@ createResource(() => {
 });
 ```
 
+A `cleanup` that throws when the Shadow Object tears down does not stop the rest of the teardown, and the resource signal is set to `undefined` and destroyed either way. What the cleanup did not get to release stays unreleased — a `model.dispose()` that never ran is not made up for elsewhere. The error is reported through the `ConsoleLogger`: the same contract as a throwing callback registered through [`onDestroy(callback)`](#ondestroycallback), which spells out what it covers and what it does not.
+
 ---
 
 ### 4. Events
@@ -391,6 +393,8 @@ Registers a cleanup function that runs when the Shadow Object is destroyed. Crit
 A Shadow Object reaches that point on two paths: its Entity is destroyed, or it leaves the constructor set of an Entity that lives on — a token change or a route that stops resolving to it. The callback runs on both, exactly once.
 
 A third path reaches the callback without a Shadow Object ever having lived: a constructor that registers `onDestroy` and then throws. The Kernel ends the creation scope of that constructor, so everything registered up to the throw is released — the callback among it. `onCreate` never ran there, and the instance was never attached to its Entity, so a callback written to touch the Shadow Object itself has to cope with a half-built one. Cleanups that only release what the creation API handed out are unaffected.
+
+A callback that throws does not stop what comes after it: the remaining `onDestroy` callbacks of the same Shadow Object still run, the other Shadow Objects on the same Entity still reach their own teardown, and the Entity itself is still destroyed. The error is reported through the `ConsoleLogger` instead of reaching whichever call set the teardown going: the code that destroyed the Entity, or the `changeToken()`, `changeProperties()` or `upgradeEntities()` that re-resolved its constructor set. Two things stand outside this guarantee, both still able to stop everything behind them: the class-side `[onDestroy]` hook — see [Lifecycle Hooks](./cheat-sheet.md#lifecycle-hooks) — and a callback registered through `on(onDestroy, …)` or `once(onDestroy, …)` instead of this method. The latter carries no priority of its own, so it runs ahead of every Shadow Object's teardown and the Entity's own destruction, and a throw there stops all of it — but it is only ever reached on the first path, because a destroyed Entity is the only occasion on which that notification is sent. The class-side hook is reached on both paths: on a destroyed Entity as one more listener of the same notification, and where the Shadow Object leaves the constructor set of an Entity that lives on the Kernel calls it directly, ahead of everything else that teardown does. A listener one Shadow Object puts directly on another's own `onDestroy` notification — `on(otherShadowObject, onDestroy, …)` — belongs to the second path alone: that notification goes out when a Shadow Object leaves the constructor set of an Entity that lives on, never when the Entity itself is destroyed. A throw there is reported the same way as a throwing `onDestroy(callback)`, and does not stop the leaving Shadow Object's own teardown.
 
 - **Signature:** `onDestroy(fn: () => void): void`
 

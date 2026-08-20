@@ -300,6 +300,21 @@ describe('Entity', () => {
 
       kernel.destroy();
     });
+
+    it('leaves no context behind when it is destroyed', () => {
+      const kernel = makeKernel();
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'entity');
+      const entity = kernel.getEntity(uuid);
+
+      entity.useContext('theme');
+      expect(entity.hasContext('theme')).toBe(true);
+
+      kernel.destroyEntity(uuid);
+
+      expect(entity.hasContext('theme')).toBe(false);
+    });
   });
 
   describe('truthy property cache', () => {

@@ -1166,6 +1166,53 @@ describe('Kernel', () => {
 
           kernel.destroy();
         });
+
+        it('hands the context over even when the leaving provider throws in its onDestroy callback', async () => {
+          const registry = new Registry();
+          const kernel = new Kernel(registry);
+
+          class BaseTheme {
+            constructor({provideContext}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'dark');
+            }
+          }
+
+          class OverlayTheme {
+            constructor({provideContext, onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
+              provideContext('theme', 'stale');
+              registerDestroy(() => {
+                throw new Error('this destroy callback fails');
+              });
+            }
+          }
+
+          shadowObjects.define('themeBoth', BaseTheme, registry);
+          shadowObjects.define('themeBoth', OverlayTheme, registry);
+          shadowObjects.define('themeBaseOnly', BaseTheme, registry);
+
+          const parentUuid = generateUUID();
+          const childUuid = generateUUID();
+
+          kernel.createEntity(parentUuid, 'themeBoth');
+          kernel.createEntity(childUuid, 'themeChild', parentUuid);
+
+          const childContext = kernel.getEntity(childUuid).useContext('theme');
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('stale');
+
+          const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+          expect(() => kernel.changeToken(parentUuid, 'themeBaseOnly')).not.toThrow();
+
+          await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+          expect(value(childContext)).toBe('dark');
+          expect(kernel.findShadowObjects(parentUuid)).toHaveLength(1);
+
+          consoleError.mockRestore();
+
+          kernel.destroy();
+        });
       });
 
       // `useContext()` links its own local reader to the entity-level context signal. The two
@@ -2997,6 +3044,258 @@ describe('Kernel', () => {
         kernel.destroyEntity(uuid);
 
         expect(handler).toHaveBeenCalledWith('last call');
+
+        kernel.destroy();
+      });
+    });
+
+    describe('a teardown callback that throws', () => {
+      it('runs the remaining onDestroy callbacks of the same shadow-object', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        const callOrder: number[] = [];
+
+        @ShadowObject({registry, token: 'throwingOnDestroyOrder'})
+        class ThrowingOnDestroyOrder {
+          constructor({onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
+            registerDestroy(() => {
+              callOrder.push(1);
+              throw new Error('first callback fails');
+            });
+            registerDestroy(() => callOrder.push(2));
+            registerDestroy(() => callOrder.push(3));
+          }
+        }
+        expect(ThrowingOnDestroyOrder).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'throwingOnDestroyOrder');
+
+        expect(() => kernel.destroyEntity(uuid)).not.toThrow();
+
+        expect(callOrder).toEqual([1, 2, 3]);
+
+        consoleError.mockRestore();
+      });
+
+      it('lets the other shadow-objects of the entity reach their teardown', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        const secondDestroyed = vi.fn();
+
+        class ThrowsOnDestroy {
+          constructor({onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
+            registerDestroy(() => {
+              throw new Error('first shadow-object fails to tear down');
+            });
+          }
+        }
+
+        class ReachesTeardown {
+          constructor({onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
+            registerDestroy(secondDestroyed);
+          }
+        }
+
+        shadowObjects.define('twoShadowObjectsTeardown', ThrowsOnDestroy, registry);
+        shadowObjects.define('twoShadowObjectsTeardown', ReachesTeardown, registry);
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'twoShadowObjectsTeardown');
+
+        expect(() => kernel.destroyEntity(uuid)).not.toThrow();
+
+        expect(secondDestroyed).toHaveBeenCalledTimes(1);
+
+        consoleError.mockRestore();
+      });
+
+      it('leaves the kernel without the entity', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        @ShadowObject({registry, token: 'throwsOnDestroyEntityGone'})
+        class ThrowsOnDestroyEntityGone {
+          constructor({onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
+            registerDestroy(() => {
+              throw new Error('teardown fails');
+            });
+          }
+        }
+        expect(ThrowsOnDestroyEntityGone).toBeDefined();
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'throwsOnDestroyEntityGone');
+
+        kernel.destroyEntity(uuid);
+
+        expect(kernel.hasEntity(uuid)).toBe(false);
+        expect(kernel.traverseLevelOrderBFS()).toEqual([]);
+
+        consoleError.mockRestore();
+      });
+
+      it('releases what the creation api handed out when a createResource cleanup throws', async () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        class BaseTheme {
+          constructor({provideContext}: ShadowObjectCreationAPI) {
+            provideContext('theme', 'dark');
+          }
+        }
+
+        class OverlayTheme {
+          constructor({provideContext, createResource}: ShadowObjectCreationAPI) {
+            provideContext('theme', 'stale');
+            createResource(
+              () => 'resource',
+              () => {
+                throw new Error('cleanup fails');
+              },
+            );
+          }
+        }
+
+        shadowObjects.define('themeBaseOnly', BaseTheme, registry);
+        shadowObjects.define('themeBoth', BaseTheme, registry);
+        shadowObjects.define('themeBoth', OverlayTheme, registry);
+
+        const parentUuid = generateUUID();
+        const childUuid = generateUUID();
+
+        // Starts without OverlayTheme, so the signal count taken below is a baseline neither its
+        // provider signal nor its resource signal are part of yet -- BaseTheme and the child stay
+        // in the set on both changes and contribute nothing to the delta this case measures.
+        kernel.createEntity(parentUuid, 'themeBaseOnly');
+        kernel.createEntity(childUuid, 'themeChild', parentUuid);
+
+        const childContext = kernel.getEntity(childUuid).useContext('theme');
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(childContext)).toBe('dark');
+
+        const baselineSignals = getSignalsCount();
+
+        kernel.changeToken(parentUuid, 'themeBoth');
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(childContext)).toBe('stale');
+        expect(getSignalsCount(), 'OverlayTheme allocated a provider signal and a resource signal').toBeGreaterThan(
+          baselineSignals,
+        );
+
+        expect(() => kernel.changeToken(parentUuid, 'themeBaseOnly')).not.toThrow();
+
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+        expect(value(childContext)).toBe('dark');
+        expect(getSignalsCount(), 'the resource signal is released even though its cleanup throws').toBe(baselineSignals);
+
+        consoleError.mockRestore();
+
+        kernel.destroy();
+      });
+
+      it('reports the failure through the console instead of throwing', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        const failure = new Error('teardown fails');
+
+        // Defined through `shadowObjects.define()` rather than `@ShadowObject`, so `construct.name`
+        // stays the class's own name -- the decorator wraps its target in a subclass of its own,
+        // `class __ShadowObject extends target { … }`, and the displayName below would read that
+        // wrapper's name instead.
+        class ThrowsOnDestroyReported {
+          constructor({onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
+            registerDestroy(() => {
+              throw failure;
+            });
+          }
+        }
+
+        shadowObjects.define('reportsThroughConsole', ThrowsOnDestroyReported, registry);
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'reportsThroughConsole');
+
+        kernel.destroyEntity(uuid);
+
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        const args = consoleError.mock.calls[0];
+        expect(args).toContain('ThrowsOnDestroyReported');
+        expect(args).toContain(failure);
+
+        consoleError.mockRestore();
+      });
+
+      it('lets the token-change teardown of a shadow-object finish when a listener on the shadow-object itself throws', () => {
+        const registry = new Registry();
+        const kernel = new Kernel(registry);
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        let targetInstance: object | undefined;
+
+        const targetHeardPing = vi.fn();
+
+        // The instance is captured through its own constructor, not returned by `shadowObjects.define()`
+        // -- the creation API only ever hands the shadow-object its own capabilities, never a way to
+        // reach another one, so a real caller of `on(otherShadowObject, onDestroy, …)` needs a
+        // reference of its own to give it, the same way this fixture does.
+        // `ping()` makes the entity subscription observable: the kernel adds every shadow-object to
+        // the entity as an object listener, so an event of that name reaches the method as long as
+        // the subscription stands.
+        class Target {
+          constructor() {
+            targetInstance = this;
+          }
+
+          ping() {
+            targetHeardPing();
+          }
+        }
+
+        class Listener {
+          constructor({on: subscribe}: ShadowObjectCreationAPI) {
+            subscribe(targetInstance!, onDestroy, () => {
+              throw new Error('listener on the shadow-object fails');
+            });
+          }
+        }
+
+        shadowObjects.define('listenerBoth', Target, registry);
+        shadowObjects.define('listenerBoth', Listener, registry);
+        shadowObjects.define('listenerOnly', Listener, registry);
+
+        const uuid = generateUUID();
+        kernel.createEntity(uuid, 'listenerBoth');
+
+        expect(kernel.findShadowObjects(uuid)).toHaveLength(2);
+
+        const entity = kernel.getEntity(uuid);
+
+        emit(entity, 'ping');
+        expect(targetHeardPing).toHaveBeenCalledTimes(1);
+
+        // Target leaves the set, Listener stays -- destroying Target reaches the listener Listener
+        // put directly on Target's own `onDestroy` notification, which is what throws here.
+        expect(() => kernel.changeToken(uuid, 'listenerOnly')).not.toThrow();
+
+        expect(kernel.findShadowObjects(uuid)).toHaveLength(1);
+
+        // The second half of the same teardown: Target is off the entity as well, so an event the
+        // entity receives after the token change no longer reaches it.
+        emit(entity, 'ping');
+        expect(targetHeardPing).toHaveBeenCalledTimes(1);
+
+        consoleError.mockRestore();
 
         kernel.destroy();
       });

@@ -569,11 +569,23 @@ export class Kernel {
       (shadowObject as OnDestroy)[onDestroy](entity);
     }
 
-    emit(shadowObject, onDestroy, entity);
+    const scope = this.#shadowObjectScopes.get(shadowObject);
+
+    // A listener a Shadow Object put directly on this one's own `onDestroy` notification -- through
+    // `on(otherShadowObject, onDestroy, …)` -- runs here, and it can throw. The report goes to the
+    // logger instead of reaching the caller, the same way `tearDown()` reports a throwing callback of
+    // its own, and under the same name: the one the scope carries, not the one the instance would
+    // give -- see `ShadowObjectCreationScope.displayName` for where the two part ways. The teardown
+    // that follows must still reach `tearDown()` and `off()` below.
+    try {
+      emit(shadowObject, onDestroy, entity);
+    } catch (error) {
+      this.logger.error('shadow-object onDestroy notification failed:', scope?.displayName, error);
+    }
 
     // The teardown runs after the destroy notifications, so a shadow-object that reacts to its own
     // end still sees the signals, contexts and subscriptions the creation API gave it.
-    this.#shadowObjectScopes.get(shadowObject)?.tearDown();
+    scope?.tearDown();
 
     off(entity, shadowObject);
   }
