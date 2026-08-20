@@ -274,8 +274,10 @@ das ganze Rezept, aus dem sie sich wieder aufbauen lässt.
 
 ### 4.1 Inventar
 
-**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 20 Dateien, 624 Fälle):
+**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 20 Dateien, 632 Fälle):
 `Kernel.spec.ts` (4008 LoC), `Entity.spec.ts`, `Registry.spec.ts`, `ShadowObject.spec.ts`, `ShadowObjectCreationScope.spec.ts`, `SignalsPath.spec.ts`, `ShadowEnv.spec.ts`, `LocalShadowObjectEnv.spec.ts`, `RemoteWorkerEnv.spec.ts`, `MessageRouter.spec.ts`, `WorkerRuntime.spec.ts`, `ViewComponent.spec.ts`, `ComponentContext.spec.ts`, `ComponentChanges.spec.ts`, `ComponentMemory.spec.ts`, `props-utils.spec.ts`, `FrameLoop.spec.ts`, `ConsoleLogger.spec.ts`, `ConsoleLogger.storage.spec.ts`, `elements/propValueConverters.spec.ts`.
+
+**vitest** (`packages/shae-offscreen-canvas/src/**/*.spec.js`, 5 Dateien, 101 Fälle): `CanvasRenderingContext.spec.js`, `ShaeOffscreenCanvasElement.spec.js`, `ThreeMultiViewRenderer.spec.js`, `ThreeRenderView.spec.js`, `ShaeOffscreenCanvas.spec.js`.
 
 **`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 24 Dateien, 345 Fälle — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `ent-element-attributes`, `ent-element-context-clear`, `ent-element-events`, `ent-element-namespace`, `ent-element-shadow-root-host`, `ent-element-slot-move`, `ent-element-teardown`, `ent-element-upgrade`, `forward-custom-events`, `local-env-entities`, `prop-element-host`, `prop-element-lifecycle`, `prop-element-registration-order`, `prop-element-types`, `remove-and-append-e`, `send-events`, `view-component-context-switch`, `worker-element-attributes`, `worker-element-teardown`, `emit-helper/emit-helper`.
 
@@ -283,7 +285,7 @@ das ganze Rezept, aus dem sie sich wieder aufbauen lässt.
 
 ### 4.2 Testabdeckung
 
-`vitest --coverage` misst die beiden Node-Suiten (v8-Provider, kein Schwellenwert): 69,21 % Statements im Kernpaket (`packages/shadow-objects/coverage/index.html`), 16,26 % in `shae-offscreen-canvas` (`packages/shae-offscreen-canvas/coverage/index.html`). `shadow-objects-testing` (Browser-Modus, eigenes vitest-Projekt) und `shadow-objects-e2e` (Playwright) laufen außerhalb dieser Zahl — die Kernpaket-Zahl untertreibt entsprechend, was der Workspace tatsächlich prüft. Die folgende Tabelle bleibt der gebietsweise Blick, den eine reine Prozentzahl nicht liefert — welche Pfade geprüft sind, nicht wie viele Zeilen.
+`vitest --coverage` misst die beiden Node-Suiten (v8-Provider, kein Schwellenwert): 69,88 % Statements im Kernpaket (`packages/shadow-objects/coverage/index.html`), 79,67 % in `shae-offscreen-canvas` (`packages/shae-offscreen-canvas/coverage/index.html`). Gemessen 2026-08-20, `pnpm test:ci --force`, v8-Provider, vitest 4.1.10. `shadow-objects-testing` (Browser-Modus, eigenes vitest-Projekt) und `shadow-objects-e2e` (Playwright) laufen außerhalb dieser Zahl — die Kernpaket-Zahl untertreibt entsprechend, was der Workspace tatsächlich prüft. Die folgende Tabelle bleibt der gebietsweise Blick, den eine reine Prozentzahl nicht liefert — welche Pfade geprüft sind, nicht wie viele Zeilen.
 
 | Bereich | Status |
 |---|---|
@@ -306,6 +308,7 @@ das ganze Rezept, aus dem sie sich wieder aufbauen lässt.
 | Custom Elements — `<shae-ent>`, `ShaeElement`, `<shae-worker>` | ✅ **gründlich** — Attribut-, Ereignis-, Namespace- und Upgrade-Pfade in `ent-element-attributes`, `ent-element-events`, `ent-element-namespace`, `ent-element-upgrade`, `ent-element-teardown`, `ent-element-shadow-root-host`, `worker-element-attributes` und `worker-element-teardown`; die Entsprechungen über echte Worker in den e2e-Seiten `upgrade-timing`, `multi-env` und `dynamic-dom` |
 | Utils | 🟡 `props-utils.spec.ts`, `ConsoleLogger.spec.ts`, `ConsoleLogger.storage.spec.ts` (die fünf Formen, in denen ein Host `localStorage` anbietet) und `FrameLoop.spec.ts` (20 Fälle über Armierung und Leerlauf, Frame-Nutzlast, Bildratengrenze und geteilte Schleife) — `waitForMessageOfType`, `cloneChangeTrail`, `attr-utils`, `array-utils`, `generateUUID`, `toNamespace`, `toUrlString`, `importModule` haben keine eigenen Tests. `array-utils` wird indirekt über `ComponentContext.spec.ts` und `ComponentChanges.spec.ts` mitgeprüft, `waitForMessageOfType` über `RemoteWorkerEnv.spec.ts`, `attr-utils` über `worker-element-attributes.test.js` und die e2e-Seite `shae-worker` |
 | Worker-Init-Failure / Terminate / Message-Race | 🟡 **partiell** — ein Ausfall während des Load-Handshakes, `terminate()` beim Ausfall, verspätete Nachrichten nach `destroy()` und der doppelte Ausfall sind abgedeckt; ein `Worker`-Konstruktor, der an einer kaputten URL selbst wirft, ist es nicht |
+| `@spearwolf/shae-offscreen-canvas` — Custom Element, Shadow Objects, Three-Renderer | ✅ **gründlich** über das Custom Element (Namensraum, Canvas-Transfer samt Wiederherstellung nach `contextlost`, `fps`/`pixel-zoom`-Attribute, Frame-Schleife) und die Shadow Objects bis auf zwei offene Zeilen in `ShaeOffscreenCanvas.js` und zwei in `ThreeMultiViewRenderer.js`; `ThreeMultiViewRenderer` und `ThreeRenderView` laufen mit einem Stub statt des echten WebGL-Renderers — Größenlogik, Ansichtsverwaltung und Kontextkette sind damit geprüft, gezeichnet wird nichts. `src/shadow-objects/sample/` (drei Dateien) und drei der vier Module in `src/` bleiben ungeprüft — `bundle.js`, `shae-offscreen-canvas.js` und `worker-sample.js` bei 0 %, `shadow-objects.js` läuft über die Shadow-Objects-Specs mit |
 
 ### 4.3 Qualität
 
@@ -356,7 +359,7 @@ Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements
 ### 5.2 Dependency-Hygiene
 
 - Versionen leben jetzt zentral in `pnpm-workspace.yaml#catalog:` — keine Drift mehr möglich. ✅
-- Tooling auf modernen Major-Versionen: vitest 4, `@vitest/coverage-v8` (version-exakt zu vitest gepinnt), biome 2.5, turbo 2.10, esbuild 0.28, Playwright 1.62, TypeScript 7, happy-dom 20, pnpm 11. ✅
+- Tooling auf modernen Major-Versionen: vitest 4 (die Gruppe `vitest`, `@vitest/browser`, `@vitest/browser-playwright`, `@vitest/coverage-v8` version-exakt gepinnt und gemeinsam gehoben), biome 2.5, turbo 2.10, esbuild 0.28, Playwright 1.62, TypeScript 7, happy-dom 20, pnpm 11. ✅
 - Zwei bewusste Holdbacks, jeweils mit Begründung im Kommentar in `pnpm-workspace.yaml`: `vite` (Override auf 7.x, weil Oxc keine nativen Decorators absenkt), `turbo` (2.10.9 wegen `minimumReleaseAge`).
 - signalize 1.0.0-beta.0 + eventize 6.0.0 sind drin; der alte 5.x-Holdback ist erledigt, weil signalize jetzt auf `^6.0.0` peert. Beide Pakete werden nur gemeinsam gehoben, und `pnpm why -r @spearwolf/eventize` muss danach genau eine Version melden. ✅
 - **Offen:** signalize von `1.0.0-beta.0` auf das finale `1.0.0` ziehen, sobald es da ist — dann auch den `minimumReleaseAgeExclude`-Eintrag mitziehen oder streichen.
@@ -367,9 +370,8 @@ Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements
 
 - `strict: true` **mit `strictNullChecks: true`** in der Wurzel-`tsconfig.json`. ✅
 - Biome-Root deaktiviert (analog zur alten ESLint-Config) `noExplicitAny`, `noTsIgnore`, `noNonNullAssertion`, `noImplicitAnyLet`. Bewusste Lockerung; `noNonNullAssertion` wiegt am schwersten, weil ein `!` die eingeschaltete Null-Prüfung wieder aushebelt.
-- `any`-Hotspots (heuristisch): `ConsoleLogger.ts` (~6), `Kernel.ts` (~11), `ShadowObject.ts` (~4).
-- Biome meldet aktuell ~30 Warnings im Source (z. B. `useIterableCallbackReturn`, `noShadowRestrictedNames`, `useNodejsImportProtocol`). Schrittweise abarbeiten oder bewusst weiter unterdrücken.
-- `pnpm lint` endet mit rc=0 und zwei Infos zu `biome.json` selbst: `biome.json:2` hält `$schema` auf 2.4.14, installiert ist Biome 2.5.9, und `biome.json:57` benutzt das deprecated `linter.rules.recommended` (Nachfolger: `preset`). Beides hebt ein `biome migrate` — das dabei aber den wirksamen Regelsatz anfassen kann und deshalb einen eigenen, geprüften Lauf braucht, keinen Beifang.
+- `any`-Hotspots (gezählt per `grep -nE '\bany\b'`, nur Typangaben, Fließtext-Treffer ausgenommen; Gemessen 2026-08-20): `ConsoleLogger.ts` (6), `Kernel.ts` (2), `ShadowObject.ts` (2).
+- `pnpm lint` endet mit rc=0 und einem Info zu `biome.json` selbst (Gemessen 2026-08-20, `pnpm lint`, 206 geprüfte Dateien, 0 Warnungen): `biome.json:57` benutzt das deprecated `linter.rules.recommended` (Nachfolger: `preset`) — zu heben mit `biome migrate`, das dabei aber den wirksamen Regelsatz anfassen kann und deshalb einen eigenen, geprüften Lauf braucht, keinen Beifang.
 
 ### 5.4 Sonstige Stolperfallen auf frischer Maschine
 
@@ -427,7 +429,7 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 14. **API-Aufräumen:** `appendRoute` aufteilen, `onDestroy`-Tripel-Bedeutung dokumentieren oder trennen, `IShadowObjectEnvProxy.isDestroyed`/`error`-Surface ergänzen.
 15. **Performance-Knopf:** optionales RAF-Coalescing bei hoher Update-Frequenz.
 16. ~~**`sideEffects`-Listen konsolidieren.**~~ ✅ Erledigt — `package.json` verliert seine acht toten `build/src/...`-Einträge, `package.override.json` trug nie welche.
-17. **Biome-Warnings abarbeiten** (~30 Stück): `useIterableCallbackReturn`, `noShadowRestrictedNames` etc. — entweder fixen oder Regel bewusst abschalten.
+17. **`biome.json` auf `preset` migrieren** — `linter.rules.recommended` (`:57`) ist deprecated; ein geprüfter `biome migrate`-Lauf, weil der Befehl dabei den wirksamen Regelsatz anfassen kann.
 18. **`Entity` ist aus keinem Entry exportiert**, obwohl die vier Lebenszyklus-Interfaces ihn in ihrer Signatur verlangen (`in-the-dark/events.d.ts`). Weder `index.d.ts` noch `shadow-objects.d.ts` führen `in-the-dark/Entity.js`, ein Konsument kann den geforderten Typ also nicht benennen. Der Ausweg ist heute `EntityApi` plus Methoden-Bivarianz — entweder wird er zum dokumentierten Weg, oder `Entity` wird exportiert.
 19. **`EntityGraphNode` ist nicht exportiert**, obwohl `kernel.getEntityGraph()` ihn zurückgibt: in `Kernel.d.ts` steht das `interface` ohne `export`, die Datei endet auf `export {}`. Wer den Rückgabewert typisieren will, kann den Typ nicht benennen.
 20. **`Registry.hasRoute()` sieht Property-Routen nicht.** `Registry.ts:138-140` liest nur `#routes`, während `clearRoute` (`:71-78`) beide Karten bedient. Gemessen: nach `appendRoute('@debug', ['debug-overlay'])` zieht die Route `debug-overlay` in die Auflösung, `hasRoute('@debug')` gibt trotzdem `false`. Entweder liest `hasRoute` beide Karten, oder es gibt eine zweite Abfrage für Property-Routen.

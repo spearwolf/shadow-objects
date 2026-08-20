@@ -40,19 +40,21 @@ catalog:
   esbuild-plugin-inline-worker: ^0.1.1
 
   # --- test ---
-  vitest: ^4.1.10
-  '@vitest/browser': ^4.1.10
-  '@vitest/browser-playwright': ^4.1.10
-  # Version-exact on purpose, and the version has to equal the resolved
-  # `vitest` above. vitest declares the provider as an optional peer with an
-  # exact range (`"@vitest/coverage-v8": "4.1.10"`) and loads it with a bare
-  # `import('@vitest/coverage-v8')` from inside its own dist. A caret range
-  # here would let pnpm resolve 4.1.11 against the locked vitest 4.1.10;
-  # pnpm still links a peer past its declared range, it only reports the
-  # range as unmet, so the import would still resolve — just to a
-  # coverage-v8 build one patch ahead of the vitest internals it runs
-  # against. Pinning exact keeps the two in lockstep. Bump this with
-  # `vitest`.
+  # The four vitest entries move as one version and are exact on purpose.
+  # Each satellite declares `peerDependencies: {vitest: "4.1.10"}`. vitest
+  # names `@vitest/browser-playwright` and `@vitest/coverage-v8` back as
+  # optional peers at that same exact version, but not `@vitest/browser` —
+  # that one is tied in from the side instead: `@vitest/browser-playwright`
+  # depends on it hard as `"@vitest/browser": "4.1.10"`, and
+  # `@vitest/coverage-v8` names it as an optional peer at the same exact
+  # version. With a caret range, a fresh resolution splits the group over
+  # two patch releases: pnpm links a peer that is out of range and only
+  # reports it as unmet, so vitest's bare `import('@vitest/coverage-v8')`
+  # still resolves — one patch away from the internals it runs against, with
+  # `@vitest/utils` in the tree twice. Bump all four together.
+  vitest: 4.1.10
+  '@vitest/browser': 4.1.10
+  '@vitest/browser-playwright': 4.1.10
   '@vitest/coverage-v8': 4.1.10
   happy-dom: ^20.11.2
   sinon: ^22.1.0
