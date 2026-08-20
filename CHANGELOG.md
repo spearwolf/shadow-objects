@@ -4,6 +4,10 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-20
+
+- **`.github/workflows/ci.yml`:** the `on:` block now triggers on both `push` and `pull_request`, and no longer skips Markdown files. Documentation is part of the API contract (AGENTS.md §4), so it must be checked. A pull request from a branch of this repository runs the workflow twice — once on the branch head and once on the merge commit — because the concurrency group keys off `github.ref` and both commits have different refs.
+
 ## 2026-08-19 — the tools see what they are meant to see
 
 - **`packages/shadow-objects-e2e/tsconfig.json`:** `include` gains `playwright.config.ts`,

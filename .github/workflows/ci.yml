@@ -1,9 +1,14 @@
 name: Continuous Integration
 
+# Pull requests are checked before they land. Without pull_request, forks cannot
+# be checked before merge, since pushes from forks do not trigger workflows here.
+# Documentation is part of the API contract (AGENTS.md §4), so it cannot be
+# skipped. Trade-off: a PR from a branch of this repository runs the workflow
+# twice, once on the branch head and once on the merge commit, because concurrency
+# keys off github.ref and both commits have different refs.
 on:
   push:
-    paths-ignore:
-      - '**.md'
+  pull_request:
 
 permissions:
   contents: read
