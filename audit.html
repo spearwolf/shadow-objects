@@ -247,14 +247,15 @@
             </div>
           </div>
           <div class="scorebox">
-            <div class="score-main">74</div>
-            <div class="score-sub">Code &amp; Laufzeit 85 · Projekt-Harness 89</div>
+            <div class="score-main">73,5</div>
+            <div class="score-sub">Code &amp; Laufzeit 85,5 · Projekt-Harness 88</div>
             <div class="trend">
-              <span class="down">▼ −7</span> gegenüber 81 vom 19. August 2026 · 1 behoben, 1 verbessert, 7 neu
+              <span class="down">▼ −0,5</span> gegenüber 74 vom 19. August 2026 · 2 behoben, 17 neu
             </div>
             <div class="score-scale">
-              Skala 0–100. Der Wert deckt erstmals wieder das ganze Monorepo ab und enthält den bisher
-              getrennt geführten View-Layer-Bestand.
+              Skala 0–100. Der Stand vom 20. August 2026 stammt aus einem Remediation-Lauf, nicht aus einem
+              neuen Audit: der Code wurde seither nicht erneut gelesen, nachgetragen sind allein die beiden
+              geschlossenen Befunde und die Beifänge des Laufs.
             </div>
           </div>
         </div>
@@ -409,17 +410,15 @@
         <h2>Executive Summary</h2>
         <div class="domain-grid">
           <div class="domain-card">
-            <div class="domain-head"><h3>Code &amp; Laufzeit</h3><div class="domain-score">85,0</div></div>
+            <div class="domain-head"><h3>Code &amp; Laufzeit</h3><div class="domain-score">85,5</div></div>
             <div class="prose">
               <p>
-                Ein einzelner Befund trägt hier das Gewicht. <code>ShadowEnv.#syncNow()</code> fängt einen
-                abgelehnten <code>applyChangeTrail()</code> ab, meldet ihn über einen Logger, der außerhalb von
-                localhost schweigt, und lässt <code>syncWait()</code> mit dem Change Trail auflösen, als wäre er
-                angekommen. Zu diesem Zeitpunkt sind die Änderungen bereits in den geschriebenen Zustand der
-                <code>ComponentChanges</code> gefaltet — kein späterer Trail schickt sie noch einmal. Ein
-                abgelaufener <code>changeTrailTimeout</code> oder ein Kernel-Fehler, den der Worker als
-                <code>AppliedChangeTrail.error</code> zurückmeldet, lässt den Proxy dabei am Leben: View und
-                Shadow Environment laufen auseinander, und nichts sagt es.
+                Der Bereich hat keinen <em>high</em>-Befund mehr. Das Gewicht tragen zwei mittlere: die Zusage von
+                <code>clearOnDestroy</code>, die auf dem Weg „Shadow Object verlässt die Konstruktorenmenge" keinen
+                Konsumenten erreicht, obwohl die Dokumentation sie jedem verspricht, und
+                <code>createEntity()</code>, das die Entity registriert, bevor ihre Shadow Objects stehen — wirft
+                einer der Konstruktoren, bleibt sie halbfertig im Worker-Kernel zurück, dem View unbekannt und von
+                keinem Aufräumweg erreicht.
               </p>
               <p>
                 Darunter wird es ruhig. Fünf Befunde hängen an einer einzigen ungeklärten Frage — ob zwei
@@ -433,18 +432,18 @@
             <div class="cats" id="cats-code"></div>
           </div>
           <div class="domain-card">
-            <div class="domain-head"><h3>Projekt-Harness</h3><div class="domain-score">89,0</div></div>
+            <div class="domain-head"><h3>Projekt-Harness</h3><div class="domain-score">88,0</div></div>
             <div class="prose">
               <p>
-                Die Werkzeugkette ist in einem Zustand, den man selten sieht: Lint grün, Typecheck grün, 908 Fälle
-                in <code>test:ci</code> und 404 in der E2E-Suite über zwei Browser, alle grün, und jede
+                Die Werkzeugkette ist in einem Zustand, den man selten sieht: Lint grün, Typecheck grün, 952 Fälle
+                in <code>test:ci</code> und 426 in der E2E-Suite über zwei Browser, alle grün, und jede
                 zurückgehaltene Dependency trägt ihre Begründung als Kommentar neben sich. Was fehlt, fehlt
                 planvoll an denselben vier Stellen wie beim letzten Lauf: es wird nirgends Coverage gemessen, das
                 zweite publizierte Paket hat eine einzige Spec-Datei, die CI läuft nur auf <code>push</code> und
                 nicht auf Pull Requests, und <code>ConsoleLogger.ts</code> unterdrückt vierzehnmal den Typprüfer.
               </p>
               <p>
-                Neu dazugekommen ist, was beim Blick auf das zweite Paket auffällt:
+                Dazu, was beim Blick auf das zweite Paket auffällt:
                 <code>@spearwolf/shae-offscreen-canvas</code> wird als reines JavaScript ohne
                 <code>types</code>-Eintrag publiziert und hat kein <code>typecheck</code>-Skript — zwei der vier
                 Packages sieht der Typprüfer nie. Dazu vier tote <code>.eslintrc.json</code> aus der Zeit vor
@@ -467,36 +466,39 @@
               <text x="44" y="174" text-anchor="end" font-size="10" fill="#6b6560">0</text>
 
               <polyline
-                points="72,72.5 172,92.75 272,137.75 372,111.5 472,48.5 572,59"
+                points="72,72.5 155.33,92.75 238.67,137.75 322,111.5 405.33,48.5 488.67,59 572,59.75"
                 fill="none" stroke="#4338ca" stroke-width="2" />
 
               <circle cx="72" cy="72.5" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
-              <circle cx="172" cy="92.75" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
-              <circle cx="272" cy="137.75" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
-              <circle cx="372" cy="111.5" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
-              <circle cx="472" cy="48.5" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
-              <circle cx="572" cy="59" r="5" fill="#4338ca" />
+              <circle cx="155.33" cy="92.75" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
+              <circle cx="238.67" cy="137.75" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
+              <circle cx="322" cy="111.5" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
+              <circle cx="405.33" cy="48.5" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
+              <circle cx="488.67" cy="59" r="3.5" fill="#fafaf9" stroke="#4338ca" stroke-width="2" />
+              <circle cx="572" cy="59.75" r="5" fill="#4338ca" />
 
               <text x="72" y="63" text-anchor="middle" font-size="10" fill="#57534e">65</text>
-              <text x="172" y="83" text-anchor="middle" font-size="10" fill="#57534e">51,5</text>
-              <text x="272" y="128" text-anchor="middle" font-size="10" fill="#57534e">21,5</text>
-              <text x="372" y="102" text-anchor="middle" font-size="10" fill="#57534e">39</text>
-              <text x="472" y="39" text-anchor="middle" font-size="10" fill="#57534e">81</text>
-              <text x="572" y="46" text-anchor="middle" font-size="11" font-weight="600" fill="#1c1917">74</text>
+              <text x="155.33" y="83" text-anchor="middle" font-size="10" fill="#57534e">51,5</text>
+              <text x="238.67" y="128" text-anchor="middle" font-size="10" fill="#57534e">21,5</text>
+              <text x="322" y="102" text-anchor="middle" font-size="10" fill="#57534e">39</text>
+              <text x="405.33" y="39" text-anchor="middle" font-size="10" fill="#57534e">81</text>
+              <text x="488.67" y="49.5" text-anchor="middle" font-size="10" fill="#57534e">74</text>
+              <text x="572" y="47" text-anchor="middle" font-size="11" font-weight="600" fill="#1c1917">73,5</text>
 
               <text x="72" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">14.05.</text>
-              <text x="172" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">14.05.</text>
-              <text x="272" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">13.08.</text>
-              <text x="372" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">14.08.</text>
-              <text x="472" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">19.08.</text>
-              <text x="572" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">19.08.</text>
+              <text x="155.33" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">14.05.</text>
+              <text x="238.67" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">13.08.</text>
+              <text x="322" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">14.08.</text>
+              <text x="405.33" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">19.08.</text>
+              <text x="488.67" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">19.08.</text>
+              <text x="572" y="188" text-anchor="middle" font-size="9.5" fill="#6b6560">20.08.</text>
               <text x="336" y="204" text-anchor="middle" font-size="9.5" fill="#6b6560">Audit- und Remediation-Stände, gleichabständig aufgetragen</text>
             </svg>
           </div>
           <figcaption>
-            Verlauf der Health-Scores seit dem 14. Mai 2026. Die vierte und die fünfte Marke stammen aus
-            Remediation-Läufen, die sechste aus diesem Audit — der einzige Punkt, an dem der Code seit dem 19.
-            August erneut gelesen wurde.
+            Verlauf der Health-Scores seit dem 14. Mai 2026. Die vierte, die fünfte und die siebte Marke stammen
+            aus Remediation-Läufen, die sechste aus dem Audit vom 19. August 2026 — der letzte Punkt, an dem der
+            Code vollständig gelesen wurde.
           </figcaption>
         </figure>
       </section>
@@ -549,16 +551,6 @@
             Stelle einzeln, und nicht überall gleich.
           </p>
         </div>
-        <div class="q-item">
-          <h3>Wie soll ein fehlgeschlagener Change Trail nach außen sichtbar werden?</h3>
-          <p>
-            <code>BUG-001</code> beschreibt, dass er es heute gar nicht wird. Die Behebung ist keine reine
-            Fehlerkorrektur, sondern eine Festlegung: soll <code>syncWait()</code> ablehnen — dann ist es ein
-            Breaking Change für jeden, der es ohne <code>catch</code> aufruft —, oder soll ein eigenes Ereignis
-            neben <code>AfterSync</code> treten, das <code>ShaeWorkerElement</code> als DOM-Event weiterreicht?
-            Die zweite Variante lässt bestehenden Code unberührt und verlangt von ihm, hinzuhören.
-          </p>
-        </div>
       </section>
 
       <section>
@@ -573,15 +565,6 @@
               Der uuid-Cluster ist der einzige Ort im Backlog, an dem eine Zeile Wächtercode fünf Einträge
               erledigt. Wer aufräumen will und wenig Zeit hat, fängt dort an, nicht bei den vier
               Konsistenz-Einträgen einzeln.
-            </p>
-          </div>
-          <div class="opt-item">
-            <h3>Die Creation API aus dem Kernel herausziehen</h3>
-            <p>
-              <code>constructShadowObject()</code> baut in einer Closure sechs Kontext-Maps, zwei
-              Property-Maps, elf API-Methoden und den Teardown darüber. Als eigene Klasse mit den Maps als
-              Feldern wäre jede Gruppe für sich testbar, und der Kernel behielte die Aufgabe, die sein Name
-              nennt.
             </p>
           </div>
           <div class="opt-item">
@@ -688,17 +671,60 @@
               Menge; <code>85 / 89</code> summiert sich nicht zu 74 und soll es nicht.
             </p>
             <table class="calc">
-              <tr><td>Gesamt</td><td>1 × −5, 6 × −2, 18 × −0,5, 13 × 0</td><td>= 74,0</td></tr>
-              <tr><td>Code &amp; Laufzeit</td><td>1 × −5, 2 × −2, 12 × −0,5, 8 × 0</td><td>= 85,0</td></tr>
-              <tr><td>Projekt-Harness</td><td>4 × −2, 6 × −0,5, 5 × 0</td><td>= 89,0</td></tr>
+              <tr><td>Gesamt</td><td>7 × −2, 25 × −0,5, 21 × 0</td><td>= 73,5</td></tr>
+              <tr><td>Code &amp; Laufzeit</td><td>3 × −2, 17 × −0,5, 10 × 0</td><td>= 85,5</td></tr>
+              <tr><td>Projekt-Harness</td><td>4 × −2, 8 × −0,5, 11 × 0</td><td>= 88,0</td></tr>
             </table>
             <p style="margin-top: 12px">
-              Zum Delta von −7: es stammt nicht aus verfallendem Code. Rund vier Punkte kommen daher, dass der
+              Zum Delta von −7 des Audits vom 19. August: es stammt nicht aus verfallendem Code. Rund vier Punkte kommen daher, dass der
               bisher getrennt geführte View-Layer-Bestand (neun Einträge, alle <em>low</em> oder <em>info</em>)
               jetzt in derselben Rechnung steht, und fünf aus dem neuen <em>high</em>-Befund, der in beiden
               Vorläufern niemandem aufgefallen ist. Dagegen steht, was seither behoben und verbessert wurde.
               Ein Folgelauf vergleicht seinen Prüfumfang gegen den Abschnitt oben und seine Zahlen gegen
-              74 / 85 / 89.
+              73,5 / 85,5 / 88 — den Stand nach dem Remediation-Lauf, der im nächsten Abschnitt steht.
+            </p>
+
+            <h3>Remediation-Lauf vom 20. August 2026</h3>
+            <p>
+              Nach diesem Audit lief ein Remediation-Lauf über zwei namentlich beauftragte Befunde. Er steht in
+              sechs Commits auf <code>main</code>: <code>fe11219</code>, <code>510443e</code>,
+              <code>c5538e8</code>, <code>6b2aeca</code>, <code>6502183</code> und <code>3a705dd</code>.
+              <strong>Der Code ist seit dem Audit vom 19. August 2026 nicht erneut geprüft worden</strong> —
+              was hier steht, ist gebucht, nicht neu bewertet. Die inhaltliche Prüfung bleibt dem nächsten
+              Audit-Lauf.
+            </p>
+            <p>
+              <strong>Geschlossen</strong> sind beide beauftragten Befunde, jeder mit einem Urteil eines
+              unabhängigen Reviewers an der Fundstelle und dem Commit seines Pakets. Der verschluckte
+              Change-Trail-Fehler ist mit <code>fe11219</code> behoben, an der Fundstelle bestätigt und gegen
+              das gebaute <code>dist</code> nachgestellt; ein Zyklus, dessen Change Trail abgelehnt wurde,
+              endet seither in einem eigenen Ereignis, das <code>&lt;shae-worker&gt;</code> als DOM-Event
+              spiegelt, und <code>syncWait()</code> lehnt mit dem Grund des Proxys ab. Die 406-Zeilen-Closure
+              der Creation API ist mit <code>c5538e8</code> in eine eigene modulinterne Einheit gezogen —
+              <code>Kernel.ts</code> von 952 auf 564 Zeilen, die Methode von 406 auf 37 —, abgesichert durch
+              das Netz aus <code>510443e</code> und <code>6b2aeca</code> und nachgezogen von
+              <code>6502183</code>; der Reviewer hat den normalisierten Diff Anweisung für Anweisung
+              verglichen. Ohne Beleg offen geblieben ist keiner der beiden. Die übrigen Befunde waren nie im
+              Auftrag und stehen unverändert.
+            </p>
+            <p>
+              <strong>Neu</strong> sind 17 Einträge: die Nebenbefunde und kleinen Review-Befunde der sechs
+              Pakete, soweit sie eine Fundstelle mit Datei und Zeile tragen und der Lauf sie ausdrücklich
+              offen gelassen hat. Nicht aufgenommen wurde, was keine Zeilenangabe hat — dass
+              <code>ShadowEnv.spec.ts</code> seine Umgebung am Ende des Testkörpers statt in einem
+              <code>afterEach</code> abbaut —, was der Lauf selbst erledigt hat, und was in einem bereits
+              stehenden Eintrag aufgeht: die Laufnummern früherer Audits in Kommentaren, Testtiteln und
+              Changelog-Zeilen gehören zu <code>CLEAN-002</code>. Die 36 übernommenen Einträge behalten die
+              Statusmarke, die ihnen das Audit gegeben hat — die Zählung im Datenmodell meint dagegen die 17
+              dieses Laufs. Zwei gemeldete Redundanzen sind ganz weggefallen: der Umbau hat ihre Fundstelle
+              aufgelöst beziehungsweise ihre Begründung als Kommentar nachgetragen.
+            </p>
+            <p>
+              <strong>Zahlen.</strong> Zwei geschlossene Befunde bringen +7 Punkte, die 17 neuen kosten −7,5:
+              der Score fällt von 74 auf 73,5. Die Verschiebung nach unten in der Schwere ist die eigentliche
+              Bewegung — der einzige <em>high</em>-Befund ist weg, dafür stehen zwei neue <em>medium</em>. Die
+              Suiten sind mitgewachsen: 952 Fälle in <code>test:ci</code>, 426 in der E2E-Suite über zwei
+              Browser.
             </p>
 
             <h3>Theme</h3>
@@ -708,8 +734,9 @@
       </section>
 
       <p class="footnote">
-        Erstellt am 19. August 2026 · vollständiges Monorepo-Audit, ersetzt <code>audit.html</code> und
-        <code>view-layer-audit.html</code> · Datenmodell eingebettet als <code>#audit-data</code>
+        Erstellt am 19. August 2026 als vollständiges Monorepo-Audit · Stand vom 20. August 2026 nach einem
+        Remediation-Lauf über sechs Commits, ohne erneute Prüfung des Codes · Datenmodell eingebettet als
+        <code>#audit-data</code>
       </p>
     </div>
 
@@ -720,32 +747,32 @@
     "packageVersion": "@spearwolf/shadow-objects 0.33.0 · @spearwolf/shae-offscreen-canvas 0.6.0",
     "scope": "full monorepo: 4 packages — src, build pipeline, tooling, CI, docs",
     "stack": ["TypeScript 7", "pnpm 11", "turborepo 2.10", "esbuild 0.28", "vitest 4", "Playwright 1.62", "Biome 2.5", "Web Components", "@spearwolf/signalize", "@spearwolf/eventize"],
-    "date": "2026-08-19",
+    "date": "2026-08-20",
     "previousDate": "2026-08-19",
-    "previousScore": 81,
-    "score": 74,
-    "scoreDelta": -7,
-    "resolvedCount": 1,
-    "improvedCount": 1,
-    "newCount": 7,
-    "unchangedCount": 25,
-    "carriedOverCount": 5,
+    "previousScore": 74,
+    "score": 73.5,
+    "scoreDelta": -0.5,
+    "resolvedCount": 2,
+    "improvedCount": 0,
+    "newCount": 17,
+    "unchangedCount": 36,
+    "carriedOverCount": 0,
     "theme": "light",
-    "bySeverity": {"critical": 0, "high": 1, "medium": 6, "low": 18, "info": 13},
+    "bySeverity": {"critical": 0, "high": 0, "medium": 7, "low": 25, "info": 21},
     "byCategory": {
-      "Bugs & Korrektheitsrisiken": 9,
-      "Konsistenz": 6,
-      "Testabdeckung & Teststrategie": 4,
-      "Developer Experience": 4,
+      "Bugs & Korrektheitsrisiken": 10,
+      "Konsistenz": 9,
+      "Testabdeckung & Teststrategie": 8,
+      "Developer Experience": 7,
+      "Async & Concurrency": 4,
       "Projektaufbau & Build": 3,
-      "Async & Concurrency": 2,
+      "Typsicherheit": 3,
       "Lesbarkeit & Clean Code": 2,
-      "Typsicherheit": 2,
       "Sicherheit": 2,
+      "Öffentliche API": 2,
       "Architektur & Struktur": 1,
-      "Öffentliche API": 1,
-      "Memory Leaks & Ressourcen": 1,
-      "Dependencies": 1
+      "Dependencies": 1,
+      "Memory Leaks & Ressourcen": 1
     },
     "scoreHistory": [
       {"date": "2026-05-14", "score": 65},
@@ -753,55 +780,43 @@
       {"date": "2026-08-13", "score": 21.5},
       {"date": "2026-08-14", "score": 39, "source": "remediation"},
       {"date": "2026-08-19", "score": 81, "source": "remediation"},
-      {"date": "2026-08-19", "score": 74, "source": "audit"}
+      {"date": "2026-08-19", "score": 74, "source": "audit"},
+      {"date": "2026-08-20", "score": 73.5, "source": "remediation"}
     ],
     "domains": {
       "code": {
         "label": "Code & Laufzeit",
-        "score": 85,
-        "bySeverity": {"critical": 0, "high": 1, "medium": 2, "low": 12, "info": 8},
+        "score": 85.5,
+        "bySeverity": {"critical": 0, "high": 0, "medium": 3, "low": 17, "info": 10},
         "byCategory": {
-          "Bugs & Korrektheitsrisiken": 9,
-          "Konsistenz": 6,
-          "Async & Concurrency": 2,
+          "Bugs & Korrektheitsrisiken": 10,
+          "Konsistenz": 9,
+          "Async & Concurrency": 4,
           "Lesbarkeit & Clean Code": 2,
+          "Öffentliche API": 2,
           "Architektur & Struktur": 1,
-          "Öffentliche API": 1,
-          "Sicherheit": 1,
-          "Memory Leaks & Ressourcen": 1
+          "Memory Leaks & Ressourcen": 1,
+          "Sicherheit": 1
         },
-        "executiveSummary": "Ein einzelner Befund trägt hier das Gewicht: ShadowEnv.#syncNow() fängt einen abgelehnten applyChangeTrail() ab, meldet ihn über einen Logger, der außerhalb von localhost schweigt, und lässt syncWait() mit dem Change Trail auflösen, als wäre er angekommen. Die Änderungen sind zu diesem Zeitpunkt bereits in den geschriebenen Zustand der ComponentChanges gefaltet, also schickt kein späterer Trail sie noch einmal. Ein abgelaufener changeTrailTimeout oder ein Kernel-Fehler, den der Worker als AppliedChangeTrail.error zurückmeldet, lässt den Proxy dabei am Leben: View und Shadow Environment laufen auseinander, und nichts sagt es. Darunter wird es ruhig. Fünf Befunde hängen an einer einzigen ungeklärten Frage — ob zwei ViewComponent in einem Context dieselbe uuid tragen dürfen; heute erzeugt dieser Fall eine Entity, die niemand mehr abbaut. Dazu zwei Konstruktoren, die aus dem Rahmen fallen, und eine Handvoll Halbkanten, die über die heutigen Pfade unerreichbar sind."
+        "executiveSummary": "Der Bereich hat keinen high-Befund mehr. Das Gewicht tragen zwei mittlere: die Zusage von clearOnDestroy, die auf dem Weg »Shadow Object verlässt die Konstruktorenmenge« keinen Konsumenten erreicht, und createEntity(), das eine Entity registriert, bevor ihre Shadow Objects stehen — wirft einer der Konstruktoren, bleibt sie halbfertig im Worker-Kernel zurück. Darunter der uuid-Cluster: fünf Befunde hängen an einer einzigen ungeklärten Frage, ob zwei ViewComponent in einem Context dieselbe uuid tragen dürfen; heute erzeugt dieser Fall eine Entity, die niemand mehr abbaut. Dazu zwei Konstruktoren, die aus dem Rahmen fallen, und eine Handvoll Halbkanten, die über die heutigen Pfade unerreichbar sind und beim nächsten Umbau an derselben Stelle zur Falle werden."
       },
       "harness": {
         "label": "Projekt-Harness",
-        "score": 89,
-        "bySeverity": {"critical": 0, "high": 0, "medium": 4, "low": 6, "info": 5},
+        "score": 88.0,
+        "bySeverity": {"critical": 0, "high": 0, "medium": 4, "low": 8, "info": 11},
         "byCategory": {
-          "Testabdeckung & Teststrategie": 4,
-          "Developer Experience": 4,
+          "Testabdeckung & Teststrategie": 8,
+          "Developer Experience": 7,
           "Projektaufbau & Build": 3,
-          "Typsicherheit": 2,
-          "Sicherheit": 1,
-          "Dependencies": 1
+          "Typsicherheit": 3,
+          "Dependencies": 1,
+          "Sicherheit": 1
         },
-        "executiveSummary": "Die Werkzeugkette ist in einem Zustand, den man selten sieht: Lint grün, Typecheck grün, 908 Fälle in test:ci und 404 in der E2E-Suite über zwei Browser, alle grün, und jede zurückgehaltene Dependency trägt ihre Begründung als Kommentar neben sich. Was fehlt, fehlt planvoll an denselben vier Stellen wie beim letzten Lauf: es wird nirgends Coverage gemessen, das zweite publizierte Paket hat eine einzige Spec-Datei, die CI läuft nur auf push und nicht auf Pull Requests, und ConsoleLogger.ts unterdrückt vierzehnmal den Typprüfer. Neu dazugekommen ist, was beim Blick auf das zweite Paket auffällt: @spearwolf/shae-offscreen-canvas wird als reines JavaScript ohne types-Eintrag publiziert und hat kein typecheck-Skript — zwei der vier Packages sieht der Typprüfer nie. Dazu vier tote .eslintrc.json aus der Zeit vor Biome und zwei Konfigurationsstellen, die beim nächsten Major fallen."
+        "executiveSummary": "Die Werkzeugkette ist in einem Zustand, den man selten sieht: Lint grün, Typecheck grün, 952 Fälle in test:ci und 426 in der E2E-Suite über zwei Browser, alle grün, und jede zurückgehaltene Dependency trägt ihre Begründung als Kommentar neben sich. Was fehlt, fehlt planvoll an denselben vier Stellen wie beim letzten Lauf: es wird nirgends Coverage gemessen, das zweite publizierte Paket hat eine einzige Spec-Datei, die CI läuft nur auf push und nicht auf Pull Requests, und ConsoleLogger.ts unterdrückt vierzehnmal den Typprüfer. Dazu @spearwolf/shae-offscreen-canvas, das als reines JavaScript ohne types-Eintrag publiziert wird und kein typecheck-Skript hat — zwei der vier Packages sieht der Typprüfer nie —, vier tote .eslintrc.json aus der Zeit vor Biome und zwei Konfigurationsstellen, die beim nächsten Major fallen."
       }
     }
   },
   "findings": [
-    {
-      "id": "BUG-001",
-      "category": "Bugs & Korrektheitsrisiken",
-      "domain": "code",
-      "severity": "high",
-      "status": "new",
-      "title": "Ein abgelehnter Change Trail verschwindet, und syncWait() meldet Erfolg",
-      "location": "packages/shadow-objects/src/view/ShadowEnv.ts:312-321",
-      "description": "#syncNow() umschließt applyChangeTrail() mit try/catch/finally: der catch schreibt logger.error und schluckt den Fehler, der finally sendet AfterSync mit dem Trail. syncWait() hört genau darauf und löst mit demselben Trail auf wie nach einem geglückten Zyklus. Zu diesem Zeitpunkt hat buildChangeTrails() jeden ausstehenden Wert bereits in seinen geschriebenen Zustand gefaltet und die ComponentChanges geleert — kein späterer Trail schickt das Verlorene noch einmal. Der Weg dorthin braucht keinen Absturz: ein abgelaufener changeTrailTimeout und ein Kernel-Fehler, den MessageRouter als AppliedChangeTrail.error zurückmeldet, lehnen beide ab, ohne onProxyFailed auszulösen — der Proxy bleibt bereit, ContextLost kommt nie, reCreateChanges() läuft nie. In Produktion ist der Vorgang vollständig stumm: ConsoleLogger.sharedConfig.enable steht standardmäßig auf »die Seite wird von localhost ausgeliefert«.",
-      "recommendation": "Der Fehlerfall braucht einen eigenen Ausgang. Zwei Wege, beide vertretbar: syncWait() ablehnen lassen, wenn waitForConfirmation gesetzt war — ein Breaking Change für jeden Aufrufer ohne catch —, oder ein eigenes Ereignis neben AfterSync, das ShaeWorkerElement wie ProxyFailed als DOM-Event weiterreicht. Was der Trail verloren hat, kann nur reCreateChanges() zurückholen; ob das automatisch geschehen soll, gehört in dieselbe Entscheidung. Ein Wächter für den Fall fehlt in ShadowEnv.spec.ts vollständig — dort deckt kein Fall einen abgelehnten applyChangeTrail() ab.",
-      "effort": "M",
-      "evidence": "Gemessen (2026-08-19) mit einem Proxy, dessen applyChangeTrail() ablehnt: »RESOLVED with 1 entries | applyCalls=1«. Auf stderr stand allein »ShadowEnv failed to apply change trail Error: the worker refused the trail«."
-    },
     {
       "id": "ARCH-001",
       "category": "Architektur & Struktur",
@@ -814,19 +829,6 @@
       "recommendation": "Nur schreiben, wenn der Schlüssel fehlt, oder ausschließlich beim expliziten Setzen über die globalThis.ConsoleLogger-Schnittstelle. Mittelfristig die Logger pro Namespace zwischenspeichern, statt sie pro Instanz neu zu bauen — das nimmt dem Punkt auch seine Häufigkeit.",
       "effort": "M",
       "evidence": "Bestand aus dem Audit vom 2026-08-19, an der Fundstelle nachgeprüft; die Zeilen sind von 181-192 auf 225-236 gewandert."
-    },
-    {
-      "id": "CLEAN-001",
-      "category": "Lesbarkeit & Clean Code",
-      "domain": "code",
-      "severity": "medium",
-      "status": "unchanged",
-      "title": "Kernel.constructShadowObject ist eine Closure über 406 Zeilen",
-      "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:473-878",
-      "description": "Die Methode legt sechs Kontext-Maps, zwei Property-Maps und elf Methoden der Creation API in einer einzigen Closure an, baut darüber den Teardown und hängt ihn an zwei unabhängige Wege. Sie ist damit die größte Funktion des Repositories und zugleich die, an der jede neue Fähigkeit eines Shadow Objects ansetzt. Getestet wird sie ausschließlich über ihr Ergebnis: keine der elf API-Methoden ist für sich erreichbar, keine der Maps für sich prüfbar. Seit dem letzten Lauf ist sie um zwanzig Zeilen gewachsen.",
-      "recommendation": "Die Creation API als eigene Klasse führen, mit den Maps als Feldern und je einer Methodengruppe für Kontexte, Properties, Signale und Subscriptions. Der Teardown wird dann eine Methode statt einer Closure, und der Kernel behält, was sein Name verspricht.",
-      "effort": "L",
-      "evidence": "Bestand aus dem Audit vom 2026-08-19 (dort 384 Zeilen ab :397); nachgezählt am heutigen Stand."
     },
     {
       "id": "BUG-002",
@@ -1283,6 +1285,227 @@
       "recommendation": "Entweder einen Fall bauen, der die Ersparnis misst statt das Ergebnis, oder im Code festhalten, dass das Gate bewusst nicht testbar ist. Ein Wächter, der nur das Ergebnis prüft, hält es nie.",
       "effort": "S",
       "evidence": "Gemessen (2026-08-18): mit auf void this.#reSubscribePending; entschärftem Gate bleibt das Integrationspaket vollständig grün."
+    },
+    {
+      "id": "API-002",
+      "category": "Öffentliche API",
+      "domain": "code",
+      "severity": "medium",
+      "status": "new",
+      "title": "clearOnDestroy erreicht keinen Konsumenten, wenn ein Shadow Object die Konstruktorenmenge verlässt",
+      "location": "packages/shadow-objects/docs/api-reference.md:133; packages/shadow-objects/src/in-the-dark/Kernel.spec.ts:654, :697",
+      "description": "Die Dokumentation sagt zu, dass beim Abbau eines Shadow Objects der bereitgestellte Kontext auf undefined gesetzt wird »and every consumer sees that«. Auf dem Weg, bei dem das Shadow Object die Konstruktorenmenge einer weiter lebenden Entity verlässt — Tokenwechsel, Routenwechsel —, stimmt das nicht. Die sekundäre Aufräum-Menge läuft in Einfügereihenfolge, die Verbindung zum entitätseigenen Kontextsignal wird vor dem clearOnDestroy-Rückruf gelöst, und die Schreibung auf undefined findet den Weg zum Kind nicht mehr. Stirbt dagegen die Entity selbst, sieht das Kind die Löschung. Damit steht eine Zusage der öffentlichen API gegen ein wegabhängiges Verhalten, und wer auf die Löschung baut, liest nach einem Tokenwechsel einen veralteten Wert.",
+      "recommendation": "Eine der beiden Seiten gibt nach, und die Wahl gehört dem Nutzer: entweder wird der clearOnDestroy-Rückruf vor der Verbindung eingetragen — dann gilt die Zusage auf beiden Wegen und die beiden Fälle werden umgeschrieben —, oder die Dokumentation nennt den Weg, auf dem die Löschung nicht ankommt. Beides ist eine API-Entscheidung mit Changelog-Eintrag, kein Beifang einer anderen Arbeit.",
+      "effort": "M",
+      "evidence": "Gemessen und in zwei Fällen festgehalten: Kernel.spec.ts:654 hält das Ausbleiben der Löschung beim Tokenwechsel, :697 die Gegenprobe über die zerstörte Entity."
+    },
+    {
+      "id": "BUG-010",
+      "category": "Bugs & Korrektheitsrisiken",
+      "domain": "code",
+      "severity": "medium",
+      "status": "new",
+      "title": "Eine Entity steht im Kernel, bevor ihre Shadow Objects stehen",
+      "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:286, :302 (createEntity)",
+      "description": "createEntity() trägt den Eintrag in #entities ein und baut erst danach über createShadowObjects() die Shadow Objects. Wirft einer ihrer Konstruktoren, verlässt der Fehler createEntity(), der Eintrag bleibt aber stehen: eine Entity, die im Worker-Kernel registriert ist, keine Shadow Objects trägt und von der der View nichts weiß. Sie fällt in keinen Aufräumweg — erst ein späteres DestroyEntities für genau diese uuid räumt sie weg, und das schickt der View nur für Entities, die er kennt.",
+      "recommendation": "Den Eintrag erst nach createShadowObjects() setzen oder ihn im Fehlerfall zurücknehmen. Welche der beiden Reihenfolgen gilt, entscheidet zugleich, was ein Shadow-Object-Konstruktor über den Kernel während seiner eigenen Erzeugung sieht — dafür braucht es einen Fall, bevor sich die Zeilen bewegen.",
+      "effort": "M",
+      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
+    },
+    {
+      "id": "BUG-011",
+      "category": "Bugs & Korrektheitsrisiken",
+      "domain": "code",
+      "severity": "low",
+      "status": "new",
+      "title": "bindTo() schützt sich nicht gegen einen zweiten Aufruf",
+      "location": "packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts:131",
+      "description": "tearDown() (:156) sichert seine Einmaligkeit mit einer eigenen Flagge, bindTo() hat nichts dergleichen. Ein zweiter Aufruf überschriebe den Griff auf die Anmeldung an onDestroy der Entity und ließe die erste liegen — der Scope bliebe an einer Entity hängen, die ihn nicht mehr abbaut. Heute unerreichbar: der Kernel ruft bindTo() an genau einer Stelle, unmittelbar nach der Erzeugung des Shadow Objects, und weder der Scope noch die Methode verlassen das Modul. Eine Halbkante, die beim nächsten Umbau an derselben Stelle zur Falle wird.",
+      "recommendation": "Entweder derselbe Wächter wie in tearDown(), zusammen mit dem Fall, der den zweiten Aufruf herstellt, oder ein Satz über der Methode, der die einzige Aufrufstelle zur Bedingung erklärt. Eine Zeile ohne Fall ist die schlechtere der beiden Antworten.",
+      "effort": "S",
+      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
+    },
+    {
+      "id": "ASYNC-003",
+      "category": "Async & Concurrency",
+      "domain": "code",
+      "severity": "low",
+      "status": "new",
+      "title": "syncWait() aus einem Sync-Hörer heraus bekommt die Promise des eben beendeten Zyklus",
+      "location": "packages/shadow-objects/src/view/ShadowEnv.ts:260-273, :361-362",
+      "description": "Das Resolverpaar eines Zyklus wird beim Abschluss synchron geleert, der Cache auf die Promise erst im then() einen Microtask später. Ein syncWait(), das aus einem AfterSync- oder SyncFailed-Hörer heraus gerufen wird, findet den Cache noch gesetzt und bekommt die bereits gesettelte Promise des eben beendeten Zyklus zurück. Der innere Aufrufer löst mit dem alten Change Trail auf, und der Zyklus, den er damit angestoßen hat, läuft ohne Resolver. Keine Dokumentationsstelle führt dorthin, und kein Fall hält fest, welche der beiden Lesarten gilt.",
+      "recommendation": "Beide Felder im selben Zug leeren, oder die Bedingung als Zusage schreiben: ein syncWait() aus einem Hörer heraus meint den nächsten Zyklus, nicht den laufenden. Ein Fall, der aus dem Hörer heraus wartet, entscheidet es.",
+      "effort": "S",
+      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
+    },
+    {
+      "id": "ASYNC-004",
+      "category": "Async & Concurrency",
+      "domain": "code",
+      "severity": "low",
+      "status": "new",
+      "title": "Ein Sync-Zyklus prüft nur vor dem await, ob seine Umgebung noch da ist",
+      "location": "packages/shadow-objects/src/view/ShadowEnv.ts:317 gegenüber :325-344, :360-375",
+      "description": "#syncNow() liest #isDestroyed einmal am Methodenkopf. Nach dem await auf applyChangeTrail() greift kein Wächter mehr: #endSyncCycle() emittiert dann in eine Umgebung, deren destroy() die Hörer mit off(this) bereits abgeräumt hat, und schreibt im Fehlerfall einen Log-Eintrag auf Error-Level dazu. Folgenlos, weil destroy() auch das Resolverpaar leert und ein doppeltes Settlen damit ausgeschlossen ist. #onProxyFailed() an der Nachbarstelle hat den Wächter, den #endSyncCycle() nicht hat.",
+      "recommendation": "Eine Entscheidung für beide Stellen zusammen: Was tut ein Zyklus, dessen Umgebung während des Fluges verschwindet — schweigen oder melden? Danach den Wächter setzen oder seine Abwesenheit begründen.",
+      "effort": "S",
+      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
+    },
+    {
+      "id": "CONS-007",
+      "category": "Konsistenz",
+      "domain": "code",
+      "severity": "low",
+      "status": "new",
+      "title": "Ein abgelaufenes Zeitfenster lehnt mit einem nackten Error ab",
+      "location": "packages/shadow-objects/src/utils/waitForMessageOfType.ts:41",
+      "description": "Der Timeout-Pfad lehnt mit new Error('Timeout waiting for message of type: …') ab. Seit syncWait() den Grund eines abgelehnten Change Trails durchreicht, landet dieser Wert im catch des Konsumenten — und ist dort von einem Kernel-Fehler nur per String-Vergleich zu unterscheiden. Eigene Fehlerklassen führt dasselbe Paket bereits, in RemoteWorkerEnv.ts:68 und :83.",
+      "recommendation": "Eine eigene Fehlerklasse neben den vorhandenen, damit ein Aufrufer per instanceof zwischen »zu spät« und »abgelehnt« trennt. Der Wechsel ändert, was Konsumenten im catch sehen, und gehört in den Changelog.",
+      "effort": "S",
+      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
+    },
+    {
+      "id": "CONS-008",
+      "category": "Konsistenz",
+      "domain": "code",
+      "severity": "low",
+      "status": "new",
+      "title": "Der Grund eines abgelehnten Change Trails geht als String über die Leitung",
+      "location": "packages/shadow-objects/src/worker/MessageRouter.ts:138",
+      "description": "Fängt der Router einen Kernel-Fehler, schickt er ihn als interpolierten String zurück. Auf der View-Seite kommt damit eine Zeichenkette an, wo ProxyFailed eine WorkerFailedError-Instanz trägt. Wer im catch eines syncWait() steht, hat für den einen Ausgang einen Typ und für den anderen eine Zeichenkette — und muss sich seine Fallunterscheidung aus Textvergleichen bauen.",
+      "recommendation": "Name und Nachricht strukturiert übertragen und auf der View-Seite in eine Fehlerklasse zurückverwandeln, wie es die Strecke für den Ausfall des Workers bereits tut. Was ein Konsument im catch sieht, ändert sich dabei — Changelog-Eintrag.",
+      "effort": "M",
+      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
+    },
+    {
+      "id": "CONS-009",
+      "category": "Konsistenz",
+      "domain": "code",
+      "severity": "info",
+      "status": "new",
+      "title": "Der Abbau leert sieben Sammlungen und die drei Compare-Maps nicht",
+      "location": "packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts:195-201",
+      "description": "tearDown() leert beide Aufräum-Mengen, die drei Reader-Maps und die beiden Provider-Maps. Die drei Maps, die zu jedem Namen die Vergleichsfunktion halten, bleiben gefüllt zurück. Harmlos, solange der Kernel den Scope unmittelbar danach fallen lässt — wer die Liste liest, muss allerdings raten, ob die drei Fehlenden Absicht sind oder übersehen wurden.",
+      "recommendation": "Die drei Maps mitleeren oder einen Satz danebenschreiben, warum sie nicht dazugehören.",
+      "effort": "S",
+      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
+    },
+    {
+      "id": "CLEAN-003",
+      "category": "Lesbarkeit & Clean Code",
+      "domain": "code",
+      "severity": "info",
+      "status": "new",
+      "title": "Eine tote Bedingung im Provider-Helfer",
+      "location": "packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts:308",
+      "description": "Die Prüfung auf das Provider-Signal steht vor der Auswertung von clearOnDestroy, obwohl das Signal an dieser Stelle nicht fehlen kann: es ist unmittelbar davor entweder aus der Map geholt oder angelegt worden. Die Bedingung liest sich wie ein Hinweis darauf, dass es einen Weg ohne Provider gäbe.",
+      "recommendation": "Streichen. Gibt es den Weg ohne Provider doch, gehört er stattdessen in einen Fall.",
+      "effort": "S",
+      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
+    },
+    {
+      "id": "TEST-005",
+      "category": "Testabdeckung & Teststrategie",
+      "domain": "harness",
+      "severity": "low",
+      "status": "new",
+      "title": "Die Trennung der drei Cache-Schlüsselräume hält weder ein Typ noch ein Fall",
+      "location": "packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts:213, :246-248, :358-360, :374-376",
+      "description": "Der gemeinsame Reader-Helfer bekommt Reader-Map und Compare-Map als Argumente; drei Aufrufstellen verdrahten je einen der drei Schlüsselräume — Property, Kontext, Elternkontext. Der Typparameter, der sie zusammenhalten soll, sichert nichts: Methodenparameter von Map sind bivariant, der Typprüfer nimmt eine Verdrahtung des Elternkontexts auf die Property-Maps klaglos an. Der Testbestand nimmt sie ebenso an. Beobachtbar würde eine gekreuzte Verdrahtung erst, wenn ein Fall denselben Namen über zwei der drei Wege liest und die Werte gegeneinander hält; kein Fall im Repository tut das.",
+      "recommendation": "Ein Fall, der denselben Namen über useContext und useParentContext liest und zwei verschiedene Werte erwartet. Er beantwortet zugleich die Frage, wodurch die Trennung gesichert ist — durch einen Typ oder durch einen Fall.",
+      "effort": "S",
+      "evidence": "Gemessen (2026-08-20): useParentContext auf die Kontext-Reader-Map umgebogen, beide Spec-Dateien bleiben mit 112 Fällen grün."
+    },
+    {
+      "id": "TEST-006",
+      "category": "Testabdeckung & Teststrategie",
+      "domain": "harness",
+      "severity": "low",
+      "status": "new",
+      "title": "allowConsoleErrors nimmt drei E2E-Seiten die Prüfung auf unbehandelte Fehler",
+      "location": "packages/shadow-objects-e2e/tests/sync-failure.spec.ts:21",
+      "description": "Das Flag streicht den Fall »no uncaught or logged errors« samt seiner pageerror-Prüfung. Gerade auf einer Seite, deren Gegenstand abgelehnte Promises sind, wird damit die unbehandelte Rejection unsichtbar — dieselbe Klasse Fehler, die die Seite belegen soll. Es betrifft ebenso die Seiten worker-failure und create-element.",
+      "recommendation": "Das Harness so erweitern, dass erwartete Konsolenfehler benannt statt pauschal erlaubt werden; alles andere bleibt dann ein Fehlschlag. Der Zug berührt drei Seiten und die Semantik des Harness und will für sich geplant sein.",
+      "effort": "M",
+      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
+    },
+    {
+      "id": "TEST-007",
+      "category": "Testabdeckung & Teststrategie",
+      "domain": "harness",
+      "severity": "info",
+      "status": "new",
+      "title": "Drei Behauptungen in einem it, von denen die erste die übrigen verdeckt",
+      "location": "packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.spec.ts:51-57",
+      "description": "Jeder der fünf Fälle prüft Warnung, Einmaligkeit und Wirkung in einem einzigen it-Block; fällt die erste Behauptung, nennt der Lauf die beiden anderen nicht. Aufteilen ist versperrt, solange die Deprecation-Warnung pro Realm und Methodenname nur einmal fällt — der Kopfkommentar der Datei hält das fest. Kein Deckungsverlust: zu jeder der drei Hälften existiert eine Mutation, die sie allein rot macht. Was fehlt, ist die Fehlermeldung, die den Grund beim ersten Blick nennt.",
+      "recommendation": "Die drei Hälften so prüfen, dass ein Fehlschlag alle drei Gründe nennt. Ein zusätzlicher Fall löst es nicht — die Modulflagge lässt nur einen zu.",
+      "effort": "S",
+      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
+    },
+    {
+      "id": "TEST-008",
+      "category": "Testabdeckung & Teststrategie",
+      "domain": "harness",
+      "severity": "info",
+      "status": "new",
+      "title": "Zwei Konstruktionen der Scope-Spec tragen ihre Bedingung nicht bei sich",
+      "location": "packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.spec.ts:150, :199 sowie :174, :178, :223, :227",
+      "description": "Die beiden Hilfs-Shadow-Objects reichen den Signal-Reader als zweites Argument an provideContext() durch. Ein Argument weiter rechts wäre es die abgekündigte Options-Form, und die Modulflagge der Deprecation-Warnung kippte vorzeitig — die fünf Fälle der Datei hängen daran. Die vier Mikrotask-Wartezeilen kopieren ihre Vorlage in Kernel.spec.ts:208 wörtlich, aber ohne deren Kommentar, der sagt, worauf gewartet wird.",
+      "recommendation": "Je ein halber Satz an beiden Stellen. Wer die Datei erweitert, sieht sonst zwei Konstruktionen, deren Grund nicht dasteht.",
+      "effort": "S",
+      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
+    },
+    {
+      "id": "TYPE-003",
+      "category": "Typsicherheit",
+      "domain": "harness",
+      "severity": "info",
+      "status": "new",
+      "title": "useProperty steht auf <T = any>, sein Vertrag auf <T = unknown>",
+      "location": "packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts:241 gegen packages/shadow-objects/src/types.ts:139",
+      "description": "Die Implementierung deklariert den Typparameter mit any als Voreinstellung, der Typ ShadowObjectCreationAPI mit unknown. Für Konsumenten unsichtbar, weil sie gegen den Vertrag typisieren und die Klasse ihr Modul nicht verlässt. Innerhalb des Moduls fällt damit die Prüfung weg, die unknown erzwingen würde.",
+      "recommendation": "Auf unknown angleichen und dabei useProperties und jeden internen Aufrufer mitziehen, den der Typcheck danach anspricht. Der Wechsel ist kein Beifang einer anderen Arbeit.",
+      "effort": "S",
+      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
+    },
+    {
+      "id": "DX-005",
+      "category": "Developer Experience",
+      "domain": "harness",
+      "severity": "info",
+      "status": "new",
+      "title": "Die Wurf-Semantik der Hörer ist für zwei Ereignisfamilien ungleich beschrieben",
+      "location": "packages/shadow-objects/docs/api-reference.md:1398-1401 gegenüber :1159-1163",
+      "description": "Für die beiden RemoteWorkerEnv-Ereignisse steht ausführlich, was ein werfender Hörer anrichtet — bis hin zur Wildcard-Anmeldung und ihrer Priorität. Für die ShadowEnv-Ereignisse leistet das ein Absatz. Beide Klassen tragen dieselbe eventize-Semantik; wer die kürzere Stelle liest, hält den Unterschied in der Darstellung für einen Unterschied im Verhalten.",
+      "recommendation": "Die Semantik einmal an einer Stelle beschreiben und von beiden Ereignistabellen dorthin verweisen. Eine eigene Doku-Runde, kein Beifang einer Codeänderung.",
+      "effort": "S",
+      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
+    },
+    {
+      "id": "DX-006",
+      "category": "Developer Experience",
+      "domain": "harness",
+      "severity": "info",
+      "status": "new",
+      "title": "Ein E2E-Fixture führt die abgekündigte Reader-Callback-Form vor",
+      "location": "packages/shadow-objects-e2e/public/mod-hello.js:6",
+      "description": "Das Modul ruft den Signal-Reader mit einem Callback; signalize protokolliert dafür im Worker eine Deprecation-Warnung. Sie läuft bei jedem Aufbau der Seiten mit, die dieses Modul laden, und steht damit in der Konsole jeder Strecke, die Konsolenausgaben prüft.",
+      "recommendation": "Auf createEffect() umstellen. Die Form ist abgekündigt, und ein Fixture, das sie vorführt, ist eine Vorlage für jeden, der die Seiten liest.",
+      "effort": "S",
+      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
+    },
+    {
+      "id": "DX-007",
+      "category": "Developer Experience",
+      "domain": "harness",
+      "severity": "info",
+      "status": "new",
+      "title": "Die E2E-README nennt die Seiten für die Fehlerpfade nicht",
+      "location": "packages/shadow-objects-e2e/README.md:5",
+      "description": "Der Einleitungssatz zählt auf, was die Suite abdeckt — Worker-Umgebungen, Bundle-Integrität, das Zusammenspiel mehrerer Entities — und lässt die beiden Seiten aus, die die Fehlerpfade fahren. Wer nach einer Strecke für einen fehlgeschlagenen Zyklus sucht, findet sie über die Übersicht nicht.",
+      "recommendation": "Die beiden Fehlerpfad-Seiten in den Einleitungssatz aufnehmen. Zwei Wörter, und die Übersicht deckt wieder ab, was die Suite tut.",
+      "effort": "S",
+      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
     }
   ],
   "acknowledged": [],
@@ -1290,10 +1513,6 @@
     {
       "title": "Darf eine uuid in einem ComponentContext zweimal vergeben werden?",
       "detail": "Fünf Befunde hängen an dieser Antwort — BUG-002, CONS-003, CONS-004, CONS-005 und mittelbar API-001. Lautet sie nein, genügt ein Wächter in addComponent(). Lautet sie ja, braucht der Context durchgehend die Instanz als Identität statt der uuid."
-    },
-    {
-      "title": "Wie soll ein fehlgeschlagener Change Trail nach außen sichtbar werden?",
-      "detail": "BUG-001 beschreibt, dass er es heute gar nicht wird. Die Behebung ist eine Festlegung: syncWait() ablehnen lassen (Breaking Change) oder ein eigenes Ereignis neben AfterSync, das ShaeWorkerElement als DOM-Event weiterreicht."
     }
   ]
 }
