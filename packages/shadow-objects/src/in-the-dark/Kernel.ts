@@ -285,21 +285,59 @@ export class Kernel {
 
     this.#entities.set(uuid, entry);
 
-    if (parentUuid) {
-      e.parentUuid = parentUuid;
+    // A shadow-object constructor may address the kernel with the uuid of the entity being created --
+    // `createEntity(child, token, entity.uuid)` and `setParent(other, entity.uuid)` both look that uuid
+    // up in `#entities` -- so the entry has to stand while the constructors run. Everything past it
+    // therefore runs under the rollback: a creation that does not get through leaves no entity behind.
+    try {
+      if (parentUuid) {
+        e.parentUuid = parentUuid;
+      }
+
+      e.autoDestructionOnParentRemoval = autoDestructionOnParentRemoval;
+
+      if (!e.hasParent) {
+        this.#rootEntities.add(uuid);
+      }
+
+      if (properties) {
+        e.setProperties(properties);
+      }
+
+      this.createShadowObjects(entry);
+    } catch (error) {
+      this.#rollbackFailedCreation(uuid);
+      throw error;
+    }
+  }
+
+  /**
+   * Takes back what a creation managed before it failed. The teardown is the regular one, so a
+   * shadow-object that already stands hears its `onDestroy` and its creation scope ends the way
+   * it would on any other destruction; the entry, the root registration and the link to the
+   * parent go with it.
+   *
+   * The two deletions afterwards are what a teardown callback of its own cannot take away: they
+   * hold whether or not `destroyEntity()` got through.
+   *
+   * The rollback reaches this one entity, not the kernel around it. What a constructor did to other
+   * entities before it threw stands, and the teardown even adds to it, because `destroyEntity()` walks
+   * the children list: an entity the constructor hung under this one survives as a root, and one it
+   * moved under this one is taken off the parent it came from -- or destroyed outright, where it
+   * carries `autoDestructionOnParentRemoval`. Both leave an entity in a state that is neither the one
+   * before the call nor the one the constructor built. A rollback that covers those cases needs a
+   * snapshot of the kernel, which this path does not take.
+   */
+  #rollbackFailedCreation(uuid: string): void {
+    try {
+      this.destroyEntity(uuid);
+    } catch (error) {
+      this.logger.error('rollback of a failed entity creation failed:', uuid, error);
     }
 
-    e.autoDestructionOnParentRemoval = autoDestructionOnParentRemoval;
-
-    if (!e.hasParent) {
-      this.#rootEntities.add(uuid);
-    }
-
-    if (properties) {
-      e.setProperties(properties);
-    }
-
-    this.createShadowObjects(entry);
+    this.#entities.delete(uuid);
+    this.#rootEntities.delete(uuid);
+    this.#allEntitiesNeedUpdate = true;
   }
 
   destroyEntity(uuid: string): void {
@@ -452,7 +490,17 @@ export class Kernel {
   private constructShadowObject(construct: ShadowObjectConstructor, entry: EntityEntry): ShadowObjectType {
     const scope = new ShadowObjectCreationScope(entry.entity, this.logger, getDisplayName(construct));
 
-    const shadowObject = eventize(new construct(scope.createAPI()));
+    let shadowObject: ShadowObjectType;
+
+    try {
+      shadowObject = eventize(new construct(scope.createAPI()));
+    } catch (error) {
+      // Until `bindTo()` below has run, nothing else can reach this scope: it is in neither
+      // `#shadowObjectScopes` nor the destroy subscription of the entity. A constructor that does
+      // not return therefore ends its own scope here, or nobody does.
+      scope.tearDown();
+      throw error;
+    }
 
     this.#shadowObjectScopes.set(shadowObject, scope);
 

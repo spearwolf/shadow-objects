@@ -385,6 +385,8 @@ Registers a cleanup function that runs when the Shadow Object is destroyed. Crit
 
 A Shadow Object reaches that point on two paths: its Entity is destroyed, or it leaves the constructor set of an Entity that lives on — a token change or a route that stops resolving to it. The callback runs on both, exactly once.
 
+A third path reaches the callback without a Shadow Object ever having lived: a constructor that registers `onDestroy` and then throws. The Kernel ends the creation scope of that constructor, so everything registered up to the throw is released — the callback among it. `onCreate` never ran there, and the instance was never attached to its Entity, so a callback written to touch the Shadow Object itself has to cope with a half-built one. Cleanups that only release what the creation API handed out are unaffected.
+
 - **Signature:** `onDestroy(fn: () => void): void`
 
 ```typescript
@@ -2278,7 +2280,7 @@ const attached = kernel.findShadowObjects('abc-123');
 
 | Method | Signature | Description |
 | :--- | :--- | :--- |
-| `createEntity` | `(uuid, token, parentUuid?, order?, properties?, autoDestructionOnParentRemoval?)` | Creates an Entity and its Shadow Objects. `properties` is a list of `[name, value]` pairs; an entry that names only `name` sets the property to `undefined`. |
+| `createEntity` | `(uuid, token, parentUuid?, order?, properties?, autoDestructionOnParentRemoval?)` | Creates an Entity and its Shadow Objects. `properties` is a list of `[name, value]` pairs; an entry that names only `name` sets the property to `undefined`. A creation that does not get through leaves no Entity behind: the error reaches the caller, and the Entity the call was made for is not in the Kernel afterwards. What its constructors did to *other* Entities before the throw is not taken back, and the rollback reaches one step further: an Entity a constructor hung or moved under the failed one is left as a root, or destroyed where it carries `autoDestructionOnParentRemoval`. The paragraph below spells that out. |
 | `destroyEntity` | `(uuid: string)` | Destroys the Entity, its Shadow Objects and its children. |
 | `setParent` | `(uuid, parentUuid?, order?)` | Moves the Entity under a new parent, or makes it a root when `parentUuid` is omitted. An absent `order` keeps the current one -- it is not a reset to `0`. A `parentUuid` naming the Entity itself or one of its descendants is refused with an error, and the Entity stays where it was. |
 | `updateOrder` | `(uuid: string, order: number)` | Sets the sort order among siblings. |
@@ -2287,6 +2289,8 @@ const attached = kernel.findShadowObjects('abc-123');
 | `dispatchEventsToEntity` | `(uuid: string, events: IComponentEvent[])` | Delivers View Layer events to the Entity, where every attached Shadow Object receives them as `onViewEvent`. A UUID the Kernel does not hold is ignored: the events are dropped, and the rest of the Change Trail is applied. |
 
 **The Entity tree stays a tree.** `setParent` refuses a parent that is the Entity itself or one of its descendants, and so does the `parent` setter of the `Entity` class, the other way the link is written. Both run the check before they touch anything, so a refused call leaves the Entity attached where it was, with its `order` and its place among the siblings intact. The check itself is `Entity.assertAttachableTo(nextParent)` -- it walks the parent chain and throws; call it yourself if you drive the link by a route of your own. `ViewComponent.addChild()` guards the same thing on the View Layer side.
+
+**A failed creation takes its own Entity back.** While `createEntity` runs, the Entity is already registered in the Kernel, because a Shadow Object constructor may address the Kernel with its own UUID -- hanging a child under it with `createEntity`, moving another Entity under it with `setParent`, or looking it up. Should one of those constructors throw, the Shadow Objects that already stand go through their regular teardown, their `onDestroy` included, and the Entity the call was made for is gone when the error reaches the caller. The rollback covers that one Entity, not the Kernel as a whole: an Entity the failing constructor created or destroyed elsewhere stays as the constructor left it, and the teardown adds to that, because it walks the children list of the failed Entity. Whatever hangs there when the throw comes is promoted to a root -- a child the constructor created under it as much as an Entity that was already there and got moved under it with `setParent`, which is taken off the parent it came from in the process. The exception is read off that Entity itself, not off the way it got there: one carrying `autoDestructionOnParentRemoval` is destroyed instead, its Shadow Objects hearing their `onDestroy`. Either way it ends up in a state that is neither the one before the call nor the one the constructor built; covering that would take a snapshot of the Kernel, which this path does not make. In a Worker, `MessageRouter` answers the Change Trail the throw came out of with a rejection -- an `AppliedChangeTrail` carrying an `error` -- which arrives on the View Layer side as `ShadowEnv.SyncFailed`.
 
 Neither check reaches a children list written without the parent link -- `Entity.addChild()` and `ComponentContext.addToChildren()` do exactly that. The four traversals over the children lists carry that case instead: `Kernel.traverseLevelOrderBFS()`, `Kernel.getEntityGraph()`, `entity.traverse()` and `ComponentContext.traverseLevelOrderBFS()` each visit every node once and terminate.
 
@@ -2521,7 +2525,7 @@ import {
 
 Three of the four are called on the Shadow Object as the change happens. `onParentChanged` is the exception: its channel waits for the tree to stop moving.
 
-The `onDestroy` symbol above is the class-side hook. The creation API has a callback of the same name for the function style -- see [`onDestroy(callback)`](#ondestroycallback), which also lists the two paths a Shadow Object reaches its end on.
+The `onDestroy` symbol above is the class-side hook. The creation API has a callback of the same name for the function style -- see [`onDestroy(callback)`](#ondestroycallback), which also lists the paths a Shadow Object reaches its end on. The two hooks do not answer the same set: the class-side one is called on an attached Shadow Object, which keeps it out of the path where a constructor throws before its instance is ever attached. Only the creation-API callback is reached there.
 
 **Full lifecycle example:**
 

@@ -3247,4 +3247,134 @@ describe('Kernel', () => {
       kernel.destroy();
     });
   });
+  describe('a creation that fails halfway through', () => {
+    it('leaves no entity behind when a shadow-object constructor throws', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      @ShadowObject({registry, token: 'failingCreation'})
+      class FailingCreation {
+        constructor() {
+          throw new Error('this constructor fails');
+        }
+      }
+      expect(FailingCreation).toBeDefined();
+
+      const uuid = generateUUID();
+
+      expect(() => kernel.createEntity(uuid, 'failingCreation')).toThrow('this constructor fails');
+
+      expect(kernel.hasEntity(uuid)).toBe(false);
+      expect(kernel.findEntity(uuid)).toBeUndefined();
+
+      // Both walks run over the root registration, which no reader of the kernel hands out directly.
+      expect(kernel.traverseLevelOrderBFS(), 'the entity is not among the roots either').toEqual([]);
+      expect(kernel.getEntityGraph()).toEqual([]);
+
+      kernel.destroy();
+    });
+
+    it('leaves the parent without the child when a shadow-object constructor throws', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      @ShadowObject({registry, token: 'failingCreation'})
+      class FailingCreation {
+        constructor() {
+          throw new Error('this constructor fails');
+        }
+      }
+      expect(FailingCreation).toBeDefined();
+
+      const [parentUuid, childUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(parentUuid, 'node');
+
+      expect(() => kernel.createEntity(childUuid, 'failingCreation', parentUuid)).toThrow('this constructor fails');
+
+      expect(kernel.getEntity(parentUuid).children, 'the parent holds no half-created child').toEqual([]);
+      expect(kernel.hasEntity(childUuid)).toBe(false);
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([parentUuid]);
+
+      kernel.destroy();
+    });
+
+    it('destroys the shadow-objects that were already standing', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const destroyed: string[] = [];
+
+      // `Registry.findConstructors()` hands the constructors back in registration order, so the first
+      // shadow-object stands by the time the second one fails.
+      @ShadowObject({registry, token: 'halfBuilt'})
+      class Standing {
+        constructor({onDestroy}: ShadowObjectCreationAPI) {
+          onDestroy(() => destroyed.push('standing'));
+        }
+      }
+
+      @ShadowObject({registry, token: 'halfBuilt'})
+      class Failing {
+        constructor() {
+          throw new Error('this constructor fails');
+        }
+      }
+
+      expect(Standing).toBeDefined();
+      expect(Failing).toBeDefined();
+
+      const uuid = generateUUID();
+
+      expect(() => kernel.createEntity(uuid, 'halfBuilt')).toThrow('this constructor fails');
+
+      expect(destroyed, 'the shadow-object that made it gets its regular teardown').toEqual(['standing']);
+
+      kernel.destroy();
+    });
+
+    it('ends the effects the failing constructor had already created', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const testSignal = createSignal(0);
+      const effectFn = vi.fn();
+
+      @ShadowObject({registry, token: 'failingEffect'})
+      class FailingEffect {
+        constructor({createEffect}: ShadowObjectCreationAPI) {
+          createEffect(() => {
+            effectFn(testSignal.get());
+          });
+          throw new Error('this constructor fails');
+        }
+      }
+      expect(FailingEffect).toBeDefined();
+
+      const uuid = generateUUID();
+
+      expect(() => kernel.createEntity(uuid, 'failingEffect')).toThrow('this constructor fails');
+
+      // Counting from what happened rather than from a fixed number keeps the case off the question
+      // whether a fresh effect runs once right away.
+      const runs = effectFn.mock.calls.length;
+
+      testSignal.set(1);
+
+      expect(effectFn, 'a constructor that does not reach its end leaves nothing running behind').toHaveBeenCalledTimes(runs);
+
+      kernel.destroy();
+    });
+
+    it('leaves no entity behind when the parent uuid is unknown', () => {
+      const kernel = new Kernel(new Registry());
+      const uuid = generateUUID();
+
+      expect(() => kernel.createEntity(uuid, 'node', 'no-such-parent')).toThrow();
+
+      expect(kernel.hasEntity(uuid)).toBe(false);
+
+      kernel.destroy();
+    });
+  });
 });

@@ -41,7 +41,9 @@ function warnDeprecatedIsEqualOption(options: unknown, apiName: string): void {
  * itself to the kernel through `createAPI()`. The instance stays with the kernel: a shadow-object only ever
  * sees the API object, never the scope behind it.
  *
- * One scope belongs to exactly one shadow-object, and it ends with it.
+ * One scope belongs to exactly one shadow-object, and it ends with it -- or, where the constructor throws,
+ * without it: a scope that never reached `bindTo()` is torn down by the kernel on the spot, and everything the
+ * constructor registered before the throw is released, although no shadow-object came out of it.
  *
  * Eight methods share their name with a module-level import: `on`, `once`, `emit`, `onDestroy`,
  * `onViewEvent`, `createSignal`, `createEffect` and `createMemo`. They are named that way deliberately,
@@ -143,7 +145,12 @@ export class ShadowObjectCreationScope {
   }
 
   /**
-   * Runs once, whichever of the two paths reaches it first.
+   * Runs once, whichever path reaches it first.
+   *
+   * Three lead here. Two belong to a shadow-object that lived: its entity is destroyed, or it leaves the
+   * constructor set of an entity that stays. On the third, the kernel calls this directly on a scope that
+   * `bindTo()` never saw, because the constructor threw -- there is no shadow-object then, and the two
+   * handles below are still unset, which is why both are called optionally.
    *
    * The flag makes the teardown a one-time act: a destroy callback reaching back into the kernel finds no
    * way to start it a second time. Releasing both handles right after ends the retention in both directions
