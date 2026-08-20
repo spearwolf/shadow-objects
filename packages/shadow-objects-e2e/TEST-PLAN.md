@@ -1,17 +1,18 @@
 # E2E Test Plan — coverage analysis and proposed test cases
 
-Status: 2026-08-17. Analysis of the Playwright suite in this package, the gaps it leaves, and a
+Status: 2026-08-20. Analysis of the Playwright suite in this package, the gaps it leaves, and a
 ticket-ready list of test cases to close them.
 
-> **Where the suite stands.** 404 tests across Chromium and Firefox — 202 per project, ten spec
-> files over ten pages. The harness fixes and the P1 blocks of every group below are in place. One
+> **Where the suite stands.** 426 tests across Chromium and Firefox — 213 per project, eleven spec
+> files over eleven pages. The harness fixes and the P1 blocks of every group below are in place. One
 > framework defect is open, `DEFECT-1` in [`KNOWN-DEFECTS.md`](KNOWN-DEFECTS.md), and
 > `create-element.spec.ts` is the only spec that registers `knownFailures` for it.
 >
 > Still open, all P2/P3: MULTI-9 … MULTI-14, DOM-9 … DOM-12, UPG-6, ASYNC-8 (`src` change after
-> `start()`), ASYNC-10 … ASYNC-12 (worker termination, failing `importScript`, transferables), and
-> H-FIX-8 (enable the webkit project). DOM-5 is not implementable from the DOM — see the note at
-> the end of `KNOWN-DEFECTS.md`. UPG-3 and UPG-8 are answered rather than open — see §3.3.
+> `start()`), ASYNC-10 … ASYNC-12 (worker termination, failing `importScript`, transferables),
+> SYNC-5 (`reCreateChanges()` after a refused trail), and H-FIX-8 (enable the webkit project).
+> DOM-5 is not implementable from the DOM — see the note at the end of `KNOWN-DEFECTS.md`. UPG-3
+> and UPG-8 are answered rather than open — see §3.3.
 
 Companion documents: `Backlog.md` §4 (repo root) holds the coverage heuristic across *all* test
 layers. This file is E2E-only and goes one level deeper: it names pages, fixtures and assertions.
@@ -20,7 +21,7 @@ layers. This file is E2E-only and goes one level deeper: it names pages, fixture
 
 ## 1. What exists today
 
-Ten spec files, 202 registered test cases per project — 404 across Chromium and Firefox. The specs
+Eleven spec files, 213 registered test cases per project — 426 across Chromium and Firefox. The specs
 themselves contain almost no logic: they name a page and a list of ids, and `runPageTests` turns
 each id into one Playwright test that asserts `data-testresult="ok"` on the node the page wrote.
 All real assertions live in `src/*.js`.
@@ -34,13 +35,15 @@ All real assertions live in `src/*.js`.
 | `async-events.spec.ts` | `pages/async-events.html` | 23 | `contextCreated` / `contextLost` as DOM CustomEvents, a property change echoed back as a message, `auto-sync` in its forms, a burst of changes coalescing into the final value, `traverseChildren` across the worker boundary, and `forward-custom-events` with and without a filter list (ASYNC-1, ASYNC-3 … ASYNC-7, ASYNC-9). |
 | `bundle.spec.ts` | `pages/bundle.html` | 13 | The single-file build: the load flag, the element definitions, the five-entity tree, the cross-namespace child that becomes a root, three property types, and a round-trip through the inlined worker (BUNDLE-1 … BUNDLE-4). |
 | `worker-failure.spec.ts` | `pages/worker-failure.html` | 13 | A worker that dies mid-run: `proxyfailed` and `contextlost` as DOM events, the failure reason, the destroyed proxy, a later call rejecting right away, and the recovery through a new proxy that re-creates the surviving entity. |
+| `sync-failure.spec.ts` | `pages/sync-failure.html` | 11 | A change trail the worker's kernel refuses: `syncfailed` as a DOM event carrying reason and lost trail, a rejecting `syncWait()`, no `AfterSync`, no proxy failure, and a next cycle that round-trips again (SYNC-1 … SYNC-4). |
 | `auto-destruct.spec.ts` | `pages/auto-destruct.html` | 8 | `autoDestructionOnParentRemoval` cascade vs. promotion-to-root, over a real worker. |
 | `create-element.spec.ts` | `pages/create-element.html` | 7 | The markup path upgrades and gets a view component; the four `document.createElement()` cases are registered as `knownFailures` for `DEFECT-1`. |
 | `remote-worker-env.spec.ts` | `pages/remote-worker-env.html` | 7 | Programmatic `ShadowEnv` + `RemoteWorkerEnv`: `ready()`, `importScript()`, `isReady`, one `sync()`, one message worker → view. |
 
 Two of the cases per page come from the harness rather than from the page: `runPageTests` always
 registers `test suite setup`, and adds `no uncaught or logged errors` unless the page provokes an
-error on purpose (`create-element` and `worker-failure` do, so they carry only the first).
+error on purpose (`create-element`, `worker-failure` and `sync-failure` do, so they carry only the
+first).
 
 `auto-destruct` is the scenario that reports through the kernel rather than the DOM: a fixture
 module (`public/mod-auto-destruct.js`) exercises kernel behaviour and reports a structured result
@@ -49,13 +52,13 @@ back to the view, which the page then asserts in three separate checks. `dynamic
 
 ### 1.1 Fixture code that is loaded but never asserted
 
-Two pages still set up more than they check:
+One page still sets up more than it checks:
 
-- **`public/mod-hello.js`** registers a reaction on the `xyz` property that dispatches `fooEcho`
-  to the view. No page using this module ever changes `xyz`, so that path never runs here — the
-  same round-trip is covered with its own fixture on `async-events` (ASYNC-1).
 - **`src/remote-worker-env.js:36-37`** creates a child `ViewComponent` `bar` with property `plah`.
   Nothing asserts it arrived.
+
+The `fooEcho` reaction in **`public/mod-hello.js`** is driven by `sync-failure`, which changes `xyz`
+on a surviving entity and waits for the echo (`sync-failure-environment-still-syncs`).
 
 ### 1.2 Harness weaknesses
 
@@ -130,7 +133,9 @@ Not covered:
   (`ShaeWorkerElement.ts:97-107`). ASYNC-8.
 - Worker termination mid-sync; pending `applyChangeTrail` promises must reject. `worker-failure`
   covers a worker that dies through an uncaught error, not one terminated while a sync is in
-  flight. ASYNC-10.
+  flight. ASYNC-10. A worker shot down mid-sync and a change trail its kernel refuses are two
+  different failures: the first takes the environment with it, the second leaves it standing and
+  costs nothing but the trail. SYNC-3 is where that line is drawn.
 - `importScript` with a URL that 404s (ASYNC-11).
 - Transferables over a real worker — only in-process today (ASYNC-12).
 
@@ -270,7 +275,24 @@ The tree is already there. It only needs assertions.
 | BUNDLE-3 | P2 | `globalThis.SHADOW_ENTS_BUNDLE_LOADED` is `true`, and the inlined worker starts without a separate network request for the worker file. |
 | BUNDLE-4 | P2 | A functional round-trip through the *bundled* build, not just element definition — the bundle is a distinct artifact and currently only smoke-tested. |
 
-### 3.6 Harness fixes
+### 3.6 Page `pages/sync-failure.html` — a change trail the environment refuses
+
+Setup: one remote environment with `auto-sync="no"`, two fixture modules imported by hand.
+`public/mod-hello.js` supplies the surviving entity, `public/mod-refuse.js` a shadow object whose
+constructor throws synchronously — the throw leaves `kernel.run()` and comes back as the failure of
+the trail that carried the entity. The confirmation is what makes it visible, so the `syncWait()`
+that asks for one stands in the same task as the DOM change; a sync the element schedules for
+itself carries no serial and would end the cycle as a success.
+
+| ID | Prio | Case |
+|---|---|---|
+| SYNC-1 | P1 | **Implemented** — `sync-failure-syncwait-rejects`, `sync-failure-dom-event`, `sync-failure-reason-names-the-refusal`, `sync-failure-aftersync-did-not-fire`. A refused trail rejects `syncWait()`, fires `syncfailed` on `<shae-worker>` with the same reason, and produces no `AfterSync`. Across a worker the reason is the message as a string, not an `Error` instance. |
+| SYNC-2 | P1 | **Implemented** — `sync-failure-detail-carries-the-lost-change-trail`. The event carries the trail that was lost, and the create-entities entry for the refused entity is in it, matched by change type and the element's `uuid`. |
+| SYNC-3 | P1 | **Implemented** — `sync-failure-is-not-a-proxy-failure`. No `proxyfailed`, no `contextlost`, `isReady` still true, the proxy not destroyed. The line between a refused trail and a dead worker. |
+| SYNC-4 | P2 | **Implemented** — `sync-failure-healthy-cycle-first`, `sync-failure-environment-still-syncs`. A round-trip before the refusal and another one after it, with the refused element removed first: neither the proxy nor the worker's kernel is left behind. |
+| SYNC-5 | P3 | `reCreateChanges()` as the documented way back after a refused trail. It re-sends the whole view state, so the refused entity has to be gone first or the recovery walks into the same refusal — a case for a fixture that lets the second attempt through, not for this one. |
+
+### 3.7 Harness fixes
 
 | ID | Prio | Case |
 |---|---|---|
@@ -278,7 +300,7 @@ The tree is already there. It only needs assertions.
 | H-FIX-2 | P1 | **Implemented** — `data-testoutput` is the failure message (`runPageTests.ts:107-109`). |
 | H-FIX-3 | P1 | **Implemented** — `runTestSuite` writes the `data-testsuite` marker, and every spec waits for it first, so a setup crash fails as one clear case instead of a locator timeout per id (`runPageTests.ts:62-81`). |
 | H-FIX-4 | P2 | **Implemented** — `testAsyncAction` rejects with an `Error` carrying the test name and the deadline (`src/test-helpers/testAsyncAction.js:5`). |
-| H-FIX-5 | P2 | **Implemented** — a `no uncaught or logged errors` case per page, with `allowConsoleErrors` for the two pages that provoke one (`runPageTests.ts:113-118`). |
+| H-FIX-5 | P2 | **Implemented** — a `no uncaught or logged errors` case per page, with `allowConsoleErrors` for the three pages that provoke one (`runPageTests.ts:113-118`). |
 | H-FIX-6 | P2 | **Implemented** — every result in `src/shae-worker.js` is awaited, and `watchCustomEvent` arms the listener separately from the wait so a cold worker start cannot eat the budget. |
 | H-FIX-7 | P3 | **Implemented** — both `contextCreated` ids are registered (`tests/shae-worker.spec.ts:9`, `:13`). |
 | H-FIX-8 | P3 | Enable the `webkit` project, or record why it stays off (H-7). |
@@ -295,7 +317,7 @@ The tree is already there. It only needs assertions.
    from the element side.
 4. **ASYNC-8 and ASYNC-10 … ASYNC-12.** The re-import path, and the three failure and transfer
    cases that need a real worker to mean anything.
-5. **MULTI-9, MULTI-12 … MULTI-14, DOM-11, DOM-12.** The remaining P2/P3 breadth.
+5. **MULTI-9, MULTI-12 … MULTI-14, DOM-11, DOM-12, SYNC-5.** The remaining P2/P3 breadth.
 6. **H-FIX-8.** Decide the `webkit` project either way and record it.
 
 The suite runs in CI as its own job (`.github/workflows/ci.yml`, `e2e`) against Chromium and

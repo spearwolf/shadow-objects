@@ -22,6 +22,8 @@ for the framework defects this suite reproduces.
 | `auto-destruct` | `autoDestructionOnParentRemoval` cascade over a real worker |
 | `bundle` | the single-file build: entity tree, property type parsing, round-trip through the inlined worker |
 | `create-element` | reproduces DEFECT-1 (elements cannot be built with `document.createElement`) |
+| `worker-failure` | a worker that dies mid-run: proxy failure, lost context, recovery through a new proxy |
+| `sync-failure` | a change trail the worker's kernel refuses: `syncfailed`, the lost trail, an environment that keeps running |
 
 ### Writing a new page
 

@@ -1,0 +1,169 @@
+import {on} from '@spearwolf/eventize';
+import {ComponentChangeType, ShadowEnv} from '@spearwolf/shadow-objects';
+import '@spearwolf/shadow-objects/shae-ent.js';
+import '@spearwolf/shadow-objects/shae-worker.js';
+import './style.css';
+import {runTestSuite} from './test-helpers/runTestSuite.js';
+import {testAsyncAction} from './test-helpers/testAsyncAction.js';
+import {testBooleanAction} from './test-helpers/testBooleanAction.js';
+import {watchCustomEvent} from './test-helpers/testCustomEvent.js';
+import {waitUntil} from './test-helpers/waitUntil.js';
+
+const SyncFailed = ShadowEnv.SyncFailed.toLowerCase();
+const ProxyFailed = ShadowEnv.ProxyFailed.toLowerCase();
+const ContextLost = ShadowEnv.ContextLost.toLowerCase();
+
+/** What `public/mod-refuse.js` throws. The reason has to carry it all the way to the view. */
+const RefusalMessage = 'this shadow object refuses to be created';
+
+/**
+ * Every wait for the refusal is capped well below the deadlines the calls involved would otherwise
+ * run into (60s for a configure), and deliberately below the 5s a change trail gets before its
+ * confirmation window expires: a budget under that deadline is what separates the kernel's refusal
+ * from a window that simply ran out. A page that only passes because it waited long enough would
+ * prove the wrong mechanism.
+ */
+const FailureTimeout = 3000;
+
+runTestSuite(main);
+
+async function main() {
+  const workerEl = document.getElementById('worker0');
+  const shadowEnv = workerEl.shadowEnv;
+
+  // Every counter and watcher is armed before the first `await`: the events they are about are
+  // dispatched once and never replayed.
+
+  let afterSyncCount = 0;
+  on(shadowEnv, ShadowEnv.AfterSync, () => {
+    afterSyncCount += 1;
+  });
+
+  // plain listeners, no budget: these two are the negative half of the page, and a case that
+  // asserts an event did *not* happen has nothing to wait for
+  let proxyFailedCount = 0;
+  let contextLostCount = 0;
+  workerEl.addEventListener(ProxyFailed, () => {
+    proxyFailedCount += 1;
+  });
+  workerEl.addEventListener(ContextLost, () => {
+    contextLostCount += 1;
+  });
+
+  const syncFailedEvent = watchCustomEvent(workerEl, SyncFailed);
+
+  await testAsyncAction('sync-failure-env-ready', () => shadowEnv.ready());
+
+  // awaited, not declared via `src`: both shadow objects have to be registered before the entities
+  // arrive, otherwise the worker meets a token it has no definition for
+  await testAsyncAction('sync-failure-modules-imported', () =>
+    Promise.all([workerEl.importScript('/mod-hello.js'), workerEl.importScript('/mod-refuse.js')]),
+  );
+
+  // the markup path, not document.createElement — see KNOWN-DEFECTS.md
+  const host = document.createElement('div');
+  document.body.append(host);
+  host.innerHTML = '<shae-ent id="survivor" token="foo"></shae-ent>';
+
+  const survivor = document.getElementById('survivor');
+  survivor.viewComponent.setProperty('xyz', 23);
+
+  const hellos = [];
+  const echoes = [];
+  on(survivor.viewComponent, 'helloFromFoo', (data) => hellos.push(data));
+  on(survivor.viewComponent, 'fooEcho', (data) => echoes.push(data));
+
+  // the counter-check of this page: the road carries an entity to the worker and a message back
+  // before anything on it breaks
+  await testAsyncAction('sync-failure-healthy-cycle-first', async () => {
+    await shadowEnv.syncWait();
+    await waitUntil('the survivor to report in from the worker', () => hellos.length > 0);
+  });
+
+  const afterSyncBeforeRefusal = afterSyncCount;
+
+  host.insertAdjacentHTML('beforeend', '<shae-ent id="refuser" token="refuser"></shae-ent>');
+
+  // `syncWait()` has to stand in the same task as the DOM change: `ShaeElement` schedules a sync of
+  // its own in a microtask whenever an element changes, and a trail that leaves on that route
+  // carries no serial — the worker would then report the kernel's refusal to nobody waiting, and
+  // the cycle would end as a success. Anything in between that gives the event loop a full turn
+  // does exactly that, and the page would still be green while proving nothing.
+  const refusedCycle = shadowEnv.syncWait().then(
+    () => {
+      throw new Error('expected syncWait() to reject, but it resolved');
+    },
+    // handled right here: a rejected promise nobody attached to becomes an unhandled rejection
+    (error) => error,
+  );
+
+  const refusedUuid = document.getElementById('refuser').uuid;
+
+  let refusedReason;
+
+  await testAsyncAction(
+    'sync-failure-syncwait-rejects',
+    async () => {
+      refusedReason = await refusedCycle;
+      if (refusedReason == null) {
+        throw new Error(`expected the rejection to carry a reason, got: ${refusedReason}`);
+      }
+    },
+    FailureTimeout,
+  );
+
+  let failureDetail;
+
+  await syncFailedEvent(
+    'sync-failure-dom-event',
+    // the check is also where the detail is kept: `watchCustomEvent` unsubscribes once the wait is
+    // over, and the three cases behind this one assert on what the event carried
+    (detail) => {
+      failureDetail = detail;
+      return true;
+    },
+    FailureTimeout,
+  );
+
+  testBooleanAction('sync-failure-reason-names-the-refusal', () => {
+    if (failureDetail?.reason !== refusedReason) {
+      throw new Error(`the event carried another reason than syncWait(): ${failureDetail?.reason}`);
+    }
+    // Across a worker boundary the reason is a string, not an Error instance: the worker reduces it
+    // to a message when it puts it on the wire (`MessageRouter.#onChangeTrail`), and the view
+    // rejects with exactly that value (`RemoteWorkerEnv.applyChangeTrail`).
+    if (typeof refusedReason !== 'string' || !refusedReason.includes(RefusalMessage)) {
+      throw new Error(`expected a string naming the refusal, got: ${JSON.stringify(refusedReason)}`);
+    }
+    return failureDetail.shadowEnv === shadowEnv;
+  });
+
+  testBooleanAction('sync-failure-detail-carries-the-lost-change-trail', () => {
+    // this is what the event is for: whoever holds the trail knows what went missing
+    const changeTrail = failureDetail?.changeTrail;
+    if (!Array.isArray(changeTrail) || changeTrail.length === 0) {
+      throw new Error(`expected a non-empty change trail, got: ${JSON.stringify(changeTrail)}`);
+    }
+    // the entry that wanted to create the refused entity, matched by both halves: the uuid alone
+    // would also accept a property change or a destruction that happens to name the same entity
+    return changeTrail.some((entry) => entry.type === ComponentChangeType.CreateEntities && entry.uuid === refusedUuid);
+  });
+
+  testBooleanAction('sync-failure-aftersync-did-not-fire', () => afterSyncCount === afterSyncBeforeRefusal);
+
+  // the difference between this page and `worker-failure`: the worker is still standing
+  testBooleanAction(
+    'sync-failure-is-not-a-proxy-failure',
+    () => proxyFailedCount === 0 && contextLostCount === 0 && shadowEnv.isReady && !shadowEnv.envProxy.isDestroyed,
+  );
+
+  await testAsyncAction('sync-failure-environment-still-syncs', async () => {
+    // the refused entity leaves first: the view still holds it, and a trail carrying it again would
+    // run into the same refusal
+    document.getElementById('refuser').remove();
+    survivor.viewComponent.setProperty('xyz', 42);
+
+    await shadowEnv.syncWait();
+    await waitUntil('the survivor to echo the new value back', () => echoes.some((value) => value === 42));
+  });
+}

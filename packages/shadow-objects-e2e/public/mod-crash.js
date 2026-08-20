@@ -4,6 +4,11 @@ function crasher() {
   // worker failure. Deferring it takes the throw out of every try/catch on the worker side: it
   // becomes an unhandled error, which is what the browser turns into an `error` event on the
   // Worker object — the failure this page is about.
+  //
+  // The delay decides a second thing on the side, and `src/worker-failure.js` stands on it: the
+  // confirmation of the change trail goes out synchronously after the kernel ran, so it reaches the
+  // main thread ahead of the `error` event, and the sync cycle that carried this entity resolves
+  // instead of being refused.
   setTimeout(() => {
     throw new Error('the shadow object took the worker down');
   }, 0);

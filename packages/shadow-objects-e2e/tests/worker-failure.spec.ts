@@ -7,7 +7,7 @@ test.describe('worker-failure', () => {
     [
       'worker-failure-env-ready',
       'worker-failure-import-module',
-      'worker-failure-entity-reached-the-worker',
+      'worker-failure-entity-sync-settles',
       'worker-failure-proxyfailed-dom-event',
       'worker-failure-contextlost-dom-event',
       'worker-failure-reason-is-a-worker-failed-error',
