@@ -413,6 +413,51 @@ describe('shae-prop follows its host entity', () => {
     expect(prop.entNode?.id, 'no entity stands above the slot any more').to.equal('sn-outer');
     expect(deep.entNode?.id, 'down to the property below the assigned node').to.equal('sn-outer');
   });
+
+  // The same move, with a round trip of the shadow host in front of it. The entity holding the
+  // slot is the only side that can report a move to a place with no entity above it, so it has to
+  // hold the slot again after the round trip — and it takes the slots below it up when it enters
+  // the tree, because the assignment inside the shadow root does not change on the way and
+  // nothing reports it.
+  it('follows the slot out of every entity after its shadow host left the document and came back', async () => {
+    const container = mount(
+      '<shae-ent id="sq-outer" token="outer">' +
+        '<div id="sq-div">' +
+        '<shae-prop id="sq-prop" name="x" value="1"></shae-prop>' +
+        '<div id="sq-wrap"><shae-prop id="sq-deep" name="y" value="2"></shae-prop></div>' +
+        '</div>' +
+        '</shae-ent>',
+    );
+    await Promise.all(['shae-ent', 'shae-prop'].map((name) => customElements.whenDefined(name)));
+
+    const div = container.querySelector('#sq-div');
+    const shadowRoot = div.attachShadow({mode: 'open'});
+    shadowRoot.innerHTML = '<shae-ent id="sq-from" token="from"><slot id="sq-slot"></slot></shae-ent><div id="sq-plain"></div>';
+    await nextTask();
+
+    expect(container.querySelector('#sq-prop').entNode?.id, 'the slot projects the property into the entity holding it').to.equal(
+      'sq-from',
+    );
+
+    const outer = container.querySelector('#sq-outer');
+    div.remove();
+    await nextTask();
+    outer.appendChild(div);
+    await nextTask();
+
+    const prop = container.querySelector('#sq-prop');
+    const deep = container.querySelector('#sq-deep');
+
+    expect(prop.entNode?.id, 'the round trip leaves the binding as it was').to.equal('sq-from');
+    expect(deep.entNode?.id, 'and the one below the assigned node with it').to.equal('sq-from');
+
+    shadowRoot.getElementById('sq-plain').appendChild(shadowRoot.getElementById('sq-slot'));
+    await nextTask();
+
+    // the ascent leaves the shadow root over its host and arrives at the entity around it
+    expect(prop.entNode?.id, 'no entity stands above the slot any more').to.equal('sq-outer');
+    expect(deep.entNode?.id, 'down to the property below the assigned node').to.equal('sq-outer');
+  });
 });
 
 /**

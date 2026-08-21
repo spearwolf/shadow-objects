@@ -267,9 +267,7 @@ nowhere and reported once per element through the `ConsoleLogger` at warn level.
 Every slot move is followed, wherever the slot lands — `slot.remove()` included: the entity giving
 the slot away listens on the `<slot>` element itself and reports the loss. A projected `<shae-ent>`
 that finds nobody of its own namespace above the slot has no parent afterwards, and a `<shae-prop>`
-with no entity above it has no host. One gap: after a shadow host has left the document and been
-inserted again, a slot in its shadow root is followed into another entity but no longer out of
-every entity.
+with no entity above it has no host.
 
 Removing the element, renaming it, or moving it to another entity clears the property it declared.
 A move within a single tick is a move, not a removal — the property travels with the element.

@@ -1,5 +1,5 @@
 import {expect} from '@esm-bundle/chai';
-import {ComponentContext, ReRequestEntHostEventName} from '@spearwolf/shadow-objects';
+import {ComponentContext, ReRequestEntHostEventName, ShaeEntElement} from '@spearwolf/shadow-objects';
 import '@spearwolf/shadow-objects/shae-ent.js';
 import {mount, unmountAll} from '../src/mount.js';
 
@@ -17,6 +17,17 @@ import {mount, unmountAll} from '../src/mount.js';
 
 /** The element sets its subscriptions up again one microtask after the teardown. */
 const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+// `moveBefore` is the only move that keeps the element connected, and an empty
+// `connectedMoveCallback` is what opts a subclass out of the disconnect/connect pair.
+// Without it the element would rejoin its ComponentContext on the way back in, and the
+// case would measure a healed element instead of the one it means to measure
+customElements.define(
+  'move-ent-cx',
+  class extends ShaeEntElement {
+    connectedMoveCallback() {}
+  },
+);
 
 describe('shae-ent and a context that takes its components down', () => {
   afterEach(() => {
@@ -141,5 +152,65 @@ describe('shae-ent and a context that takes its components down', () => {
     } finally {
       document.removeEventListener(ReRequestEntHostEventName, onHostRequest);
     }
+  });
+
+  // A component that holds no ComponentContext stands in no entity tree, and a DOM move that
+  // puts such an element under an entity in the same state must not turn that into a parent
+  // link: the link is refused, and a refusal has to arrive as an empty parent rather than as a
+  // throw out of a MutationObserver callback, where nobody is left to catch it.
+  it('carries a move that puts it under an entity whose component has left the ComponentContext too', async () => {
+    const container = mount(
+      '<shae-ent id="p1-cx" token="p1"><move-ent-cx id="c-cx" token="c"></move-ent-cx></shae-ent>' +
+        '<shae-ent id="p2-cx" token="p2"></shae-ent>',
+    );
+    await customElements.whenDefined('move-ent-cx');
+
+    const c = container.querySelector('#c-cx');
+    const p2 = container.querySelector('#p2-cx');
+
+    expect(c.entParentNode?.id, 'it starts under the first parent').to.equal('p1-cx');
+
+    ComponentContext.get().clear();
+
+    // the throw would come out of a MutationObserver callback, so the window is the only place
+    // it shows up at all
+    const errors = [];
+    const onError = (event) => {
+      errors.push(event.error ?? event.message);
+      event.preventDefault();
+    };
+    window.addEventListener('error', onError);
+
+    try {
+      p2.moveBefore(c, null);
+      await nextTask();
+
+      expect(errors, 'the move is carried out with nothing thrown at the window').to.deep.equal([]);
+      expect(c.entParentNode?.id, 'the element follows the move').to.equal('p2-cx');
+      expect(c.viewComponent.parent, 'and its entity takes no parent while it is in no ComponentContext').to.be.undefined;
+    } finally {
+      window.removeEventListener('error', onError);
+    }
+  });
+
+  // The counter-check on the ordinary way through the same move: a component that holds its
+  // ComponentContext takes the parent the move puts it under.
+  it('links the entity tree on the same move while its component is in the ComponentContext', async () => {
+    const container = mount(
+      '<shae-ent id="p1-cy" token="p1"><move-ent-cx id="c-cy" token="c"></move-ent-cx></shae-ent>' +
+        '<shae-ent id="p2-cy" token="p2"></shae-ent>',
+    );
+    await customElements.whenDefined('move-ent-cx');
+
+    const c = container.querySelector('#c-cy');
+    const p2 = container.querySelector('#p2-cy');
+
+    expect(c.entParentNode?.id, 'it starts under the first parent').to.equal('p1-cy');
+
+    p2.moveBefore(c, null);
+    await nextTask();
+
+    expect(c.entParentNode?.id, 'the element follows the move').to.equal('p2-cy');
+    expect(c.viewComponent.parent, 'and the entity tree says the same').to.equal(p2.viewComponent);
   });
 });

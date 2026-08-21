@@ -1803,8 +1803,11 @@ An answer is not the same thing as a parent link. An ancestor whose entity sits 
 `ComponentContext` answers the request and becomes this element's `entParentNode`, but the entity
 tree does not follow: `viewComponent.parent` stays empty. The request goes out once more a microtask
 later, gets the same answer, and the matter rests there — the element keeps its `entParentNode` and
-its entity keeps no parent, without the two feeding each other. No attribute leads into that state;
-it takes writing `viewComponent$` from outside.
+its entity keeps no parent, without the two feeding each other. An entity that holds no
+`ComponentContext` reads the same way: it stands in no entity tree, so `viewComponent.parent` stays
+empty while `entParentNode` names the ancestor that answered. That is what a `<shae-ent>` looks like
+after a `ComponentContext.clear()` while it stays in the document, until its component is taken back
+in.
 
 Three things happen after that and are picked up on their own: an element that is itself an entity —
 a subclass of `ShaeEntElement`, say, loaded from a lazy module — and that is registered with
@@ -1821,17 +1824,11 @@ entity giving the slot away hangs its listener on the `<slot>` element itself an
 wherever the slot ends up. What stands at the destination therefore decides nothing about whether
 the move is announced.
 
-One thing takes that listener away again. An entity picks a slot up when the slot reports an
-assignment, and it lets go on either of two occasions: when it stops being the closest entity above
-the slot, and when it leaves the tree. A shadow host that leaves the document and is inserted again
-reports no assignment, because the assignment inside its shadow root did not change — so the entity
-in it has let go and picks nothing back up.
-
-After such a round trip only the announcement from the receiving side is left. A move into another
-entity therefore carries as always, and it is also what ends the gap: the entity the slot arrives
-under picks the slot up again and answers for it from then on. A move to a place with no entity
-above it goes unseen, and it stays unseen however often the assignment changes afterwards — the
-report arrives at the slot, and above the slot nobody is listening.
+An entity picks a slot up when the slot reports an assignment, and it lets go of every slot it
+holds when it leaves the tree. Entering the tree is the counterpart: the entity takes up the slots
+below it that project something, so a shadow host that leaves the document and is inserted again
+answers for what its shadow root holds exactly as it did before. The assignment inside that shadow
+root does not change on the way, so nothing reports it — and the entity does not wait to be told.
 
 Where the projection ends up is what the flattened tree says, and no answer is a result as well. A
 projected `<shae-ent>` that finds nothing of its own namespace above the slot has no parent
@@ -1953,9 +1950,7 @@ part of its shadow root with no entity above it is followed just as well, and so
 along with the window until the slot is put back: `slotchange` is not `composed` and reaches only
 the shadow root the slot has landed in, so the entity that gives the slot away is the one that
 reports the loss — it listens on the `<slot>` element itself. The property then binds to the
-closest entity the flattened tree still shows above it, and to none where there is none. The one
-gap is the shadow host that leaves the document and is inserted again: see the note on the slot
-move under [Entity Hierarchy](#entity-hierarchy).
+closest entity the flattened tree still shows above it, and to none where there is none.
 
 The timing is worth knowing, because the code does not show it: a re-binding takes effect one
 microtask after the change, not in the same step. Rebuild the tree and read `entNode` right

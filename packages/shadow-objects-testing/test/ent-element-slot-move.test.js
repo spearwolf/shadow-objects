@@ -191,13 +191,12 @@ describe('shae-ent and a slot that moves', () => {
     plain.destroy();
   });
 
-  // A known limit, pinned so it cannot move unnoticed. An entity picks a slot up when the slot
-  // reports an assignment, and it lets go when it leaves the tree — but a shadow host that leaves
-  // the document and is inserted again reports no assignment at all, because the assignment inside
-  // its shadow root never changed. What is left afterwards is the announcement from the receiving
-  // side, so a move into another entity carries as always and only a move to a place with no
-  // entity above it goes unseen.
-  it('misses a slot moving out of every entity after its shadow host left the document and came back', async () => {
+  // An entity takes up the slots below it when it enters the tree, and that is what carries
+  // this case: the assignment inside a shadow root does not change while its host leaves the
+  // document and comes back, so nothing reports and there is nothing to hear. The entity has
+  // to look for itself, and once it holds the slot again it hears the move out of every
+  // entity — the one move that no receiving side is there to announce.
+  it('follows a slot moving out of every entity after its shadow host left the document and came back', async () => {
     const container = mount(
       '<shae-ent id="th-outer" token="outer">' +
         '<div id="th-div"><shae-ent id="th-child" token="child"></shae-ent></div>' +
@@ -227,7 +226,10 @@ describe('shae-ent and a slot that moves', () => {
     shadowRoot.getElementById('th-plain').appendChild(shadowRoot.getElementById('th-slot'));
     await nextTask();
 
-    expect(child.entParentNode?.id, 'and the move that follows is not seen').to.equal('th-from');
+    // the ascent runs from the child over the slot into the shadow root, past the host `#th-div`,
+    // and arrives at the entity around it
+    expect(child.entParentNode?.id, 'and the move that follows is seen').to.equal('th-outer');
+    expect(child.viewComponent.parent, 'and the entity tree says the same').to.equal(outer.viewComponent);
 
     // inserted next to what is already there, never through `shadowRoot.innerHTML`: writing that
     // property rebuilds the whole shadow root, and the case would go on to measure fresh elements
@@ -239,6 +241,90 @@ describe('shae-ent and a slot that moves', () => {
     await nextTask();
 
     expect(child.entParentNode?.id, 'while a move into another entity carries as always').to.equal('th-to');
+  });
+
+  // Taking the slots up again is a local matter: the register and the listeners are written, and
+  // nothing is broadcast. The register can only go stale while the entities holding it are out of
+  // the tree, and they are only out of it together with the shadow root of their host — so
+  // everything the slot projects is out of the tree as well and asks for its parent on the way
+  // back in anyway.
+  it('sets off no re-request round when a shadow host comes back into the document', async () => {
+    const container = mount(
+      '<shae-ent id="q-outer" token="outer">' +
+        '<div id="q-div"><shae-ent id="q-child" token="child"></shae-ent></div>' +
+        '</shae-ent>' +
+        '<shae-ent id="q-parent" token="bystander"><shae-ent id="q-kid" token="bystander-kid"></shae-ent></shae-ent>',
+    );
+    await customElements.whenDefined('shae-ent');
+
+    const div = container.querySelector('#q-div');
+    const shadowRoot = div.attachShadow({mode: 'open'});
+    shadowRoot.innerHTML = '<shae-ent id="q-from" token="from"><slot id="q-slot"></slot></shae-ent>';
+    await nextTask();
+
+    const outer = container.querySelector('#q-outer');
+    const kid = container.querySelector('#q-kid');
+
+    expect(
+      container.querySelector('#q-child').entParentNode?.id,
+      'the slot projects the entity into the one holding it',
+    ).to.equal('q-from');
+    expect(kid.entParentNode?.id, 'the bystander is bound and has no reason to ask again').to.equal('q-parent');
+
+    const rounds = await countRequestsOf(kid, async () => {
+      div.remove();
+      await nextTask();
+      outer.appendChild(div);
+    });
+
+    expect(rounds, 'taking the slots below it back up is a matter between the entity and the register').to.equal(0);
+  });
+
+  // The register is what decides whether a later `slotchange` is a move or just new content, so
+  // the entity that takes a slot up on the way in has to be the one the register names.
+  it('claims a slot that changed hands while its shadow host was out of the document', async () => {
+    const container = mount(
+      '<shae-ent id="r-outer" token="outer">' +
+        '<div id="r-div"><shae-ent id="r-child" token="child"></shae-ent></div>' +
+        '</shae-ent>' +
+        '<shae-ent id="r-parent" token="bystander"><shae-ent id="r-kid" token="bystander-kid"></shae-ent></shae-ent>',
+    );
+    await customElements.whenDefined('shae-ent');
+
+    const div = container.querySelector('#r-div');
+    const shadowRoot = div.attachShadow({mode: 'open'});
+    shadowRoot.innerHTML =
+      '<shae-ent id="r-from" token="from"><slot id="r-slot"></slot></shae-ent><shae-ent id="r-to" token="to"></shae-ent>';
+    await nextTask();
+
+    const outer = container.querySelector('#r-outer');
+    const kid = container.querySelector('#r-kid');
+    const child = container.querySelector('#r-child');
+
+    expect(child.entParentNode?.id, 'the slot projects the entity into the one holding it').to.equal('r-from');
+
+    div.remove();
+    await nextTask();
+
+    // the slot changes hands with nobody in the tree to hear it, and the turn ends before the host
+    // goes back in: `slotchange` reaches an entity that has taken its listeners off, so the report
+    // is spent by the time anyone could act on it. What carries the change is the assignment
+    // itself, which is computed at the mutation
+    shadowRoot.getElementById('r-to').appendChild(shadowRoot.getElementById('r-slot'));
+    await nextTask();
+
+    outer.appendChild(div);
+    await nextTask();
+
+    expect(child.entParentNode?.id, 'the projection arrives under the entity the slot now sits in').to.equal('r-to');
+
+    // the entity that took the slot up on the way in is the one the register names, so content
+    // arriving in the slot afterwards moves no binding and asks nobody
+    const rounds = await countRequestsOf(kid, async () => {
+      container.querySelector('#r-div').appendChild(document.createElement('span'));
+    });
+
+    expect(rounds, 'a slot whose entity has not changed asks nobody').to.equal(0);
   });
 
   // The gate in front of the re-request round, and the only assertion that notices its absence:

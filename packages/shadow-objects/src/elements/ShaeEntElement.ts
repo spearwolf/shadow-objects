@@ -66,7 +66,14 @@ const isInClosedShadowTree = (node: Node): boolean => {
 };
 
 /**
- * The entity that answered for a `<slot>` the last time the slot reported an assignment.
+ * The entity that answers for a `<slot>`, written on either of the two occasions an entity comes
+ * to answer for one: the slot reports an assignment and the closest entity above it takes it up,
+ * or an entity enters the tree and takes up the slots below it. The reporting writer takes the
+ * slot as it finds it: `slotchange` announces every change of an assignment, one that has just
+ * become empty included, so an entry can name a slot that projects nothing at this moment. What
+ * no entry ever names is a slot that has not reported at all — and the entering writer holds that
+ * line by skipping a slot with an empty assignment, because a name put on such a slot would let
+ * its first report, under whatever entity it sits below by then, read as a change of hands.
  *
  * `slotchange` fires after the move and therefore at the new location; the place the slot came
  * from cannot be read from there any more — this register is the only place where it still has a
@@ -480,6 +487,10 @@ export class ShaeEntElement extends ShaeElement {
       this.#askPeersToReRequestParent();
       this.#askPropertiesToReRequestHost();
     }
+
+    // --- hosted slots ---
+    this.#collectHostedSlots();
+
     this.#createParentObserver();
 
     // --- sync! ---
@@ -657,7 +668,11 @@ export class ShaeEntElement extends ShaeElement {
         const vc = this.viewComponent$.get();
         if (vc) {
           const parentVC = parent.viewComponent$.get();
-          vc.parent = parentVC && parentVC.context === vc.context ? parentVC : undefined;
+          // a parent link needs a ComponentContext, and the same one on both sides: an entity
+          // that holds none stands in no entity tree at all, and two entities of different
+          // ComponentContexts stand in two trees that never meet
+          const ctx = vc.context;
+          vc.parent = ctx != null && parentVC?.context === ctx ? parentVC : undefined;
           if (vc.parent == null) {
             queueMicrotask(() => {
               this.#dispatchRequestParent();
@@ -677,10 +692,12 @@ export class ShaeEntElement extends ShaeElement {
   }
 
   // Whether this element is the closest entity above `slot`. The ascent goes over `parentElement`
-  // and nothing else: `slotchange` bubbles along the node tree of one shadow root, so the slot and
-  // every entity that can hear it sit in the same tree, and the flattened parent is not the
-  // question here. Without the test every entity of the chain would write the register and the
-  // outermost one would win — the answer a projected node gets comes from the closest.
+  // and nothing else, and both callers stand on the same ground for it: `slotchange` bubbles along
+  // the node tree of one shadow root, so the slot and every entity that can hear it sit in the same
+  // tree, and a slot found by `querySelectorAll` never leaves the node tree it was searched in
+  // either. The flattened parent is not the question here. Without the test every entity of the
+  // chain would write the register and the outermost one would win — the answer a projected node
+  // gets comes from the closest.
   #isClosestEntAbove(slot: Element): boolean {
     for (let current = slot.parentElement; current != null; current = current.parentElement) {
       if (current === this) return true;
@@ -719,6 +736,30 @@ export class ShaeEntElement extends ShaeElement {
       ref.deref()?.removeEventListener('slotchange', this.#onHostedSlotChange, {capture: false});
     }
     this.#hostedSlots.clear();
+  }
+
+  /**
+   * Take up the `<slot>`s below this element that project something.
+   *
+   * A slot is answered for from the moment it reports an assignment, and an entity leaving the
+   * tree lets go of every slot it holds. Entering the tree is the counterpart: the entity takes
+   * up the slots below it, because the assignment inside a shadow root does not change while
+   * its host is out of the document — nothing reports on the way back in, so the entity has to
+   * look for itself.
+   *
+   * Only inside a shadow root, and that test is exact rather than an optimization: a `<slot>`
+   * in a node tree that is not a shadow tree has no assignment and never reports one, so there
+   * is nothing below such an element to take up.
+   */
+  #collectHostedSlots() {
+    if (this.findShadowRootHost() == null) return;
+
+    for (const slot of this.querySelectorAll('slot')) {
+      if (slot.assignedNodes().length === 0) continue;
+      if (!this.#isClosestEntAbove(slot)) continue;
+      entHostOfSlot.set(slot, new WeakRef(this));
+      this.#watchHostedSlot(slot);
+    }
   }
 
   // `currentTarget` rather than `target`: a `<slot>` can stand in the fallback content of another
