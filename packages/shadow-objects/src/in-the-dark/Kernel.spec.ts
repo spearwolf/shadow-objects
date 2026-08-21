@@ -1,4 +1,4 @@
-import {emit, eventize, getSubscriptionCount, on} from '@spearwolf/eventize';
+import {emit, eventize, getSubscriptionCount, on, Priority} from '@spearwolf/eventize';
 import {
   createEffect,
   createSignal,
@@ -4488,6 +4488,243 @@ describe('Kernel', () => {
         getPropCountDuringScopeTeardown(),
         'a teardown callback still reads the properties of the entity it belongs to',
       ).toBe(1);
+
+      kernel.destroy();
+    });
+  });
+
+  describe('an entity teardown with a listener on the entity that throws', () => {
+    // The kernel tells each shadow-object of an entity on its own and then sends one destruction
+    // notification to whatever else listens on that entity. Behind the foreign listeners in that one
+    // delivery sit the creation scopes at `Priority.Low` and the entity's own release at
+    // `Priority.Min` -- so a foreign listener that throws is in front of both.
+    const makeEntityWithBystander = (throwingListener: 'through the creation api' | 'at the highest priority') => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const seen: string[] = [];
+      const testSignal = createSignal(0);
+      const effectFn = vi.fn();
+
+      // Read while the creation scope of the bystander tears down. The entity clears its properties in
+      // its own release, so a non-empty count here is what tells the two apart in time.
+      let propCountDuringScopeTeardown: number | undefined;
+
+      @ShadowObject({registry, token: 'withBystander'})
+      class Bystander {
+        constructor({onDestroy: onScopeDestroy, createEffect, entity}: ShadowObjectCreationAPI) {
+          createEffect(() => {
+            effectFn(testSignal.get());
+          });
+          onScopeDestroy(() => {
+            seen.push('bystander scope');
+            propCountDuringScopeTeardown = entity.propEntries().length;
+          });
+        }
+      }
+
+      // A callback taken through the creation API carries no priority of its own, which puts it at
+      // `Priority.Normal` -- ahead of every creation scope and ahead of the entity.
+      @ShadowObject({registry, token: 'withBystander'})
+      class Saboteur {
+        constructor({on: onEntity}: ShadowObjectCreationAPI) {
+          if (throwingListener === 'through the creation api') {
+            onEntity(onDestroy, () => {
+              seen.push('failing listener');
+              throw new Error('this listener fails');
+            });
+          }
+        }
+      }
+
+      expect(Bystander).toBeDefined();
+      expect(Saboteur).toBeDefined();
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'withBystander', undefined, 0, [['label', 'hello']]);
+
+      const entity = kernel.getEntity(uuid);
+
+      // The other end of the range: nothing about this one comes from the creation API, and it runs
+      // before every other listener on the entity. It is where an auto-destructing child registers.
+      if (throwingListener === 'at the highest priority') {
+        on(entity, onDestroy, Priority.Max, () => {
+          seen.push('failing listener');
+          throw new Error('this listener fails');
+        });
+      }
+
+      return {
+        kernel,
+        uuid,
+        entity,
+        seen,
+        testSignal,
+        effectFn,
+        getPropCountDuringScopeTeardown: () => propCountDuringScopeTeardown,
+      };
+    };
+
+    it('leaves the creation scope of a shadow-object its teardown', () => {
+      const {kernel, uuid, testSignal, effectFn, seen} = makeEntityWithBystander('through the creation api');
+
+      kernel.destroyEntity(uuid);
+
+      // Counting from what happened rather than from a fixed number keeps the case off the question
+      // whether a fresh effect runs once right away.
+      const runs = effectFn.mock.calls.length;
+
+      testSignal.set(1);
+
+      expect(seen, 'the failing listener ran').toContain('failing listener');
+      expect(effectFn, 'the scope of the bystander is torn down, effects included').toHaveBeenCalledTimes(runs);
+
+      kernel.destroy();
+    });
+
+    it('leaves the entity its own release', () => {
+      const {kernel, uuid, entity} = makeEntityWithBystander('through the creation api');
+
+      kernel.destroyEntity(uuid);
+
+      expect(entity.propEntries(), 'the entity has run its own release').toEqual([]);
+
+      kernel.destroy();
+    });
+
+    it('leaves both to a listener that runs ahead of everything else on the entity', () => {
+      const {kernel, uuid, entity, testSignal, effectFn, seen} = makeEntityWithBystander('at the highest priority');
+
+      kernel.destroyEntity(uuid);
+
+      const runs = effectFn.mock.calls.length;
+
+      testSignal.set(1);
+
+      expect(seen, 'the failing listener ran').toEqual(['failing listener', 'bystander scope']);
+      expect(effectFn, 'the scope of the bystander is torn down, effects included').toHaveBeenCalledTimes(runs);
+      expect(entity.propEntries(), 'the entity has run its own release').toEqual([]);
+
+      kernel.destroy();
+    });
+
+    it('releases the entity only once every creation scope is through', () => {
+      const {kernel, uuid, getPropCountDuringScopeTeardown} = makeEntityWithBystander('through the creation api');
+
+      kernel.destroyEntity(uuid);
+
+      expect(
+        getPropCountDuringScopeTeardown(),
+        'a teardown callback still reads the properties of the entity it belongs to',
+      ).toBe(1);
+
+      kernel.destroy();
+    });
+
+    it('hands the throw to nobody and holds nothing afterwards', () => {
+      const {kernel, uuid} = makeEntityWithBystander('through the creation api');
+
+      expect(() => kernel.destroyEntity(uuid)).not.toThrow();
+
+      expect(kernel.hasEntity(uuid)).toBe(false);
+      expect(kernel.findShadowObjects(uuid)).toEqual([]);
+      expect(kernel.traverseLevelOrderBFS(), 'the entity is not among the roots either').toEqual([]);
+
+      kernel.destroy();
+    });
+  });
+
+  describe('the destruction notification of an entity', () => {
+    // The order the four groups are told in is part of what a teardown callback may rely on: it reads
+    // the entity, and the entity is still whole. Anything registered below `Priority.Low` therefore
+    // runs behind the creation scopes and still ahead of the entity's own release.
+    it('reaches the shadow-objects, the foreign listeners, the creation scopes and the entity in that order', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const seen: string[] = [];
+
+      @ShadowObject({registry, token: 'ordered'})
+      class Recorder implements OnDestroy {
+        constructor({onDestroy: onScopeDestroy}: ShadowObjectCreationAPI) {
+          onScopeDestroy(() => {
+            seen.push('creation scope');
+          });
+        }
+
+        [onDestroy]() {
+          seen.push('shadow-object hook');
+        }
+      }
+
+      expect(Recorder).toBeDefined();
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'ordered', undefined, 0, [['label', 'hello']]);
+
+      const entity = kernel.getEntity(uuid);
+
+      let propCountBelowTheScopes: number | undefined;
+
+      on(entity, onDestroy, Priority.Max, () => {
+        seen.push('listener at the highest priority');
+      });
+      on(entity, onDestroy, () => {
+        seen.push('listener without a priority');
+      });
+      on(entity, onDestroy, -20000, () => {
+        seen.push('listener below the creation scopes');
+        propCountBelowTheScopes = entity.propEntries().length;
+      });
+
+      kernel.destroyEntity(uuid);
+
+      expect(seen).toEqual([
+        'shadow-object hook',
+        'listener at the highest priority',
+        'listener without a priority',
+        'creation scope',
+        'listener below the creation scopes',
+      ]);
+      expect(propCountBelowTheScopes, 'the entity releases behind the last listener on it').toBe(1);
+      expect(entity.propEntries(), 'and it has released once the destruction is through').toEqual([]);
+
+      kernel.destroy();
+    });
+
+    // The release of an entity is reachable from outside: `kernel.getEntity(uuid)` hands the entity over,
+    // and the method the kernel reaches through the notification is the same one that caller can call.
+    // That it happens once is a promise to whoever holds an entity, and the kernel builds on it: the
+    // direct call behind the notification is free wherever the notification already got there.
+    it('releases the entity once, however often the release is called', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const uuid = generateUUID();
+      const childUuid = generateUUID();
+
+      kernel.createEntity(uuid, 'released-once', undefined, 0, [['label', 'hello']]);
+      kernel.createEntity(childUuid, 'released-once', uuid);
+
+      const entity = kernel.getEntity(uuid);
+
+      kernel.destroyEntity(uuid);
+
+      const afterDestruction = {
+        props: entity.propEntries(),
+        children: entity.children.length,
+        parent: entity.parent,
+      };
+
+      expect(() => {
+        entity[onDestroy]();
+        entity[onDestroy]();
+      }, 'a repeated release does not throw').not.toThrow();
+
+      expect(entity.propEntries()).toEqual(afterDestruction.props);
+      expect(entity.children.length).toBe(afterDestruction.children);
+      expect(entity.parent).toBe(afterDestruction.parent);
+      expect(kernel.hasEntity(uuid), 'and it leaves the kernel where it is').toBe(false);
 
       kernel.destroy();
     });

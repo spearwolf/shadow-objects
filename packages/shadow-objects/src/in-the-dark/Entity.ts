@@ -91,6 +91,8 @@ export class Entity {
 
   #order = 0;
 
+  #isReleased = false;
+
   get kernel(): Kernel {
     return this.#kernel;
   }
@@ -191,7 +193,27 @@ export class Entity {
     }
   }
 
+  /**
+   * Releases everything the entity holds: its properties, its subscriptions, its contexts and its place
+   * in the entity tree.
+   *
+   * It runs once, whichever way it is reached. The kernel has two: the destruction notification it sends
+   * on the entity, which carries this as a listener, and a direct call right behind that notification,
+   * for the case where the notification ended early and never got here. The flag makes the second one
+   * cost nothing where the first one already went through, and keeps every step below written for a
+   * single run.
+   *
+   * The flag is raised before the first step rather than after the last, because that is what a release
+   * running twice would cost: the steps below are written for one pass, not for a repeat. The price of
+   * standing there is that a step which throws leaves the ones behind it undone for good -- the direct
+   * call finds the flag raised and returns. Every step is a library-internal release of something this
+   * entity owns, and none of them is expected to throw; the one that can is the one that needs a guard
+   * of its own, the way `ShadowObjectCreationScope.tearDown()` gives each of its steps one.
+   */
   [onDestroy]() {
+    if (this.#isReleased) return;
+    this.#isReleased = true;
+
     this.#props.clear();
     off(this);
 

@@ -388,6 +388,30 @@ export class Kernel {
       } catch (error) {
         this.logger.error('entity onDestroy notification failed:', entity.uuid, error);
       }
+
+      // The notification is one delivery, and it ends at the first listener that throws -- everything
+      // registered behind that listener is skipped, the creation scopes and the entity's own release
+      // among them. Neither of those two belongs to whoever listens there, so the kernel runs them
+      // itself once the delivery is over, each behind a guard of its own. Both are written to happen
+      // once: a scope that has torn down is no longer in `#shadowObjectScopes`, and the entity releases
+      // once, whoever calls it.
+      //
+      // This runs unconditionally rather than only after a caught throw, because a delivery can also
+      // fall short of its end without one -- a listener that unsubscribes the rest of them returns
+      // perfectly normally.
+      for (const shadowObject of shadowObjects) {
+        try {
+          this.#shadowObjectScopes.get(shadowObject)?.tearDown();
+        } catch (error) {
+          this.logger.error('creation scope teardown of a destroyed entity failed:', entity.uuid, error);
+        }
+      }
+
+      try {
+        entity[onDestroy]();
+      } catch (error) {
+        this.logger.error('entity release failed:', entity.uuid, error);
+      }
     } finally {
       // The kernel lets go of the entity whatever the notifications above did, so that a failing
       // teardown cannot leave an entity standing that nothing points at any more.
