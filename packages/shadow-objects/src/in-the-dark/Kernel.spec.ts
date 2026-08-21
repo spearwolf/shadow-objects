@@ -4110,7 +4110,7 @@ describe('Kernel', () => {
 
       expect(() => kernel.destroy()).not.toThrow();
 
-      expect(seen, 'the failing callback costs its own entity, not the ones behind it').toEqual([cUuid, bUuid, aUuid]);
+      expect(seen, 'a callback that throws leaves the entities behind it in the sweep untouched').toEqual([cUuid, bUuid, aUuid]);
     });
 
     it('holds no entity any more when a destroy callback throws', () => {
@@ -4304,6 +4304,234 @@ describe('Kernel', () => {
       expect(() => kernel.createEntity(uuid, 'node', 'no-such-parent')).toThrow();
 
       expect(kernel.hasEntity(uuid)).toBe(false);
+
+      kernel.destroy();
+    });
+  });
+
+  describe('an entity teardown with a shadow-object hook that throws', () => {
+    // `Registry.findConstructors()` hands the constructors back in registration order, and the kernel
+    // notifies the shadow-objects of an entity in the order it created them: the throwing one is the
+    // one that comes first, and the sibling behind it is what the case is about.
+    const makeEntityWithFailingTeardown = () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const seen: string[] = [];
+      const testSignal = createSignal(0);
+      const effectFn = vi.fn();
+
+      // Read while the creation scope of the sibling tears down. The entity clears its properties in
+      // its own teardown, so a non-empty count here is what tells the two apart in time.
+      let propCountDuringScopeTeardown: number | undefined;
+
+      @ShadowObject({registry, token: 'failingTeardown'})
+      class FailingTeardown implements OnDestroy {
+        [onDestroy]() {
+          seen.push('failing');
+          throw new Error('this teardown fails');
+        }
+      }
+
+      @ShadowObject({registry, token: 'failingTeardown'})
+      class Sibling implements OnDestroy {
+        constructor({onDestroy: onScopeDestroy, createEffect, entity}: ShadowObjectCreationAPI) {
+          createEffect(() => {
+            effectFn(testSignal.get());
+          });
+          onScopeDestroy(() => {
+            seen.push('sibling scope');
+            propCountDuringScopeTeardown = entity.propEntries().length;
+          });
+        }
+
+        [onDestroy]() {
+          seen.push('sibling');
+        }
+      }
+
+      expect(FailingTeardown).toBeDefined();
+      expect(Sibling).toBeDefined();
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'failingTeardown', undefined, 0, [['label', 'hello']]);
+
+      return {
+        kernel,
+        uuid,
+        entity: kernel.getEntity(uuid),
+        seen,
+        testSignal,
+        effectFn,
+        getPropCountDuringScopeTeardown: () => propCountDuringScopeTeardown,
+      };
+    };
+
+    it('does not hand the throw to the caller', () => {
+      const {kernel, uuid} = makeEntityWithFailingTeardown();
+
+      expect(() => kernel.destroyEntity(uuid)).not.toThrow();
+
+      kernel.destroy();
+    });
+
+    it('holds neither the entity nor its shadow-objects afterwards', () => {
+      const {kernel, uuid} = makeEntityWithFailingTeardown();
+
+      kernel.destroyEntity(uuid);
+
+      expect(kernel.hasEntity(uuid)).toBe(false);
+      expect(kernel.findShadowObjects(uuid)).toEqual([]);
+      expect(kernel.traverseLevelOrderBFS(), 'the entity is not among the roots either').toEqual([]);
+
+      kernel.destroy();
+    });
+
+    it('notifies the shadow-object behind the one that throws', () => {
+      const {kernel, uuid, seen} = makeEntityWithFailingTeardown();
+
+      kernel.destroyEntity(uuid);
+
+      expect(seen, 'the failing hook costs its own shadow-object, not the one behind it').toEqual([
+        'failing',
+        'sibling',
+        'sibling scope',
+      ]);
+
+      kernel.destroy();
+    });
+
+    it('ends the creation scope of the sibling and the entity itself', () => {
+      const {kernel, uuid, entity, testSignal, effectFn} = makeEntityWithFailingTeardown();
+
+      kernel.destroyEntity(uuid);
+
+      // Counting from what happened rather than from a fixed number keeps the case off the question
+      // whether a fresh effect runs once right away.
+      const runs = effectFn.mock.calls.length;
+
+      testSignal.set(1);
+
+      expect(effectFn, 'the scope of the sibling is torn down, effects included').toHaveBeenCalledTimes(runs);
+      expect(entity.propEntries(), 'the entity has run its own teardown').toEqual([]);
+
+      kernel.destroy();
+    });
+
+    // The three groups listening to the destruction of an entity are told in a fixed order -- the
+    // shadow-objects, then their creation scopes, then the entity itself -- and each of them relies on
+    // what the one before it leaves standing. The case above pins the first boundary through `seen`;
+    // this one pins the second, which `seen` cannot reach because the entity keeps no record of when
+    // it ran.
+    it('lets the entity release its own state only once every creation scope is through', () => {
+      const {kernel, uuid, seen, getPropCountDuringScopeTeardown} = makeEntityWithFailingTeardown();
+
+      kernel.destroyEntity(uuid);
+
+      expect(seen, 'the scopes come after the shadow-objects').toEqual(['failing', 'sibling', 'sibling scope']);
+      expect(
+        getPropCountDuringScopeTeardown(),
+        'a teardown callback still reads the properties of the entity it belongs to',
+      ).toBe(1);
+
+      kernel.destroy();
+    });
+  });
+
+  describe('a token change with a shadow-object hook that throws', () => {
+    // Both shadow-objects leave the constructor set at once, and the kernel takes them down in the
+    // order their constructors were registered: the throwing one first, the sibling behind it.
+    const makeEntityWithFailingTeardown = () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const seen: string[] = [];
+      const heard: string[] = [];
+
+      @ShadowObject({registry, token: 'leavingToken'})
+      class FailingTeardown implements OnDestroy {
+        constructor({onDestroy: onScopeDestroy}: ShadowObjectCreationAPI) {
+          onScopeDestroy(() => seen.push('failing scope'));
+        }
+
+        // Named after the event, which is how a shadow-object attached to an entity is reached: once
+        // the kernel takes it off the entity, nothing arrives here any more.
+        ping() {
+          heard.push('failing');
+        }
+
+        [onDestroy]() {
+          seen.push('failing');
+          throw new Error('this teardown fails');
+        }
+      }
+
+      @ShadowObject({registry, token: 'leavingToken'})
+      class Sibling implements OnDestroy {
+        constructor({onDestroy: onScopeDestroy}: ShadowObjectCreationAPI) {
+          onScopeDestroy(() => seen.push('sibling scope'));
+        }
+
+        [onDestroy]() {
+          seen.push('sibling');
+        }
+      }
+
+      expect(FailingTeardown).toBeDefined();
+      expect(Sibling).toBeDefined();
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'leavingToken');
+
+      return {kernel, uuid, entity: kernel.getEntity(uuid), seen, heard};
+    };
+
+    it('does not hand the throw to the caller', () => {
+      const {kernel, uuid} = makeEntityWithFailingTeardown();
+
+      expect(() => kernel.changeToken(uuid, 'nextToken')).not.toThrow();
+
+      expect(kernel.hasEntity(uuid), 'the entity lives on -- only its shadow-objects left').toBe(true);
+
+      kernel.destroy();
+    });
+
+    it('notifies the shadow-object behind the one that throws', () => {
+      const {kernel, uuid, seen} = makeEntityWithFailingTeardown();
+
+      kernel.changeToken(uuid, 'nextToken');
+
+      expect(seen, 'the failing hook costs its own shadow-object, not the one behind it').toEqual([
+        'failing',
+        'failing scope',
+        'sibling',
+        'sibling scope',
+      ]);
+
+      kernel.destroy();
+    });
+
+    it('tears down the creation scope of the shadow-object that throws', () => {
+      const {kernel, uuid, seen} = makeEntityWithFailingTeardown();
+
+      kernel.changeToken(uuid, 'nextToken');
+
+      expect(seen, 'a hook that throws does not keep its own scope alive').toContain('failing scope');
+      expect(kernel.findShadowObjects(uuid), 'neither shadow-object is left in the bookkeeping').toEqual([]);
+
+      kernel.destroy();
+    });
+
+    it('takes the shadow-object that throws off the entity', () => {
+      const {kernel, uuid, entity, heard} = makeEntityWithFailingTeardown();
+
+      emit(entity, 'ping');
+      expect(heard, 'an attached shadow-object hears the events of its entity').toEqual(['failing']);
+
+      kernel.changeToken(uuid, 'nextToken');
+      emit(entity, 'ping');
+
+      expect(heard, 'a shadow-object that has left is no longer a listener of the entity').toEqual(['failing']);
 
       kernel.destroy();
     });

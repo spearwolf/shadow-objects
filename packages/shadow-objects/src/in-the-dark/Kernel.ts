@@ -315,10 +315,9 @@ export class Kernel {
    * Takes back what a creation managed before it failed. The teardown is the regular one, so a
    * shadow-object that already stands hears its `onDestroy` and its creation scope ends the way
    * it would on any other destruction; the entry, the root registration and the link to the
-   * parent go with it.
-   *
-   * The two deletions afterwards are what a teardown callback of its own cannot take away: they
-   * hold whether or not `destroyEntity()` got through.
+   * parent go with it. `destroyEntity()` clears the bookkeeping of the entity whatever a callback
+   * along the way does, so there is nothing left here to take back by hand; only a failure of the
+   * teardown itself is reported, because the creation error is the one the caller is waiting for.
    *
    * The rollback reaches this one entity, not the kernel around it. What a constructor did to other
    * entities before it threw stands, and the teardown even adds to it, because `destroyEntity()` walks
@@ -334,10 +333,6 @@ export class Kernel {
     } catch (error) {
       this.logger.error('rollback of a failed entity creation failed:', uuid, error);
     }
-
-    this.#entities.delete(uuid);
-    this.#rootEntities.delete(uuid);
-    this.#allEntitiesNeedUpdate = true;
   }
 
   destroyEntity(uuid: string): void {
@@ -346,27 +341,65 @@ export class Kernel {
 
     const {entity, usedConstructors} = entry;
 
-    // Children with autoDestructionOnParentRemoval cascade; the rest are promoted
-    // to root so they remain reachable instead of leaking inside the kernel.
-    // Snapshot first because both branches mutate the children list.
-    const childrenSnapshot = [...entity.children];
-    for (const child of childrenSnapshot) {
-      if (child.autoDestructionOnParentRemoval) {
-        this.destroyEntity(child.uuid);
-      } else {
-        child.removeFromParent();
-        this.#rootEntities.add(child.uuid);
+    try {
+      // Children with autoDestructionOnParentRemoval cascade; the rest are promoted
+      // to root so they remain reachable instead of leaking inside the kernel.
+      // Snapshot first because both branches mutate the children list.
+      const childrenSnapshot = [...entity.children];
+      for (const child of childrenSnapshot) {
+        // One guard per child, so that a cascade breaking off somewhere below still leaves the
+        // siblings next to it with the treatment they were owed.
+        try {
+          if (child.autoDestructionOnParentRemoval) {
+            this.destroyEntity(child.uuid);
+          } else {
+            child.removeFromParent();
+            this.#rootEntities.add(child.uuid);
+          }
+        } catch (error) {
+          this.logger.error('child of a destroyed entity could not be handed on:', child.uuid, error);
+        }
       }
+
+      entity.removeFromParent();
+
+      // The list is read before the first notification goes out, because the bookkeeping behind it is
+      // emptied while they run: every scope that tears down takes its shadow-object out of it.
+      const shadowObjects = this.findShadowObjects(entity.uuid);
+
+      for (const shadowObject of shadowObjects) {
+        // One shadow-object at a time rather than through the entity-wide notification below, so that
+        // a teardown that throws costs its own shadow-object and none of its siblings. The
+        // subscription comes off first, because that notification would otherwise reach the same
+        // shadow-object a second time -- it hangs on the entity as a listener object.
+        //
+        // This is the one point at which the two teardown paths differ, and it is worth knowing which
+        // way round: a shadow-object that emits an event on the entity from inside its `[onDestroy]`
+        // does not reach its own siblings here, because they are taken off one by one as their turn
+        // comes. `destroyShadowObject()` leaves the subscription in place until after the hook for
+        // exactly the opposite reason -- there the entity lives on, so there is no second delivery to
+        // avoid. An entity that is being destroyed is no address for an event either way.
+        off(entity, shadowObject);
+        this.#notifyShadowObjectDestroy(shadowObject, entity);
+      }
+
+      // What is left listening here are the creation scopes at `Priority.Low` and the entity itself at
+      // `Priority.Min`: the scopes tear down once every shadow-object has been told, and the entity
+      // releases its properties, subscriptions and contexts last of all.
+      try {
+        emit(entity, onDestroy, entity);
+      } catch (error) {
+        this.logger.error('entity onDestroy notification failed:', entity.uuid, error);
+      }
+    } finally {
+      // The kernel lets go of the entity whatever the notifications above did, so that a failing
+      // teardown cannot leave an entity standing that nothing points at any more.
+      usedConstructors.clear();
+
+      this.#entities.delete(entity.uuid);
+      this.#rootEntities.delete(entity.uuid);
+      this.#allEntitiesNeedUpdate = true;
     }
-
-    entity.removeFromParent();
-    emit(entity, onDestroy, entity);
-
-    usedConstructors.clear();
-
-    this.#entities.delete(entity.uuid);
-    this.#rootEntities.delete(entity.uuid);
-    this.#allEntitiesNeedUpdate = true;
   }
 
   /**
@@ -565,29 +598,48 @@ export class Kernel {
     }
   }
 
-  private destroyShadowObject(shadowObject: object, entity: Entity): void {
+  /**
+   * Tells one shadow-object that it is about to end, in both halves the notification has: the
+   * class-side `[onDestroy]` hook and the event other objects can listen for.
+   *
+   * Each half stands behind a guard of its own rather than a shared one, because neither is allowed to
+   * cost the other: a hook that throws still lets the event go out, and a listener that throws leaves
+   * the hook it came after untouched. Nothing is re-thrown -- the shadow-objects of one entity reach
+   * their end in one sweep, and a failure at one of them may not take the sweep with it. Reports are
+   * keyed by the name the scope carries rather than the one the instance would give -- see
+   * `ShadowObjectCreationScope.displayName` for where the two part ways.
+   */
+  #notifyShadowObjectDestroy(shadowObject: object, entity: Entity): void {
+    const displayName = this.#shadowObjectScopes.get(shadowObject)?.displayName;
+
     if (typeof (shadowObject as any)[onDestroy] === 'function') {
-      (shadowObject as OnDestroy)[onDestroy](entity);
+      try {
+        (shadowObject as OnDestroy)[onDestroy](entity);
+      } catch (error) {
+        this.logger.error('shadow-object onDestroy hook failed:', displayName, error);
+      }
     }
 
-    const scope = this.#shadowObjectScopes.get(shadowObject);
-
     // A listener a Shadow Object put directly on this one's own `onDestroy` notification -- through
-    // `on(otherShadowObject, onDestroy, …)` -- runs here, and it can throw. The report goes to the
-    // logger instead of reaching the caller, the same way `tearDown()` reports a throwing callback of
-    // its own, and under the same name: the one the scope carries, not the one the instance would
-    // give -- see `ShadowObjectCreationScope.displayName` for where the two part ways. The teardown
-    // that follows must still reach `tearDown()` and `off()` below.
+    // `on(otherShadowObject, onDestroy, …)` -- runs here.
     try {
       emit(shadowObject, onDestroy, entity);
     } catch (error) {
-      this.logger.error('shadow-object onDestroy notification failed:', scope?.displayName, error);
+      this.logger.error('shadow-object onDestroy notification failed:', displayName, error);
     }
+  }
+
+  private destroyShadowObject(shadowObject: object, entity: Entity): void {
+    this.#notifyShadowObjectDestroy(shadowObject, entity);
 
     // The teardown runs after the destroy notifications, so a shadow-object that reacts to its own
     // end still sees the signals, contexts and subscriptions the creation API gave it.
-    scope?.tearDown();
+    this.#shadowObjectScopes.get(shadowObject)?.tearDown();
 
+    // Last of all, because the entity lives on and only this one object is leaving: nothing else is
+    // being delivered to the entity in the meantime, so the subscription can stand until the object
+    // has said everything it had to say -- an event its `[onDestroy]` emits on the entity still comes
+    // back to it. `destroyEntity()` cannot afford that; the reason is named there.
     off(entity, shadowObject);
   }
 
@@ -601,8 +653,10 @@ export class Kernel {
   }
 
   destroy(): void {
-    // Leaves first, and to the end: a callback that throws costs its own entity, not the ones behind it
-    // in the sweep. The reversed order is already cached, so the walk does not turn its own result around.
+    // Leaves first, and to the end. `destroyEntity()` keeps a failing callback to itself, so the guard
+    // here covers what is left: whatever else fails at one entity, the ones behind it in the sweep still
+    // reach their own teardown. The reversed order is already cached, so the walk does not turn its own
+    // result around.
     for (const entity of this.traverseLevelOrderBFS(true)) {
       try {
         this.destroyEntity(entity.uuid);

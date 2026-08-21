@@ -124,7 +124,7 @@ createResource(
 | `constructor` / function body | Once per Shadow Object, when it is attached to an entity. Build your reactive graph here. |
 | `[onCreate](entity)` | After the Shadow Object is fully attached to the entity. Class-based only. |
 | `[onDestroy](entity)` | When the Shadow Object is about to go away -- which includes, but is not limited to, the entity being destroyed. Class-based only. |
-| `onDestroy(fn)` | Same moment as the row above, callable from the functional API. Does not share its all-or-nothing throw behavior -- see `docs/api-reference.md`, "onDestroy(callback)". |
+| `onDestroy(fn)` | Same moment as the row above, callable from the functional API. Both are reported through the `ConsoleLogger` when they throw and neither stops the rest of the teardown -- see `docs/api-reference.md`, "onDestroy(callback)". |
 | `createEffect(fn)` | Immediately on setup, then again whenever any signal it reads changes. |
 
 **The Shadow Object lifecycle is not the entity lifecycle.** An entity carries whatever Shadow Objects its token and its truthy properties currently route to, and that set is re-resolved on every token change and on every property change. A constructor that drops out of the set has its Shadow Object destroyed -- `[onDestroy]` and every `onDestroy(fn)` callback run, and everything the creation API handed out is disposed -- while the entity lives on; a constructor that joins gets a fresh setup run on an entity that has been around for a while. Both directions happen without an entity being created or destroyed.
