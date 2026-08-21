@@ -3,7 +3,7 @@
 Status: 2026-08-20. Analysis of the Playwright suite in this package, the gaps it leaves, and a
 ticket-ready list of test cases to close them.
 
-> **Where the suite stands.** 426 tests across Chromium and Firefox — 213 per project, eleven spec
+> **Where the suite stands.** 428 tests across Chromium and Firefox — 214 per project, eleven spec
 > files over eleven pages. The harness fixes and the P1 blocks of every group below are in place. One
 > framework defect is open, `DEFECT-1` in [`KNOWN-DEFECTS.md`](KNOWN-DEFECTS.md), and
 > `create-element.spec.ts` is the only spec that registers `knownFailures` for it.
@@ -21,7 +21,7 @@ layers. This file is E2E-only and goes one level deeper: it names pages, fixture
 
 ## 1. What exists today
 
-Eleven spec files, 213 registered test cases per project — 426 across Chromium and Firefox. The specs
+Eleven spec files, 214 registered test cases per project — 428 across Chromium and Firefox. The specs
 themselves contain almost no logic: they name a page and a list of ids, and `runPageTests` turns
 each id into one Playwright test that asserts `data-testresult="ok"` on the node the page wrote.
 All real assertions live in `src/*.js`.
@@ -35,7 +35,7 @@ All real assertions live in `src/*.js`.
 | `async-events.spec.ts` | `pages/async-events.html` | 23 | `contextCreated` / `contextLost` as DOM CustomEvents, a property change echoed back as a message, `auto-sync` in its forms, a burst of changes coalescing into the final value, `traverseChildren` across the worker boundary, and `forward-custom-events` with and without a filter list (ASYNC-1, ASYNC-3 … ASYNC-7, ASYNC-9). |
 | `bundle.spec.ts` | `pages/bundle.html` | 13 | The single-file build: the load flag, the element definitions, the five-entity tree, the cross-namespace child that becomes a root, three property types, and a round-trip through the inlined worker (BUNDLE-1 … BUNDLE-4). |
 | `worker-failure.spec.ts` | `pages/worker-failure.html` | 13 | A worker that dies mid-run: `proxyfailed` and `contextlost` as DOM events, the failure reason, the destroyed proxy, a later call rejecting right away, and the recovery through a new proxy that re-creates the surviving entity. |
-| `sync-failure.spec.ts` | `pages/sync-failure.html` | 11 | A change trail the worker's kernel refuses: `syncfailed` as a DOM event carrying reason and lost trail, a rejecting `syncWait()`, no `AfterSync`, no proxy failure, and a next cycle that round-trips again (SYNC-1 … SYNC-4). |
+| `sync-failure.spec.ts` | `pages/sync-failure.html` | 12 | A change trail the worker's kernel refuses: `syncfailed` as a DOM event carrying reason and trail, a rejecting `syncWait()`, no `AfterSync`, no proxy failure, the refused entry going out a second time, and a next cycle that round-trips again (SYNC-1 … SYNC-4, SYNC-6). |
 | `auto-destruct.spec.ts` | `pages/auto-destruct.html` | 8 | `autoDestructionOnParentRemoval` cascade vs. promotion-to-root, over a real worker. |
 | `create-element.spec.ts` | `pages/create-element.html` | 7 | The markup path upgrades and gets a view component; the four `document.createElement()` cases are registered as `knownFailures` for `DEFECT-1`. |
 | `remote-worker-env.spec.ts` | `pages/remote-worker-env.html` | 7 | Programmatic `ShadowEnv` + `RemoteWorkerEnv`: `ready()`, `importScript()`, `isReady`, one `sync()`, one message worker → view. |
@@ -286,10 +286,11 @@ itself carries no serial and would end the cycle as a success.
 
 | ID | Prio | Case |
 |---|---|---|
-| SYNC-1 | P1 | **Implemented** — `sync-failure-syncwait-rejects`, `sync-failure-dom-event`, `sync-failure-reason-names-the-refusal`, `sync-failure-aftersync-did-not-fire`. A refused trail rejects `syncWait()`, fires `syncfailed` on `<shae-worker>` with the same reason, and produces no `AfterSync`. Across a worker the reason is the message as a string, not an `Error` instance. |
+| SYNC-1 | P1 | **Implemented** — `sync-failure-syncwait-rejects`, `sync-failure-dom-event`, `sync-failure-reason-names-the-refusal`, `sync-failure-aftersync-did-not-fire`. A refused trail rejects `syncWait()`, fires `syncfailed` on `<shae-worker>` with the same reason, and produces no `AfterSync`. The reason is a `ChangeTrailRefusedError`; across a worker the wording of the throw travels under `cause` as a string, not as an `Error` instance, and `appliedCount` names how many entries of that trail the kernel applied. |
 | SYNC-2 | P1 | **Implemented** — `sync-failure-detail-carries-the-lost-change-trail`. The event carries the trail that was lost, and the create-entities entry for the refused entity is in it, matched by change type and the element's `uuid`. |
 | SYNC-3 | P1 | **Implemented** — `sync-failure-is-not-a-proxy-failure`. No `proxyfailed`, no `contextlost`, `isReady` still true, the proxy not destroyed. The line between a refused trail and a dead worker. |
 | SYNC-4 | P2 | **Implemented** — `sync-failure-healthy-cycle-first`, `sync-failure-environment-still-syncs`. A round-trip before the refusal and another one after it, with the refused element removed first: neither the proxy nor the worker's kernel is left behind. |
+| SYNC-6 | P1 | **Implemented** — `sync-failure-refused-entry-is-sent-again`. The entries the kernel did not apply stay pending and go out again with the next cycle: with the refuser still in the DOM the second `syncWait()` is refused in the same way, and the `syncfailed` event of that second cycle carries the create-entities entry for the same uuid. This is also the cost of the promise — a cause that stays put refuses every following cycle instead of failing once. |
 | SYNC-5 | P3 | `reCreateChanges()` as the documented way back after a refused trail. It re-sends the whole view state, so the refused entity has to be gone first or the recovery walks into the same refusal — a case for a fixture that lets the second attempt through, not for this one. |
 
 ### 3.7 Harness fixes

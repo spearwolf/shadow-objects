@@ -1,4 +1,5 @@
 import {emit, off, once, retain} from '@spearwolf/eventize';
+import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {
   AppliedChangeTrail,
   ChangeTrail,
@@ -346,7 +347,15 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
         // the serial decides who a confirmation concerns -- an error belonging to another
         // trail would otherwise reject the request that happens to be waiting here
         if (data.serial !== serial) return false;
-        if (data.error) throw data.error;
+        if (data.error) {
+          // Only a confirmation that names the count can move the line the view draws between
+          // applied and pending; one that does not carries no more than the reason itself, and
+          // is handed on as that reason.
+          if (typeof data.appliedCount === 'number') {
+            throw new ChangeTrailRefusedError(data.appliedCount, changeTrail.length, {cause: data.error});
+          }
+          throw data.error;
+        }
         return true;
       },
       signal,

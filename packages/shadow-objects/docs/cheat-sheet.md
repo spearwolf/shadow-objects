@@ -395,15 +395,24 @@ loop();
 | `ShadowEnv.ContextCreated` | Environment is ready (view + proxy both connected) |
 | `ShadowEnv.ContextLost` | Environment lost connection |
 | `ShadowEnv.AfterSync` | After each sync cycle the Shadow Environment applied, also when the change trail was empty |
-| `ShadowEnv.SyncFailed` | The Shadow Environment could not apply the change trail; reason, lost trail and env come with the event, and `AfterSync` stays quiet for that cycle |
+| `ShadowEnv.SyncFailed` | The Shadow Environment could not apply the change trail; reason, full trail and env come with the event, and `AfterSync` stays quiet for that cycle |
 | `ShadowEnv.ProxyFailed` | The proxy lost its Shadow Environment; the reason comes with the event |
 
 ```typescript
-// resolves with the change trail of an applied cycle, rejects with the reason a refused one gave
-const changeTrail = await env.syncWait();
+import {ChangeTrailRefusedError} from '@spearwolf/shadow-objects';
 
-// the way back after a refused cycle -- that trail is not sent a second time
-env.view?.reCreateChanges();
+// resolves with the change trail of an applied cycle, rejects with the reason a refused one gave
+try {
+  const changeTrail = await env.syncWait();
+} catch (reason) {
+  if (reason instanceof ChangeTrailRefusedError) {
+    // the kernel applied reason.appliedCount of reason.entryCount entries, reason.cause says why
+    // it stopped -- the rest is still pending and goes out again with the next cycle
+  } else {
+    // a reason that says nothing about how far the kernel got: the whole trail counts as applied
+    env.view?.reCreateChanges();
+  }
+}
 ```
 
 ```typescript

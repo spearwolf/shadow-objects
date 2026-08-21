@@ -89,6 +89,12 @@ export interface AppliedChangeTrailEvent {
   type: typeof AppliedChangeTrail;
   serial?: number;
   error?: string;
+  /**
+   * How many entries of the change trail the Kernel applied before it stopped. Stands only
+   * next to an `error`, and only where the Kernel itself could say so; an absent field means
+   * nothing is known about how far the trail got.
+   */
+  appliedCount?: number;
 }
 
 export type EntityApi = Readonly<

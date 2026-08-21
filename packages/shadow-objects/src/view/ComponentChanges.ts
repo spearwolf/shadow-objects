@@ -1,5 +1,6 @@
 import {ChangeTrailPhase, ComponentChangeType, VoidToken} from '../constants.js';
 import type {
+  ComponentPropertiesType,
   IChangeToken,
   IComponentChangeType,
   IComponentEvent,
@@ -17,11 +18,15 @@ const ROOT = '#root';
 /**
  * Tracks one component's outstanding changes between two change trails as four written ↔
  * pending pairs: `#token`/`#nextToken`, `#parentUuid`/`#nextParentUuid`, `#order`/`#nextOrder`
- * and `#properties`/`#nextProperties`. Each `make*` method folds its pending half forward into
- * the written half as it turns the change into a trail entry, so {@link
- * ComponentChanges.clear} — which resets every pending value — must run only after all of them
- * have. {@link ComponentContext.buildChangeTrails} is the only caller that does both, in that
- * order.
+ * and `#properties`/`#nextProperties`. The `make*` methods read the pending half and leave it
+ * where it is: a trail entry is a request, and until the Shadow Environment has applied it the
+ * change is still owed. {@link ComponentChanges.commitChange} is what moves the line — it folds
+ * one applied entry into the written half and releases exactly the pending values that entry
+ * carried, so a value that changed again while the entry was on its way goes out with the next
+ * trail instead of being lost.
+ *
+ * Whether anything is outstanding follows from those pairs rather than from a counter, which is
+ * what lets a partly applied trail leave the rest of the component untouched.
  *
  * The create/destroy counts behind {@link ComponentChanges.isCreated} and {@link
  * ComponentChanges.isDestroyed} belong to the uuid, not to a {@link ViewComponent} instance. They
@@ -37,8 +42,6 @@ export class ComponentChanges {
     return this.#uuid;
   }
 
-  #serial = 0;
-
   constructor(uuid: string) {
     this.#uuid = uuid;
   }
@@ -47,8 +50,20 @@ export class ComponentChanges {
   #createCount = 0;
   #destroyCount = 0;
 
+  /**
+   * Whether this component owes the next change trail anything: a creation, a destruction, or a
+   * pending value in one of the four written ↔ pending pairs.
+   */
   hasChanges(): boolean {
-    return this.#serial > 0;
+    return (
+      (this.#isNew && this.isCreated) ||
+      this.isDestroyed ||
+      (this.#nextToken !== undefined && this.#nextToken !== this.#token) ||
+      this.#hasPendingParent() ||
+      (this.#nextOrder !== undefined && this.#nextOrder !== this.#order) ||
+      this.#propsChangeOrder.length > 0 ||
+      this.#events.length > 0
+    );
   }
 
   get isNew(): boolean {
@@ -73,7 +88,6 @@ export class ComponentChanges {
   #nextOrder?: number;
 
   create(token: string = VoidToken, parentUuid?: string, order: number = 0, autoDestructionOnParentRemoval = false) {
-    this.#serial++;
     this.#createCount++;
 
     this.#nextToken = token;
@@ -84,57 +98,73 @@ export class ComponentChanges {
 
   destroy() {
     this.#destroyCount++;
-    this.#serial++;
   }
 
+  /**
+   * Whether the pending parent asks for something the confirmed one is not already. A pending
+   * value that has come back to the confirmed parent is a change that cancelled itself out.
+   */
+  #hasPendingParent(): boolean {
+    if (this.#nextParentUuid === undefined) return false;
+    return (this.#nextParentUuid === ROOT ? undefined : this.#nextParentUuid) !== this.#parentUuid;
+  }
+
+  /**
+   * Drop every pending value without writing any of them forward.
+   *
+   * This is the way out for a component whose bookkeeping is about to be replaced wholesale —
+   * {@link ComponentContext.reCreateChanges} does exactly that. A trail that has gone out is
+   * settled with {@link ComponentChanges.commitChange} instead.
+   */
   clear() {
-    this.#serial = 0;
-
-    this.#isNew = false;
-
     this.#nextToken = undefined;
     this.#nextParentUuid = undefined;
     this.#nextOrder = undefined;
 
     this.#nextProperties.clear();
     this.#propsChangeOrder.length = 0;
+    this.#travellingProperties = undefined;
 
     this.#events.length = 0;
     this.#transferables.clear();
   }
 
+  /**
+   * The three scalar pairs below all answer the same question the same way: is anything owed once
+   * the entry that is on its way out has landed?
+   *
+   * The written half alone cannot answer it. It is the last *confirmed* value and stays behind
+   * until the entry is committed, so a value the caller sets back to it while the entry travels
+   * would look like "nothing to do" — and the entry would then be the last word, leaving the
+   * Shadow Environment holding a value the view has already moved on from. So the pending half is
+   * only released where there is nothing in flight to contradict it; where there is, the new value
+   * takes the pending slot and the emitting side decides, against the written half it settles on.
+   */
   changeToken(token: string | undefined) {
     // an absent token means the void token everywhere else, so normalize here too;
     // otherwise `undefined` would mark the component dirty without ever emitting a change
     token ??= VoidToken;
 
-    if (token === this.#token) {
-      // a component that has not been flushed yet still owes the trail its create-token:
-      // #token is only the last *written* token, so dropping #nextToken here would emit a
-      // CreateEntities change without any token at all
-      this.#nextToken = this.#isNew ? token : undefined;
-    } else {
-      this.#nextToken = token;
-      this.#serial++;
-    }
+    // nothing pending and the confirmed token is the wanted one: nothing to queue. A component
+    // that has not been flushed yet is the exception — it still owes the trail its create-token,
+    // and dropping it here would emit a CreateEntities change without any token at all.
+    if (token === this.#token && this.#nextToken === undefined && !this.#isNew) return;
+
+    this.#nextToken = token;
   }
 
   setParent(parentUuid?: string) {
-    if (parentUuid === this.#parentUuid) {
-      this.#nextParentUuid = undefined;
-    } else {
-      this.#nextParentUuid = parentUuid ?? ROOT;
-      this.#serial++;
-    }
+    const nextParentUuid = parentUuid ?? ROOT;
+
+    if (nextParentUuid === (this.#parentUuid ?? ROOT) && this.#nextParentUuid === undefined) return;
+
+    this.#nextParentUuid = nextParentUuid;
   }
 
   changeOrder(order: number) {
-    if (order === this.#order) {
-      this.#nextOrder = undefined;
-    } else {
-      this.#nextOrder = order;
-      this.#serial++;
-    }
+    if (order === this.#order && this.#nextOrder === undefined) return;
+
+    this.#nextOrder = order;
   }
 
   #properties: Map<string, unknown> = new Map();
@@ -142,34 +172,69 @@ export class ComponentChanges {
   #propsChangeOrder: string[] = []; // we use an Array here and not a Set, because we want to keep the change order
 
   /**
-   * @returns `true` if the value differs from the last value written to a change trail
+   * The keys an entry on its way out carries, until that entry is settled. For those keys the
+   * written half is behind, and {@link ComponentChanges.changeProperty} must not cancel against it.
+   */
+  #travellingProperties?: Map<string, unknown>;
+
+  /**
+   * @returns `true` if the value differs from the last value this component asked for
    */
   changeProperty<T = unknown>(key: string, value: T, isEqual?: (a: T, b: T) => boolean): boolean {
-    const prevValue = this.#properties.get(key) as T;
-    const valueChanged = (isEqual == null && value !== prevValue) || (isEqual != null && !isEqual(value, prevValue));
+    const equals = (a: T, b: T) => (isEqual == null ? a === b : isEqual(a, b));
 
-    if (valueChanged) {
-      this.#nextProperties.set(key, value);
-      appendToEnd(this.#propsChangeOrder, key);
-      this.#serial++;
+    const isQueued = this.#propsChangeOrder.includes(key);
+    const isTravelling = this.#travellingProperties?.has(key) ?? false;
+
+    // the value this component last said the property should have: the pending half where
+    // something is queued, else what an entry on its way out carries, else the confirmed value.
+    // A key that is none of the three reads as `undefined`, and a registered rule decides that
+    // comparison too -- a rule that calls the value equal to `undefined` says there is nothing
+    // to send.
+    let prevValue: T;
+    if (isQueued) {
+      prevValue = this.#nextProperties.get(key) as T;
+    } else if (isTravelling) {
+      prevValue = this.#travellingProperties!.get(key) as T;
     } else {
+      prevValue = this.#properties.get(key) as T;
+    }
+
+    const valueChanged = !equals(value, prevValue);
+
+    // The pending half is released only where the confirmed value is the wanted one and no entry
+    // carrying another one is on its way out -- such an entry would otherwise be the last word.
+    // The travelling test comes first because it decides the branch on its own, and a comparison
+    // rule can be expensive on a path that runs once per frame. Where nothing is queued the
+    // comparison above was already the one against the confirmed value, so it is reused.
+    const nothingToSend = !isTravelling && (isQueued ? equals(value, this.#properties.get(key) as T) : !valueChanged);
+
+    if (nothingToSend) {
       this.#nextProperties.delete(key);
       removeFrom(this.#propsChangeOrder, key);
+    } else {
+      this.#nextProperties.set(key, value);
+      appendToEnd(this.#propsChangeOrder, key);
     }
 
     return valueChanged;
   }
 
   removeProperty(key: string) {
-    const propExists = this.#properties.has(key);
-    if (this.#nextProperties.has(key)) {
-      this.#nextProperties.delete(key);
-      if (!propExists) {
-        removeFrom(this.#propsChangeOrder, key);
-      }
-    } else if (propExists) {
+    const isQueued = this.#propsChangeOrder.includes(key);
+
+    this.#nextProperties.delete(key);
+
+    if (!this.#properties.has(key) && !this.#travellingProperties?.has(key)) {
+      // nothing confirmed and nothing travelling: there is nothing to remove
+      removeFrom(this.#propsChangeOrder, key);
+      return;
+    }
+
+    // a key that was already queued keeps the place it took: the entry carries the changes in
+    // the order they happened, and a removal is not a second change to the same key
+    if (!isQueued) {
       appendToEnd(this.#propsChangeOrder, key);
-      this.#serial++;
     }
   }
 
@@ -206,7 +271,6 @@ export class ComponentChanges {
     for (const transferable of transferables ?? []) {
       this.#transferables.add(transferable);
     }
-    this.#serial++;
   }
 
   transferEventsTo(changes: ComponentChanges) {
@@ -230,7 +294,7 @@ export class ComponentChanges {
         if (isNew) {
           trail.push(this.makeCreateEntityChange());
         } else if (!isDestroyed) {
-          if (this.#nextParentUuid !== undefined && !(this.#nextParentUuid === ROOT && this.#parentUuid === undefined)) {
+          if (this.#hasPendingParent()) {
             trail.push(this.makeSetParentChange());
           } else if (this.#nextOrder !== undefined && this.#nextOrder !== this.#order) {
             trail.push(this.makeUpdateOrderChange());
@@ -270,7 +334,6 @@ export class ComponentChanges {
     return event;
   }
 
-  // folds every pending value this entry carries into its written counterpart
   makeCreateEntityChange(): ICreateEntitiesChange {
     // never emit a create without a token: the kernel would register an entity that no
     // shadow object can ever be looked up for
@@ -282,25 +345,17 @@ export class ComponentChanges {
       token,
     };
 
-    this.#token = token;
-
-    if (this.#nextParentUuid !== undefined) {
-      const nextParentUuid = this.#nextParentUuid === ROOT ? undefined : this.#nextParentUuid;
-      this.#parentUuid = nextParentUuid;
-      if (nextParentUuid !== undefined) {
-        entry.parentUuid = nextParentUuid;
-      }
+    if (this.#nextParentUuid !== undefined && this.#nextParentUuid !== ROOT) {
+      entry.parentUuid = this.#nextParentUuid;
     }
 
     if (this.#nextProperties.size > 0) {
       entry.properties = Array.from(this.#nextProperties.entries()).filter(([, value]) => value !== undefined);
-      for (const [key, value] of entry.properties) {
-        this.#properties.set(key, value);
-      }
+      this.#noteTravellingProperties(entry.properties);
     }
 
     if (this.#nextOrder !== undefined && this.#nextOrder !== this.#order) {
-      entry.order = this.#order = this.#nextOrder;
+      entry.order = this.#nextOrder;
     }
 
     if (this.#autoDestructionOnParentRemoval) {
@@ -317,68 +372,160 @@ export class ComponentChanges {
     };
   }
 
-  // folds the pending parent (and, if due, the pending order) into their written counterparts
   makeSetParentChange(): ISetParentChange {
-    this.#parentUuid = this.#nextParentUuid === ROOT ? undefined : this.#nextParentUuid;
-
     const entry: ISetParentChange = {
       type: ComponentChangeType.SetParent,
       uuid: this.#uuid,
-      parentUuid: this.#parentUuid,
+      parentUuid: this.#nextParentUuid === ROOT ? undefined : this.#nextParentUuid,
     };
 
     if (this.#nextOrder !== undefined && this.#nextOrder !== this.#order) {
-      entry.order = this.#order = this.#nextOrder;
+      entry.order = this.#nextOrder;
     }
 
     return entry;
   }
 
-  // folds the pending order into its written counterpart
   makeUpdateOrderChange(): IUpdateOrderChange {
-    this.#order = this.#nextOrder ?? 0;
-
     return {
       type: ComponentChangeType.UpdateOrder,
       uuid: this.#uuid,
-      order: this.#order,
+      order: this.#nextOrder ?? 0,
     };
   }
 
-  // folds the pending token into its written counterpart
   makeChangeToken(): IChangeToken {
-    this.#token = this.#nextToken ?? VoidToken;
-
     return {
       type: ComponentChangeType.ChangeToken,
       uuid: this.#uuid,
-      token: this.#token,
+      token: this.#nextToken ?? VoidToken,
     };
   }
 
-  // folds every pending property into its written counterpart, key by key
   makeChangePropertyChange(): IPropertiesChange {
-    const properties = this.#propsChangeOrder.map((key) => {
-      if (this.#nextProperties.has(key)) {
-        // set prop — an explicit `undefined` is a removal, exactly like removeProperty()
-        const nextValue = this.#nextProperties.get(key);
-        if (nextValue === undefined) {
-          this.#properties.delete(key);
-        } else {
-          this.#properties.set(key, nextValue);
-        }
-        return [key, nextValue] as [string, unknown];
-      } else {
-        // remove prop
-        this.#properties.delete(key);
-        return [key, undefined] as [string, unknown];
-      }
-    });
+    // a key without a pending value is a removal, and so is a pending value of `undefined` --
+    // `get()` answers the same for both, which is what the receiving side reads them as
+    const properties = this.#propsChangeOrder.map((key) => [key, this.#nextProperties.get(key)] as [string, unknown]);
+
+    this.#noteTravellingProperties(properties);
 
     return {
       type: ComponentChangeType.ChangeProperties,
       uuid: this.#uuid,
       properties,
     };
+  }
+
+  /** Records the keys of an entry that is going out, so a later change knows the written half is behind. */
+  #noteTravellingProperties(properties: ComponentPropertiesType): void {
+    this.#travellingProperties = new Map(properties.map(([key, value]) => [key, value]));
+  }
+
+  /**
+   * Fold one trail entry into the written half of this component's bookkeeping: the values the
+   * entry carries become the values the next diff is taken against, and the pending half that
+   * produced them is released. Called once per entry the Shadow Environment has applied.
+   *
+   * A pending value is released only while it is still the value the entry carried. Between the
+   * build of a trail and its confirmation lies a round trip, and whatever changed in that window
+   * is owed to the Shadow Environment — releasing it here would leave the two sides holding
+   * different values with nothing left to correct them.
+   */
+  commitChange(entry: IComponentChangeType): void {
+    switch (entry.type) {
+      case ComponentChangeType.CreateEntities:
+        this.#commitToken(entry.token);
+        this.#commitParentUuid(entry.parentUuid);
+        this.#commitOrder(entry.order ?? this.#order);
+        this.#commitProperties(entry.properties);
+        // a create carries only the properties that have a value; a pending removal of a key the
+        // entity was never given has nothing left to ask for and is released along with it
+        for (const key of this.#propsChangeOrder.slice(0)) {
+          if (this.#nextProperties.get(key) === undefined && !this.#properties.has(key)) {
+            this.#nextProperties.delete(key);
+            removeFrom(this.#propsChangeOrder, key);
+          }
+        }
+        this.#travellingProperties = undefined;
+        this.#isNew = false;
+        break;
+
+      case ComponentChangeType.SetParent:
+        this.#commitParentUuid(entry.parentUuid);
+        this.#commitOrder(entry.order ?? this.#order);
+        break;
+
+      case ComponentChangeType.UpdateOrder:
+        this.#commitOrder(entry.order);
+        break;
+
+      case ComponentChangeType.ChangeToken:
+        this.#commitToken(entry.token);
+        break;
+
+      case ComponentChangeType.ChangeProperties:
+        this.#commitProperties(entry.properties);
+        this.#travellingProperties = undefined;
+        break;
+
+      case ComponentChangeType.SendEvents:
+        // the entry carries a snapshot taken while the trail was built; anything that arrived
+        // behind it is still waiting to go out
+        this.#events.splice(0, entry.events.length);
+        for (const transferable of entry.transferables ?? []) {
+          this.#transferables.delete(transferable);
+        }
+        break;
+
+      case ComponentChangeType.DestroyEntities:
+        // The entity behind this uuid is gone. Usually the component entry goes with it, but a
+        // uuid its holder has left is free again, and a component that took it over in the
+        // meantime keeps the entry alive. The written half describes an entity that no longer
+        // exists, so it is reset to what a component nobody knows yet looks like -- otherwise the
+        // successor would diff against it and ask for a change to something that is not there.
+        this.#token = VoidToken;
+        this.#parentUuid = undefined;
+        this.#order = 0;
+        this.#properties.clear();
+        this.#travellingProperties = undefined;
+        this.#isNew = true;
+        break;
+    }
+  }
+
+  #commitToken(token: string): void {
+    this.#token = token;
+    if (this.#nextToken === token) {
+      this.#nextToken = undefined;
+    }
+  }
+
+  #commitParentUuid(parentUuid: string | undefined): void {
+    this.#parentUuid = parentUuid;
+    if ((this.#nextParentUuid === ROOT ? undefined : this.#nextParentUuid) === parentUuid) {
+      this.#nextParentUuid = undefined;
+    }
+  }
+
+  #commitOrder(order: number): void {
+    this.#order = order;
+    if (this.#nextOrder === order) {
+      this.#nextOrder = undefined;
+    }
+  }
+
+  #commitProperties(properties: ComponentPropertiesType | undefined): void {
+    for (const [key, value] of properties ?? []) {
+      if (value === undefined) {
+        this.#properties.delete(key);
+      } else {
+        this.#properties.set(key, value);
+      }
+
+      if (this.#nextProperties.get(key) === value) {
+        this.#nextProperties.delete(key);
+        removeFrom(this.#propsChangeOrder, key);
+      }
+    }
   }
 }

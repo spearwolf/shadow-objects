@@ -1018,10 +1018,27 @@ Three event names that arrive as ordinary events on a `ViewComponent`; see [Rece
 
 | Method | Description |
 | :--- | :--- |
-| `buildChangeTrails(clearChanges = true)` | The changes since the previous call, as a `ChangeTrailType`. Returns an empty array when the context holds no components. Also writes the Component Memory. |
+| `buildChangeTrails(commit = true)` | The changes since the previous call, as a `ChangeTrailType`. Returns an empty array when the context holds no components. With `commit` it also counts the trail as applied and writes the Component Memory; with `commit = false` it does neither, and `commitChangeTrail()` settles the trail afterwards. |
+| `commitChangeTrail(appliedCount, changeTrail?)` | Fold the first `appliedCount` entries of the trail built last into the state the next trail is diffed against, and write them to the Component Memory. Everything behind that line stays pending and goes out again with the next trail. `changeTrail`, when given, is the trail this call settles -- the call is ignored unless it is the one the context built last. |
 | `reCreateChanges()` | Rebuild every component from the Component Memory, so that the next trail re-creates all of them. This is how a fresh proxy is brought up to the state the view is already in. |
 
 A change trail returned by `buildChangeTrails()` is a snapshot: nothing in the library writes to it again, not even the property tuples of its entries. This holds for anything derived from it too, including the value `ShadowEnv.syncWait()` resolves with and the payloads of `ShadowEnv.AfterSync` and `ShadowEnv.SyncFailed`.
+
+Building a trail and committing it are two steps because a trail can be refused on the way. Until it
+is committed, every value it carries is still pending: `buildChangeTrails(false)` hands out the
+entries and leaves the bookkeeping where it stands, and `commitChangeTrail()` draws the line between
+the entries the Shadow Environment applied and the ones it still owes. `ShadowEnv` drives both
+halves; a consumer calling `buildChangeTrails()` without an argument gets the single-step behaviour
+and never has to think about it.
+
+A value that changes again between the build and the commit stays pending. The commit releases only
+what the entry it settles actually carried, so the newer value goes out with the next trail rather
+than being written off as delivered. This holds for the awkward half of that case as well: a value
+set back to the one the Shadow Environment last confirmed is still a change, because the entry on
+its way out carries another one and would otherwise be the last word.
+
+Two builds without a commit in between are allowed: the older trail is then committed in full, which
+is the optimistic reading, rather than leaving two trails claiming the same entries.
 
 `reCreateChanges()` announces itself: it broadcasts the `ContextLost` event to every `ViewComponent` in the context, parents and children alike. It returns immediately when the memory is empty -- after a `clear()`, for instance, there is nothing left to recover.
 
@@ -1160,7 +1177,7 @@ nothing, so this lookup keeps answering the environment that is actually registe
 | `ShadowEnv.ContextCreated` | Fired when the environment becomes ready (view and proxy both connected). Receives the `ShadowEnv`. Retained, so a listener registered afterwards still gets it. |
 | `ShadowEnv.ContextLost` | Fired when the environment loses its connection. Receives the `ShadowEnv`. Clears the retained `ContextCreated`, so a listener registered after the loss gets nothing until the environment becomes ready again. |
 | `ShadowEnv.AfterSync` | Fired after a synchronization cycle the Shadow Environment applied, including cycles with nothing to send. Receives the `ChangeTrailType` data, which is an empty array when nothing changed. A cycle that failed emits `SyncFailed` instead, so a listener of this event hears the successful cycles and nothing else. |
-| `ShadowEnv.SyncFailed` | Fired when the Shadow Environment could not apply the change trail of a cycle — a worker that does not confirm within `changeTrailTimeout`, a Kernel error the worker reports back, a proxy whose environment is already gone. Receives the reason, the `ChangeTrailType` that was lost, and the `ShadowEnv`. The environment stays ready: what failed is the cycle, not the connection. |
+| `ShadowEnv.SyncFailed` | Fired when the Shadow Environment could not apply the change trail of a cycle — a worker that does not confirm within `changeTrailTimeout`, a Kernel error the worker reports back, a proxy whose environment is already gone. Receives the reason, the full `ChangeTrailType` of that cycle, and the `ShadowEnv`. Where the Kernel itself refused, the reason is a `ChangeTrailRefusedError` and its `appliedCount` says how much of that trail went through. The environment stays ready: what failed is the cycle, not the connection. |
 | `ShadowEnv.ProxyFailed` | Fired when the proxy loses the Shadow Environment it stands for. Receives the reason and the `ShadowEnv`. `ContextLost` follows, because the environment stops being ready. |
 
 ```typescript
@@ -1183,13 +1200,28 @@ on that cycle never depends on the listeners getting through, and the throw is r
 
 Recovery from a `ProxyFailed` is a new proxy: `env.envProxy = new RemoteWorkerEnv()`. The setter starts it, and once it is ready the view re-creates its pending changes from the Component Memory. The next `sync()` therefore restores every entity in the new environment -- token, parent, order and properties -- so the application does not have to rebuild its `ViewComponent`s or its markup.
 
-A `SyncFailed` costs the change trail of that one cycle. `buildChangeTrails()` folds every pending
-change into the state it has written before the trail leaves, so no later cycle carries it again --
-the Shadow Environment is missing exactly what that trail described. `env.view.reCreateChanges()`
+A `SyncFailed` does not cost the change trail of that cycle. Where the Kernel itself refused, it
+says how far it got: the reason is a `ChangeTrailRefusedError`, `appliedCount` names the number of
+entries it applied, and the view folds exactly that prefix into its bookkeeping. Everything behind
+the line stays pending and goes out again with the next cycle, so the two sides agree on what is
+applied without anyone having to guess.
+
+The other side of that promise: a cause that stays put refuses every following cycle too. A token no
+definition exists for, or a Shadow Object whose constructor always throws, produces the same refusal
+again and again instead of failing once and leaving a state nobody notices is missing. `SyncFailed`
+is where an application puts a stop to that -- by taking the offending component out of the view, or
+by tearing the environment down.
+
+A reason that says nothing about how far the Kernel got is read differently: a confirmation window
+that ran out, a `WorkerDestroyedError`, a proxy of someone else's making. The whole trail then counts
+as applied, which is the safe direction -- a worker that timed out may well hold all of it, and a
+creation sent a second time would replace the entity behind that uuid. Over a worker this is also
+the case for every trail sent without a confirmation, `ShadowEnv.sync()` among them: nobody asks,
+so nobody answers, and the view has nothing to draw a line with.
+
+`env.view.reCreateChanges()` remains the way back from a lost proxy, not from a refused trail: it
 rebuilds the pending changes from the Component Memory, and the next `sync()` sends the full state
-of every component. When to reach for it is the application's decision, the same as with a new
-proxy after a `ProxyFailed`: a trail that keeps being refused turns an unconditional rebuild into
-a loop, so a retry budget belongs around the call.
+of every component.
 
 ### Methods
 
@@ -1204,6 +1236,8 @@ Like `sync()`, but returns a Promise that settles once the cycle is over. Useful
 The Promise resolves with the change trail of a cycle the Shadow Environment applied, including one with nothing to send -- then the change trail is an empty array. It stays pending only while the environment is not ready; it settles once `ContextCreated` fires.
 
 It rejects with the reason the proxy gave when the Shadow Environment could not apply the trail: a worker that does not confirm within `changeTrailTimeout`, a Kernel error the worker reports back, a `WorkerDestroyedError` from a worker that is already gone. The same reason reaches every listener of `ShadowEnv.SyncFailed`, and `AfterSync` does not fire for that cycle.
+
+Where the Kernel refused the trail, that reason is a `ChangeTrailRefusedError`: `appliedCount` and `entryCount` say how far it got, and `cause` carries what the entry actually threw -- the error object itself locally, the wording the worker put on the wire across a worker boundary. The entries the Kernel did not apply are still pending and go out again with the next cycle.
 
 ```typescript
 try {
@@ -1223,6 +1257,33 @@ The `reCreateChanges()` call is deliberately left to the consumer. A cycle can f
 single worker hiccup swallowed one trail, and it can fail because the Shadow Environment refuses
 everything it is sent -- the first case wants the rebuild, the second one spins on it. Only the
 application knows which of the two it is in.
+
+#### `ChangeTrailRefusedError`
+
+The reason a Shadow Environment gives when it could apply only part of a change trail. Exported
+from `@spearwolf/shadow-objects` for the view side and from `@spearwolf/shadow-objects/shadow-objects`
+for the Kernel side.
+
+| Member | Type | Description |
+| :--- | :--- | :--- |
+| `appliedCount` | `number` | How many entries the Kernel applied before it stopped. The entries `[0, appliedCount)` are applied, the entry at `appliedCount` is the one that threw, everything behind it was never attempted. |
+| `entryCount` | `number` | How many entries the change trail carried. |
+| `cause` | `unknown` | What the entry threw. The error object itself in a local environment, the wording the worker put on the wire across a worker boundary. |
+
+```typescript
+import { ChangeTrailRefusedError, ShadowEnv } from '@spearwolf/shadow-objects';
+import { on } from '@spearwolf/eventize';
+
+on(env, ShadowEnv.SyncFailed, (reason, changeTrail) => {
+  if (reason instanceof ChangeTrailRefusedError) {
+    // the entries from `reason.appliedCount` on are still pending and go out again
+    console.warn('refused at entry', reason.appliedCount, 'of', changeTrail.length, reason.cause);
+  }
+});
+```
+
+A cause that stays put refuses every following cycle in the same way. Taking the component that
+provokes it out of the view is what ends the loop.
 
 #### `ready()`
 
@@ -1311,6 +1372,12 @@ trail did not arrive or could not be applied, resolve when it did -- and note th
 holds regardless of `waitForConfirmation`: an implementation applying the trail synchronously may
 well know it failed without anyone having asked for a confirmation. A proxy that swallows its own
 errors and resolves anyway reports a Shadow Environment that is further along than it is.
+
+How far the Kernel got is part of the contract too, for an implementation that can say it: reject
+with a `ChangeTrailRefusedError` and the view folds exactly the prefix `appliedCount` names into its
+bookkeeping, sending the rest again with the next trail. Every other reason is read as "the whole
+trail counts as applied", so a proxy that has always rejected with something else keeps behaving
+exactly as it did.
 
 Losing the environment altogether is the other channel: that is `onProxyFailed`, and the two are
 not interchangeable. A refused trail leaves the environment ready and costs one cycle; a failed
@@ -1406,7 +1473,7 @@ that quietly means something else than it says is turned away rather than honour
 | Method | Description |
 | :--- | :--- |
 | `importScript(url)` | Import a shadow objects module inside the worker. Rejects with a `WorkerDestroyedError` after `destroy()`. |
-| `applyChangeTrail(changeTrail, waitForConfirmation)` | Send a change trail to the worker; with `waitForConfirmation` the promise resolves once the worker has applied it. Rejects with a `WorkerDestroyedError` after `destroy()`. |
+| `applyChangeTrail(changeTrail, waitForConfirmation)` | Send a change trail to the worker; with `waitForConfirmation` the promise resolves once the worker has applied it, and rejects with a `ChangeTrailRefusedError` where the worker's Kernel refused it. A trail sent without a confirmation carries no serial, gets no answer, and therefore never reports a refusal. Rejects with a `WorkerDestroyedError` after `destroy()`. |
 | `start()` | Spawn the worker and wait for the load handshake. Rejects with a `WorkerDestroyedError` after `destroy()`. |
 | `destroy()` | Tears the environment down and terminates the worker — once it has acknowledged, or after `WorkerDestroyTimeout` if it stays silent. Takes effect whether or not a worker was ever spawned. On that message the worker tears its own kernel down — its entities are destroyed and the `onDestroy` callbacks of their Shadow Objects run — acknowledges with `Destroyed` once, and hears nothing after that. The environment stops listening to the worker as the teardown begins, so whatever it still sends -- a `MessageToView` among it -- does not arrive. |
 
@@ -1668,7 +1735,7 @@ subclass that overrides one has to call `super`.
 
 #### DOM Events
 
-The element mirrors four of the `ShadowEnv` events onto itself as `CustomEvent`s, so the declarative setup has the same information available as the programmatic one. The names are lower-cased; `detail` always carries `shadowEnv`. `ShadowEnv.AfterSync` is *not* among them — it fires on every successful cycle, which makes it a poor fit for the DOM, and it stays on the `ShadowEnv`. Its counterpart `ShadowEnv.SyncFailed` is mirrored, because a lost change trail is the kind of thing a declarative setup has to be able to hear.
+The element mirrors four of the `ShadowEnv` events onto itself as `CustomEvent`s, so the declarative setup has the same information available as the programmatic one. The names are lower-cased; `detail` always carries `shadowEnv`. `ShadowEnv.AfterSync` is *not* among them — it fires on every successful cycle, which makes it a poor fit for the DOM, and it stays on the `ShadowEnv`. Its counterpart `ShadowEnv.SyncFailed` is mirrored, because a refused change trail is the kind of thing a declarative setup has to be able to hear.
 
 | Event | `detail` | When |
 | :--- | :--- | :--- |

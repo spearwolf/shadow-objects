@@ -1,4 +1,5 @@
 import {off, on} from '@spearwolf/eventize';
+import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {
   AppliedChangeTrail,
   ChangeTrail,
@@ -135,7 +136,15 @@ export class MessageRouter {
     } catch (error) {
       console.error('[MessageRouter] failed to apply change trail', error);
       if (data.serial) {
-        this.postMessage({type: AppliedChangeTrail, serial: data.serial, error: `${error}`} as AppliedChangeTrailEvent);
+        const refusal = error instanceof ChangeTrailRefusedError ? error : undefined;
+        this.postMessage({
+          type: AppliedChangeTrail,
+          serial: data.serial,
+          // the wording of what the entry threw, not the wording of the refusal wrapped around
+          // it: the number travels in a field of its own, so the string stays the reason
+          error: `${refusal?.cause ?? error}`,
+          ...(refusal ? {appliedCount: refusal.appliedCount} : {}),
+        } as AppliedChangeTrailEvent);
       }
       return;
     }

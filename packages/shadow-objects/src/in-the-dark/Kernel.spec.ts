@@ -10,8 +10,9 @@ import {
   value,
 } from '@spearwolf/signalize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
+import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {ChangeTrailPhase, ComponentChangeType, MessageToView} from '../constants.js';
-import type {ICreateEntitiesChange, ShadowObjectCreationAPI} from '../types.js';
+import type {IComponentChangeType, ICreateEntitiesChange, ShadowObjectCreationAPI} from '../types.js';
 import {generateUUID} from '../utils/generateUUID.js';
 import {ComponentChanges} from '../view/ComponentChanges.js';
 import type {Entity} from './Entity.js';
@@ -5384,6 +5385,100 @@ describe('Kernel', () => {
 
       expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([aUuid, bUuid]);
 
+      kernel.destroy();
+    });
+  });
+
+  describe('a change trail the kernel cannot apply in full', () => {
+    // Five entries, and the third one names a parent no entity stands behind. The two ahead of it
+    // are plain creations, the two behind it as well -- so the kernel state alone says where the
+    // trail stopped.
+    const makeTrail = (uuids: string[]): IComponentChangeType[] => [
+      {type: ComponentChangeType.CreateEntities, uuid: uuids[0], token: 'node'},
+      {type: ComponentChangeType.CreateEntities, uuid: uuids[1], token: 'node'},
+      {type: ComponentChangeType.SetParent, uuid: uuids[0], parentUuid: 'nobody'},
+      {type: ComponentChangeType.CreateEntities, uuid: uuids[2], token: 'node'},
+      {type: ComponentChangeType.CreateEntities, uuid: uuids[3], token: 'node'},
+    ];
+
+    it('refuses the trail with the number of entries it applied and the reason underneath', () => {
+      const kernel = new Kernel(new Registry());
+      const uuids = [generateUUID(), generateUUID(), generateUUID(), generateUUID()];
+
+      let refusal: unknown;
+      try {
+        kernel.run({changeTrail: makeTrail(uuids)});
+      } catch (error) {
+        refusal = error;
+      }
+
+      expect(refusal).toBeInstanceOf(ChangeTrailRefusedError);
+
+      const refused = refusal as ChangeTrailRefusedError;
+      expect(refused.appliedCount).toBe(2);
+      expect(refused.entryCount).toBe(5);
+      expect(refused.cause, 'what the entry threw is kept, not replaced').toBeInstanceOf(Error);
+      expect(`${refused.cause}`).toMatch(/not found/);
+
+      kernel.destroy();
+    });
+
+    // The count is only worth anything because the kernel holds a prefix of the trail: the loop
+    // ends at the entry that threw, so everything behind it was never attempted.
+    it('holds the entries ahead of the one that threw and none of the ones behind it', () => {
+      const kernel = new Kernel(new Registry());
+      const uuids = [generateUUID(), generateUUID(), generateUUID(), generateUUID()];
+
+      expect(() => kernel.run({changeTrail: makeTrail(uuids)})).toThrow();
+
+      expect(kernel.hasEntity(uuids[0])).toBe(true);
+      expect(kernel.hasEntity(uuids[1])).toBe(true);
+      expect(kernel.getEntity(uuids[0]).parentUuid, 'the entry that threw changed nothing').toBeUndefined();
+      expect(kernel.hasEntity(uuids[2])).toBe(false);
+      expect(kernel.hasEntity(uuids[3])).toBe(false);
+
+      kernel.destroy();
+    });
+
+    // An effect the batch defers belongs to no single entry: every entry of the trail returned
+    // normally, and the throw happens once the batch releases what they set in motion.
+    it('counts the whole trail as applied when a deferred effect throws after the last entry', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+      const testSignal = createSignal(0);
+      const boom = new Error('the deferred effect refuses');
+
+      @ShadowObject({registry, token: 'deferredThrow'})
+      class DeferredThrow implements OnCreate {
+        constructor({createEffect: createScopeEffect}: ShadowObjectCreationAPI) {
+          createScopeEffect(() => {
+            if (testSignal.get() > 0) throw boom;
+          });
+        }
+
+        [onCreate]() {
+          testSignal.set(1);
+        }
+      }
+      expect(DeferredThrow).toBeDefined();
+
+      const uuid = generateUUID();
+
+      let refusal: unknown;
+      try {
+        kernel.run({changeTrail: [{type: ComponentChangeType.CreateEntities, uuid, token: 'deferredThrow'}]});
+      } catch (error) {
+        refusal = error;
+      }
+
+      expect(refusal).toBeInstanceOf(ChangeTrailRefusedError);
+
+      const refused = refusal as ChangeTrailRefusedError;
+      expect(refused.appliedCount).toBe(1);
+      expect(refused.entryCount).toBe(1);
+      expect(kernel.hasEntity(uuid), 'the entry itself went through').toBe(true);
+
+      destroySignal(testSignal);
       kernel.destroy();
     });
   });

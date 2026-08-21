@@ -909,4 +909,166 @@ describe('ComponentContext', () => {
       expect(all.filter((c) => !reachable.has(c.uuid))).toEqual([]);
     });
   });
+
+  describe('building a change trail and committing it', () => {
+    it('reaches the same state as a build that commits on its own', () => {
+      ctx = makeContext();
+      const root = new ViewComponent('root', {context: ctx, uuid: 'root'});
+      new ViewComponent('kid', {context: ctx, parent: root, uuid: 'kid'});
+
+      const trail = ctx.buildChangeTrails(false);
+      ctx.commitChangeTrail(trail.length);
+
+      expect(ctx.buildChangeTrails(), 'nothing is left pending').toEqual([]);
+
+      // the Component Memory carries the same two components as a self-committing build would
+      ctx.reCreateChanges();
+      expect(ctx.buildChangeTrails().map((entry) => entry.uuid)).toEqual(['root', 'kid']);
+    });
+
+    it('sends an entry nobody applied out again with the next trail', () => {
+      ctx = makeContext();
+      new ViewComponent('a', {context: ctx, uuid: 'a'});
+
+      const first = ctx.buildChangeTrails(false);
+      ctx.commitChangeTrail(0);
+
+      expect(ctx.buildChangeTrails(false)).toEqual(first);
+    });
+
+    it('sends the entries behind the line out again and none ahead of it', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx, uuid: 'a'});
+      const b = new ViewComponent('b', {context: ctx, uuid: 'b'});
+      const c = new ViewComponent('c', {context: ctx, uuid: 'c'});
+      ctx.buildChangeTrails();
+
+      a.token = 'a2';
+      b.token = 'b2';
+      c.token = 'c2';
+      a.setProperty('p', 1);
+      b.setProperty('p', 2);
+
+      const first = ctx.buildChangeTrails(false);
+      expect(first).toHaveLength(5);
+
+      ctx.commitChangeTrail(2);
+
+      expect(ctx.buildChangeTrails(false)).toEqual(first.slice(2));
+    });
+
+    // A component can hold a creation and an event in one and the same trail. Committing per
+    // component instead of per entry would send the creation a second time, and a creation that
+    // names a uuid the Shadow Environment already holds replaces the entity behind it.
+    it('commits entry by entry, not component by component', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx, uuid: 'a'});
+      new ViewComponent('b', {context: ctx, uuid: 'b'});
+      new ViewComponent('c', {context: ctx, uuid: 'c'});
+      new ViewComponent('d', {context: ctx, uuid: 'd'});
+      a.dispatchShadowObjectsEvent('ping', 1);
+
+      const first = ctx.buildChangeTrails(false);
+      expect(first.map((entry) => entry.type)).toEqual([
+        ComponentChangeType.CreateEntities,
+        ComponentChangeType.CreateEntities,
+        ComponentChangeType.CreateEntities,
+        ComponentChangeType.CreateEntities,
+        ComponentChangeType.SendEvents,
+      ]);
+
+      ctx.commitChangeTrail(1);
+
+      const second = ctx.buildChangeTrails(false);
+
+      expect(second).toEqual(first.slice(1));
+      expect(second.some((entry) => entry.type === ComponentChangeType.CreateEntities && entry.uuid === 'a')).toBe(false);
+    });
+
+    it('keeps the entry of a component whose destruction nobody applied', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx, uuid: 'a'});
+      ctx.buildChangeTrails();
+
+      a.destroy();
+
+      const first = ctx.buildChangeTrails(false);
+      expect(first).toEqual([{type: ComponentChangeType.DestroyEntities, uuid: 'a'}]);
+
+      ctx.commitChangeTrail(0);
+
+      expect(ctx.hasComponent(a), 'the entry stands until the destruction is applied').toBe(true);
+      expect(ctx.buildChangeTrails(false)).toEqual(first);
+    });
+
+    // Between the build and the commit lies a round trip, and a uuid its holder has left is free
+    // again in the meantime.
+    it('leaves the entry alone when another component has taken the uuid over', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      a.destroy();
+      const trail = ctx.buildChangeTrails(false);
+
+      const successor = new ViewComponent('successor', {context: ctx, uuid: 'twin'});
+      ctx.commitChangeTrail(trail.length);
+
+      expect(ctx.hasComponent(successor)).toBe(true);
+      expect(ctx.traverseLevelOrderBFS().map((c) => c.token)).toEqual(['successor']);
+      expect(ctx.buildChangeTrails(false)).toEqual([
+        {type: ComponentChangeType.CreateEntities, uuid: 'twin', token: 'successor'},
+      ]);
+    });
+
+    // Two sync cycles can be in flight at once. The older trail then falls back on the optimistic
+    // reading -- everything it carried counts as applied -- rather than on a state in which two
+    // trails claim the same entries.
+    it('commits an open trail in full when a second build comes before its commit', () => {
+      ctx = makeContext();
+      new ViewComponent('a', {context: ctx, uuid: 'a'});
+
+      const first = ctx.buildChangeTrails(false);
+      expect(first.map((entry) => entry.uuid)).toEqual(['a']);
+
+      new ViewComponent('b', {context: ctx, uuid: 'b'});
+
+      const second = ctx.buildChangeTrails(false);
+      expect(second.map((entry) => entry.uuid)).toEqual(['b']);
+    });
+
+    // A component can be destroyed while the trail it contributed to is still travelling. The
+    // destruction was not part of that trail and has to go out with the next one, so the entry
+    // has to survive the commit -- dropping it here would leave the entity standing in the
+    // Shadow Environment with nothing left to take it down.
+    it('still sends the destruction of a component that was destroyed while the trail travelled', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx, uuid: 'a'});
+      ctx.buildChangeTrails();
+
+      a.setProperty('p', 1);
+      const trail = ctx.buildChangeTrails(false);
+      expect(trail).toHaveLength(1);
+
+      a.destroy();
+      ctx.commitChangeTrail(trail.length);
+
+      expect(ctx.hasComponent(a), 'the entry stands until its destruction has been sent').toBe(true);
+      expect(ctx.buildChangeTrails(false)).toEqual([{type: ComponentChangeType.DestroyEntities, uuid: 'a'}]);
+    });
+
+    it('takes the pending events over when it recreates the components from the memory', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx, uuid: 'a'});
+      ctx.buildChangeTrails();
+
+      a.dispatchShadowObjectsEvent('ping', 1);
+      ctx.reCreateChanges();
+
+      expect(ctx.buildChangeTrails()).toEqual([
+        {type: ComponentChangeType.CreateEntities, uuid: 'a', token: 'a'},
+        {type: ComponentChangeType.SendEvents, uuid: 'a', events: [{type: 'ping', data: 1}]},
+      ]);
+    });
+  });
 });

@@ -1,6 +1,7 @@
 import {emit, off, on, onceAsync, Priority, retain, retainClear} from '@spearwolf/eventize';
 import {createEffect, createSignal, destroyObjectSignals, findObjectSignalByName} from '@spearwolf/signalize';
 import {signal} from '@spearwolf/signalize/decorators';
+import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import type {MessageToViewEvent} from '../shadow-objects.js';
 import type {ChangeTrailType, NamespaceType} from '../types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
@@ -231,9 +232,16 @@ export class ShadowEnv {
    * Like {@link ShadowEnv.sync}, but resolves with the change trail once the cycle completed.
    *
    * A cycle whose change trail the Shadow Environment could not apply rejects instead, with the
-   * reason the proxy gave. That trail is gone -- `buildChangeTrails()` has already folded every
-   * pending value into the state it wrote, so no later cycle sends it again. Only
-   * {@link ComponentContext.reCreateChanges} brings it back, and calling it is the consumer's
+   * reason the proxy gave. Where the Kernel itself refused the trail that reason is a
+   * {@link ChangeTrailRefusedError}: it names how many entries the Kernel applied, this side folds
+   * exactly those into its bookkeeping, and everything behind that line stays pending and goes out
+   * again with the next cycle. A trail whose cause of refusal stays put is refused every time, which
+   * is what {@link ShadowEnv.SyncFailed} is the place to act on.
+   *
+   * A reason that says nothing about how far the Kernel got -- a confirmation window that ran out,
+   * a proxy whose environment is gone -- counts the whole trail as applied, because a Shadow
+   * Environment that fell silent may well hold all of it. Then the trail is gone, and only
+   * {@link ComponentContext.reCreateChanges} brings it back; calling it is the consumer's
    * decision, the same way recovering from a {@link ShadowEnv.ProxyFailed} is.
    *
    * @throws {ShadowEnvDestroyedError} if the environment is destroyed before the cycle completes
@@ -323,7 +331,7 @@ export class ShadowEnv {
       return;
     }
 
-    const data = this.view!.buildChangeTrails();
+    const data = this.view!.buildChangeTrails(false);
 
     const waitForConfirmation = this.#syncWaitForConfirmation;
     this.#syncWaitForConfirmation = false;
@@ -336,12 +344,33 @@ export class ShadowEnv {
       // the log entry before anything else: what went wrong is on the record even if the report
       // of it runs into a listener that cannot cope
       this.logger.error('failed to apply change trail', error);
+      this.#commitSyncCycle(data, error);
       this.#endSyncCycle(data, {reason: error});
       return;
     }
 
     // an empty change trail ends here as well -- nothing is sent, so nothing can be refused
+    this.#commitSyncCycle(data);
     this.#endSyncCycle(data);
+  }
+
+  /**
+   * Draws the line between what the Shadow Environment applied and what it still owes, and hands
+   * it to the view. Runs ahead of {@link ShadowEnv.#endSyncCycle} so that a `SyncFailed` listener
+   * and a waiting {@link ShadowEnv.syncWait} caller find bookkeeping that already holds.
+   *
+   * An empty change trail is settled as well: the build may have retired components even without
+   * writing an entry for any of them.
+   */
+  #commitSyncCycle(changeTrail: ChangeTrailType, reason?: unknown): void {
+    // A reason that does not say how far the Kernel got says nothing about the trail either: a
+    // confirmation window that ran out leaves an environment that may well have applied every
+    // entry, and re-sending a creation on top of an entity it already holds replaces that entity.
+    // The line moves only where the Kernel itself named the count.
+    const appliedCount = reason instanceof ChangeTrailRefusedError ? reason.appliedCount : changeTrail.length;
+
+    // `?.` rather than `!`: a destroy() can have run between the await above and this line
+    this.view?.commitChangeTrail(appliedCount, changeTrail);
   }
 
   /**

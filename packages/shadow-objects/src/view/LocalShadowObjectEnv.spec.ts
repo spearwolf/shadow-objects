@@ -1,4 +1,5 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
+import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {ComponentChangeType} from '../constants.js';
 import {Registry} from '../in-the-dark/Registry.js';
 import {shadowObjects} from '../in-the-dark/ShadowObject.js';
@@ -129,6 +130,34 @@ describe('LocalShadowObjectEnv', () => {
       expect(caught).toBe(error);
 
       runSpy.mockRestore();
+      env.destroy();
+    });
+
+    // The local environment answers the same way whether or not a confirmation was asked for, so
+    // the count reaches the view on both routes. Over a worker only the confirmed route carries it.
+    it.each([false, true])('rejects with the refusal the kernel threw (waitForConfirmation: %s)', async (waitForConfirmation) => {
+      const env = new LocalShadowObjectEnv();
+      const uuid = 'refused-locally';
+
+      const refusal = await env
+        .applyChangeTrail(
+          [
+            {type: ComponentChangeType.CreateEntities, uuid, token: 'foo'},
+            {type: ComponentChangeType.SetParent, uuid, parentUuid: 'ghost'},
+          ],
+          waitForConfirmation,
+        )
+        .then(
+          () => {
+            throw new Error('expected the promise to reject, but it resolved');
+          },
+          (reason) => reason,
+        );
+
+      expect(refusal).toBeInstanceOf(ChangeTrailRefusedError);
+      expect((refusal as ChangeTrailRefusedError).appliedCount).toBe(1);
+      expect((refusal as ChangeTrailRefusedError).entryCount).toBe(2);
+
       env.destroy();
     });
   });

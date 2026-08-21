@@ -14,6 +14,7 @@ test.describe('sync-failure', () => {
       'sync-failure-detail-carries-the-lost-change-trail',
       'sync-failure-aftersync-did-not-fire',
       'sync-failure-is-not-a-proxy-failure',
+      'sync-failure-refused-entry-is-sent-again',
       'sync-failure-environment-still-syncs',
     ],
     // the page has the worker's kernel refuse a change trail on purpose, and both sides put the

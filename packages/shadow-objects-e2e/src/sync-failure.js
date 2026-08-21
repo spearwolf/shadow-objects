@@ -1,5 +1,5 @@
 import {on} from '@spearwolf/eventize';
-import {ComponentChangeType, ShadowEnv} from '@spearwolf/shadow-objects';
+import {ChangeTrailRefusedError, ComponentChangeType, ShadowEnv} from '@spearwolf/shadow-objects';
 import '@spearwolf/shadow-objects/shae-ent.js';
 import '@spearwolf/shadow-objects/shae-worker.js';
 import './style.css';
@@ -51,6 +51,11 @@ async function main() {
   });
 
   const syncFailedEvent = watchCustomEvent(workerEl, SyncFailed);
+
+  // a plain collector alongside the watcher above: `watchCustomEvent` unsubscribes once its wait is
+  // over, and the second refusal further down needs the detail of a second event
+  const syncFailedDetails = [];
+  workerEl.addEventListener(SyncFailed, (event) => syncFailedDetails.push(event.detail));
 
   await testAsyncAction('sync-failure-env-ready', () => shadowEnv.ready());
 
@@ -129,11 +134,19 @@ async function main() {
     if (failureDetail?.reason !== refusedReason) {
       throw new Error(`the event carried another reason than syncWait(): ${failureDetail?.reason}`);
     }
-    // Across a worker boundary the reason is a string, not an Error instance: the worker reduces it
-    // to a message when it puts it on the wire (`MessageRouter.#onChangeTrail`), and the view
-    // rejects with exactly that value (`RemoteWorkerEnv.applyChangeTrail`).
-    if (typeof refusedReason !== 'string' || !refusedReason.includes(RefusalMessage)) {
-      throw new Error(`expected a string naming the refusal, got: ${JSON.stringify(refusedReason)}`);
+    if (!(refusedReason instanceof ChangeTrailRefusedError)) {
+      throw new Error(`expected a ChangeTrailRefusedError, got: ${JSON.stringify(refusedReason)}`);
+    }
+    // Across a worker boundary the wording of the throw travels as a string, not as an Error
+    // instance: the worker reduces it to a message when it puts it on the wire
+    // (`MessageRouter.#onChangeTrail`), and the view puts that string under `cause`
+    // (`RemoteWorkerEnv.applyChangeTrail`).
+    if (typeof refusedReason.cause !== 'string' || !refusedReason.cause.includes(RefusalMessage)) {
+      throw new Error(`expected the cause to name the refusal, got: ${JSON.stringify(refusedReason.cause)}`);
+    }
+    // how far the kernel got before it stopped -- the entry that threw is not among them
+    if (typeof refusedReason.appliedCount !== 'number' || refusedReason.appliedCount >= failureDetail.changeTrail.length) {
+      throw new Error(`expected a count below the trail length, got: ${refusedReason.appliedCount}`);
     }
     return failureDetail.shadowEnv === shadowEnv;
   });
@@ -157,9 +170,35 @@ async function main() {
     () => proxyFailedCount === 0 && contextLostCount === 0 && shadowEnv.isReady && !shadowEnv.envProxy.isDestroyed,
   );
 
+  // What the kernel did not apply is still owed to it, so the entry goes out again -- and while the
+  // refuser is still in the DOM it meets the same refusal a second time.
+  await testAsyncAction(
+    'sync-failure-refused-entry-is-sent-again',
+    async () => {
+      const secondReason = await shadowEnv.syncWait().then(
+        () => {
+          throw new Error('expected the second syncWait() to reject, but it resolved');
+        },
+        (error) => error,
+      );
+
+      if (!(secondReason instanceof ChangeTrailRefusedError)) {
+        throw new Error(`expected the second cycle to be refused as well, got: ${JSON.stringify(secondReason)}`);
+      }
+
+      await waitUntil('the second refusal to arrive as a DOM event', () => syncFailedDetails.length > 1);
+
+      const changeTrail = syncFailedDetails[1]?.changeTrail ?? [];
+      if (!changeTrail.some((entry) => entry.type === ComponentChangeType.CreateEntities && entry.uuid === refusedUuid)) {
+        throw new Error(`the second trail did not carry the refused entity again: ${JSON.stringify(changeTrail)}`);
+      }
+    },
+    FailureTimeout,
+  );
+
   await testAsyncAction('sync-failure-environment-still-syncs', async () => {
-    // the refused entity leaves first: the view still holds it, and a trail carrying it again would
-    // run into the same refusal
+    // the refused entity leaves first: its creation is still pending, and a trail carrying it again
+    // would run into the same refusal -- as the case above just showed
     document.getElementById('refuser').remove();
     survivor.viewComponent.setProperty('xyz', 42);
 

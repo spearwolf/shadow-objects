@@ -1,5 +1,6 @@
 import {on, once} from '@spearwolf/eventize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
+import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {type OnCreate, type OnDestroy, onCreate, onDestroy} from '../in-the-dark/events.js';
 import {Registry} from '../in-the-dark/Registry.js';
 import {ShadowObject} from '../in-the-dark/ShadowObject.js';
@@ -193,12 +194,20 @@ describe('ShadowEnv', () => {
       rejectWith: unknown;
       applyCalls = 0;
 
+      /** The trails it was handed, in the order they came in. */
+      trails: ChangeTrailType[] = [];
+
+      /** How many entries the kernel behind it applied before it stopped. */
+      refuseAfter?: number;
+
       async start(): Promise<void> {}
 
       async importScript(): Promise<void> {}
 
-      async applyChangeTrail(): Promise<void> {
+      async applyChangeTrail(changeTrail: ChangeTrailType): Promise<void> {
         this.applyCalls++;
+        this.trails.push(changeTrail);
+        if (this.refuseAfter !== undefined) throw new ChangeTrailRefusedError(this.refuseAfter, changeTrail.length);
         if (this.rejectWith !== undefined) throw this.rejectWith;
       }
 
@@ -243,7 +252,7 @@ describe('ShadowEnv', () => {
       env.destroy();
     });
 
-    it('emits SyncFailed once, with the reason, the lost change trail and the environment', async () => {
+    it('emits SyncFailed once, with the reason, the change trail of that cycle and the environment', async () => {
       const reason = new Error('the environment refused the trail');
       const {env} = await makeEnv(reason);
 
@@ -372,6 +381,64 @@ describe('ShadowEnv', () => {
       new ViewComponent('test', {context: env.view});
 
       await expect(withTimeout(env.syncWait())).rejects.toBe(reason);
+
+      env.destroy();
+    });
+
+    // What the kernel applied it keeps; what it did not apply is still owed to it, and the next
+    // cycle carries it again.
+    it('sends the entries the kernel did not apply out again', async () => {
+      const {env, proxy} = await makeEnv();
+      proxy.refuseAfter = 2;
+
+      new ViewComponent('a', {context: env.view, uuid: 'a'});
+      new ViewComponent('b', {context: env.view, uuid: 'b'});
+      new ViewComponent('c', {context: env.view, uuid: 'c'});
+
+      await expect(withTimeout(env.syncWait())).rejects.toBeInstanceOf(ChangeTrailRefusedError);
+
+      const refused = proxy.trails[0];
+      expect(refused.map((entry) => entry.uuid)).toEqual(['a', 'b', 'c']);
+
+      proxy.refuseAfter = undefined;
+
+      await expect(withTimeout(env.syncWait())).resolves.toEqual(refused.slice(2));
+
+      env.destroy();
+    });
+
+    // A reason that does not say how far the kernel got says nothing about the trail either: a
+    // confirmation window that ran out leaves an environment that may well have applied all of it.
+    it('counts the whole trail as applied when the reason names no count', async () => {
+      const reason = new Error('the environment refused the trail');
+      const {env, proxy} = await makeEnv(reason);
+
+      new ViewComponent('a', {context: env.view, uuid: 'a'});
+
+      await expect(withTimeout(env.syncWait())).rejects.toBe(reason);
+
+      proxy.rejectWith = undefined;
+
+      await expect(withTimeout(env.syncWait())).resolves.toEqual([]);
+
+      env.destroy();
+    });
+
+    it('has its bookkeeping settled before it reports the failure', async () => {
+      const {env, proxy} = await makeEnv();
+      proxy.refuseAfter = 1;
+
+      new ViewComponent('a', {context: env.view, uuid: 'a'});
+      new ViewComponent('b', {context: env.view, uuid: 'b'});
+
+      let seen: ChangeTrailType | undefined;
+      on(env, ShadowEnv.SyncFailed, () => {
+        seen = env.view!.buildChangeTrails();
+      });
+
+      await expect(withTimeout(env.syncWait())).rejects.toBeInstanceOf(ChangeTrailRefusedError);
+
+      expect(seen?.map((entry) => entry.uuid)).toEqual(['b']);
 
       env.destroy();
     });

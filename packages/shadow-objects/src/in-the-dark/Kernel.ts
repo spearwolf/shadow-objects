@@ -1,5 +1,6 @@
 import {emit, eventize, off, on} from '@spearwolf/eventize';
 import {batch} from '@spearwolf/signalize';
+import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {ComponentChangeType, MessageToView} from '../constants.js';
 import type {
   ComponentPropertiesType,
@@ -215,15 +216,37 @@ export class Kernel {
     entityConstructors.clear();
   }
 
+  /**
+   * Apply a change trail, entry by entry, and say how far it got if it cannot be applied in full.
+   *
+   * The loop ends at the entry that throws, so what the kernel holds afterwards is a prefix of the
+   * trail; the {@link ChangeTrailRefusedError} names its length. The counter sits behind
+   * {@link Kernel.parse} and therefore counts only entries that returned normally.
+   *
+   * An effect the batch defers belongs to no single entry: the batch releases it once the loop is
+   * through, and a throw from there arrives with every entry already counted. `appliedCount` then
+   * equals `entryCount` — everything was applied, something failed nevertheless, and both
+   * statements are true at once.
+   *
+   * @throws {ChangeTrailRefusedError} if any entry, or any effect the batch deferred, threw
+   */
   run(event: SyncEvent): void {
     if (this.logger.isDebug) {
       this.logger.debug('sync', event);
     }
-    batch(() => {
-      for (const entry of event.changeTrail) {
-        this.parse(entry);
-      }
-    });
+
+    let appliedCount = 0;
+
+    try {
+      batch(() => {
+        for (const entry of event.changeTrail) {
+          this.parse(entry);
+          appliedCount++;
+        }
+      });
+    } catch (error) {
+      throw new ChangeTrailRefusedError(appliedCount, event.changeTrail.length, {cause: error});
+    }
   }
 
   private parse(entry: IComponentChangeType): void {

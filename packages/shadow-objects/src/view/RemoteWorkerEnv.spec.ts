@@ -1,5 +1,6 @@
 import {on} from '@spearwolf/eventize';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {
   AppliedChangeTrail,
   ChangeTrail,
@@ -605,6 +606,39 @@ describe('RemoteWorkerEnv', () => {
 
       worker.reply({type: AppliedChangeTrail, serial: 2});
       await second;
+    });
+
+    // A confirmation that names the count is the one thing that can move the line the view draws
+    // between applied and pending, so it arrives as a refusal that carries the number.
+    it('rejects with a refusal that carries the count the worker named', async () => {
+      const {env, worker} = await startEnv();
+      const trail: ChangeTrailType = [
+        {type: ComponentChangeType.UpdateOrder, uuid: 'a', order: 1},
+        {type: ComponentChangeType.UpdateOrder, uuid: 'b', order: 2},
+        {type: ComponentChangeType.UpdateOrder, uuid: 'c', order: 3},
+      ];
+
+      const pending = env.applyChangeTrail(trail, true);
+      worker.reply({type: AppliedChangeTrail, serial: 1, error: 'entity with uuid "c" not found!', appliedCount: 2});
+
+      const reason = (await expectRejection(pending, 'ChangeTrailRefusedError')) as ChangeTrailRefusedError;
+
+      expect(reason).toBeInstanceOf(ChangeTrailRefusedError);
+      expect(reason.appliedCount).toBe(2);
+      expect(reason.entryCount).toBe(3);
+      expect(reason.cause).toBe('entity with uuid "c" not found!');
+    });
+
+    // Without the count there is nothing to draw a line with, so the reason is handed on as it is
+    // -- an implementation on the other side that says nothing about how far it got keeps behaving
+    // the way it always did.
+    it('rejects with the bare reason when the confirmation names no count', async () => {
+      const {env, worker} = await startEnv();
+
+      const pending = env.applyChangeTrail([{type: ComponentChangeType.UpdateOrder, uuid: 'a', order: 1}], true);
+      worker.reply({type: AppliedChangeTrail, serial: 1, error: 'something went wrong'});
+
+      await expect(withTimeout(pending)).rejects.toBe('something went wrong');
     });
   });
 

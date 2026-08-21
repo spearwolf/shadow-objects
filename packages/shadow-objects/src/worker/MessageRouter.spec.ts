@@ -301,7 +301,12 @@ describe('MessageRouter', () => {
       expect(messages[0]).toEqual({type: AppliedChangeTrail, serial: 1});
       // What the failure says is the kernel's wording, and the kernel is not the subject here.
       // Asserted is what the router does with it: report it against the serial it came in on.
-      expect(messages[1]).toEqual({type: AppliedChangeTrail, serial: 2, error: expect.stringMatching(/.+/)});
+      expect(messages[1]).toEqual({
+        type: AppliedChangeTrail,
+        serial: 2,
+        error: expect.stringMatching(/.+/),
+        appliedCount: 0,
+      });
       expect(error).toHaveBeenCalledTimes(1);
       expect(error.mock.calls[0][0]).toBe('[MessageRouter] failed to apply change trail');
       expect(kernel.hasEntity('a')).toBe(true);
@@ -320,8 +325,28 @@ describe('MessageRouter', () => {
       expect(kernel.hasEntity('a')).toBe(true);
       expect(kernel.hasEntity('b')).toBe(false);
       expect(messages).toHaveLength(1);
-      expect(messages[0]).toEqual({type: AppliedChangeTrail, serial: 7, error: expect.stringMatching(/.+/)});
+      expect(messages[0]).toEqual({
+        type: AppliedChangeTrail,
+        serial: 7,
+        error: expect.stringMatching(/.+/),
+        appliedCount: 1,
+      });
       expect(error).toHaveBeenCalledTimes(1);
+    });
+
+    // The number travels in a field of its own so that the string stays what it always was: the
+    // wording of the throw the kernel met, not the wording of the refusal wrapped around it.
+    it('reports the wording of the throw, not the wording of the refusal around it', () => {
+      const {posted, router} = setup();
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      router.route(changeTrailMessage(3, setParent('a', 'ghost')));
+
+      const message = posted[0].message;
+
+      expect(message.error).toContain('not found');
+      expect(message.error).not.toMatch(/change trail entries/);
+      expect(message.appliedCount).toBe(0);
     });
 
     // Confirmed is what was asked for: without a serial nobody is waiting, and an unsolicited

@@ -1,6 +1,7 @@
 import {ChangeTrailPhase, ContextLost, GlobalNS} from '../constants.js';
 import type {ChangeTrailType, IComponentChangeType, NamespaceType} from '../types.js';
 import {removeFrom} from '../utils/array-utils.js';
+import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {toNamespace} from '../utils/toNamespace.js';
 import {ComponentChanges} from './ComponentChanges.js';
 import {ComponentMemory} from './ComponentMemory.js';
@@ -107,6 +108,49 @@ export class ComponentContext {
   readonly #componentInstances = new Set<ViewComponent>();
 
   readonly #componentMemory = new ComponentMemory();
+
+  readonly #logger = new ConsoleLogger('ComponentContext');
+
+  /**
+   * The change trail this context built last, as long as nobody has settled it yet.
+   * `owners[i]` is the bookkeeping that produced `entries[i]`; `retiring` are the components the
+   * build read as spent, which is a verdict of the build and not of the commit — a component
+   * destroyed while the trail travels owes its destruction to the *next* trail, and dropping its
+   * entry here would leave the entity standing with nothing left to take it down.
+   */
+  #uncommittedTrail?: {entries: IComponentChangeType[]; owners: ComponentChanges[]; retiring: ComponentChanges[]};
+
+  /** The components a build reads as spent: destroyed, or created and dropped without ever going out. */
+  #retiringComponents(participants: ComponentChanges[]): ComponentChanges[] {
+    return participants.filter((changes) => changes.isDestroyed || (changes.isNew && !changes.isCreated));
+  }
+
+  /**
+   * Carry out the verdict the build took, for the components whose every entry is settled.
+   *
+   * A component that has been claimed again since the build stays: a uuid its holder has left is
+   * free, and the entry now belongs to whoever took it over.
+   */
+  #retireComponents(retiring: ComponentChanges[], stillPending?: Set<ComponentChanges>): void {
+    for (const changes of retiring) {
+      if (stillPending?.has(changes)) continue;
+      if (changes.isCreated) continue;
+      this.#deleteComponent(changes.uuid, changes);
+    }
+  }
+
+  /**
+   * Release the record of the built trail and drop the components it retired, without folding
+   * anything into their bookkeeping.
+   */
+  #retireBuiltTrail(): void {
+    const uncommitted = this.#uncommittedTrail;
+    if (uncommitted == null) return;
+
+    this.#uncommittedTrail = undefined;
+
+    this.#retireComponents(uncommitted.retiring);
+  }
 
   constructor(namespace: NamespaceType = GlobalNS) {
     const ns = toNamespace(namespace);
@@ -530,41 +574,89 @@ export class ComponentContext {
    * Create the component change trails at this point in time.
    * The next call will only return the differences from the previous call.
    *
+   * @param commit whether the trail counts as applied the moment it is built. Pass `false` when
+   *   the trail still has to travel to a Shadow Environment that may refuse it, and settle it
+   *   afterwards with {@link ComponentContext.commitChangeTrail}.
+   *
+   * @see {@link ComponentContext.commitChangeTrail}
    * @see {@link ComponentContext.reCreateChanges}
    */
-  buildChangeTrails(clearChanges = true): ChangeTrailType {
-    const trails: IComponentChangeType[] = [];
-
-    if (!this.hasComponents()) return trails;
-
-    const pathOfChanges = this.#buildPathOfChanges();
-
-    // console.log(
-    //   'path of changes:',
-    //   pathOfChanges.map((c) => c.uuid),
-    // );
-
-    for (const changes of pathOfChanges) {
-      changes.buildChangeTrail(trails, ChangeTrailPhase.StructuralChanges);
-    }
-
-    for (const changes of pathOfChanges) {
-      changes.buildChangeTrail(trails, ChangeTrailPhase.ContentUpdates);
-    }
-
-    for (const changes of pathOfChanges) {
-      changes.buildChangeTrail(trails, ChangeTrailPhase.Removal);
-
-      if (changes.isDestroyed || (changes.isNew && !changes.isCreated)) {
-        this.#deleteComponent(changes.uuid);
+  buildChangeTrails(commit = true): ChangeTrailType {
+    if (this.#uncommittedTrail != null) {
+      // Two sync cycles can be in flight at once, and the older one no longer has a trail to
+      // settle once this one has taken the diff. It falls back on the optimistic reading --
+      // everything it carried counts as applied -- rather than on a state in which two trails
+      // claim the same entries.
+      if (this.#logger.isDebug) {
+        this.#logger.debug('committing an open change trail because a second one is being built', this.#uncommittedTrail.entries);
       }
-
-      if (clearChanges) changes.clear();
+      this.commitChangeTrail(this.#uncommittedTrail.entries.length);
     }
 
-    this.#componentMemory.write(trails);
+    const entries: IComponentChangeType[] = [];
+    const owners: ComponentChanges[] = [];
+    const participants = this.hasComponents() ? this.#buildPathOfChanges() : [];
 
-    return trails;
+    // The entry → component assignment is taken from the length of the trail before and after
+    // each call, which keeps it out of the entries themselves: they travel to the Shadow
+    // Environment, and nothing that is only this side's bookkeeping belongs on that wire.
+    const build = (changes: ComponentChanges, phase: ChangeTrailPhase) => {
+      const before = entries.length;
+      changes.buildChangeTrail(entries, phase);
+      for (let i = before; i < entries.length; i++) {
+        owners[i] = changes;
+      }
+    };
+
+    for (const changes of participants) build(changes, ChangeTrailPhase.StructuralChanges);
+    for (const changes of participants) build(changes, ChangeTrailPhase.ContentUpdates);
+    for (const changes of participants) build(changes, ChangeTrailPhase.Removal);
+
+    // read while the build still stands: whether a component is spent is a statement about this
+    // trail, and the round trip that follows must not be able to change the answer
+    this.#uncommittedTrail = {entries, owners, retiring: this.#retiringComponents(participants)};
+
+    if (commit) this.commitChangeTrail(entries.length);
+
+    return entries;
+  }
+
+  /**
+   * Fold the first `appliedCount` entries of the change trail this context built last into the
+   * state the next trail is diffed against, and write them to the Component Memory. Every entry
+   * behind that line stays pending and goes out again with the next trail.
+   *
+   * A component is retired -- its entry dropped -- only where the build read it as spent and every
+   * entry it contributed is settled. One component can hold a creation and an event in the same
+   * trail, and a creation sent twice would replace the entity the Shadow Environment already
+   * holds behind that uuid.
+   *
+   * @param appliedCount how many entries the Shadow Environment applied, counted from the front.
+   *   Clamped to the length of the trail.
+   * @param changeTrail the trail this call settles. Given, the call is ignored unless it is the
+   *   very trail this context built last -- a cycle that lost its trail to a later build must not
+   *   draw a line through that later trail.
+   */
+  commitChangeTrail(appliedCount: number, changeTrail?: ChangeTrailType): void {
+    const uncommitted = this.#uncommittedTrail;
+    if (uncommitted == null) return;
+    if (changeTrail != null && changeTrail !== uncommitted.entries) return;
+
+    const {entries, owners, retiring} = uncommitted;
+    const count = Math.min(Math.max(appliedCount, 0), entries.length);
+
+    // released before anything is folded: a listener reached from here finds no half-settled record
+    this.#uncommittedTrail = undefined;
+
+    const stillPending = new Set(owners.slice(count));
+
+    for (let i = 0; i < count; i++) {
+      owners[i].commitChange(entries[i]);
+    }
+
+    this.#componentMemory.write(count === entries.length ? entries : entries.slice(0, count));
+
+    this.#retireComponents(retiring, stillPending);
   }
 
   /**
@@ -576,7 +668,13 @@ export class ComponentContext {
   reCreateChanges() {
     if (this.#componentMemory.isEmpty()) return;
 
-    this.buildChangeTrails(false);
+    const trails = this.buildChangeTrails(false);
+
+    // The trail is written to the memory but not folded back into the components: the recreation
+    // below builds every one of them anew and needs the events of the instances it replaces, which
+    // a commit would release. What the trail retires is retired here instead.
+    this.#componentMemory.write(trails);
+    this.#retireBuiltTrail();
 
     for (const [uuid, cMem] of this.#componentMemory) {
       const c = this.#components.get(uuid);
@@ -614,6 +712,7 @@ export class ComponentContext {
   clear() {
     this.#viewInstances = undefined;
     this.#componentMemory.clear();
+    this.#uncommittedTrail = undefined;
 
     // destroy first, while the context is still live: a component whose context is gone
     // would otherwise keep reporting itself as alive.
@@ -667,9 +766,17 @@ export class ComponentContext {
     }
   }
 
-  #deleteComponent(uuid: string) {
+  /**
+   * Drop the component entry behind `uuid`, and with it the uuid's place in every children list.
+   *
+   * @param expectedChanges the bookkeeping that asked for the deletion. A round trip lies between
+   *   the build of a change trail and its commit, and an entry that a different bookkeeping stands
+   *   behind by then belongs to a component that joined in the meantime.
+   */
+  #deleteComponent(uuid: string, expectedChanges?: ComponentChanges) {
     const entry = this.#components.get(uuid);
     if (entry === undefined) return;
+    if (expectedChanges !== undefined && entry.changes !== expectedChanges) return;
 
     // a uuid must never survive in a children list, otherwise every later lookup
     // on that list dereferences a component that no longer exists

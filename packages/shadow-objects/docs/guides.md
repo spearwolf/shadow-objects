@@ -534,17 +534,21 @@ With the declarative setup the same thing arrives as a DOM event: `<shae-worker>
 
 A refused change trail is a different failure from a lost worker, and the two must not be treated as one. The worker is alive, the proxy is intact, `env.isReady` still reads `true` -- one cycle did not get through. That happens when the worker does not confirm the trail within `changeTrailTimeout`, and when the Kernel throws while applying it and the worker reports the error back.
 
-The cost is the trail itself. `buildChangeTrails()` has already folded every pending change into the state it wrote before the trail went out, so the next cycle carries only what changed after that. The Shadow Environment ends up missing exactly what the refused trail described, and nothing sends it again on its own:
+The trail is not lost. A Kernel applies a change trail entry by entry and the first throw ends the run, so what it holds afterwards is a prefix of the trail -- and it says how long that prefix is. The reason then is a `ChangeTrailRefusedError`, `appliedCount` names the number of entries that went through, and the view folds exactly those into its bookkeeping. Everything behind the line stays pending and goes out again with the next cycle:
 
 ```javascript
 import { on } from '@spearwolf/eventize';
-import { ShadowEnv } from '@spearwolf/shadow-objects';
+import { ChangeTrailRefusedError, ShadowEnv } from '@spearwolf/shadow-objects';
 
 on(env, ShadowEnv.SyncFailed, (reason, changeTrail) => {
-  console.warn(`${changeTrail.length} entries did not reach the Shadow Environment:`, reason);
+  if (reason instanceof ChangeTrailRefusedError) {
+    console.warn(`the kernel stopped at entry ${reason.appliedCount} of ${changeTrail.length}:`, reason.cause);
+    // the entries from that index on go out again with the next cycle -- nothing to do here
+    return;
+  }
 
-  // rebuild the pending changes from the Component Memory -- the next sync() sends
-  // the full state of every component, not just what changed since
+  // a reason that says nothing about how far the kernel got: the whole trail counts as
+  // applied, and only the Component Memory can bring the view and the environment back together
   env.view.reCreateChanges();
   env.sync();
 });
@@ -552,7 +556,9 @@ on(env, ShadowEnv.SyncFailed, (reason, changeTrail) => {
 
 `syncWait()` reports the same thing to whoever awaited that cycle: it rejects with the reason instead of resolving with a trail that never arrived. `ShadowEnv.AfterSync` does not fire for a cycle that failed, so a listener of that event hears the successful cycles and nothing else.
 
-Rebuilding unconditionally is a trap worth naming: a Shadow Environment that refuses every trail turns the listener above into a loop that re-sends an ever-growing state. Count the attempts, and treat a run of failures as what it probably is -- an environment to replace rather than a cycle to repeat.
+The other side of the promise: a cause that stays put refuses every following cycle the same way. A token no definition exists for, or a Shadow Object whose constructor always throws, produces the same refusal again and again rather than failing once and leaving the environment quietly short of a state nobody notices. This listener is where an application ends that -- by taking the component that provokes it out of the view, or by tearing the environment down. Counting the attempts is worth it either way.
+
+Two limits belong to this. Over a worker the count only travels on the confirmed route: `syncWait()` asks for a confirmation, `sync()` does not, and a trail nobody waits for gets no answer at all -- a refusal on that route reaches the view neither as a count nor as an event. And a reason that is not a `ChangeTrailRefusedError` -- a confirmation window that ran out, a worker that is already gone -- says nothing about how far the Kernel got. The whole trail then counts as applied, which is the safe direction: a worker that timed out may well hold all of it, and a creation sent a second time would replace the entity behind that uuid.
 
 With the declarative setup this arrives as a DOM event too: `<shae-worker>` dispatches `syncfailed` on itself, with `reason`, `changeTrail` and `shadowEnv` in the `detail`.
 
