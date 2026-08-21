@@ -4967,4 +4967,187 @@ describe('Kernel', () => {
       kernel.destroy();
     });
   });
+
+  describe('the entity tree bookkeeping follows every route that changes it', () => {
+    it('takes an entity created under a parent outside a change trail into the traversal', () => {
+      const kernel = new Kernel(new Registry());
+      const [aUuid, bUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(aUuid, 'a');
+
+      // The cached traversal is what the case is about, so it has to stand before the creation.
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([aUuid]);
+
+      kernel.createEntity(bUuid, 'b', aUuid);
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([aUuid, bUuid]);
+
+      kernel.destroy();
+    });
+
+    it('takes an entity created without a parent outside a change trail into the traversal', () => {
+      const kernel = new Kernel(new Registry());
+      const uuid = generateUUID();
+
+      expect(kernel.traverseLevelOrderBFS()).toEqual([]);
+
+      kernel.createEntity(uuid, 'a');
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([uuid]);
+      expect(kernel.getEntityGraph().map((node) => node.entity.uuid)).toEqual([uuid]);
+
+      kernel.destroy();
+    });
+
+    it('rebuilds the traversal after a setParent outside a change trail', () => {
+      const kernel = new Kernel(new Registry());
+      const [aUuid, bUuid] = [generateUUID(), generateUUID()];
+
+      // `b` before `a`, so the walk over two roots hands out an order the attached tree does not.
+      kernel.createEntity(bUuid, 'b');
+      kernel.createEntity(aUuid, 'a');
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([bUuid, aUuid]);
+
+      kernel.setParent(bUuid, aUuid);
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([aUuid, bUuid]);
+
+      const graph = kernel.getEntityGraph();
+      expect(graph.map((node) => node.entity.uuid)).toEqual([aUuid]);
+      expect(graph[0].children.map((node) => node.entity.uuid)).toEqual([bUuid]);
+
+      kernel.destroy();
+    });
+
+    it('rebuilds the traversal after an updateOrder outside a change trail', () => {
+      const kernel = new Kernel(new Registry());
+      const [pUuid, c1Uuid, c2Uuid] = [generateUUID(), generateUUID(), generateUUID()];
+
+      kernel.createEntity(pUuid, 'p');
+      kernel.createEntity(c1Uuid, 'c', pUuid, 0);
+      kernel.createEntity(c2Uuid, 'c', pUuid, 1);
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([pUuid, c1Uuid, c2Uuid]);
+
+      kernel.updateOrder(c1Uuid, 5);
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([pUuid, c2Uuid, c1Uuid]);
+
+      kernel.destroy();
+    });
+
+    it('gives an entity created by a shadow-object constructor the shadow-objects of a later token definition', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const [parentUuid, childUuid] = [generateUUID(), generateUUID()];
+
+      let childShadowObjects = 0;
+
+      registry.define(
+        'parent',
+        class {
+          constructor(api: ShadowObjectCreationAPI) {
+            api.entity.kernel.createEntity(childUuid, 'child', api.entity.uuid);
+          }
+        },
+      );
+
+      // A kernel that has already answered a traversal is the state the case needs: the creation
+      // below has to reach the cache on its own, with no change trail behind it to do that for it.
+      expect(kernel.traverseLevelOrderBFS()).toEqual([]);
+
+      kernel.createEntity(parentUuid, 'parent');
+
+      registry.define(
+        'child',
+        class {
+          constructor() {
+            childShadowObjects += 1;
+          }
+        },
+      );
+
+      kernel.upgradeEntities();
+
+      expect(childShadowObjects).toBe(1);
+
+      kernel.destroy();
+    });
+
+    it('tears down an entity created by a shadow-object constructor when the kernel is destroyed', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const [parentUuid, childUuid] = [generateUUID(), generateUUID()];
+
+      let childDestroyed = 0;
+
+      registry.define(
+        'child',
+        class implements OnDestroy {
+          [onDestroy]() {
+            childDestroyed += 1;
+          }
+        },
+      );
+
+      registry.define(
+        'parent',
+        class {
+          constructor(api: ShadowObjectCreationAPI) {
+            api.entity.kernel.createEntity(childUuid, 'child', api.entity.uuid);
+          }
+        },
+      );
+
+      expect(kernel.traverseLevelOrderBFS()).toEqual([]);
+
+      kernel.createEntity(parentUuid, 'parent');
+
+      kernel.destroy();
+
+      expect(childDestroyed).toBe(1);
+    });
+
+    it('moves an entity in the kernel when the parent link is written on the entity itself', () => {
+      const kernel = new Kernel(new Registry());
+      const [aUuid, bUuid] = [generateUUID(), generateUUID()];
+
+      // `b` before `a` again: with both standing as roots the walk starts at `b`, so the expected
+      // order can only come out of a root set that knows about the attachment.
+      kernel.createEntity(bUuid, 'b');
+      kernel.createEntity(aUuid, 'a');
+
+      kernel.getEntity(bUuid).parent = kernel.getEntity(aUuid);
+
+      const graph = kernel.getEntityGraph();
+      expect(graph.map((node) => node.entity.uuid)).toEqual([aUuid]);
+      expect(graph[0].children.map((node) => node.entity.uuid)).toEqual([bUuid]);
+
+      const traversed = kernel.traverseLevelOrderBFS().map((e) => e.uuid);
+      expect(traversed).toEqual([aUuid, bUuid]);
+
+      kernel.destroy();
+    });
+
+    it('moves an entity in the kernel when the parent uuid is written on the entity itself', () => {
+      const kernel = new Kernel(new Registry());
+      const [aUuid, bUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(bUuid, 'b');
+      kernel.createEntity(aUuid, 'a');
+
+      kernel.getEntity(bUuid).parentUuid = aUuid;
+
+      const graph = kernel.getEntityGraph();
+      expect(graph.map((node) => node.entity.uuid)).toEqual([aUuid]);
+      expect(graph[0].children.map((node) => node.entity.uuid)).toEqual([bUuid]);
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([aUuid, bUuid]);
+
+      kernel.destroy();
+    });
+  });
 });

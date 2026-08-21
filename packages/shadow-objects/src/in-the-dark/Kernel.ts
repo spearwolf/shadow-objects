@@ -237,22 +237,18 @@ export class Kernel {
           entry.properties,
           entry.autoDestructionOnParentRemoval,
         );
-        this.#allEntitiesNeedUpdate = true;
         break;
 
       case ComponentChangeType.DestroyEntities:
         this.destroyEntity(entry.uuid);
-        this.#allEntitiesNeedUpdate = true;
         break;
 
       case ComponentChangeType.SetParent:
         this.setParent(entry.uuid, entry.parentUuid, entry.order);
-        this.#allEntitiesNeedUpdate = true;
         break;
 
       case ComponentChangeType.UpdateOrder:
         this.updateOrder(entry.uuid, entry.order);
-        this.#allEntitiesNeedUpdate = true;
         break;
 
       case ComponentChangeType.ChangeProperties:
@@ -285,6 +281,11 @@ export class Kernel {
 
     this.#entities.set(uuid, entry);
 
+    // A new entity is a root until a parent takes it. No write on the entity itself can say so
+    // while the kernel does not hold it yet, so the creation says it: from here on the entity is
+    // in the traversal and in the root set, and the parent link below takes it out again.
+    this.noteEntityTreeChange(uuid);
+
     // A shadow-object constructor may address the kernel with the uuid of the entity being created --
     // `createEntity(child, token, entity.uuid)` and `setParent(other, entity.uuid)` both look that uuid
     // up in `#entities` -- so the entry has to stand while the constructors run. Everything past it
@@ -295,10 +296,6 @@ export class Kernel {
       }
 
       e.autoDestructionOnParentRemoval = autoDestructionOnParentRemoval;
-
-      if (!e.hasParent) {
-        this.#rootEntities.add(uuid);
-      }
 
       if (properties) {
         e.setProperties(properties);
@@ -343,7 +340,8 @@ export class Kernel {
 
     try {
       // Children with autoDestructionOnParentRemoval cascade; the rest are promoted
-      // to root so they remain reachable instead of leaking inside the kernel.
+      // to root so they remain reachable instead of leaking inside the kernel, which
+      // `removeFromParent()` writes down on its own.
       // Snapshot first because both branches mutate the children list.
       const childrenSnapshot = [...entity.children];
       for (const child of childrenSnapshot) {
@@ -354,7 +352,6 @@ export class Kernel {
             this.destroyEntity(child.uuid);
           } else {
             child.removeFromParent();
-            this.#rootEntities.add(child.uuid);
           }
         } catch (error) {
           this.logger.error('child of a destroyed entity could not be handed on:', child.uuid, error);
@@ -436,11 +433,8 @@ export class Kernel {
     e.order = nextOrder;
     e.parentUuid = parentUuid;
 
-    if (e.hasParent) {
-      this.#rootEntities.delete(uuid);
-    } else {
-      this.#rootEntities.add(uuid);
-    }
+    // The root set and the traversal cache follow the three writes above: each of them reports to
+    // `noteEntityTreeChange()` from inside the entity, on this route as on any other.
 
     queueMicrotask(() => {
       if (this.logger.isDebug) {
@@ -452,6 +446,41 @@ export class Kernel {
 
   updateOrder(uuid: string, order: number): void {
     this.getEntity(uuid).order = order;
+  }
+
+  /**
+   * Records that an entity has changed its place in the entity tree: it took a parent, lost one,
+   * or moved among its siblings. Two pieces of bookkeeping follow from that -- the cached
+   * traversal is dropped, and an entity without a parent joins the set of root entities while one
+   * with a parent leaves it.
+   *
+   * `Entity` reports here from every write that moves it, because those writes are reachable from
+   * a shadow-object with no kernel call in between: `entity.parent`, `entity.parentUuid`,
+   * `entity.order` and `entity.removeFromParent()`. The state is read off the entity rather than
+   * taken as an argument, so a caller cannot describe a move the entity did not make.
+   *
+   * A uuid the kernel does not hold reaches the cache and stops there: an entity joins the root
+   * set when the kernel takes it in and leaves it when the kernel lets go.
+   *
+   * That such a uuid passes in silence, where `setParent()` and `updateOrder()` throw at one, is the
+   * difference between a request and a report. Those two are asked to move an entity and cannot do it
+   * without one, so an unknown uuid is a disagreement the caller has to hear about. This is an entity
+   * saying where it stands, and it says so while the kernel is still taking it in: `createEntity()`
+   * writes the order on the entity before the entry is registered, so an entity created with an order
+   * of its own reports once before the kernel holds it. A throw there would cost the creation its own
+   * bookkeeping, and there is nothing to disagree about -- dropping the cache is right either way.
+   */
+  noteEntityTreeChange(uuid: string): void {
+    this.#allEntitiesNeedUpdate = true;
+
+    const entry = this.#entities.get(uuid);
+    if (entry === undefined) return;
+
+    if (entry.entity.hasParent) {
+      this.#rootEntities.delete(uuid);
+    } else {
+      this.#rootEntities.add(uuid);
+    }
   }
 
   dispatchEventsToEntity(uuid: string, events: IComponentEvent[]): void {

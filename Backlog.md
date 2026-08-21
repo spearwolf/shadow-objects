@@ -116,7 +116,7 @@ ComponentContext│  ─ Destroy
 
 **[KERN-2]** ~~Re-Parenting bricht die Auto-Destruktions-Subscription.~~ **✅ Behoben** — `Entity` trennt jetzt User-Intent (`#autoDestructionEnabled`) von der konkreten Subscription. `set parentUuid` und `removeFromParent()` rufen `#updateAutoDestructionSubscription()`, das die Subscription gegen den jeweils aktuellen Vater neu herstellt.
 
-**[KERN-3]** ~~`destroyEntity` rekursiert nicht über Kinder.~~ **✅ Behoben (Variante C)** — `Kernel.destroyEntity()` snapshottet die Kinderliste; flagged Kinder werden rekursiv abgeräumt, ungeflaggte via `removeFromParent()` zu Root befördert (und in `#rootEntities` aufgenommen). Damit ist der Leak in `kernel.#entities` geschlossen.
+**[KERN-3]** ~~`destroyEntity` rekursiert nicht über Kinder.~~ **✅ Behoben (Variante C)** — `Kernel.destroyEntity()` snapshottet die Kinderliste; flagged Kinder werden rekursiv abgeräumt, ungeflaggte via `removeFromParent()` zu Root befördert, das die Aufnahme in `#rootEntities` selbst meldet. Damit ist der Leak in `kernel.#entities` geschlossen.
 
 **[KERN-4]** ~~Cache-Invalidierung in `traverseLevelOrderBFS` greift bei programmatischer Destruktion nicht.~~ **✅ Behoben** — `#allEntitiesNeedUpdate` wird jetzt direkt in `destroyEntity()` gesetzt, sodass auch Auto-Destroy-Listener-Pfade den BFS-Cache invalidieren.
 

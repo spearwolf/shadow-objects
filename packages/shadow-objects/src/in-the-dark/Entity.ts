@@ -106,6 +106,8 @@ export class Entity {
       if (this.#parentUuid) {
         this.parent!.resortChildren();
       }
+      // The place among the siblings is part of the traversal order the kernel caches.
+      this.#kernel.noteEntityTreeChange(this.#uuid);
     }
   }
 
@@ -134,6 +136,12 @@ export class Entity {
       }
 
       this.#updateAutoDestructionSubscription();
+
+      // The link is written; the kernel writes down where the entity stands now. This is the route
+      // a shadow-object takes when it moves an entity without going through `Kernel.setParent()`,
+      // and the report is the only thing the two share -- the `onParentChanged` notification stays
+      // with `setParent()`.
+      this.#kernel.noteEntityTreeChange(this.#uuid);
     }
   }
 
@@ -310,6 +318,10 @@ export class Entity {
       }
 
       this.#unsubscribeAutoDestruction();
+
+      // Detached is a place too: an entity with no parent is a root, and the root set is where
+      // every traversal starts.
+      this.#kernel.noteEntityTreeChange(this.#uuid);
 
       // this.emit(onRemoveFromParent, this, prevParent);
     }

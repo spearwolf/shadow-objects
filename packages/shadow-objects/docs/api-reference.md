@@ -2254,6 +2254,8 @@ if (kernel.hasEntity('abc-123')) {
 
 Returns all Entities in breadth-first order. Pass `true` to reverse (leaves to root, useful for cleanup). A fresh array each call, and it belongs to the caller: sorting, splicing or reversing it changes nothing about what the next call hands out.
 
+The list is cached and rebuilt on the first call after the Entity tree moves -- a creation, a destruction, a new parent, a new `order`. Every route that moves it counts, the Kernel methods as much as a write straight to `entity.parent`, `entity.parentUuid` or `entity.order`, and a call to `entity.removeFromParent()`.
+
 - **Signature:** `traverseLevelOrderBFS(reverse?: boolean): Entity[]`
 
 ```typescript
@@ -2263,7 +2265,7 @@ const reversed = kernel.traverseLevelOrderBFS(true);
 
 #### `getEntityGraph()`
 
-Returns the Entity tree as a hierarchical structure, starting at the root Entities -- those without a parent. Each node contains `token`, `entity`, `props`, and `children`; a node the Kernel no longer holds drops out, and every Entity appears exactly once. Useful for debugging.
+Returns the Entity tree as a hierarchical structure, starting at the root Entities -- those without a parent. The Kernel keeps that set from the parent link of the Entity itself, so an Entity attached or detached through a setter joins and leaves it exactly as one moved with `setParent` does. Each node contains `token`, `entity`, `props`, and `children`; a node the Kernel no longer holds drops out, and every Entity appears exactly once. Useful for debugging.
 
 - **Signature:** `getEntityGraph(): EntityGraphNode[]`
 
@@ -2295,6 +2297,23 @@ Returns all Shadow Object instances currently attached to an Entity.
 const attached = kernel.findShadowObjects('abc-123');
 ```
 
+#### `noteEntityTreeChange(uuid)`
+
+Tells the Kernel that an Entity has changed its place in the Entity tree. The cached traversal is dropped, and the Entity joins the set of root Entities if it has no parent, or leaves it if it has one. The place is read off the Entity, so the call needs nothing but the UUID; a UUID the Kernel does not hold drops the cache and nothing else.
+
+`Entity` calls this itself from every write that moves it, so `entity.parent`, `entity.parentUuid`, `entity.order` and `entity.removeFromParent()` need no follow-up. What does need one is a children list written by hand: `Entity.addChild()`, `Entity.removeChild()`, `Entity.resortChildren()` and `ComponentContext.addToChildren()` all write or reorder that list without touching the parent link, and the Kernel hears nothing about it. Call this afterwards and the next walk reads the list as it now stands.
+
+The root set is the half such a call cannot fix, and the reason is the same one: it follows the parent link, and a hand-written children list writes none. A child attached with `addChild()` alone keeps whichever place the root set already gave it -- created without a parent it is a root, and it stays one. Both walks start at that set and visit every Entity once, so where the child ends up is decided by which of the two they reach first: reached through the parent, it sits under it, and reached on its own, it stands at the top level next to the parent it was just put under. Write the parent link if the Entity is to move: `child.parent = parent` does both halves and reports on its own.
+
+- **Signature:** `noteEntityTreeChange(uuid: string): void`
+
+```typescript
+parent.addChild(child);
+kernel.noteEntityTreeChange(child.uuid);
+// the next walk reads the children list as it now stands -- `child` is still
+// wherever the root set had it, because `addChild()` wrote no parent link
+```
+
 #### Applying a Change Trail by Hand
 
 `run()` is the front door; these seven methods are what it dispatches to. Call them directly and you are writing a change trail entry yourself, without the envelope.
@@ -2309,13 +2328,13 @@ const attached = kernel.findShadowObjects('abc-123');
 | `changeToken` | `(uuid: string, token: string)` | Replaces the Entity's token, which re-resolves its Shadow Objects — the same resolution `upgradeEntities()` runs over the whole tree, but not the same answer to a failure. A creation that does not get through is taken back here: the previous token returns and the Shadow Objects belonging to it are built again, before the error reaches the caller. An `upgradeEntities()` that throws takes nothing back; the paragraph below spells both out. |
 | `dispatchEventsToEntity` | `(uuid: string, events: IComponentEvent[])` | Delivers View Layer events to the Entity, where every attached Shadow Object receives them as `onViewEvent`. A UUID the Kernel does not hold is ignored: the events are dropped, and the rest of the Change Trail is applied. |
 
-**The Entity tree stays a tree.** `setParent` refuses a parent that is the Entity itself or one of its descendants, and so does the `parent` setter of the `Entity` class, the other way the link is written. Both run the check before they touch anything, so a refused call leaves the Entity attached where it was, with its `order` and its place among the siblings intact. The check itself is `Entity.assertAttachableTo(nextParent)` -- it walks the parent chain and throws; call it yourself if you drive the link by a route of your own. `ViewComponent.addChild()` guards the same thing on the View Layer side.
+**The Entity tree stays a tree.** `setParent` refuses a parent that is the Entity itself or one of its descendants, and so does the `parent` setter of the `Entity` class, the other way the link is written. Both run the check before they touch anything, so a refused call leaves the Entity attached where it was, with its `order` and its place among the siblings intact. The check itself is `Entity.assertAttachableTo(nextParent)` -- it walks the parent chain and throws; call it yourself if you drive the link by a route of your own. `ViewComponent.addChild()` guards the same thing on the View Layer side. Both routes also keep the same bookkeeping: whichever one writes the link, the Entity reports its new place to the Kernel, so the root set and the cached traversal follow. Exactly one thing they do not share -- `onParentChanged` belongs to `Kernel.setParent()`, and a write straight to the setter moves the Entity without sending it.
 
 **A failed creation takes its own Entity back.** While `createEntity` runs, the Entity is already registered in the Kernel, because a Shadow Object constructor may address the Kernel with its own UUID -- hanging a child under it with `createEntity`, moving another Entity under it with `setParent`, or looking it up. Should one of those constructors throw, the Shadow Objects that already stand go through their regular teardown, their `onDestroy` included, and the Entity the call was made for is gone when the error reaches the caller. The rollback covers that one Entity, not the Kernel as a whole: an Entity the failing constructor created or destroyed elsewhere stays as the constructor left it, and the teardown adds to that, because it walks the children list of the failed Entity. Whatever hangs there when the throw comes is promoted to a root -- a child the constructor created under it as much as an Entity that was already there and got moved under it with `setParent`, which is taken off the parent it came from in the process. The exception is read off that Entity itself, not off the way it got there: one carrying `autoDestructionOnParentRemoval` is destroyed instead, its Shadow Objects hearing their `onDestroy`. Either way it ends up in a state that is neither the one before the call nor the one the constructor built; covering that would take a snapshot of the Kernel, which this path does not make. In a Worker, `MessageRouter` answers the Change Trail the throw came out of with a rejection -- an `AppliedChangeTrail` carrying an `error` -- which arrives on the View Layer side as `ShadowEnv.SyncFailed`.
 
 **A failed token change is taken back.** `changeToken` writes the new token before the constructors run, because that token is what the constructor set is resolved from. Should one of those constructors -- or one of the `[onCreate]` hooks behind them -- throw, the Kernel puts the previous token back, takes the Shadow Objects of the new token down again, builds the ones the old token had, and only then hands the error to the caller. The order is the one it reads as: the token first, so the rebuild runs against the token the Entity carries afterwards, and the new Shadow Objects leave before the old ones return, so the two sets never stand on the Entity at the same time. An error thrown on that way back does not replace the one the caller is waiting for -- it goes to the `ConsoleLogger`. Two things stay outside it. `changeProperties` has written its properties by the time a constructor runs, and they stay written; only the Shadow Objects go back — which can leave a restored Shadow Object standing on an Entity whose properties no longer route to its constructor. That disagreement lasts until the next re-resolution of the set: the constructor is not in the list `changeProperties`, `changeToken` or `upgradeEntities()` resolves next, so the Shadow Object is taken down there. And `upgradeEntities()` puts everything its first pass took down out of reach, at the Entity whose rebuild throws as much as at every other one: teardown and rebuild are two separate passes over the whole Entity tree, and the rollback belongs to the call the throw fell in — the second-pass call, which has taken nothing down of its own. That Entity carries the token it came in with, because an upgrade writes no token, and it is left with the Shadow Objects the first pass spared. Where its whole constructor set changed, that is none at all. Nor is that Entity the only one left that way: the throw leaves the second pass altogether, so every Entity behind it in the traversal order never reaches its rebuild and stands with what the first pass spared as well.
 
-Neither check reaches a children list written without the parent link -- `Entity.addChild()` and `ComponentContext.addToChildren()` do exactly that. The four traversals over the children lists carry that case instead: `Kernel.traverseLevelOrderBFS()`, `Kernel.getEntityGraph()`, `entity.traverse()` and `ComponentContext.traverseLevelOrderBFS()` each visit every node once and terminate.
+Neither check reaches a children list written without the parent link -- `Entity.addChild()` and `ComponentContext.addToChildren()` do exactly that. Neither does the Kernel's bookkeeping, and `Entity.removeChild()` and `Entity.resortChildren()` join the two there: all four write or reorder a children list and report nothing, so the cached traversal can lag a call behind them. Whoever writes the children list drives that themselves with `kernel.noteEntityTreeChange(uuid)`, which drops the cache -- the root set stays out of reach, as it follows the parent link none of the four wrote. The four traversals over the children lists carry the ring case instead: `Kernel.traverseLevelOrderBFS()`, `Kernel.getEntityGraph()`, `entity.traverse()` and `ComponentContext.traverseLevelOrderBFS()` each visit every node once and terminate.
 
 Termination is all they carry, though. A ring closed through `Entity.addChild()` or `ComponentContext.addToChildren()` and reachable from no root is not walked by `Kernel.destroy()`, which sweeps from the roots: its Entities go with the bookkeeping and their `onDestroy` never runs. Keep such a ring reachable from a root, or take it down yourself before the Kernel goes.
 
@@ -2543,7 +2562,7 @@ import {
 | :--- | :--- | :--- |
 | `onCreate` | `OnCreate` | Called after the Shadow Object is fully initialized. A throw here takes the Shadow Object down again and reaches the caller that asked for the creation. |
 | `onDestroy` | `OnDestroy` | Called before the Shadow Object is destroyed. |
-| `onParentChanged` | `OnParentChangedEvent` | Called when the Entity's parent changes -- one microtask after the change, not during it. A Shadow Object cannot assume this has run by the time `kernel.run()` returns; `await Promise.resolve()` first. |
+| `onParentChanged` | `OnParentChangedEvent` | Sent by `Kernel.setParent()`, one microtask after the change, not during it. A Shadow Object cannot assume this has run by the time `kernel.run()` returns; `await Promise.resolve()` first. A write straight to `entity.parent` or `entity.parentUuid` moves the Entity but sends nothing. |
 | `onViewEvent` | `OnViewEvent` | Called when the View Layer dispatches an event to this entity. |
 
 Three of the four are called on the Shadow Object as the change happens. `onParentChanged` is the exception: its channel waits for the tree to stop moving.

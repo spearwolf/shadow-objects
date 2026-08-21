@@ -1,6 +1,8 @@
+import {on} from '@spearwolf/eventize';
 import {createEffect, createSignal, value} from '@spearwolf/signalize';
 import {describe, expect, it} from 'vitest';
 import {generateUUID} from '../utils/generateUUID.js';
+import {onDestroy, onParentChanged} from './events.js';
 import {Kernel} from './Kernel.js';
 import {Registry} from './Registry.js';
 
@@ -628,6 +630,123 @@ describe('Entity', () => {
       });
 
       expect(seen).toEqual([rUuid, aUuid, bUuid]);
+
+      kernel.destroy();
+    });
+  });
+
+  describe('an entity that reports its place to the kernel', () => {
+    it('becomes a root again when it is detached with removeFromParent()', () => {
+      const kernel = makeKernel();
+      const [rUuid, aUuid, bUuid, yUuid] = [generateUUID(), generateUUID(), generateUUID(), generateUUID()];
+
+      // `r` carries `a` and `b`, and `b` carries `y`. The subtree under the detached entity is what
+      // lets the two lists be told apart: a `b` that has climbed to the root set walks its own `y`
+      // one level up and ahead of the `a` that stayed below `r`, which no cached list can show.
+      kernel.createEntity(rUuid, 'r');
+      kernel.createEntity(aUuid, 'a', rUuid);
+      kernel.createEntity(bUuid, 'b', rUuid);
+      kernel.createEntity(yUuid, 'y', bUuid);
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([rUuid, aUuid, bUuid, yUuid]);
+
+      kernel.getEntity(bUuid).removeFromParent();
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([rUuid, bUuid, aUuid, yUuid]);
+      expect(kernel.getEntityGraph().map((node) => node.entity.uuid)).toEqual([rUuid, bUuid]);
+
+      kernel.destroy();
+    });
+
+    it('becomes a root again when the parent is written as undefined', () => {
+      const kernel = makeKernel();
+      const [rUuid, aUuid, bUuid, yUuid] = [generateUUID(), generateUUID(), generateUUID(), generateUUID()];
+
+      // `r` carries `a` and `b`, and `b` carries `y`. The subtree under the detached entity is what
+      // lets the two lists be told apart: a `b` that has climbed to the root set walks its own `y`
+      // one level up and ahead of the `a` that stayed below `r`, which no cached list can show.
+      kernel.createEntity(rUuid, 'r');
+      kernel.createEntity(aUuid, 'a', rUuid);
+      kernel.createEntity(bUuid, 'b', rUuid);
+      kernel.createEntity(yUuid, 'y', bUuid);
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([rUuid, aUuid, bUuid, yUuid]);
+
+      kernel.getEntity(bUuid).parent = undefined;
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([rUuid, bUuid, aUuid, yUuid]);
+      expect(kernel.getEntityGraph().map((node) => node.entity.uuid)).toEqual([rUuid, bUuid]);
+
+      kernel.destroy();
+    });
+
+    it('is torn down by the kernel after it has been detached', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+      const [aUuid, bUuid] = [generateUUID(), generateUUID()];
+
+      let destroyed = 0;
+
+      registry.define(
+        'b',
+        class {
+          [onDestroy]() {
+            destroyed += 1;
+          }
+        },
+      );
+
+      kernel.createEntity(aUuid, 'a');
+      kernel.createEntity(bUuid, 'b', aUuid);
+
+      kernel.getEntity(bUuid).removeFromParent();
+
+      kernel.destroy();
+
+      expect(destroyed).toBe(1);
+    });
+
+    it('drops the cached traversal when its order is written', () => {
+      const kernel = makeKernel();
+      const [pUuid, c1Uuid, c2Uuid] = [generateUUID(), generateUUID(), generateUUID()];
+
+      kernel.createEntity(pUuid, 'p');
+      kernel.createEntity(c1Uuid, 'c', pUuid, 0);
+      kernel.createEntity(c2Uuid, 'c', pUuid, 1);
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([pUuid, c1Uuid, c2Uuid]);
+
+      kernel.getEntity(c1Uuid).order = 5;
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([pUuid, c2Uuid, c1Uuid]);
+
+      kernel.destroy();
+    });
+
+    it('sends onParentChanged from Kernel.setParent() and from nowhere else', async () => {
+      const kernel = makeKernel();
+      const [aUuid, bUuid, cUuid] = [generateUUID(), generateUUID(), generateUUID()];
+
+      kernel.createEntity(aUuid, 'a');
+      kernel.createEntity(bUuid, 'b');
+      kernel.createEntity(cUuid, 'c');
+
+      let parentChanged = 0;
+      on(kernel.getEntity(aUuid), onParentChanged, () => {
+        parentChanged += 1;
+      });
+
+      kernel.getEntity(aUuid).parent = kernel.getEntity(bUuid);
+
+      await nextMicrotask();
+
+      expect(parentChanged, 'a write on the setter moves the entity without announcing it').toBe(0);
+
+      kernel.setParent(aUuid, cUuid);
+
+      await nextMicrotask();
+
+      expect(parentChanged, 'the notification belongs to the kernel method').toBe(1);
 
       kernel.destroy();
     });
