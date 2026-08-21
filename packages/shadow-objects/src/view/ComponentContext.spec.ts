@@ -1,6 +1,7 @@
+import {on} from '@spearwolf/eventize';
 import {afterEach, describe, expect, it} from 'vitest';
 import {ComponentChangeType} from '../constants.js';
-import {ComponentContext} from './ComponentContext.js';
+import {ComponentContext, ComponentUuidInUseError} from './ComponentContext.js';
 import {ViewComponent} from './ViewComponent.js';
 
 /**
@@ -18,6 +19,167 @@ describe('ComponentContext', () => {
 
   afterEach(() => {
     ctx?.clear();
+  });
+
+  describe('addComponent', () => {
+    it('throws when a second component claims a uuid its holder still has', () => {
+      ctx = makeContext();
+      const holder = new ViewComponent('holder', {context: ctx, uuid: 'twin'});
+
+      expect(() => new ViewComponent('claimant', {context: ctx, uuid: 'twin'})).toThrow(ComponentUuidInUseError);
+      expect(holder.isDestroyed).toBe(false);
+    });
+
+    it('leaves the holder untouched when a claim is rejected', () => {
+      ctx = makeContext();
+      const holder = new ViewComponent('holder', {context: ctx, uuid: 'twin'});
+
+      expect(() => new ViewComponent('claimant', {context: ctx, uuid: 'twin'})).toThrow(ComponentUuidInUseError);
+
+      expect(ctx.hasComponent(holder)).toBe(true);
+      expect(ctx.isRootComponent(holder)).toBe(true);
+      expect(ctx.traverseLevelOrderBFS().map((c) => c.token)).toEqual(['holder']);
+      expect(ctx.buildChangeTrails()).toEqual([{type: ComponentChangeType.CreateEntities, uuid: 'twin', token: 'holder'}]);
+    });
+
+    it('keeps the children of the holder when a claim is rejected', () => {
+      ctx = makeContext();
+      const holder = new ViewComponent('holder', {context: ctx, uuid: 'twin'});
+      const kid = new ViewComponent('kid', {context: ctx, parent: holder});
+      ctx.buildChangeTrails();
+
+      expect(() => new ViewComponent('claimant', {context: ctx, uuid: 'twin'})).toThrow(ComponentUuidInUseError);
+
+      expect(ctx.getChildren(holder).map((c) => c.token)).toEqual(['kid']);
+      expect(kid.parent).toBe(holder);
+      expect(ctx.isRootComponent(kid)).toBe(false);
+    });
+
+    it('leaves no entity behind when a claim is rejected', () => {
+      ctx = makeContext();
+      const holder = new ViewComponent('holder', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      expect(() => new ViewComponent('claimant', {context: ctx, uuid: 'twin'})).toThrow(ComponentUuidInUseError);
+
+      holder.destroy();
+
+      // the entity goes down with the one component that stood behind it. A second live claim on
+      // the uuid would leave a create the destroy of the holder can no longer answer
+      expect(ctx.buildChangeTrails()).toEqual([{type: ComponentChangeType.DestroyEntities, uuid: 'twin'}]);
+      expect(ctx.hasComponents()).toBe(false);
+    });
+
+    it('hands the uuid on once its holder has left', () => {
+      ctx = makeContext();
+      const holder = new ViewComponent('holder', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      holder.destroy();
+
+      const successor = new ViewComponent('successor', {context: ctx, uuid: 'twin'});
+
+      expect(ctx.hasComponent(successor)).toBe(true);
+      expect(successor.isDestroyed).toBe(false);
+      expect(ctx.traverseLevelOrderBFS().map((c) => c.token)).toEqual(['successor']);
+    });
+
+    it('leaves exactly one entity behind when a uuid is handed on', () => {
+      ctx = makeContext();
+      const holder = new ViewComponent('holder', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      holder.destroy();
+
+      const successor = new ViewComponent('successor', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      successor.destroy();
+
+      // create and destroy are counted against the uuid, and the successor takes the entry over
+      // only after the holder has counted its own destroy — so the last trail can still take the
+      // entity down
+      expect(ctx.buildChangeTrails()).toEqual([{type: ComponentChangeType.DestroyEntities, uuid: 'twin'}]);
+      expect(ctx.hasComponents()).toBe(false);
+    });
+
+    it('takes a component back in under its own uuid', () => {
+      ctx = makeContext();
+      const vc = new ViewComponent('vc', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      vc.context = null;
+
+      expect(() => {
+        vc.context = ctx;
+      }).not.toThrow();
+
+      expect(ctx.hasComponent(vc)).toBe(true);
+      expect(vc.isDestroyed).toBe(false);
+    });
+
+    it('rejects a move into a ComponentContext that holds the uuid, and leaves the component with none', () => {
+      ctx = makeContext();
+      const second = makeContext();
+      const first = new ViewComponent('first', {context: ctx, uuid: 'twin'});
+      const resident = new ViewComponent('resident', {context: second, uuid: 'twin'});
+
+      expect(() => {
+        first.context = second;
+      }).toThrow(ComponentUuidInUseError);
+
+      // a rejected join costs the component the ComponentContext it was leaving — the same price
+      // every other rejected join asks, the disposed one aside
+      expect(first.isDestroyed).toBe(true);
+      expect(first.context).toBeUndefined();
+
+      expect(second.hasComponent(resident)).toBe(true);
+      expect(resident.isDestroyed).toBe(false);
+      expect(second.traverseLevelOrderBFS().map((c) => c.token)).toEqual(['resident']);
+
+      second.dispose();
+    });
+
+    it('keeps the uuid of a component its own Destroyed listener takes back in', () => {
+      ctx = makeContext();
+      const vc = new ViewComponent('vc', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      // ViewComponent.Destroyed travels while the component can still act, so a listener there
+      // may put it straight back into the ComponentContext
+      on(vc, ViewComponent.Destroyed, () => {
+        vc.context = ctx;
+      });
+
+      ctx.removeSubTree('twin');
+
+      expect(vc.context).toBe(ctx);
+      expect(ctx.hasComponent(vc)).toBe(true);
+      expect(ctx.traverseLevelOrderBFS().map((c) => c.token)).toEqual(['vc']);
+      // and the uuid is held again, so it is not free for a second component
+      expect(() => new ViewComponent('second', {context: ctx, uuid: 'twin'})).toThrow(ComponentUuidInUseError);
+    });
+
+    it('leaves a component alone that has moved on to another ComponentContext', () => {
+      ctx = makeContext();
+      const other = makeContext();
+      const vc = new ViewComponent('vc', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      vc.context = other;
+
+      // the entry stays behind here until the next change trail, but the component is no longer
+      // a member — a sweep that went by the entries would tear it out of the other one
+      ctx.clear();
+
+      expect(vc.isDestroyed).toBe(false);
+      expect(vc.context).toBe(other);
+      expect(other.hasComponent(vc)).toBe(true);
+      expect(other.traverseLevelOrderBFS().map((c) => c.token)).toEqual(['vc']);
+      expect(vc.setProperty('x', 1)).toBe(true);
+
+      other.dispose();
+    });
   });
 
   describe('ordered insertion (children)', () => {
@@ -162,20 +324,22 @@ describe('ComponentContext', () => {
       expect(ctx.traverseLevelOrderBFS().map((c) => c.token)).toEqual(['a', 'mover', 'b', 'c']);
     });
 
-    it('ignores a component whose entry a namesake has taken away', () => {
+    it('ignores a component this ComponentContext no longer holds an entry for', () => {
       ctx = makeContext();
-      const a = new ViewComponent('a', {context: ctx, uuid: 'twin'});
-      const b = new ViewComponent('b', {context: ctx, uuid: 'twin'});
+      const holder = new ViewComponent('holder', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
 
-      // the twins share one entry, and b takes it with it
-      b.destroy();
+      holder.destroy();
+
+      const successor = new ViewComponent('successor', {context: ctx, uuid: 'twin'});
+
+      // the entry belongs to the successor now, and removeSubTree takes it with it
       ctx.removeSubTree('twin');
 
-      expect(() => {
-        a.order = 3;
-      }).not.toThrow();
-      expect(ctx.hasComponent(a)).toBe(false);
-      expect(ctx.isRootComponent(a)).toBe(false);
+      expect(successor.isDestroyed).toBe(true);
+      expect(() => ctx.changeOrder(holder)).not.toThrow();
+      expect(ctx.hasComponent(holder)).toBe(false);
+      expect(ctx.isRootComponent(holder)).toBe(false);
       // a re-inserted uuid without a view instance makes the next clear() panic
       expect(() => ctx.clear()).not.toThrow();
     });
@@ -270,18 +434,28 @@ describe('ComponentContext', () => {
       }
     });
 
-    it('detaches a component whose uuid a namesake has taken away', () => {
+    it('announces once for an entry a later component has taken over', () => {
       ctx = makeContext();
-      const displaced = new ViewComponent('displaced', {context: ctx, uuid: 'twin'});
-      const namesake = new ViewComponent('namesake', {context: ctx, uuid: 'twin'});
+      const holder = new ViewComponent('holder', {context: ctx, uuid: 'twin'});
       ctx.buildChangeTrails();
+
+      holder.destroy();
+
+      const successor = new ViewComponent('successor', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      const announced: string[] = [];
+      on(holder, ViewComponent.Destroyed, () => announced.push('holder'));
+      on(successor, ViewComponent.Destroyed, () => announced.push('successor'));
 
       ctx.clear();
 
-      for (const vc of [displaced, namesake]) {
-        expect(vc.isDestroyed, `${vc.token}.isDestroyed`).toBe(true);
-        expect(vc.context, `${vc.token}.context`).toBeUndefined();
-      }
+      // one entry, one teardown: the sweep reaches the component holding the uuid, and the one
+      // that left it behind is not taken down a second time
+      expect(announced).toEqual(['successor']);
+      expect(successor.isDestroyed).toBe(true);
+      expect(successor.context).toBeUndefined();
+      expect(ctx.hasComponents()).toBe(false);
     });
 
     it('stays silent on a second call', () => {
@@ -342,53 +516,85 @@ describe('ComponentContext', () => {
       expect(ctx.buildChangeTrails()).toEqual([]);
     });
 
-    it('releases a component whose uuid a namesake has taken away without taking the namesake down', () => {
+    it('releases a component whose uuid a later component has taken over without taking that one down', () => {
       ctx = makeContext();
-      const displaced = new ViewComponent('displaced', {context: ctx, uuid: 'twin'});
-      const namesake = new ViewComponent('namesake', {context: ctx, uuid: 'twin'});
+      const holder = new ViewComponent('holder', {context: ctx, uuid: 'twin'});
       ctx.buildChangeTrails();
 
-      ctx.destroyComponent(displaced);
+      holder.destroy();
 
-      expect(displaced.isDestroyed).toBe(true);
+      const successor = new ViewComponent('successor', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      ctx.destroyComponent(holder);
+
+      expect(holder.isDestroyed).toBe(true);
       expect(ctx.buildChangeTrails()).toEqual([]);
-      expect(namesake.isDestroyed).toBe(false);
-      expect(ctx.hasComponent(namesake)).toBe(true);
+      expect(successor.isDestroyed).toBe(false);
+      expect(ctx.hasComponent(successor)).toBe(true);
     });
 
-    it('leaves a namesake in place when the component it displaced was a root and the namesake is not', () => {
+    it('leaves the successor in place when the component that left was a root and the successor is not', () => {
       ctx = makeContext();
       const parent = new ViewComponent('parent', {context: ctx});
-      const displaced = new ViewComponent('displaced', {context: ctx, uuid: 'twin'});
-      const namesake = new ViewComponent('namesake', {context: ctx, uuid: 'twin', parent});
+      const holder = new ViewComponent('holder', {context: ctx, uuid: 'twin'});
       ctx.buildChangeTrails();
 
-      ctx.destroyComponent(displaced);
+      holder.destroy();
 
-      expect(displaced.isDestroyed).toBe(true);
+      const successor = new ViewComponent('successor', {context: ctx, uuid: 'twin', parent});
+      ctx.buildChangeTrails();
+
+      ctx.destroyComponent(holder);
+
+      expect(holder.isDestroyed).toBe(true);
       expect(ctx.buildChangeTrails()).toEqual([]);
-      expect(ctx.isRootComponent(namesake)).toBe(false);
-      expect(ctx.getChildren(parent).map((c) => c.token)).toEqual(['namesake']);
+      expect(ctx.isRootComponent(successor)).toBe(false);
+      expect(ctx.getChildren(parent).map((c) => c.token)).toEqual(['successor']);
     });
 
-    it('leaves a namesake in place when the component it displaced was itself a child', () => {
+    it('leaves the successor in place when the component that left was itself a child', () => {
       ctx = makeContext();
       const oldParent = new ViewComponent('oldParent', {context: ctx});
       const newParent = new ViewComponent('newParent', {context: ctx});
-      const displaced = new ViewComponent('displaced', {context: ctx, uuid: 'twin', parent: oldParent});
-      const namesake = new ViewComponent('namesake', {context: ctx, uuid: 'twin', parent: newParent});
+      const holder = new ViewComponent('holder', {context: ctx, uuid: 'twin', parent: oldParent});
       ctx.buildChangeTrails();
 
-      ctx.destroyComponent(displaced);
+      holder.destroy();
 
-      expect(displaced.isDestroyed).toBe(true);
+      const successor = new ViewComponent('successor', {context: ctx, uuid: 'twin', parent: newParent});
+      ctx.buildChangeTrails();
+
+      ctx.destroyComponent(holder);
+
+      expect(holder.isDestroyed).toBe(true);
       expect(ctx.buildChangeTrails()).toEqual([]);
-      expect(ctx.isRootComponent(namesake)).toBe(false);
-      expect(ctx.getChildren(newParent).map((c) => c.token)).toEqual(['namesake']);
+      expect(ctx.isRootComponent(successor)).toBe(false);
+      expect(ctx.getChildren(newParent).map((c) => c.token)).toEqual(['successor']);
     });
   });
 
   describe('removeSubTree', () => {
+    it('lets go of every component it takes down, so a later clear() does not reach one again', () => {
+      ctx = makeContext();
+      const parent = new ViewComponent('parent', {context: ctx, uuid: 'p'});
+      const child = new ViewComponent('child', {context: ctx, parent, uuid: 'c'});
+      ctx.buildChangeTrails();
+
+      ctx.removeSubTree('p');
+
+      // both are down and hold no ComponentContext; whoever listens from here on listens to a
+      // component this one has already let go of
+      const announced: string[] = [];
+      on(parent, ViewComponent.Destroyed, () => announced.push('parent'));
+      on(child, ViewComponent.Destroyed, () => announced.push('child'));
+
+      ctx.clear();
+
+      expect(announced).toEqual([]);
+      expect(ctx.hasComponents()).toBe(false);
+    });
+
     it('detaches every component it takes down', () => {
       ctx = makeContext();
       const parent = new ViewComponent('parent', {context: ctx});
@@ -455,18 +661,28 @@ describe('ComponentContext', () => {
       expect(grandChild.isDestroyed).toBe(true);
     });
 
-    it('destroys a component whose uuid a namesake has taken away', () => {
+    it('releases the namespace even while an entry outlives the component that left it', () => {
       ctx = makeContext();
-      const displaced = new ViewComponent('displaced', {context: ctx, uuid: 'twin'});
-      const namesake = new ViewComponent('namesake', {context: ctx, uuid: 'twin'});
+      const ns = ctx.ns!;
+      const holder = new ViewComponent('holder', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      // the entry survives until the next change trail, so the disposal has to walk past one
+      // whose component is already gone
+      holder.destroy();
+
+      const successor = new ViewComponent('successor', {context: ctx, uuid: 'twin'});
       ctx.buildChangeTrails();
 
       ctx.dispose();
 
-      for (const vc of [displaced, namesake]) {
-        expect(vc.isDestroyed, `${vc.token}.isDestroyed`).toBe(true);
-        expect(vc.context, `${vc.token}.context`).toBeUndefined();
-      }
+      expect(successor.isDestroyed).toBe(true);
+      expect(successor.context).toBeUndefined();
+      expect(ctx.isDisposed).toBe(true);
+      expect(ctx.hasComponents()).toBe(false);
+      expect(ComponentContext.get(ns)).not.toBe(ctx);
+
+      ComponentContext.get(ns).dispose();
     });
 
     it('holds no components afterwards', () => {
@@ -637,13 +853,15 @@ describe('ComponentContext', () => {
       expect(fresh.parent).toBe(a);
     });
 
-    it('keeps the children reachable when a uuid is registered by a new component', () => {
+    it('keeps the children reachable when a later component takes the uuid over', () => {
       ctx = makeContext();
       const a = new ViewComponent('a', {context: ctx, uuid: 'reused'});
       const kid = new ViewComponent('kid', {context: ctx, parent: a});
       ctx.buildChangeTrails();
 
-      // a second component claims the same uuid without the first one being destroyed
+      a.destroy();
+
+      // the uuid is free again, so a later component takes it over
       new ViewComponent('a2', {context: ctx, uuid: 'reused'});
 
       expect(ctx.traverseLevelOrderBFS().map((c) => c.token)).toContain('kid');

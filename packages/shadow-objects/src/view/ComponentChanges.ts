@@ -22,6 +22,13 @@ const ROOT = '#root';
  * ComponentChanges.clear} — which resets every pending value — must run only after all of them
  * have. {@link ComponentContext.buildChangeTrails} is the only caller that does both, in that
  * order.
+ *
+ * The create/destroy counts behind {@link ComponentChanges.isCreated} and {@link
+ * ComponentChanges.isDestroyed} belong to the uuid, not to a {@link ViewComponent} instance. They
+ * carry the rule {@link ComponentContext.addComponent} keeps: a uuid names one component of a
+ * {@link ComponentContext} at a time, so a later component takes this bookkeeping over only once its predecessor
+ * has counted its own `destroy()`. A count pair that outlives its component therefore describes an
+ * entity, and the successor on that uuid continues the same entity rather than starting a second.
  */
 export class ComponentChanges {
   readonly #uuid: string;

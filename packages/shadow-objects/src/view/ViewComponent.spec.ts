@@ -634,21 +634,27 @@ describe('ViewComponent', () => {
       ownCtx.dispose();
     });
 
-    it('takes the listeners off a component whose uuid a namesake has taken away', () => {
-      const ownCtx = ComponentContext.get('ViewComponent.spec-cleared-namesake');
-      const displaced = new ViewComponent('displaced', {context: ownCtx, uuid: 'twin'});
-      new ViewComponent('namesake', {context: ownCtx, uuid: 'twin'});
+    it('leaves the listeners on a component that has moved on to another ComponentContext', () => {
+      const first = ComponentContext.get('ViewComponent.spec-moved-on-1');
+      const second = ComponentContext.get('ViewComponent.spec-moved-on-2');
+      const holder = new ViewComponent('holder', {context: first, uuid: 'twin'});
       const spy = vi.fn();
-      on(displaced, 'testEvent', spy);
-      ownCtx.buildChangeTrails();
+      on(holder, 'testEvent', spy);
+      first.buildChangeTrails();
 
-      ownCtx.clear();
+      // the entry stays behind in `first` until its next change trail, the component does not
+      holder.context = second;
 
-      displaced.dispatchEvent('testEvent', 1, false);
+      first.clear();
 
-      expect(spy).not.toHaveBeenCalled();
+      holder.dispatchEvent('testEvent', 1, false);
 
-      ownCtx.dispose();
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(holder.isDestroyed).toBe(false);
+      expect(second.hasComponent(holder)).toBe(true);
+
+      first.dispose();
+      second.dispose();
     });
   });
 

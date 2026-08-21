@@ -639,7 +639,7 @@ new ViewComponent(token: string, options?: ViewComponentOptions)
 | `context` | (Optional) The `ComponentContext` instance this component belongs to. Defaults to `ComponentContext.get()`, the Default Global Context. |
 | `parent` | (Optional) The parent `ViewComponent`. Must belong to the same context and must not be destroyed. |
 | `order` | (Optional) Initial sort order (number). Default is `0`. |
-| `uuid` | (Optional) Explicit unique identifier. If omitted, one is generated automatically. |
+| `uuid` | (Optional) Explicit unique identifier. If omitted, one is generated automatically. A uuid that a component of the target `ComponentContext` is holding is refused with a `ComponentUuidInUseError`; it is free again once its holder has left that `ComponentContext`. |
 | `autoDestructionOnParentRemoval` | (Optional) Whether the corresponding Entity is destroyed together with its parent. Default is `false`, which promotes the Entity to a root Entity instead. Immutable after creation. |
 
 A `ViewComponent` passed in place of `options` is read as `{parent: thatComponent}`. It carries no `context` with it, so the new component joins the Default Global Context -- which makes the shorthand work only when the parent lives there too. A parent in a named context makes the constructor throw, because the child would be joining a different context than its parent:
@@ -836,7 +836,7 @@ Removes the component from the hierarchy and signals destruction to the Shadow E
 
 ### The destroyed state
 
-After `destroy()` the component is detached from its `ComponentContext`: it no longer appears in any change trail and no longer has a corresponding Entity. `isDestroyed` reports `true`. The context reaches the same state from its own side -- `ComponentContext.clear()`, `destroyComponent()`, `removeSubTree()` and `dispose()` leave the components they take down exactly here. `clear()` and `dispose()` reach every component that has joined the context, including one whose uuid a later `ViewComponent` has claimed. `removeSubTree(uuid)` is addressed to an entry: it takes down the instance holding it together with its descendants, and an instance a later join has displaced from that uuid stands in no subtree, so it is left standing. `destroyComponent(component)` releases exactly the instance it is given and leaves the entry -- and with it the entity -- standing when a namesake holds it. Holding on to a destroyed component is safe, and its behaviour is uniform. Every one of these paths emits `ViewComponent.Destroyed` on the component it takes down. One thing the table below does not cover: `vc.context = null` reaches `isDestroyed === true` as well, and every row holds for it except the two about `dispatchEvent` and about the announcement -- a component that only left its context keeps its subscriptions and an own `dispatchEvent`, and it announces nothing, because it can be taken back in.
+After `destroy()` the component is detached from its `ComponentContext`: it no longer appears in any change trail and no longer has a corresponding Entity. `isDestroyed` reports `true`. The context reaches the same state from its own side -- `ComponentContext.clear()`, `destroyComponent()`, `removeSubTree()` and `dispose()` leave the components they take down exactly here. `clear()` and `dispose()` reach every component that has joined the context and has not left it again. `removeSubTree(uuid)` is addressed to an entry: it takes down the instance holding it together with its descendants. `destroyComponent(component)` releases exactly the instance it is given and leaves the entry -- and with it the entity -- standing when a namesake holds it. Holding on to a destroyed component is safe, and its behaviour is uniform. Every one of these paths emits `ViewComponent.Destroyed` on the component it takes down. One thing the table below does not cover: `vc.context = null` reaches `isDestroyed === true` as well, and every row holds for it except the two about `dispatchEvent` and about the announcement -- a component that only left its context keeps its subscriptions and an own `dispatchEvent`, and it announces nothing, because it can be taken back in.
 
 | Operation | Behaviour while destroyed |
 | :--- | :--- |
@@ -865,6 +865,8 @@ component.isDestroyed; // false -- a new Entity is created with the same uuid
 A component revived after a `destroy()` carries no subscription from before it: `on(component, …)` has to be set up again, and an integration that had installed its own `dispatchEvent` has to install it again. One revived after a `vc.context = null` still carries both -- that path detaches the component, it does not silence it.
 
 Assigning a context that has been disposed throws a `ComponentContextDisposedError` and changes nothing: a component that still lives in another context stays there. Leaving the old context is only worth it if the new one can actually be joined.
+
+Every other rejected join costs the component the `ComponentContext` it was leaving. Assigning a `ComponentContext` in which another component holds the same uuid throws a `ComponentUuidInUseError` -- carrying the uuid on `error.uuid` -- and leaves the component with none at all: `isDestroyed` reads `true`, and the one it came from has already released it. Assign a `ComponentContext` again to take it back in.
 
 ### Custom Integration Example
 
@@ -970,7 +972,7 @@ Three event names that arrive as ordinary events on a `ViewComponent`; see [Rece
 
 | Method | Description |
 | :--- | :--- |
-| `addComponent(component)` | Take a component in and write a `CreateEntities` change for it. Throws a `ComponentContextDisposedError` on a disposed context. Called by the `ViewComponent` `context` setter. |
+| `addComponent(component)` | Take a component in and write a `CreateEntities` change for it. Throws a `ComponentContextDisposedError` on a disposed context, and a `ComponentUuidInUseError` when another component of this context holds the uuid. Called by the `ViewComponent` `context` setter. |
 | `hasComponent(component)` | Whether this context holds a component with that uuid. |
 | `hasComponents()` | Whether it holds any component at all. |
 | `isRootComponent(component)` | Whether the component is a root, i.e. has no parent in this context. |
@@ -981,7 +983,7 @@ Three event names that arrive as ordinary events on a `ViewComponent`; see [Rece
 | `addToChildren(parent, child)` | Insert `child` into the children of `parent`. Throws a plain `Error` when the context does not hold `parent`. It only appends: a `child` that already stands in the children list of another parent stays there as well, and it is not checked against the ancestors of `parent`. Both are the job of `ViewComponent.addChild()`. |
 | `removeFromParent(component, parent)` | Detach a component from that parent and make it a root. A no-op when a later `ViewComponent` has since claimed `component`'s uuid. |
 | `moveToRoot(component)` | Make a component a root without naming its previous parent. A no-op when a later `ViewComponent` has since claimed `component`'s uuid. |
-| `removeSubTree(uuid)` | Destroy a component and all its descendants **without** writing anything to a change trail. Each of them is detached from this context. |
+| `removeSubTree(uuid)` | Destroy a component and all its descendants **without** writing anything to a change trail. Each of them is detached from this `ComponentContext` -- unless a `ViewComponent.Destroyed` listener assigns the `ComponentContext` back onto the component it is announcing, which takes that component in again under the same uuid. |
 | `changeToken(component, token?)` | Record a token change for a component. |
 | `changeOrder(component)` | Re-sort a component among its siblings after its `order` changed, and record the new value. A component this context does not hold is ignored. |
 
@@ -1025,7 +1027,7 @@ A change trail returned by `buildChangeTrails()` is a snapshot: nothing in the l
 
 Removes all components without writing anything to a change trail. The context stays registered under its namespace and can be used again afterwards. This is the reset you want between tests or when swapping a whole scene.
 
-Every `ViewComponent` that has joined the context is destroyed on the way out, not one per uuid: where a second `ViewComponent` has joined under the uuid of an earlier one, both go down. Each reports `isDestroyed === true`, holds no context any more, and every `setProperty` on it returns `false` and writes nothing. See [The destroyed state](#the-destroyed-state) for what such a component still answers.
+Every `ViewComponent` that has joined this `ComponentContext` and has not left it again is destroyed on the way out. Each reports `isDestroyed === true`, holds no context any more, and every `setProperty` on it returns `false` and writes nothing. See [The destroyed state](#the-destroyed-state) for what such a component still answers.
 
 Assigning the context takes the component back in under the same uuid, with a fresh `CreateEntities` change -- the same revival that follows a `ViewComponent.destroy()`.
 

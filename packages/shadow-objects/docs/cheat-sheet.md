@@ -423,6 +423,11 @@ ctx.clear();     // components destroyed, but reusable under the same namespace
 ctx.dispose();   // final: components destroyed, namespace released, ctx.isDisposed === true
 ComponentContext.get(ns);                  // a fresh context
 new ViewComponent('a', {context: ctx});    // throws ComponentContextDisposedError
+
+const live = ComponentContext.get('other');
+new ViewComponent('a', {context: live, uuid: 'a-uuid'});
+new ViewComponent('b', {context: live, uuid: 'a-uuid'});  // throws ComponentUuidInUseError
+                                                          // the uuid is free once its holder has left
 ```
 
 Both destroy the components they hold — each one reports `isDestroyed === true` afterwards and has no context. The difference is the namespace: `clear()` keeps it and takes components back in (`vc.context = ctx`), `dispose()` releases it and rejects every join.

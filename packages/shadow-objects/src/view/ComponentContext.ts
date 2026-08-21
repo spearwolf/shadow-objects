@@ -30,6 +30,21 @@ export class ComponentContextDisposedError extends Error {
 }
 
 /**
+ * Thrown when a {@link ViewComponent} tries to join a {@link ComponentContext} under a uuid
+ * another component of that {@link ComponentContext} is holding. A uuid names one component at a
+ * time; it becomes free again once its holder has left.
+ */
+export class ComponentUuidInUseError extends Error {
+  readonly uuid: string;
+
+  constructor(uuid: string) {
+    super(`the view component cannot join the component context because the uuid ${uuid} is already held by another component`);
+    this.name = 'ComponentUuidInUseError';
+    this.uuid = uuid;
+  }
+}
+
+/**
  * The {@link ComponentContext} represents the current real-time state of the _view components_.
  *
  * Changes to the components and their hierarchy are also logged to the {@link ComponentChanges}.
@@ -86,9 +101,9 @@ export class ComponentContext {
   #rootComponents: string[] = []; // we use an Array here and not a Set, because we want to keep the insertion order
   #isDisposed = false;
 
-  // which instances name this context. #components holds one entry per uuid, and a component
-  // whose uuid a later one claims keeps pointing back here without appearing in it — the
-  // entry-keyed map cannot reach it, this one can
+  // which instances name this ComponentContext, and the one place that can say so. #components holds one
+  // entry per uuid, and an entry outlives the departure of its component until the next change
+  // trail — so a uuid standing in that map is no statement about anyone still being a member
   readonly #componentInstances = new Set<ViewComponent>();
 
   readonly #componentMemory = new ComponentMemory();
@@ -114,6 +129,16 @@ export class ComponentContext {
     return this.#isDisposed;
   }
 
+  /**
+   * Take a component in: it becomes a member of this {@link ComponentContext} and a
+   * `CreateEntities` change is written for its uuid.
+   *
+   * Called by the {@link ViewComponent#context} setter, and by nothing else.
+   *
+   * @throws {ComponentContextDisposedError} if this {@link ComponentContext} has been disposed
+   * @throws {ComponentUuidInUseError} if another member of this {@link ComponentContext} holds
+   *   `component.uuid`
+   */
   addComponent(component: ViewComponent) {
     if (this.#isDisposed) {
       throw new ComponentContextDisposedError(
@@ -125,8 +150,17 @@ export class ComponentContext {
 
     if (viewInstance) {
       if (viewInstance.component !== component) {
-        // another component claims this uuid: promote the children of the previous one to
-        // root components, otherwise they would stay in the map but drop out of the tree
+        // a uuid names one component at a time. The entry of a component that has left this
+        // ComponentContext outlives it until the next change trail, so a later component may take the
+        // uuid over — but not while the component holding it is still a member here: the two
+        // would share one entry and one set of create/destroy counts, and the entity behind
+        // the uuid would outlive both of them
+        if (this.#componentInstances.has(viewInstance.component)) {
+          throw new ComponentUuidInUseError(component.uuid);
+        }
+
+        // the predecessor promoted its children to root components on its way out; this is the
+        // net that keeps a children list from outliving the component that filled it
         for (const childUuid of viewInstance.children.slice(0)) {
           this.#components.get(childUuid)?.component.removeFromParent();
         }
@@ -184,8 +218,8 @@ export class ComponentContext {
 
     // destroying an entry twice would put the destroy count ahead of the create count: a
     // component that joins again afterwards would be destroyed by the very next change trail.
-    // And the entry belongs to whoever claimed the uuid last — a namesake it displaced leaves
-    // without taking the entity of the one holding it down
+    // And the entry belongs to whoever holds the uuid now — a component that has already left
+    // goes a second time without taking that one's entity down with it
     if (entry !== undefined && entry.component === component && !entry.changes.isDestroyed) {
       for (const childUuid of entry.children.slice(0)) {
         this.#components.get(childUuid)?.component.removeFromParent();
@@ -210,9 +244,9 @@ export class ComponentContext {
     if (this.hasComponent(parent)) {
       // the child may already be gone (destroyComponent, removeSubTree) while the component
       // still holds on to its parent — detaching it must not resurrect it as a root.
-      // And an entry a later component has since claimed must not be touched by the one it
-      // displaced — same guard as destroyComponent() and moveToRoot(), for the same reason:
-      // mutating it here would corrupt the live component's parent and its place among the roots
+      // And an entry a later component has taken over must not be touched by the one that left it
+      // behind — same guard as destroyComponent() and moveToRoot(), for the same reason: mutating
+      // it here would corrupt the live component's parent and its place among the roots
       const childEntry = this.#components.get(component.uuid);
       if (childEntry === undefined || childEntry.component !== component) return;
 
@@ -228,9 +262,9 @@ export class ComponentContext {
   }
 
   moveToRoot(component: ViewComponent) {
-    // an entry a later component has since claimed must not be touched by the one it displaced
-    // — same guard as destroyComponent() and removeFromParent(), for the same reason: mutating
-    // it here would corrupt the live component's parent and its place among the roots
+    // an entry a later component has taken over must not be touched by the one that left it
+    // behind — same guard as destroyComponent() and removeFromParent(), for the same reason:
+    // mutating it here would corrupt the live component's parent and its place among the roots
     const childEntry = this.#components.get(component.uuid);
     if (childEntry !== undefined && childEntry.component === component) {
       childEntry.changes?.setParent(undefined);
@@ -282,8 +316,16 @@ export class ComponentContext {
       for (const childUuid of entry.children.slice(0)) {
         this.#removeSubTree(childUuid, visited);
       }
-      this.destroyComponent(entry.component);
+      // the entry goes before the teardown, not after it: `ViewComponent.Destroyed` travels
+      // while the component is still able to act, and a listener there may put the component
+      // back into this ComponentContext. Deleting the entry afterwards would take that join with
+      // it and leave the component naming a ComponentContext that holds nothing under its uuid —
+      // free for a second component to claim, with both alive. Nothing here needs the entry
+      // afterwards: this path writes no change trail, so the change bookkeeping in it has no
+      // reader left, and the child uuid comes out of the parent's children list from here, while
+      // the parent link is still there to name it — the teardown drops that link
       this.#deleteComponent(uuid);
+      this.destroyComponent(entry.component);
     }
   }
 
@@ -355,8 +397,8 @@ export class ComponentContext {
 
   changeOrder(component: ViewComponent) {
     // a component this context does not (or no longer) hold must never be re-inserted into an
-    // ordered list — two components sharing one uuid share one entry, and the one that outlives
-    // the entry keeps pointing back at us
+    // ordered list — this is public API, so the argument may well be a component whose uuid has
+    // no entry here at all, and a uuid put back into an ordered list without one makes clear() panic
     const entry = this.#components.get(component.uuid);
     if (entry === undefined) return;
 
@@ -575,8 +617,8 @@ export class ComponentContext {
 
     // destroy first, while the context is still live: a component whose context is gone
     // would otherwise keep reporting itself as alive.
-    // Every instance that named this context, not one per uuid — #components holds the entry of
-    // the component that claimed a uuid last, and the one it displaced is just as much ours
+    // The members are what this set holds, and walking #components instead would reach past them:
+    // an entry outlives the departure of its component until the next change trail
     for (const component of Array.from(this.#componentInstances)) {
       component.destroy();
     }

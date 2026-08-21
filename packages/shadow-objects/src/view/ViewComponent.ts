@@ -81,9 +81,14 @@ export class ViewComponent {
   }
 
   /**
-   * @throws {ComponentContextDisposedError} if the new context has been disposed. The component
-   *   keeps its current context in that case: leaving the old one is only worth it if the new
-   *   one can actually be joined.
+   * @throws {ComponentContextDisposedError} if the new {@link ComponentContext} has been disposed.
+   *   The component keeps its current one in that case: leaving the old one is only worth it if
+   *   the new one can actually be joined.
+   * @throws {ComponentUuidInUseError} if another component of the new {@link ComponentContext}
+   *   holds this component's uuid. A uuid names one component of a {@link ComponentContext} at a
+   *   time, and it is free again once its holder has left. This one is thrown after the old
+   *   {@link ComponentContext} has been left, so the component holds none afterwards — assign one
+   *   again to take it back in.
    */
   set context(context: ComponentContext | null | undefined) {
     const next = context ?? undefined;
