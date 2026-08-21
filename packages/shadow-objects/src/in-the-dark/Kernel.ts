@@ -469,9 +469,15 @@ export class Kernel {
 
     if (entry.token === token) return;
 
+    // The new token has to stand before the constructors run, because `updateShadowObjects()` resolves
+    // the constructor set out of `entry.token`. A change that does not get through hands the previous
+    // token back and rebuilds what belongs to it, as far as the rebuild gets. Taking the change back
+    // belongs to `updateShadowObjects()` rather than here: it is one act with the rebuilding of the
+    // shadow-objects, and the order within it matters -- the token first, then the objects.
+    const previousToken = entry.token;
     entry.token = token;
 
-    this.updateShadowObjects(uuid);
+    this.updateShadowObjects(uuid, ShadowObjectAction.CreateAndDestroy, undefined, previousToken);
   }
 
   dispatchMessageToView(message: MessageToViewEvent): void {
@@ -483,11 +489,17 @@ export class Kernel {
   /**
    * Create or destroy the shadow-objects of an entity using the registered constructors.
    * After a token change or registry changes, an entity may be given different shadow-objects.
+   *
+   * @param previousToken the token the entry carried before the caller wrote the new one, or
+   *   `undefined` where the caller left the token alone. A rebuild that does not get through puts it
+   *   back before it restores the shadow-objects, so an entity is never built against a token it does
+   *   not carry.
    */
   private updateShadowObjects(
     uuid: string,
     action = ShadowObjectAction.CreateAndDestroy,
     nextConstructors?: Set<ShadowObjectConstructor>,
+    previousToken?: string,
   ): Set<ShadowObjectConstructor> {
     const entry = this.#requireEntry(uuid);
     nextConstructors ??= new Set(this.registry.findConstructors(entry.token, entry.entity.truthyProps()));
@@ -495,12 +507,22 @@ export class Kernel {
     const shouldDestroy = action === ShadowObjectAction.CreateAndDestroy || action === ShadowObjectAction.DestroyOnly;
     const shouldCreate = action === ShadowObjectAction.CreateAndDestroy || action === ShadowObjectAction.JustCreate;
 
+    // What the rebuild has done so far, in the two directions it can go, so that a creation that
+    // throws can be taken back to the state the call came in on.
+    const removed: {construct: ShadowObjectConstructor; count: number}[] = [];
+    const created: ShadowObjectType[] = [];
+
     // destroy all shadow-objects created by constructors no longer in the list
     //
     if (shouldDestroy) {
       for (const [construct, shadowObjects] of entry.usedConstructors) {
         if (!nextConstructors.has(construct)) {
           entry.usedConstructors.delete(construct);
+          // The size is read before the teardown, which empties the set through `forgetShadowObject`.
+          // A count rather than a flag because the bookkeeping holds a set per constructor: the
+          // deduplicated list `Registry.findConstructors()` hands out makes it `1` today, and the
+          // restoration reads what is written down instead of assuming that.
+          removed.push({construct, count: shadowObjects.size});
           for (const obj of shadowObjects) {
             this.destroyShadowObject(obj, entry.entity);
           }
@@ -513,12 +535,83 @@ export class Kernel {
     if (shouldCreate) {
       for (const construct of nextConstructors) {
         if (!entry.usedConstructors.has(construct)) {
-          this.constructShadowObject(construct, entry);
+          try {
+            created.push(this.constructShadowObject(construct, entry));
+          } catch (error) {
+            this.#rollbackFailedShadowObjectUpdate(entry, created, removed, previousToken);
+            throw error;
+          }
         }
       }
     }
 
     return nextConstructors;
+  }
+
+  /**
+   * Takes a rebuild of the shadow-objects of one entity back to where the call found it.
+   *
+   * The identity check comes first, because a constructor may destroy the entity it is coming to life
+   * on. Where the kernel no longer holds this entry -- including where another entry stands under the
+   * same uuid by now -- `destroyEntity()` has already notified every shadow-object of the entry and
+   * cleared `usedConstructors`; both halves of the rollback would find nothing to work with.
+   *
+   * The token before the shadow-objects: what is rebuilt is built against the token the entity carries
+   * afterwards.
+   *
+   * Backwards down, forwards up: the new shadow-objects leave before the previous ones come back, so
+   * the two sets never stand on the entity at the same time.
+   *
+   * Every step behind a guard of its own and nothing re-thrown -- the caller is waiting for the error
+   * of the construction, not for one from the way back.
+   *
+   * What the rollback does not reach is named rather than passed over. `changeProperties()` has written its
+   * properties before it gets here, and they stay written -- a constructor restored below can therefore
+   * stand on an entity whose properties no longer route to it, until the next re-resolution of the set
+   * leaves it out and takes it down. And `upgradeEntities()` takes its shadow-objects down in one pass over
+   * the entity tree and builds in the next, so a rollback in the second pass knows nothing of what the first
+   * one took -- at this entity as much as at any other; the entity keeps the token it came in with, an
+   * upgrade having written none, and is left with whatever the first pass spared. Both would need a snapshot
+   * of the kernel, which this path does not take.
+   */
+  #rollbackFailedShadowObjectUpdate(
+    entry: EntityEntry,
+    created: ShadowObjectType[],
+    removed: {construct: ShadowObjectConstructor; count: number}[],
+    previousToken?: string,
+  ): void {
+    if (this.#entities.get(entry.entity.uuid) !== entry) return;
+
+    if (previousToken !== undefined) {
+      entry.token = previousToken;
+    }
+
+    for (let i = created.length - 1; i >= 0; i--) {
+      try {
+        this.destroyShadowObject(created[i], entry.entity);
+      } catch (error) {
+        this.logger.error(
+          'rollback of a failed shadow-object update could not remove a new shadow-object:',
+          entry.entity.uuid,
+          error,
+        );
+      }
+    }
+
+    for (const {construct, count} of removed) {
+      for (let i = 0; i < count; i++) {
+        try {
+          this.constructShadowObject(construct, entry);
+        } catch (error) {
+          this.logger.error(
+            'rollback of a failed shadow-object update could not restore a shadow-object:',
+            getDisplayName(construct),
+            entry.entity.uuid,
+            error,
+          );
+        }
+      }
+    }
   }
 
   private constructShadowObject(construct: ShadowObjectConstructor, entry: EntityEntry): ShadowObjectType {
@@ -531,7 +624,8 @@ export class Kernel {
     } catch (error) {
       // Until `bindTo()` below has run, nothing else can reach this scope: it is in neither
       // `#shadowObjectScopes` nor the destroy subscription of the entity. A constructor that does
-      // not return therefore ends its own scope here, or nobody does.
+      // not return therefore ends its own scope here, or nobody does. The scope is all there is to
+      // take back at this point, because no shadow-object came out of the call.
       scope.tearDown();
       throw error;
     }
@@ -566,7 +660,20 @@ export class Kernel {
       entry.usedConstructors.set(construct, new Set([shadowObject]));
     }
 
-    this.attachShadowObject(shadowObject, entry.entity);
+    try {
+      this.attachShadowObject(shadowObject, entry.entity);
+    } catch (error) {
+      // Attaching is the last step of a creation, and a shadow-object whose `[onCreate]` does not get
+      // through is none: it goes the way one takes that leaves the constructor set of its entity, so it
+      // hears its `[onDestroy]` hook and its `onDestroy` callbacks, gives up its creation scope and
+      // comes off the entity before the error travels on. A second guard rather than one around both
+      // steps, because there is more to take back here: the shadow-object stands in
+      // `#shadowObjectScopes`, in `entry.usedConstructors` and, since `attachShadowObject()` set its
+      // `on(entity, shadowObject)`, as a listener of the entity -- and `destroyShadowObject()` is the
+      // only exit that clears all three.
+      this.destroyShadowObject(shadowObject, entry.entity);
+      throw error;
+    }
 
     return shadowObject;
   }

@@ -1,3 +1,4 @@
+import {eventize} from '@spearwolf/eventize';
 import {createSignal, type Signal, value} from '@spearwolf/signalize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import type {ShadowObjectCreationAPI} from '../types.js';
@@ -5,6 +6,7 @@ import {generateUUID} from '../utils/generateUUID.js';
 import {Kernel} from './Kernel.js';
 import {Registry} from './Registry.js';
 import {ShadowObject} from './ShadowObject.js';
+import {ShadowObjectCreationScope} from './ShadowObjectCreationScope.js';
 
 // The one-warning-per-realm flags in ShadowObjectCreationScope.ts live at module scope: within one
 // file, only the first bare-compare-function call for a given member name warns, no matter which
@@ -230,6 +232,59 @@ describe('ShadowObjectCreationScope', () => {
       expect(value(capturedParentContext!)).toBe('second');
 
       warnSpy.mockRestore();
+      kernel.destroy();
+    });
+  });
+
+  describe('bindTo', () => {
+    // The scope is built by hand rather than through an entity creation, because the kernel binds
+    // every scope it makes exactly once: the second call this describes has no way in through it.
+    const makeUnboundScope = () => {
+      const kernel = new Kernel(new Registry());
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'node');
+
+      return {kernel, uuid, scope: new ShadowObjectCreationScope(kernel.getEntity(uuid), kernel.logger, 'TestScope')};
+    };
+
+    it('refuses a second binding and keeps the first one', () => {
+      const {kernel, uuid, scope} = makeUnboundScope();
+
+      const releaseFirst = vi.fn();
+      const forgetFirst = vi.fn();
+      const releaseSecond = vi.fn();
+      const forgetSecond = vi.fn();
+
+      scope.bindTo(eventize({}), releaseFirst, forgetFirst);
+
+      expect(() => scope.bindTo(eventize({}), releaseSecond, forgetSecond)).toThrow(/already bound/);
+
+      kernel.destroyEntity(uuid);
+
+      expect(releaseFirst, 'the handles of the first binding are the ones the teardown runs').toHaveBeenCalledTimes(1);
+      expect(forgetFirst).toHaveBeenCalledTimes(1);
+      expect(releaseSecond, 'a refused binding leaves no handles behind').not.toHaveBeenCalled();
+      expect(forgetSecond).not.toHaveBeenCalled();
+
+      kernel.destroy();
+    });
+
+    it('refuses a binding after the teardown', () => {
+      const {kernel, scope} = makeUnboundScope();
+
+      const releaseFirst = vi.fn();
+      const forgetFirst = vi.fn();
+      const releaseSecond = vi.fn();
+      const forgetSecond = vi.fn();
+
+      scope.bindTo(eventize({}), releaseFirst, forgetFirst);
+      scope.tearDown();
+
+      expect(() => scope.bindTo(eventize({}), releaseSecond, forgetSecond)).toThrow(/torn down/);
+
+      expect(releaseSecond, 'a refused binding leaves no handles behind').not.toHaveBeenCalled();
+      expect(forgetSecond).not.toHaveBeenCalled();
+
       kernel.destroy();
     });
   });

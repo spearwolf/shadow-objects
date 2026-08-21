@@ -122,7 +122,7 @@ createResource(
 | Hook | When it fires |
 |---|---|
 | `constructor` / function body | Once per Shadow Object, when it is attached to an entity. Build your reactive graph here. |
-| `[onCreate](entity)` | After the Shadow Object is fully attached to the entity. Class-based only. |
+| `[onCreate](entity)` | After the Shadow Object is fully attached to the entity. Class-based only. A throw here takes the Shadow Object down again and travels on to the caller. |
 | `[onDestroy](entity)` | When the Shadow Object is about to go away -- which includes, but is not limited to, the entity being destroyed. Class-based only. |
 | `onDestroy(fn)` | Same moment as the row above, callable from the functional API. Both are reported through the `ConsoleLogger` when they throw and neither stops the rest of the teardown -- see `docs/api-reference.md`, "onDestroy(callback)". |
 | `createEffect(fn)` | Immediately on setup, then again whenever any signal it reads changes. |

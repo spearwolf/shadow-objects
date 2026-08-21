@@ -163,8 +163,27 @@ export class ShadowObjectCreationScope {
    *
    * The kernel keeps two releases rather than one, because they belong to opposite ends of the teardown:
    * `releaseScope` runs at its start, `forgetShadowObject` at its end.
+   *
+   * One scope serves one shadow-object, once: the call is part of the contract, and both ways of breaking
+   * it are refused below.
    */
   bindTo(shadowObject: ShadowObjectType, releaseScope: () => void, forgetShadowObject: () => void): void {
+    // Refused rather than quietly returned, unlike `tearDown()`, where a second call is two teardown paths
+    // legitimately meeting. A second binding is nothing of the sort -- it would mean one scope serving two
+    // shadow-objects. It would replace the handles of the first: the release of the kernel's map entry and
+    // the unsubscribe from the entity's `onDestroy`, leaving the first shadow-object standing in the kernel
+    // and on the entity with nothing left to take it out. A scope that has already torn down would register
+    // a subscription that never bites, because the teardown behind it returns at its own flag.
+    //
+    // The teardown is asked about first: it is the state a scope cannot come back from, and it says more
+    // about a scope that carries both.
+    if (this.#isTornDown) {
+      throw new Error(`the creation scope of "${this.#displayName}" has torn down and cannot be bound`);
+    }
+    if (this.#shadowObject !== undefined) {
+      throw new Error(`the creation scope of "${this.#displayName}" is already bound to a shadow-object`);
+    }
+
     this.#shadowObject = shadowObject;
     this.#releaseScope = releaseScope;
     this.#forgetShadowObject = forgetShadowObject;
