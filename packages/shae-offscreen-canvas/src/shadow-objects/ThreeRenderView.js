@@ -12,7 +12,7 @@ let id = 0;
 export class ThreeRenderView {
   static displayName = 'ThreeRenderView';
 
-  constructor({entity, useContext, provideContext, onDestroy, createSignal, createEffect, on}) {
+  constructor({entity, useContext, provideContext, createSignal, createEffect, on}) {
     this.id = ++id;
 
     const getMultiViewRenderer = useContext(ThreeMultiViewRendererContext);
@@ -47,6 +47,13 @@ export class ThreeRenderView {
       }
     });
 
+    // The cleanup below is the only place a view is handed back. It runs when the
+    // view signal changes and when the creation scope destroys the effects, and it
+    // carries both the view and the renderer in its closure, so it needs no
+    // context of its own. Nothing writes the view signal on teardown: an
+    // `undefined` from there would run the effect above once more while the
+    // renderer and size contexts are still standing, and it would take a view that
+    // is destroyed in the same breath.
     createEffect(() => {
       const view = renderView.get();
       const multiViewRenderer = getMultiViewRenderer();
@@ -75,10 +82,6 @@ export class ThreeRenderView {
           }
         }
       }
-    });
-
-    onDestroy(() => {
-      renderView.set(undefined);
     });
   }
 }

@@ -79,6 +79,7 @@ const makeEnv = () => {
   env.kernel.logger.enable = false;
   env.registry.define('Host', Host);
   env.registry.define('ThreeRenderView', ThreeRenderView);
+  env.registry.define('Nothing', class Nothing {});
   return env;
 };
 
@@ -185,12 +186,9 @@ describe('ThreeRenderView', () => {
     host.canvasSize$.set([320, 240, 1]);
     await settle();
 
-    // Measured, not endorsed: the teardown callback sets the view signal to `undefined`, and — while
-    // the effects it feeds are still alive at that point — the first effect reacts by taking one more
-    // view before the second effect's cleanup hands it straight back, because the effect that reads
-    // the view signal runs once more after `renderView.set(undefined)`. What holds regardless of that
-    // extra round trip: every view taken is given back, and the last thing the mock renderer records
-    // is a `destroyView`.
+    // This is the balance that holds no matter how many views passed through: every view taken is
+    // given back, and the last thing the mock renderer records is a `destroyView`. The case below
+    // counts them.
     env.kernel.destroyEntity(child.uuid);
     await settle();
 
@@ -201,13 +199,28 @@ describe('ThreeRenderView', () => {
     expect(renderer.calls.at(-1)).toBe('destroyView');
   });
 
-  // Measured, not endorsed: tearing the entity down costs one superfluous view. The teardown
-  // callback writes `undefined` into the view signal while both the renderer context and the size
-  // context are still standing, so the effect that reads all three runs one more time, finds no
-  // view but a renderer and a size, and takes a second one — which the cleanup of the effect
-  // holding the view then hands straight back. Without that write, the cleanup alone does the whole
-  // job and the counts stay at one apiece; the assertion below is what tells the two apart.
-  it('takes and gives back one more view while tearing down', async () => {
+  it('gives its view back on teardown without taking another', async () => {
+    const {host, child} = setup();
+    const renderer = makeMockRenderer();
+
+    host.multiViewRenderer$.set(renderer);
+    host.canvasSize$.set([320, 240, 1]);
+    await settle();
+
+    const view = child.useContext(ThreeRenderViewContext)();
+
+    expect(renderer.createView).toHaveBeenCalledTimes(1);
+    expect(renderer.destroyView).not.toHaveBeenCalled();
+
+    env.kernel.destroyEntity(child.uuid);
+    await settle();
+
+    expect(renderer.createView).toHaveBeenCalledTimes(1);
+    expect(renderer.destroyView).toHaveBeenCalledTimes(1);
+    expect(renderer.destroyView).toHaveBeenCalledWith(view);
+  });
+
+  it('gives its view back when its entity changes token', async () => {
     const {host, child} = setup();
     const renderer = makeMockRenderer();
 
@@ -218,11 +231,12 @@ describe('ThreeRenderView', () => {
     expect(renderer.createView).toHaveBeenCalledTimes(1);
     expect(renderer.destroyView).not.toHaveBeenCalled();
 
-    env.kernel.destroyEntity(child.uuid);
+    env.kernel.changeToken(child.uuid, 'Nothing');
     await settle();
 
-    expect(renderer.createView).toHaveBeenCalledTimes(2);
-    expect(renderer.destroyView).toHaveBeenCalledTimes(2);
+    expect(renderer.createView).toHaveBeenCalledTimes(1);
+    expect(renderer.destroyView).toHaveBeenCalledTimes(1);
+    expect(child.useContext(ThreeRenderViewContext)()).toBeUndefined();
   });
 
   describe('rendering a frame', () => {
