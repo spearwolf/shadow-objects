@@ -395,6 +395,73 @@ describe('Entity', () => {
 
       kernel.destroy();
     });
+
+    it('reports a property that a handed-out property writer made truthy', () => {
+      const kernel = makeKernel();
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'entity');
+      const entity = kernel.getEntity(uuid);
+
+      entity.setProperties([['a', 1]]);
+
+      // reading fills the cache, which is what a later write has to invalidate
+      expect(Array.from(entity.truthyProps()!)).toEqual(['a']);
+
+      entity.getPropertyWriter('b')(1);
+
+      expect(Array.from(entity.truthyProps()!)).toEqual(['a', 'b']);
+
+      kernel.destroy();
+    });
+
+    it('drops a property that a handed-out property writer made falsy', () => {
+      const kernel = makeKernel();
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'entity');
+      const entity = kernel.getEntity(uuid);
+
+      entity.setProperties([
+        ['a', 1],
+        ['b', 1],
+      ]);
+
+      expect(Array.from(entity.truthyProps()!)).toEqual(['a', 'b']);
+
+      entity.getPropertyWriter('a')(false);
+
+      expect(Array.from(entity.truthyProps()!)).toEqual(['b']);
+
+      kernel.destroy();
+    });
+
+    it('routes to the shadow objects of a property written through a handed-out writer', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+      const uuid = generateUUID();
+
+      class Directive {}
+
+      registry.define('directive', Directive);
+      registry.appendRoute('@plah', ['directive']);
+
+      // the creation resolves the constructor set and fills the cache on its way
+      kernel.createEntity(uuid, 'entity');
+
+      expect(kernel.findShadowObjects(uuid), 'nothing routes to this entity yet').toHaveLength(0);
+
+      kernel.getEntity(uuid).getPropertyWriter('plah')('hello');
+
+      // an empty property change writes nothing and re-resolves the constructor set, so what the
+      // registry gets to see is exactly what the cache answers
+      kernel.changeProperties(uuid, []);
+
+      expect(kernel.findShadowObjects(uuid)).toHaveLength(1);
+      expect(kernel.findShadowObjects(uuid)[0]).toBeInstanceOf(Directive);
+
+      kernel.destroy();
+    });
   });
 
   describe('children order', () => {
@@ -584,6 +651,7 @@ describe('Entity', () => {
       }).toThrow();
 
       expect(b.parentUuid, 'the child stays below the parent it had').toBe(aUuid);
+      expect(b.parent?.uuid, 'and answers with it by entity too').toBe(aUuid);
       expect(a.children).toHaveLength(1);
       expect(a.parentUuid, 'the refused entity is still a root').toBeUndefined();
 
@@ -630,6 +698,125 @@ describe('Entity', () => {
       });
 
       expect(seen).toEqual([rUuid, aUuid, bUuid]);
+
+      kernel.destroy();
+    });
+  });
+
+  describe('the parent link', () => {
+    it('answers by entity and by uuid alike while it is written and rewritten', () => {
+      const kernel = makeKernel();
+      const [pUuid, qUuid, cUuid] = [generateUUID(), generateUUID(), generateUUID()];
+
+      kernel.createEntity(pUuid, 'p');
+      kernel.createEntity(qUuid, 'q');
+      kernel.createEntity(cUuid, 'c');
+
+      const c = kernel.getEntity(cUuid);
+
+      expect(c.parent, 'no parent yet').toBeUndefined();
+      expect(c.parentUuid, 'no parent yet').toBeUndefined();
+      expect(c.hasParent, 'no parent yet').toBe(false);
+
+      c.parentUuid = pUuid;
+
+      expect(c.parent?.uuid).toBe(pUuid);
+      expect(c.parentUuid).toBe(pUuid);
+      expect(c.hasParent).toBe(true);
+
+      c.parent = kernel.getEntity(qUuid);
+
+      expect(c.parent?.uuid).toBe(qUuid);
+      expect(c.parentUuid).toBe(qUuid);
+      expect(c.hasParent).toBe(true);
+
+      c.parent = undefined;
+
+      expect(c.parent).toBeUndefined();
+      expect(c.parentUuid).toBeUndefined();
+      expect(c.hasParent).toBe(false);
+
+      kernel.destroy();
+    });
+
+    it('agrees by parent and by uuid that it is gone when the entity is detached', () => {
+      const kernel = makeKernel();
+      const [pUuid, cUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(pUuid, 'p');
+      kernel.createEntity(cUuid, 'c', pUuid);
+
+      const c = kernel.getEntity(cUuid);
+      c.removeFromParent();
+
+      expect(c.parent).toBeUndefined();
+      expect(c.parentUuid).toBeUndefined();
+      expect(c.hasParent).toBe(false);
+      expect(kernel.getEntityGraph().map((node) => node.entity.uuid)).toContain(cUuid);
+
+      kernel.destroy();
+    });
+
+    it('agrees by parent and by uuid that it is gone when the parent is destroyed', () => {
+      const kernel = makeKernel();
+      const [pUuid, cUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(pUuid, 'p');
+      kernel.createEntity(cUuid, 'c', pUuid);
+
+      kernel.destroyEntity(pUuid);
+
+      const c = kernel.getEntity(cUuid);
+
+      expect(c.parent).toBeUndefined();
+      expect(c.parentUuid).toBeUndefined();
+      expect(c.hasParent).toBe(false);
+      expect(kernel.getEntityGraph().map((node) => node.entity.uuid)).toContain(cUuid);
+
+      kernel.destroy();
+    });
+
+    it('agrees by parent and by uuid while the kernel moves the entity', () => {
+      const kernel = makeKernel();
+      const [pUuid, qUuid, cUuid] = [generateUUID(), generateUUID(), generateUUID()];
+
+      kernel.createEntity(pUuid, 'p');
+      kernel.createEntity(qUuid, 'q');
+      kernel.createEntity(cUuid, 'c', pUuid);
+
+      const c = kernel.getEntity(cUuid);
+
+      kernel.setParent(cUuid, qUuid);
+
+      expect(c.parent?.uuid).toBe(qUuid);
+      expect(c.parentUuid).toBe(qUuid);
+      expect(c.hasParent).toBe(true);
+
+      kernel.setParent(cUuid, undefined);
+
+      expect(c.parent).toBeUndefined();
+      expect(c.parentUuid).toBeUndefined();
+      expect(c.hasParent).toBe(false);
+
+      kernel.destroy();
+    });
+
+    it('agrees by parent and by uuid that the old edge stands when an unknown parent uuid is refused', () => {
+      const kernel = makeKernel();
+      const [pUuid, cUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(pUuid, 'p');
+      kernel.createEntity(cUuid, 'c', pUuid);
+
+      const c = kernel.getEntity(cUuid);
+
+      expect(() => {
+        c.parentUuid = 'no-such-entity';
+      }).toThrow();
+
+      expect(c.parent?.uuid, 'the old edge stands, by entity').toBe(pUuid);
+      expect(c.parentUuid, 'the old edge stands, by uuid').toBe(pUuid);
+      expect(c.hasParent).toBe(true);
 
       kernel.destroy();
     });

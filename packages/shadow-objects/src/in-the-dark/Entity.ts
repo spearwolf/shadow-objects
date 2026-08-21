@@ -8,6 +8,7 @@ import {
   type SignalLink,
   type SignalReader,
   type SignalWriter,
+  type SignalWriterParams,
   value,
 } from '@spearwolf/signalize';
 import type {ComponentPropertiesType, IComponentEvent} from '../types.js';
@@ -80,7 +81,9 @@ export class Entity {
 
   #rootContexts: Map<ContextNameType, IRootContextValue> = new Map();
 
-  #parentUuid?: string;
+  // There is one place the parent is kept: `parentUuid` answers from `#parent.uuid`, so a half-set
+  // link -- a uuid with no matching entity, or an entity with no uuid to show for it -- has no field
+  // left to hold it in.
   #parent?: Entity;
 
   #childrenUuids: Set<string> = new Set();
@@ -103,8 +106,8 @@ export class Entity {
   set order(value: number) {
     if (this.#order !== value) {
       this.#order = value;
-      if (this.#parentUuid) {
-        this.parent!.resortChildren();
+      if (this.#parent) {
+        this.#parent.resortChildren();
       }
       // The place among the siblings is part of the traversal order the kernel caches.
       this.#kernel.noteEntityTreeChange(this.#uuid);
@@ -112,11 +115,11 @@ export class Entity {
   }
 
   get parentUuid(): string | undefined {
-    return this.#parentUuid || undefined;
+    return this.#parent?.uuid;
   }
 
   set parentUuid(parentUuid: string | undefined) {
-    if (this.#parentUuid !== parentUuid) {
+    if (this.#parent?.uuid !== parentUuid) {
       // Resolve the new parent FIRST so an unknown-uuid throw doesn't orphan us mid-mutation.
       const nextParent = parentUuid ? this.#kernel.getEntity(parentUuid) : undefined;
 
@@ -128,7 +131,6 @@ export class Entity {
       // entity keeps reading the parent it leaves until the one it joins takes over.
       this.#detachFromParent(nextParent == null);
 
-      this.#parentUuid = parentUuid || undefined;
       this.#parent = nextParent;
 
       if (this.#parent) {
@@ -146,9 +148,6 @@ export class Entity {
   }
 
   get parent(): Entity | undefined {
-    if (!this.#parent && this.#parentUuid) {
-      this.#parent = this.#kernel.getEntity(this.#parentUuid);
-    }
     return this.#parent;
   }
 
@@ -156,8 +155,10 @@ export class Entity {
     this.parentUuid = parent?.uuid;
   }
 
+  // Reads the same field `parent` and `parentUuid` do, so `Kernel.noteEntityTreeChange()` -- which
+  // reads `hasParent` to decide whether the uuid belongs in the root set -- sees what they see.
   get hasParent(): boolean {
-    return !!this.#parentUuid;
+    return !!this.#parent;
   }
 
   get children(): readonly Entity[] {
@@ -213,7 +214,6 @@ export class Entity {
     }
     this.#context.clear();
 
-    this.#parentUuid = undefined;
     this.#parent = undefined;
 
     this.#childrenUuids.clear();
@@ -267,10 +267,10 @@ export class Entity {
    * starts, so name what keeps it that way: the insertion here preserves the order, `removeChild()`
    * cuts an element out with `splice`, the destroy handler empties the list, and the `order` setter
    * re-sorts through the parent. That last one is the condition worth stating, because it needs the
-   * child to know its parent -- `#parentUuid` has to be set. Every way an entity is attached inside
-   * this class goes through the `parentUuid` setter, which establishes both directions of the link
-   * before it calls `addChild()`. A caller that reaches for `addChild()` on its own leaves the child
-   * without a parent link, and a later `order` on such a child never reaches this list.
+   * child to know its parent -- the parent link has to be established. Every way an entity is
+   * attached inside this class goes through the `parentUuid` setter, which sets the parent before it
+   * calls `addChild()`. A caller that reaches for `addChild()` on its own leaves the child without a
+   * parent link, and a later `order` on such a child never reaches this list.
    */
   #insertChildInOrder(child: Entity) {
     let i = this.#children.length;
@@ -303,13 +303,14 @@ export class Entity {
   }
 
   #detachFromParent(rebindContexts: boolean) {
+    // The field `parent` and `parentUuid` both answer from: clearing it here clears what either
+    // getter would report, with nothing left over for a second check to find.
     if (this.#parent) {
       // const prevParent = this.#parent;
 
       this.#parent.removeChild(this);
 
       this.#parent = undefined;
-      this.#parentUuid = undefined;
 
       if (rebindContexts) {
         for (const [, ctx] of this.#context) {
@@ -394,8 +395,28 @@ export class Entity {
     return this.#getPropSignal<T>(key).get;
   }
 
+  /**
+   * A write head for one property. Every write through it drops the cache behind
+   * `truthyProps()`: that cache answers `Kernel.updateShadowObjects()`, which picks the shadow
+   * objects of this entity along the property routes of the registry, and a write the cache does
+   * not see routes the entity to a state it no longer has.
+   *
+   * What comes back is a function of the entity, not the `set` of the signal behind the property.
+   * The signalize helpers that take a signal-like -- `isSignal()`, `destroySignal()`, `touch()` --
+   * do not recognise it; `getPropertyReader()` hands out the signal's own reader for that.
+   *
+   * A fresh closure is handed out on every call rather than one cached per key: `SignalAutoMap`
+   * hands out "a fresh, live" signal for a key whose signal was destroyed from the outside, so a
+   * writer cached against the signal captured on an earlier call could end up closing over a corpse.
+   * The call sites this feeds -- `setProperty()` from a change-trail application, at most once per
+   * property that actually changed -- do not turn this into a hot path.
+   */
   getPropertyWriter<T = unknown>(key: string): SignalWriter<T> {
-    return this.#getPropSignal<T>(key).set;
+    const signal = this.#getPropSignal<T>(key);
+    return (value: unknown, params?: SignalWriterParams<T>) => {
+      this.clearTruthyPropsCache();
+      signal.set(value as T, params);
+    };
   }
 
   setProperties(properties: ComponentPropertiesType) {
@@ -408,9 +429,6 @@ export class Entity {
   }
 
   setProperty(key: string, value: unknown) {
-    // the cache answers `updateShadowObjects()`, which picks the shadow objects of this entity by the
-    // property routes of the registry -- a write it does not see routes to a state that no longer exists
-    this.clearTruthyPropsCache();
     this.getPropertyWriter(key)(value);
   }
 
