@@ -1,3 +1,5 @@
+import {isReadableMessageData} from '../worker/MessageRouter.js';
+
 /**
  * Wait for a message of a specific type or reject after a timeout.
  *
@@ -43,6 +45,10 @@ export const waitForMessageOfType = (
     }
 
     listener = (event) => {
+      // three readers listen on this channel and answer the same way: a payload that is not
+      // an object carries no `type` to route on, and reading through it takes down whoever
+      // reads it -- here, into the listener of every request still waiting
+      if (!isReadableMessageData(event.data)) return;
       if (event.data.type === type) {
         try {
           if (!guard || guard(event.data)) {
