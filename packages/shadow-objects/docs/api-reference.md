@@ -1881,8 +1881,53 @@ Signal, attribute and what actually reaches the DOM therefore say the same thing
 lifecycle, across any number of removals and re-appends.
 
 `getParentNodeForObserver()` and the inherited `syncShadowObjectsOf()` are `protected` and meant
-for subclasses. The Custom Elements callbacks — `connectedCallback`, `disconnectedCallback`,
-`attributeChangedCallback` — are implemented; a subclass that overrides one has to call `super`.
+for subclasses, and so is `logger`, a `ConsoleLogger` in the namespace `ShaeEntElement` — see
+[Console Logger](#console-logger) for `ConsoleLogger.ShaeEntElement.enable`. That switch decides
+the `isDebug`, `isInfo` and `isWarn` getters on this element's own logger, not the `debug`, `info`
+and `warn` calls themselves, which print whatever a caller passes to them regardless; `error` has
+no such getter on any `ConsoleLogger` instance either, so a report at that level — the refused join
+below among them — reaches the console whatever the switch says. The Custom Elements callbacks —
+`connectedCallback`, `disconnectedCallback`, `attributeChangedCallback` — are implemented; a
+subclass that overrides one has to call `super`.
+
+#### A context the entity cannot join
+
+Assigning a `ComponentContext` to a `ViewComponent` can be rejected two ways: another component of
+that context already holds the uuid (`ComponentUuidInUseError`), or the context itself has been
+disposed (`ComponentContextDisposedError`) — see [Assigning a context](#assigning-a-context) and
+[`dispose()`](#dispose). `<shae-ent>` attempts this assignment on every connect and on every
+namespace change, from `connectedCallback()` and from the `componentContext$` signal it maintains,
+and neither call site has anywhere of its own to send a throw: the first is a custom element
+reaction, whose exception the browser reports to the global `error` event instead of the code that
+triggered the connect; the second runs inside a signal effect, whose exception signalize collects
+and re-throws out of whichever `set()` started the effect chain — which can be a plain `el.ns = …`
+assignment several calls up. `<shae-ent>` catches the rejection at the one place both routes go
+through and reports it on its own `logger` instead of letting either escape.
+
+What the element is afterwards depends on which of the two errors it was, and on whether it
+already had a `ViewComponent`. A uuid already in use costs the component whatever context it had:
+the setter has already left that context, if there was one, before the failure surfaces, so
+`viewComponent.isDestroyed` reads `true` no matter what stood there before. A disposed context is
+rejected before anything is undone, so the component keeps exactly the context it already had —
+`isDestroyed` stays `true` where it had none, the ordinary case right after leaving and re-entering
+the tree, but stays `false` where it still held a live one — reachable only by writing
+`componentContext$` to a disposed `ComponentContext` reference directly, never through `ns`: a
+namespace switch resolves through `ComponentContext.get(ns)`, which hands out a fresh context for
+any namespace `dispose()` has freed, so it can never pass a disposed one on. On the very first
+join, before any `ViewComponent` exists, a rejected `new ViewComponent(…)` never reaches the point
+that would have set `viewComponent$` — `viewComponent` stays `undefined`, not a destroyed instance.
+What changes every time, whichever of these it is: `componentContext` already names the context
+the join was refused from. The rest of
+the connect or namespace change still runs regardless: a parent request goes out, hosted slots are
+collected, `syncShadowObjects()` runs. An entity that hung on this element and asked it for
+parenthood gets an answer either way.
+
+The way back is the next *change* of `componentContext$`, not any particular fix to the rejection's
+cause. A further namespace switch, or leaving the tree and re-entering it, writes the signal to a
+new value and the join is attempted again — reviving the same `ViewComponent` under the same uuid
+if it succeeds this time. Writing the same namespace a second time is not such a change: the signal
+reports nothing, the listener does not run, and the entity stays exactly as rejected as before, even
+once whatever blocked the first attempt is gone.
 
 #### Entity Hierarchy
 

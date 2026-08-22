@@ -1,6 +1,7 @@
 import {on} from '@spearwolf/eventize';
 import {beQuiet, createEffect, createSignal} from '@spearwolf/signalize';
 import {VoidToken} from '../constants.js';
+import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {ViewComponent} from '../view/ViewComponent.js';
 import {
@@ -147,6 +148,8 @@ export class ShaeEntElement extends ShaeElement {
   readonly viewComponent$ = createSignal<ViewComponent | undefined>();
   readonly token$ = createSignal<string | undefined>();
   readonly forwardCustomEvents$ = createSignal<Set<string> | boolean>(false);
+
+  protected readonly logger = new ConsoleLogger('ShaeEntElement');
 
   get componentContext(): ComponentContext | undefined {
     return this.componentContext$.value;
@@ -379,11 +382,31 @@ export class ShaeEntElement extends ShaeElement {
 
     let vc = this.viewComponent$.value;
 
-    if (vc) {
-      vc.context = context;
-    } else if (context) {
-      vc = new ViewComponent(token ?? VoidToken, {context});
-      this.viewComponent$.set(vc);
+    // This catch is unconditional, and wider than "the join failed" on purpose: `vc.context = …`
+    // throws `ComponentUuidInUseError` or `ComponentContextDisposedError`; `new ViewComponent(…)`
+    // below can throw either one too, from inside its own constructor; and `viewComponent$.set(vc)`
+    // right after it runs this element's own effects synchronously, so a throw from one of those —
+    // a `TypeError` included — lands here as well. Neither call site of this method has anywhere of
+    // its own to send such a throw: `connectedCallback()` is a custom element reaction, whose
+    // exception the browser reports to the global `error` event instead of reaching the code that
+    // triggered the connect, and the `componentContext$.onChange` listener is a signal effect,
+    // whose exception is collected and re-thrown out of whichever `set()` started the effect chain
+    // — which can be a plain `el.ns = …` assignment several calls up.
+    //
+    // The two documented errors leave the component differently. A uuid already in use costs it
+    // whatever context it had: the setter has already left that context, if there was one, before
+    // the failure surfaces, so `vc.isDestroyed` ends up `true` either way. A disposed target is
+    // rejected before anything is undone, so the component keeps exactly the context it already
+    // had — `isDestroyed` stays whatever it already was, live context included.
+    try {
+      if (vc) {
+        vc.context = context;
+      } else if (context) {
+        vc = new ViewComponent(token ?? VoidToken, {context});
+        this.viewComponent$.set(vc);
+      }
+    } catch (error) {
+      this.logger.error('applying the component context of this entity failed:', {ns: this.ns, uuid: vc?.uuid}, error);
     }
 
     this.syncShadowObjects();

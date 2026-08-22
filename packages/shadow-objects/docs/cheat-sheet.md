@@ -247,6 +247,14 @@ An entity takes its parent from its **own** namespace only; a `<shae-ent>` of an
 between is invisible to that binding and does not block it. A `<shae-prop>` binds by the opposite
 rule — proximity, no namespace.
 
+**A rejected `ComponentContext`.** Joining can fail — another component already holds the uuid, or
+the context has been disposed — and neither failure escapes the element: it is reported through the
+element's own `ConsoleLogger`. A uuid collision always costs the entity its `ComponentContext`; a
+disposed target costs it nothing it did not already lack — the component keeps whatever context it
+had before the attempt, live one included. Either way, the way back is the next *change* of `ns`
+(writing the same value again does not count) or a leave-and-rejoin of the tree. See
+`docs/api-reference.md`, "A context the entity cannot join".
+
 ### `<shae-prop>`
 
 | Attribute | Values | Description |
