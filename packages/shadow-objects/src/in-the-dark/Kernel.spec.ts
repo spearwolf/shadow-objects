@@ -4742,10 +4742,75 @@ describe('Kernel', () => {
       kernel.destroy();
     });
 
+    // The lowest priority belongs to whoever registers there. Nothing of the kernel's own sits on
+    // this notification below the creation scopes, so the delivery runs the whole ladder down and
+    // the entity is still whole when the last listener reads it.
+    it('delivers a listener on the lowest priority ahead of the release', () => {
+      const kernel = new Kernel(new Registry());
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'lowest-priority', undefined, 0, [['label', 'hello']]);
+
+      const entity = kernel.getEntity(uuid);
+
+      const seen: string[] = [];
+      let propCountAtTheLowestPriority: number | undefined;
+
+      on(entity, onDestroy, Priority.Max, () => seen.push('max'));
+      on(entity, onDestroy, Priority.High, () => seen.push('high'));
+      on(entity, onDestroy, Priority.Normal, () => seen.push('normal'));
+      on(entity, onDestroy, Priority.Low, () => seen.push('low'));
+      on(entity, onDestroy, Priority.Min, () => {
+        seen.push('min');
+        propCountAtTheLowestPriority = entity.propEntries().length;
+      });
+
+      kernel.destroyEntity(uuid);
+
+      expect(seen, 'every step of the ladder is delivered').toEqual(['max', 'high', 'normal', 'low', 'min']);
+      expect(propCountAtTheLowestPriority, 'and the entity is whole when the last one runs').toBe(1);
+      expect(entity.propEntries(), 'it releases once the delivery is through').toEqual([]);
+
+      kernel.destroy();
+    });
+
+    // A subscription taken through the creation API belongs to the creation scope that handed it
+    // out, and that scope tears down at `Priority.Low` and releases everything it handed out. A
+    // shadow object therefore cannot reach below its own scope this way -- the entity-side listener
+    // next to it, registered directly, is reached.
+    it('leaves a creation-api subscription below the creation scopes unreached', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const seen: string[] = [];
+
+      @ShadowObject({registry, token: 'scoped-listener'})
+      class ScopedListener {
+        constructor({on: onEntity, onDestroy: onScopeDestroy}: ShadowObjectCreationAPI) {
+          onScopeDestroy(() => seen.push('creation scope'));
+          onEntity(onDestroy, Priority.Min, () => seen.push('creation api at the lowest priority'));
+        }
+      }
+
+      expect(ScopedListener).toBeDefined();
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'scoped-listener');
+
+      const entity = kernel.getEntity(uuid);
+      on(entity, onDestroy, Priority.Min, () => seen.push('listener at the lowest priority'));
+
+      kernel.destroyEntity(uuid);
+
+      expect(seen).toEqual(['creation scope', 'listener at the lowest priority']);
+
+      kernel.destroy();
+    });
+
     // The release of an entity is reachable from outside: `kernel.getEntity(uuid)` hands the entity over,
-    // and the method the kernel reaches through the notification is the same one that caller can call.
-    // That it happens once is a promise to whoever holds an entity, and the kernel builds on it: the
-    // direct call behind the notification is free wherever the notification already got there.
+    // and the method the kernel calls directly behind the destruction notification is the same one that
+    // caller can call. That it happens once is a promise to whoever holds an entity, and the kernel builds
+    // on it: it calls the release itself, and a caller who called it first pays nothing for the second one.
     it('releases the entity once, however often the release is called', () => {
       const registry = new Registry();
       const kernel = new Kernel(registry);

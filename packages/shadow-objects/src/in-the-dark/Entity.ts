@@ -170,9 +170,6 @@ export class Entity {
   constructor(kernel: Kernel, uuid: string) {
     this.#kernel = kernel;
     this.#uuid = uuid;
-    // both slots need the concrete class: eventize cannot reduce its listener-object
-    // conditional over the polymorphic `this` type, and no overload then matches
-    once(this as Entity, onDestroy, Priority.Min, this as Entity);
   }
 
   traverse(callback: (entity: Entity) => void) {
@@ -197,11 +194,15 @@ export class Entity {
    * Releases everything the entity holds: its properties, its subscriptions, its contexts and its place
    * in the entity tree.
    *
-   * It runs once, whichever way it is reached. The kernel has two: the destruction notification it sends
-   * on the entity, which carries this as a listener, and a direct call right behind that notification,
-   * for the case where the notification ended early and never got here. The flag makes the second one
-   * cost nothing where the first one already went through, and keeps every step below written for a
-   * single run.
+   * It runs once, whichever way it is reached. The kernel reaches it directly, right behind the
+   * destruction notification it sends on the entity, so that every listener on that notification has
+   * had its turn first -- down to `Priority.Min`, which is nobody's but the caller's. The entity is
+   * not a listener on its own notification: registering it in the constructor would put it ahead of
+   * anything registered at the same priority, because eventize breaks a tie by order of registration,
+   * and the bulk `off(this)` below would then take the listeners still waiting in that delivery with
+   * it. The flag makes a second call cost nothing and keeps every step below written for a
+   * single run: `kernel.getEntity()` hands the entity to anyone, and this method is as reachable as
+   * the rest of it.
    *
    * The flag is raised before the first step rather than after the last, because that is what a release
    * running twice would cost: the steps below are written for one pass, not for a repeat.
@@ -419,6 +420,8 @@ export class Entity {
 
   dispatchViewEvents(events: IComponentEvent[]) {
     for (const {type, data} of events) {
+      // the concrete class is needed here: eventize cannot reduce its emitter conditional
+      // (`NonTypedEmitter<this>`) over the polymorphic `this` type, and no overload then matches
       emit(this as Entity, onViewEvent, type, data);
     }
   }

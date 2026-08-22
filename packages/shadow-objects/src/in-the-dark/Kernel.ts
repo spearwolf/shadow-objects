@@ -407,9 +407,10 @@ export class Kernel {
         this.#notifyShadowObjectDestroy(shadowObject, entity);
       }
 
-      // What is left listening here are the creation scopes at `Priority.Low` and the entity itself at
-      // `Priority.Min`: the scopes tear down once every shadow-object has been told, and the entity
-      // releases its properties, subscriptions and contexts last of all.
+      // What is left listening here are the creation scopes at `Priority.Low`: they tear down once
+      // every shadow-object has been told. Below them the kernel has nothing of its own on this
+      // notification, so a listener on `Priority.Min` is the last one the delivery reaches, and it
+      // reads an entity that still holds its properties and its contexts.
       try {
         emit(entity, onDestroy, entity);
       } catch (error) {
@@ -417,9 +418,9 @@ export class Kernel {
       }
 
       // The notification is one delivery, and it ends at the first listener that throws -- everything
-      // registered behind that listener is skipped, the creation scopes and the entity's own release
-      // among them. Neither of those two belongs to whoever listens there, so the kernel runs them
-      // itself once the delivery is over, each behind a guard of its own. Both are written to happen
+      // registered behind that listener is skipped, the creation scopes among them. They do not belong
+      // to whoever listens there, so the kernel tears them down itself once the delivery is over, and
+      // releases the entity behind them, each behind a guard of its own. Both are written to happen
       // once: a scope that has torn down is no longer in `#shadowObjectScopes`, and the entity releases
       // once, whoever calls it.
       //
