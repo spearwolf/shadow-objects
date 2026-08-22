@@ -548,16 +548,12 @@ describe('ShaeOffscreenCanvas', () => {
       expect(child.useContext(OffscreenCanvasContext)()).toBeUndefined();
     });
 
-    // Measured, not endorsed: the teardown block releases the context signals and stops the frame
-    // loop, but it never resets `dispatchMessageToView` or `canvasRequested`. Both still carry
-    // whatever they held at the moment of destruction — and `dispatchMessageToView` is not merely
-    // left standing, it still works: `ShadowObjectCreationScope.createAPI()` bound it to the scope,
-    // which holds the destroyed entity by closure, and `Kernel.dispatchMessageToView()` queues its
-    // microtask and emits on the kernel without ever checking whether the uuid it carries still
-    // names a live entity. A call made through this shadow object after its entity is gone still
-    // reaches the view, addressed to a uuid nothing answers to any more. Whoever frees the field —
-    // or has the call check the entity is still alive — makes this case fail, and should mean to.
-    it('still dispatches to the view under the destroyed uuid after destroy', async () => {
+    // The teardown block gives back the view channel along with the context signals and the frame
+    // loop, so a request made through this shadow object after its entity is gone finds no channel
+    // to send through. A call still has to stay silent instead of throwing — freeing the channel
+    // alone would turn every request after destroy into a TypeError, which is no improvement over
+    // the silence it replaces.
+    it('frees the view channel it held after destroy, and a later request stays silent', async () => {
       env = await makeEnv();
 
       const received = [];
@@ -570,16 +566,17 @@ describe('ShaeOffscreenCanvas', () => {
       received.length = 0;
 
       const [so] = env.kernel.findShadowObjects(uuid);
-      const canvasRequestedBefore = so.canvasRequested;
 
       env.kernel.destroyEntity(uuid);
       await settle();
 
-      so.dispatchMessageToView('probe-after-destroy');
+      expect(so.dispatchMessageToView).toBeUndefined();
+      expect(so.canvasRequested).toBe(false);
+
+      expect(() => so.requestOffscreenCanvas()).not.toThrow();
       await settle();
 
-      expect(received).toEqual([{uuid, type: 'probe-after-destroy', traverseChildren: false}]);
-      expect(so.canvasRequested).toBe(canvasRequestedBefore);
+      expect(received).toEqual([]);
     });
   });
 });

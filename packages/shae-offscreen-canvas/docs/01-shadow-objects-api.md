@@ -12,6 +12,7 @@ Represents an offscreen canvas. However, a _canvas rendering context_ is not cre
 | `canvasSize` | [**width**: _number_, **height**: _number_, **pixelRatio**: _number_] | the size of the canvas element in _device pixels_. i.e. the pixelRatio is already included in the width and height specification. if you want the _css pixels_, divide the width and height by the pixelRatio |
 | `ShaeOffscreenCanvas` | [ShaeOffscreenCanvas](./ShaeOffscreenCanvas.js) | the shadow object itself |
 
+The shadow object handed out through the `ShaeOffscreenCanvas` context requests no canvas any more once its entity is destroyed.
 
 #### local entity events
 

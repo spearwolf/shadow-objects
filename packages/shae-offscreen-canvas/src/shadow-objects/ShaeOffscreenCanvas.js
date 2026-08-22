@@ -55,6 +55,11 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
       // its realm running for the lifetime of the page.
       this.isRunning = false;
       this.#frameLoop.stop(this);
+
+      // A shadow object without an entity has no view left to ask: the channel goes back, and with
+      // it the mark of an open request — there is none left to be open.
+      this.dispatchMessageToView = undefined;
+      this.canvasRequested = false;
     });
 
     const canvasSize$ = createSignal([0, 0, 0], {
@@ -119,13 +124,13 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
   }
 
   requestOffscreenCanvas() {
-    if (!this.canvasRequested) {
-      this.canvasRequested = true;
-      if (this.logger.isDebug) {
-        this.logger.debug('request offscreen-canvas', this);
-      }
-      this.dispatchMessageToView(RequestOffscreenCanvas);
+    if (this.canvasRequested || this.dispatchMessageToView == null) return;
+
+    this.canvasRequested = true;
+    if (this.logger.isDebug) {
+      this.logger.debug('request offscreen-canvas', this);
     }
+    this.dispatchMessageToView(RequestOffscreenCanvas);
   }
 
   [onViewEvent](type, data) {

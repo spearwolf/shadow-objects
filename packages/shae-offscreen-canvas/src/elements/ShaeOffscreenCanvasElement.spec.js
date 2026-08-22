@@ -1,3 +1,4 @@
+import {emit} from '@spearwolf/eventize';
 import {ComponentChangeType, ComponentContext, ContextLost, FrameLoop, GlobalNS} from '@spearwolf/shadow-objects';
 import '@spearwolf/shadow-objects/shae-ent.js';
 import {afterEach, describe, expect, it, vi} from 'vitest';
@@ -141,12 +142,67 @@ describe('ShaeOffscreenCanvasElement', () => {
 
   const frame = (el) => el[FrameLoop.OnFrame]();
 
-  // The constructor's createEffect() returns a teardown closure (unsubscribing the
-  // RequestOffscreenCanvas and ContextLost listeners) that only runs when viewComponent$ changes
-  // to a different value. Measured directly: it stays set to the same ViewComponent across
-  // remove(), reconnecting the element and swapping its ns attribute — #applyComponentContext
-  // moves the ViewComponent's own context, not the signal holding the ViewComponent itself. The
-  // closure has no reachable path in happy-dom, so it stays outside every case below.
+  // The ViewComponent instance behind `viewComponent$` stays the same across remove() and
+  // reconnecting the element — #applyComponentContext moves the ViewComponent's own context, not
+  // the signal holding the ViewComponent itself. Reaching it while the element sits outside the
+  // document therefore needs a direct emit on the component: the ComponentContext no longer knows
+  // about it, so dispatchMessage()/broadcastEvent() cannot ask it anything, but a listener the
+  // element itself set up still answers whatever is emitted on the instance directly.
+  describe('what the element answers while it is in the document', () => {
+    it('an element outside the document answers no canvas request', () => {
+      const el = connect('outside-request');
+      el.remove();
+
+      const transferSpy = vi.spyOn(el.canvas, 'transferControlToOffscreen');
+
+      emit(el.viewComponent, RequestOffscreenCanvas);
+
+      expect(transferSpy).not.toHaveBeenCalled();
+    });
+
+    it('an element outside the document answers no lost context', () => {
+      const el = connect('outside-lost-context');
+      el.remove();
+      const displayNodeBeforeRemoval = el.canvas;
+
+      emit(el.viewComponent, ContextLost);
+
+      expect(el.canvas).toBe(displayNodeBeforeRemoval);
+    });
+
+    it('an element put back into the document answers again', () => {
+      const el = connect('put-back');
+      el.remove();
+      document.body.appendChild(el);
+
+      const transferSpy = vi.spyOn(el.canvas, 'transferControlToOffscreen');
+
+      emit(el.viewComponent, RequestOffscreenCanvas);
+
+      expect(transferSpy).toHaveBeenCalled();
+    });
+
+    it('an element moved within one task keeps answering', () => {
+      const el = connect('moved-within-task');
+      const host2 = document.createElement('div');
+      document.body.appendChild(host2);
+
+      drain(el);
+
+      host2.appendChild(el);
+
+      expect(drain(el).length).toBe(0);
+
+      const transferSpy = vi.spyOn(el.canvas, 'transferControlToOffscreen');
+
+      emit(el.viewComponent, RequestOffscreenCanvas);
+
+      expect(transferSpy).toHaveBeenCalled();
+
+      host2.remove();
+    });
+  });
+
   describe('the canvas transfer', () => {
     it('hands the offscreen canvas of its display node to the shadow objects', () => {
       const el = connect('transfer');

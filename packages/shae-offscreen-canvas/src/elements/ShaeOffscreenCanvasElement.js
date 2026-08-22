@@ -55,6 +55,11 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
   #offscreenTransferred = false;
   #frameLoopIsRunning = false;
 
+  // A signal effect stays registered in the process-wide effect queue, holding this element (and
+  // everything its callback reads) reachable through that closure, until its own destroy() runs —
+  // the field is what makes that call reachable from outside the effect itself.
+  #viewComponentEffect;
+
   logger = new ConsoleLogger('ShaeOffscreenCanvasElement');
 
   get ns() {
@@ -82,8 +87,24 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
 
     this.canvas = this.shadow.getElementById(DISPLAY_ID);
     this.shadowEntity = this.shadow.getElementById(ENTITY_ID);
+  }
 
-    createEffect(() => {
+  get viewComponent() {
+    return this.shadowEntity.viewComponent;
+  }
+
+  // Answering a canvas request or a lost context is something this element only does while it is
+  // part of the document — the effect that listens for both is built here, not once in the
+  // constructor, so an element outside the document has nothing left listening on its
+  // ViewComponent. That holds as long as connectedCallback() runs outside of another signal
+  // effect's callback: createEffect() attaches a new effect to whichever effect is currently on
+  // the stack (EffectImpl#attachChildEffect), and a child effect is destroyed along with its
+  // parent's own teardown — so an element connected from within somebody else's effect answers
+  // only until that effect's next run or destruction, not until this element's own disconnect.
+  #setupViewComponentEffect() {
+    this.#destroyViewComponentEffect();
+
+    this.#viewComponentEffect = createEffect(() => {
       const vc = this.shadowEntity.viewComponent$.get();
       if (vc) {
         const unsubscribeRequestOffscreenCanvas = on(vc, RequestOffscreenCanvas, () => {
@@ -111,11 +132,13 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
     });
   }
 
-  get viewComponent() {
-    return this.shadowEntity.viewComponent;
+  #destroyViewComponentEffect() {
+    this.#viewComponentEffect?.destroy();
+    this.#viewComponentEffect = undefined;
   }
 
   connectedCallback() {
+    this.#setupViewComponentEffect();
     this.#frameLoop.start(this);
     this.frameLoopIsRunning = true;
   }
@@ -134,6 +157,7 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
   disconnectedCallback() {
     this.#frameLoop.stop(this);
     this.frameLoopIsRunning = false;
+    this.#destroyViewComponentEffect();
   }
 
   #lastCanvasWidth = 0;

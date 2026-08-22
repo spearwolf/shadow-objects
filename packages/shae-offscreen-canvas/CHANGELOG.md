@@ -20,3 +20,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The published package carries two files less: the second frame loop implementation and its spec are gone. Neither was reachable through the `exports` object of the package.
 - The published package carries no spec files at all any more. Its `build.mjs` used to copy `src/` wholesale into the publish-ready package root, so every `*.spec.js` and `*.specs.js` in `src/` shipped alongside the code it tests.
 - `ThreeRenderView` hands its render view back exactly once when it is destroyed or its entity changes token. `createView()` and `destroyView()` on `ThreeMultiViewRenderer` now run once apiece per render view, on both paths.
+- `ShaeOffscreenCanvas` gives back its view channel when its entity is destroyed. `requestOffscreenCanvas()` called on a destroyed shadow object does nothing — no request reaches a view that is no longer there.
+- `<shae-offscreen-canvas>` carries its listeners on the view component only while it is part of the document. An element outside the document answers neither a canvas request nor a lost context; both come back once the element is put back in.
