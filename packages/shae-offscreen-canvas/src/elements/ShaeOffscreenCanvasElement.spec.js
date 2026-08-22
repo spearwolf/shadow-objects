@@ -118,6 +118,73 @@ describe('ShaeOffscreenCanvasElement', () => {
     return el;
   };
 
+  // happy-dom's ResizeObserver never delivers (it exists but never calls back), and its
+  // getBoundingClientRect() is always 0x0 — so a case that needs a display size has to plant the
+  // replacement on the canvas before the element connects, where the one-time read that seeds
+  // #displayWidth/#displayHeight picks it up. Planting it afterwards is too late: the seed has
+  // already run by then.
+  const connectWithSize = (name, width, height) => {
+    const el = createWithNamespace(`${name}-${++connectCounter}`);
+    el.logger.enable = false;
+    el.canvas.getBoundingClientRect = () => ({width, height});
+    document.body.appendChild(el);
+    connectedElements.push(el);
+    return el;
+  };
+
+  // A minimal stand-in for the browser's ResizeObserver: it records which targets it watches and
+  // hands its constructor callback to the test, so a case can drive a delivery by hand instead of
+  // waiting on a layout engine happy-dom does not have.
+  const fakeResizeObserver = () => {
+    const instances = [];
+    class FakeResizeObserver {
+      constructor(callback) {
+        this.callback = callback;
+        this.targets = [];
+        this.disconnected = false;
+        instances.push(this);
+      }
+      observe(target) {
+        this.targets.push(target);
+      }
+      unobserve(target) {
+        this.targets = this.targets.filter((t) => t !== target);
+      }
+      disconnect() {
+        this.targets = [];
+        this.disconnected = true;
+      }
+    }
+    return {FakeResizeObserver, instances};
+  };
+
+  // A minimal stand-in for window.matchMedia(): under happy-dom, a resolution query never
+  // evaluates and a change on window.devicePixelRatio never fires a change event on it, so a case
+  // that needs one has to drive it by hand. Every call returns a fresh MediaQueryList-like object
+  // and is recorded, so a case can find the one built for a particular ratio.
+  const fakeMatchMedia = () => {
+    const queries = [];
+    const matchMedia = vi.fn((media) => {
+      const listeners = new Set();
+      const query = {
+        media,
+        matches: false,
+        addEventListener: vi.fn((type, listener) => {
+          if (type === 'change') listeners.add(listener);
+        }),
+        removeEventListener: vi.fn((type, listener) => {
+          if (type === 'change') listeners.delete(listener);
+        }),
+        dispatchChange: () => {
+          for (const listener of listeners) listener();
+        },
+      };
+      queries.push(query);
+      return query;
+    });
+    return {matchMedia, queries};
+  };
+
   afterEach(() => {
     // remove() before dispose(): each case here gets its own namespace, so nothing in this suite
     // actually depends on the order — this is hygiene that follows the production teardown shape
@@ -128,6 +195,7 @@ describe('ShaeOffscreenCanvasElement', () => {
       ComponentContext.get(el.ns).dispose();
     }
     connectedElements.length = 0;
+    vi.unstubAllGlobals();
   });
 
   const drain = (el) => ComponentContext.get(el.ns).buildChangeTrails();
@@ -430,8 +498,7 @@ describe('ShaeOffscreenCanvasElement', () => {
 
   describe('what a frame carries to the entity', () => {
     it('a frame carries the display size, the pixel ratio and the frame rate', () => {
-      const el = connect('frame-carries');
-      el.canvas.getBoundingClientRect = () => ({width: 320, height: 200});
+      const el = connectWithSize('frame-carries', 320, 200);
       drain(el);
 
       frame(el);
@@ -445,9 +512,8 @@ describe('ShaeOffscreenCanvasElement', () => {
     });
 
     it('a pixel zoom divides the pixel ratio and switches the display to pixelated', () => {
-      const el = connect('frame-carries');
+      const el = connectWithSize('frame-carries', 320, 200);
       el.setAttribute('pixel-zoom', '4');
-      el.canvas.getBoundingClientRect = () => ({width: 320, height: 200});
       drain(el);
 
       frame(el);
@@ -458,8 +524,7 @@ describe('ShaeOffscreenCanvasElement', () => {
     });
 
     it('switches the display back to auto when the pixel zoom is removed', () => {
-      const el = connect('frame-carries');
-      el.canvas.getBoundingClientRect = () => ({width: 320, height: 200});
+      const el = connectWithSize('frame-carries', 320, 200);
       el.setAttribute('pixel-zoom', '4');
       frame(el);
 
@@ -470,8 +535,7 @@ describe('ShaeOffscreenCanvasElement', () => {
     });
 
     it('a second frame with nothing changed asks for no sync', () => {
-      const el = connect('frame-carries');
-      el.canvas.getBoundingClientRect = () => ({width: 320, height: 200});
+      const el = connectWithSize('frame-carries', 320, 200);
       drain(el);
       frame(el);
 
@@ -482,9 +546,8 @@ describe('ShaeOffscreenCanvasElement', () => {
     });
 
     it('a second frame asks for a sync again while a pixel zoom is set', () => {
-      const el = connect('frame-carries');
+      const el = connectWithSize('frame-carries', 320, 200);
       el.setAttribute('pixel-zoom', '4');
-      el.canvas.getBoundingClientRect = () => ({width: 320, height: 200});
       drain(el);
       frame(el);
 
@@ -497,6 +560,199 @@ describe('ShaeOffscreenCanvasElement', () => {
       // comparison expects again, so every following frame reports a ratio change and syncs once
       // more. Measured behavior, not endorsed behavior.
       expect(syncSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('the display size', () => {
+    it('reads the display box while connecting, not while a frame runs', () => {
+      const el = connect('display-size-frame');
+      const rectSpy = vi.spyOn(el.canvas, 'getBoundingClientRect');
+
+      frame(el);
+      frame(el);
+      frame(el);
+
+      expect(rectSpy).not.toHaveBeenCalled();
+    });
+
+    it('reads the display box exactly once per connect', () => {
+      const el = createWithNamespace(`display-size-count-${++connectCounter}`);
+      el.logger.enable = false;
+      const rectSpy = vi.spyOn(el.canvas, 'getBoundingClientRect');
+
+      document.body.appendChild(el);
+      expect(rectSpy).toHaveBeenCalledTimes(1);
+
+      el.remove();
+      document.body.appendChild(el);
+      expect(rectSpy).toHaveBeenCalledTimes(2);
+
+      connectedElements.push(el);
+    });
+
+    it('takes the size a resize delivery reports, one frame after the delivery', () => {
+      const {FakeResizeObserver, instances} = fakeResizeObserver();
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+
+      const el = connectWithSize('display-size-resize', 320, 200);
+      drain(el);
+      frame(el);
+
+      const seed = propsOf(drain(el), el);
+      expect(seed.get(CanvasWidth)).toBe(320);
+      expect(seed.get(CanvasHeight)).toBe(200);
+
+      const observer = instances.find((o) => o.targets.includes(el.canvas));
+      observer.callback([{target: el.canvas, contentRect: {width: 640, height: 480}}]);
+
+      frame(el);
+
+      const resized = propsOf(drain(el), el);
+      expect(resized.get(CanvasWidth)).toBe(640);
+      expect(resized.get(CanvasHeight)).toBe(480);
+    });
+
+    it('ignores a delivery for a target that is not its own canvas', () => {
+      const {FakeResizeObserver, instances} = fakeResizeObserver();
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+
+      const el = connectWithSize('display-size-foreign', 320, 200);
+      drain(el);
+      frame(el);
+      drain(el);
+
+      const observer = instances.find((o) => o.targets.includes(el.canvas));
+      observer.callback([{target: document.createElement('div'), contentRect: {width: 999, height: 999}}]);
+
+      frame(el);
+
+      expect(drain(el).length).toBe(0);
+    });
+
+    it('moves the observer to the display node a lost context replaces', () => {
+      const {FakeResizeObserver, instances} = fakeResizeObserver();
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+
+      const el = connect('display-size-swap');
+      const canvasBefore = el.canvas;
+
+      ComponentContext.get(el.ns).broadcastEvent(ContextLost);
+
+      const observer = instances.find((o) => o.targets.includes(el.canvas));
+      expect(observer.targets).not.toContain(canvasBefore);
+      expect(observer.targets).toContain(el.canvas);
+    });
+
+    it('disconnects on disconnectedCallback, twice over without throwing', () => {
+      const {FakeResizeObserver, instances} = fakeResizeObserver();
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+
+      const el = connect('display-size-teardown');
+      const observer = instances.find((o) => o.targets.includes(el.canvas));
+
+      el.remove();
+
+      expect(observer.disconnected).toBe(true);
+      expect(() => el.disconnectedCallback()).not.toThrow();
+    });
+
+    it('leaves exactly one live observer and one live media query when connectedCallback runs twice without a disconnect between', () => {
+      const {FakeResizeObserver, instances} = fakeResizeObserver();
+      const {matchMedia, queries} = fakeMatchMedia();
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+      vi.stubGlobal('matchMedia', matchMedia);
+
+      const el = connect('display-size-double-connect');
+      el.connectedCallback();
+
+      expect(instances.length).toBe(2);
+      expect(instances[0].disconnected).toBe(true);
+      expect(instances[1].disconnected).toBe(false);
+      expect(instances[1].targets).toContain(el.canvas);
+
+      expect(queries.length).toBe(2);
+      expect(queries[0].removeEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+      expect(queries[1].removeEventListener).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('the pixel ratio', () => {
+    it('takes devicePixelRatio through a change on the resolution query it is watching', () => {
+      const {matchMedia, queries} = fakeMatchMedia();
+      vi.stubGlobal('matchMedia', matchMedia);
+      vi.stubGlobal('devicePixelRatio', 1);
+
+      const el = connectWithSize('pixel-ratio', 320, 200);
+      drain(el);
+      frame(el);
+
+      expect(propsOf(drain(el), el).get(PixelRatio)).toBe(1);
+      expect(queries[0].media).toBe('(resolution: 1dppx)');
+
+      vi.stubGlobal('devicePixelRatio', 3);
+      queries[0].dispatchChange();
+
+      frame(el);
+
+      expect(propsOf(drain(el), el).get(PixelRatio)).toBe(3);
+      expect(queries.at(-1).media).toBe('(resolution: 3dppx)');
+    });
+
+    it('removes the change listener of its query on disconnectedCallback', () => {
+      const {matchMedia, queries} = fakeMatchMedia();
+      vi.stubGlobal('matchMedia', matchMedia);
+
+      const el = connect('pixel-ratio-teardown');
+      const query = queries.at(-1);
+
+      el.remove();
+
+      expect(query.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+      expect(() => el.disconnectedCallback()).not.toThrow();
+    });
+  });
+
+  describe('the fps and pixel-zoom attributes reach the frame without a layout read', () => {
+    it('carries a changed fps attribute to the next frame', () => {
+      const el = connectWithSize('attr-fps', 320, 200);
+      drain(el);
+      frame(el);
+      drain(el);
+
+      const rectSpy = vi.spyOn(el.canvas, 'getBoundingClientRect');
+      el.setAttribute('fps', '30');
+      frame(el);
+
+      expect(propsOf(drain(el), el).get(Fps)).toBe(30);
+      expect(rectSpy).not.toHaveBeenCalled();
+    });
+
+    it('goes back to the default fps once the attribute is removed', () => {
+      const el = connectWithSize('attr-fps', 320, 200);
+      el.setAttribute('fps', '30');
+      drain(el);
+      frame(el);
+      drain(el);
+
+      el.removeAttribute('fps');
+      frame(el);
+
+      expect(propsOf(drain(el), el).get(Fps)).toBe(60);
+    });
+
+    it('carries a changed pixel-zoom attribute to the next frame, imageRendering included', () => {
+      const el = connectWithSize('attr-pixel-zoom', 320, 200);
+      drain(el);
+      frame(el);
+      drain(el);
+
+      const rectSpy = vi.spyOn(el.canvas, 'getBoundingClientRect');
+      el.setAttribute('pixel-zoom', '4');
+      frame(el);
+
+      expect(propsOf(drain(el), el).get(PixelRatio)).toBe(0.25);
+      expect(el.canvas.style.imageRendering).toBe('var(--display-image-rendering, pixelated)');
+      expect(rectSpy).not.toHaveBeenCalled();
     });
   });
 });

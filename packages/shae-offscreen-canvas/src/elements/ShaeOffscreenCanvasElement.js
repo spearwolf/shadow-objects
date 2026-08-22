@@ -51,6 +51,14 @@ const ATTR_FPS = 'fps';
 const ATTR_NS = 'ns';
 
 export class ShaeOffscreenCanvasElement extends HTMLElement {
+  // ns is read once in the constructor and never watched again — a listener on it would be new
+  // behavior nobody asked for, so it stays off this list. The constructor takes an initialHTML
+  // argument, so subclassing is a supported way to extend this element — and a subclass that
+  // declares its own observedAttributes instead of spreading this one silently loses fps and
+  // pixel-zoom, the same trap other custom elements in this codebase guard against by spreading
+  // their parent's list into their own.
+  static observedAttributes = [ATTR_FPS, ATTR_PIXEL_ZOOM];
+
   #frameLoop = FrameLoop.get();
   #offscreenTransferred = false;
   #frameLoopIsRunning = false;
@@ -59,6 +67,16 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
   // everything its callback reads) reachable through that closure, until its own destroy() runs —
   // the field is what makes that call reachable from outside the effect itself.
   #viewComponentEffect;
+
+  #displaySizeObserver;
+  #displayWidth = 0;
+  #displayHeight = 0;
+
+  #pixelRatio = 1;
+  #pixelRatioQuery;
+
+  #fps = DEFAULT_FPS;
+  #pixelZoom = 1;
 
   logger = new ConsoleLogger('ShaeOffscreenCanvasElement');
 
@@ -137,8 +155,60 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
     this.#viewComponentEffect = undefined;
   }
 
+  // The first animation frame runs before the ResizeObserver's first delivery arrives (measured in
+  // Chromium and Firefox), so a callback alone would leave #displayWidth/#displayHeight at their
+  // initial 0x0 for that frame and ShaeOffscreenCanvas.canRender would hold the worker back a frame
+  // for no reason. The one-time read below is what a display box already has on frame one.
+  #observeDisplaySize() {
+    this.#unobserveDisplaySize();
+
+    const rect = this.canvas.getBoundingClientRect();
+    this.#displayWidth = rect.width;
+    this.#displayHeight = rect.height;
+
+    this.#displaySizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // #reCreateCanvas() swaps the observed node without waiting for a delivery, so an entry can
+        // still name a node this element gave up on the same task it was reported.
+        if (entry.target === this.canvas) {
+          this.#displayWidth = entry.contentRect.width;
+          this.#displayHeight = entry.contentRect.height;
+        }
+      }
+    });
+    this.#displaySizeObserver.observe(this.canvas);
+  }
+
+  #unobserveDisplaySize() {
+    this.#displaySizeObserver?.disconnect();
+    this.#displaySizeObserver = undefined;
+  }
+
+  #watchPixelRatio() {
+    this.#unwatchPixelRatio();
+
+    const pixelRatio = window.devicePixelRatio ?? 1;
+    this.#pixelRatio = pixelRatio;
+
+    // The query names the ratio it was built for, so all it can ever report is the move away
+    // from that one value — every change needs a query built for the value that follows.
+    this.#pixelRatioQuery = window.matchMedia(`(resolution: ${pixelRatio}dppx)`);
+    this.#pixelRatioQuery.addEventListener('change', this.#onPixelRatioChange);
+  }
+
+  #onPixelRatioChange = () => {
+    this.#watchPixelRatio();
+  };
+
+  #unwatchPixelRatio() {
+    this.#pixelRatioQuery?.removeEventListener('change', this.#onPixelRatioChange);
+    this.#pixelRatioQuery = undefined;
+  }
+
   connectedCallback() {
     this.#setupViewComponentEffect();
+    this.#observeDisplaySize();
+    this.#watchPixelRatio();
     this.#frameLoop.start(this);
     this.frameLoopIsRunning = true;
   }
@@ -157,7 +227,20 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
   disconnectedCallback() {
     this.#frameLoop.stop(this);
     this.frameLoopIsRunning = false;
+    this.#unwatchPixelRatio();
+    this.#unobserveDisplaySize();
     this.#destroyViewComponentEffect();
+  }
+
+  attributeChangedCallback(name) {
+    switch (name) {
+      case ATTR_FPS:
+        this.#fps = this.#getFps();
+        break;
+      case ATTR_PIXEL_ZOOM:
+        this.#pixelZoom = this.#getPixelZoom();
+        break;
+    }
   }
 
   #lastCanvasWidth = 0;
@@ -167,20 +250,21 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
   #lastFps = 0;
 
   [FrameLoop.OnFrame]() {
-    const clientRect = this.canvas.getBoundingClientRect();
-    const pixelRatio = window.devicePixelRatio ?? 1;
-    const pixelZoom = this.#getPixelZoom();
-    const fps = this.#getFps();
+    const width = this.#displayWidth;
+    const height = this.#displayHeight;
+    const pixelRatio = this.#pixelRatio;
+    const pixelZoom = this.#pixelZoom;
+    const fps = this.#fps;
 
     if (
-      this.#lastCanvasWidth !== clientRect.width ||
-      this.#lastCanvasHeight !== clientRect.height ||
+      this.#lastCanvasWidth !== width ||
+      this.#lastCanvasHeight !== height ||
       this.#lastPixelRatio !== pixelRatio ||
       this.#lastPixelZoom !== pixelZoom ||
       this.#lastFps !== fps
     ) {
-      this.#lastCanvasWidth = clientRect.width;
-      this.#lastCanvasHeight = clientRect.height;
+      this.#lastCanvasWidth = width;
+      this.#lastCanvasHeight = height;
       this.#lastPixelRatio = pixelRatio / pixelZoom;
 
       if (fps !== this.#lastFps) {
@@ -252,8 +336,14 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
   #reCreateCanvas() {
     const frame = this.canvas.parentElement;
     const canvas = this.canvas.cloneNode();
+
+    // Without unobserve() first, the outgoing node still delivers one last entry — with a 0x0
+    // contentRect, ahead of the delivery for the replacement (measured in Chromium and Firefox).
+    this.#displaySizeObserver?.unobserve(this.canvas);
     frame.replaceChild(canvas, this.canvas);
     this.canvas = canvas;
+    this.#displaySizeObserver?.observe(canvas);
+
     this.#offscreenTransferred = false;
   }
 
