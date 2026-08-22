@@ -93,6 +93,12 @@ export class ShadowObjectCreationScope {
   readonly #contextProviders = new Map<string | symbol, Signal<any>>();
   readonly #contextRootProviders = new Map<string | symbol, Signal<any>>();
 
+  // The provider signals that already have their `clearOnDestroy` write registered in
+  // `#unsubscribeSecondary`. Keyed by the signal itself rather than by name, because a
+  // `provideContext(name)` and a `provideGlobalContext(name)` call can share one name while landing
+  // in two different maps above -- a name-keyed set would conflate the two providers.
+  readonly #clearOnDestroyRegistered = new Set<Signal<any>>();
+
   readonly #propertyReaders = new Map<string, SignalReader<any>>();
   readonly #propertyCompares = new Map<string, CompareFunc<any> | undefined>();
 
@@ -113,6 +119,27 @@ export class ShadowObjectCreationScope {
    */
   get displayName(): string {
     return this.#displayName;
+  }
+
+  /**
+   * The four teardown handles, read without waiting on a garbage collector: a test can check that
+   * `tearDown()` let go of them by comparing this before and after, rather than by proving the
+   * absence of a reference through a `WeakRef`.
+   *
+   * @internal
+   */
+  get debugHandles(): {
+    shadowObject: ShadowObjectType | undefined;
+    releaseScope: (() => void) | undefined;
+    forgetShadowObject: (() => void) | undefined;
+    unsubscribeFromEntityDestroy: (() => void) | undefined;
+  } {
+    return {
+      shadowObject: this.#shadowObject,
+      releaseScope: this.#releaseScope,
+      forgetShadowObject: this.#forgetShadowObject,
+      unsubscribeFromEntityDestroy: this.#unsubscribeFromEntityDestroy,
+    };
   }
 
   constructor(entity: Entity, logger: ConsoleLogger, displayName: string) {
@@ -172,11 +199,13 @@ export class ShadowObjectCreationScope {
     // legitimately meeting. A second binding is nothing of the sort -- it would mean one scope serving two
     // shadow-objects. It would replace the handles of the first: the release of the kernel's map entry and
     // the unsubscribe from the entity's `onDestroy`, leaving the first shadow-object standing in the kernel
-    // and on the entity with nothing left to take it out. A scope that has already torn down would register
-    // a subscription that never bites, because the teardown behind it returns at its own flag.
+    // and on the entity with nothing left to take it out.
     //
-    // The teardown is asked about first: it is the state a scope cannot come back from, and it says more
-    // about a scope that carries both.
+    // The teardown is asked about first, because it is the only one of the two checks that still applies to
+    // a torn-down scope: `tearDown()` lets go of `#shadowObject` at its own end, so a scope that has already
+    // torn down would otherwise sail straight past the second check below and rebind. Once a scope carries a
+    // shadow-object, it is the second check that tells a live scope's first binding from its second -- the
+    // two never overlap on a scope that is still live.
     if (this.#isTornDown) {
       throw new Error(`the creation scope of "${this.#displayName}" has torn down and cannot be bound`);
     }
@@ -216,7 +245,9 @@ export class ShadowObjectCreationScope {
    * to the same scope.
    *
    * The kernel is told to forget the shadow-object at the very end, so a destroy callback that reaches back
-   * into the kernel still finds its shadow-object listed among the ones the constructor created.
+   * into the kernel still finds its shadow-object listed among the ones the constructor created. Once that
+   * call is through, the four handles above are let go of as well -- the shadow-object, both kernel releases
+   * and the entity subscription -- so a scope past this point holds none of the four through these fields.
    *
    * Every step below runs behind its own guard, so a callback or signal teardown that throws does not stop
    * the ones after it: the remaining callbacks, the remaining signal releases, and the provider feed
@@ -274,12 +305,28 @@ export class ShadowObjectCreationScope {
     this.#unsubscribeSecondary.clear();
     this.#unsubscribeContextFeeds.clear();
     this.#contextReaders.clear();
+    this.#contextReaderCompares.clear();
     this.#contextParentReaders.clear();
+    this.#contextParentReaderCompares.clear();
     this.#propertyReaders.clear();
+    this.#propertyCompares.clear();
     this.#contextProviders.clear();
     this.#contextRootProviders.clear();
+    this.#clearOnDestroyRegistered.clear();
 
     this.#runGuarded('forget shadow-object', () => this.#forgetShadowObject?.());
+
+    // Let go of the shadow-object and both kernel handles: nothing reads them past this point --
+    // the info line above already ran, `#releaseScope` and `#unsubscribeFromEntityDestroy` were
+    // called at the start of this method, and `#forgetShadowObject` was just called above. A scope
+    // past this point holds neither the shadow-object nor either kernel handle through these
+    // fields. `#entity` is a separate, `readonly` field the scope carries for its whole life --
+    // it stays set here, and the entity, with the kernel behind it, stays reachable through it
+    // whether or not the scope has torn down.
+    this.#shadowObject = undefined;
+    this.#releaseScope = undefined;
+    this.#forgetShadowObject = undefined;
+    this.#unsubscribeFromEntityDestroy = undefined;
   }
 
   /**
@@ -374,6 +421,8 @@ export class ShadowObjectCreationScope {
    * `attachToEntity` is called inside the creation branch only, so the entity-side signal is
    * requested when a provider is actually created. The `clearOnDestroy` check sits outside that
    * branch: every call is allowed to ask for the clearing, not only the one that created the signal.
+   * The request is booked once per provider, though -- a repeated ask does not queue a second write,
+   * and once a provider has one on file, an opt-out on a later call does not take it back.
    */
   #provideContextSignal(
     name: string | symbol,
@@ -401,7 +450,8 @@ export class ShadowObjectCreationScope {
       providers.set(name, ctxProvider);
     }
 
-    if (ctxProvider != null && (opts?.clearOnDestroy ?? true)) {
+    if ((opts?.clearOnDestroy ?? true) && !this.#clearOnDestroyRegistered.has(ctxProvider)) {
+      this.#clearOnDestroyRegistered.add(ctxProvider);
       this.#unsubscribeSecondary.add(() => {
         ctxProvider.set(undefined);
       });

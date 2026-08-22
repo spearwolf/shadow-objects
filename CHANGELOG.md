@@ -4,6 +4,21 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-22
+
+- **`packages/shadow-objects/tsconfig.lib.json`:** `compilerOptions.types` is set to `[]`. This
+  config drives the declaration emit for the published package (`emitDeclarationOnly`, into
+  `dist/src/**`) and extends the package's own `tsconfig.json`, which carries no `types` entry of
+  its own and so falls back to whatever `@types/*` packages happen to sit in `node_modules` --
+  today none, since `packages/shadow-objects/package.json` declares no such devDependency. A later
+  one -- added directly, or reaching this package's `node_modules` some other way, the way
+  `@types/node` reaches `shadow-objects-e2e` today through `vite`'s own dependency on it (see the
+  `2026-08-19` entry above) -- would otherwise be free to leak a global like `NodeJS.Timeout` into
+  a `.d.ts` a consumer's own compiler then has to resolve. The empty array is a standing guard
+  against that, at no cost today: a full `pnpm build` with and without the line produces a
+  byte-identical `dist/src/**` and an unchanged file list, checked on the commit this guard was
+  added.
+
 ## 2026-08-20
 
 - **`.github/workflows/ci.yml`:** the `on:` block now triggers on both `push` and `pull_request`, and no longer skips Markdown files. Documentation is part of the API contract (AGENTS.md §4), so it must be checked. A pull request from a branch of this repository runs the workflow twice — once on the branch head and once on the merge commit — because the concurrency group keys off `github.ref` and both commits have different refs.

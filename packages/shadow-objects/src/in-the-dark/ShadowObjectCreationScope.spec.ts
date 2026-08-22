@@ -1,7 +1,7 @@
 import {eventize} from '@spearwolf/eventize';
 import {createSignal, type Signal, value} from '@spearwolf/signalize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import type {ShadowObjectCreationAPI} from '../types.js';
+import type {ShadowObjectCreationAPI, ShadowObjectType} from '../types.js';
 import {generateUUID} from '../utils/generateUUID.js';
 import {Kernel} from './Kernel.js';
 import {Registry} from './Registry.js';
@@ -21,6 +21,16 @@ import {ShadowObjectCreationScope} from './ShadowObjectCreationScope.js';
 // case added to `Kernel.spec.ts` that also passes a bare compare function would, under
 // `--no-isolate`, share these same flags and could flip one before this file's own case runs.
 describe('ShadowObjectCreationScope', () => {
+  // The scope is built by hand rather than through an entity creation, because the kernel binds
+  // every scope it makes exactly once: a second, refused binding has no way in through it.
+  const makeUnboundScope = () => {
+    const kernel = new Kernel(new Registry());
+    const uuid = generateUUID();
+    kernel.createEntity(uuid, 'node');
+
+    return {kernel, uuid, scope: new ShadowObjectCreationScope(kernel.getEntity(uuid), kernel.logger, 'TestScope')};
+  };
+
   afterEach(() => {
     Registry.get().clear();
     // A `console.warn` spy that a failing assertion leaves un-restored would otherwise carry its
@@ -236,17 +246,148 @@ describe('ShadowObjectCreationScope', () => {
     });
   });
 
-  describe('bindTo', () => {
-    // The scope is built by hand rather than through an entity creation, because the kernel binds
-    // every scope it makes exactly once: the second call this describes has no way in through it.
-    const makeUnboundScope = () => {
-      const kernel = new Kernel(new Registry());
+  describe('provideContext', () => {
+    it('registers the clearOnDestroy write once per provider, however often it is asked for', async () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      let provider: Signal<string | undefined> | undefined;
+
+      @ShadowObject({registry, token: 'repeatedProvideContext'})
+      class RepeatedProvideContext {
+        constructor({provideContext}: ShadowObjectCreationAPI) {
+          provider = provideContext<string>('repeated', 'first');
+          provideContext<string>('repeated');
+          provideContext<string>('repeated');
+          provideContext<string>('repeated');
+          provideContext<string>('repeated');
+        }
+      }
+      expect(RepeatedProvideContext).toBeDefined();
+
       const uuid = generateUUID();
-      kernel.createEntity(uuid, 'node');
+      kernel.createEntity(uuid, 'repeatedProvideContext');
 
-      return {kernel, uuid, scope: new ShadowObjectCreationScope(kernel.getEntity(uuid), kernel.logger, 'TestScope')};
-    };
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+      expect(value(provider!)).toBe('first');
 
+      // `Signal.prototype.set` has only a getter -- `provider.set = fn` throws a `TypeError`. The
+      // instance is extensible, so `defineProperty` still lands a data property that shadows the
+      // getter, and calls made through it reach the original writer underneath.
+      const writes: unknown[] = [];
+      const origSet = provider!.set;
+      Object.defineProperty(provider, 'set', {
+        value: (...args: Parameters<typeof origSet>) => {
+          writes.push(args[0]);
+          return origSet(...args);
+        },
+        configurable: true,
+      });
+
+      kernel.changeToken(uuid, 'repeatedProvideContextEmpty');
+
+      expect(writes).toEqual([undefined]);
+      expect(value(provider!)).toBeUndefined();
+
+      kernel.destroy();
+    });
+
+    it('does not let a later call take back an earlier clearOnDestroy opt-out', async () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      let provider: Signal<string | undefined> | undefined;
+
+      @ShadowObject({registry, token: 'stickyClearOnDestroy'})
+      class StickyClearOnDestroy {
+        constructor({provideContext}: ShadowObjectCreationAPI) {
+          provider = provideContext<string>('sticky', 'first', {clearOnDestroy: false});
+          provideContext<string>('sticky');
+          provideContext<string>('sticky', undefined, {clearOnDestroy: false});
+        }
+      }
+      expect(StickyClearOnDestroy).toBeDefined();
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'stickyClearOnDestroy');
+
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+      expect(value(provider!)).toBe('first');
+
+      const writes: unknown[] = [];
+      const origSet = provider!.set;
+      Object.defineProperty(provider, 'set', {
+        value: (...args: Parameters<typeof origSet>) => {
+          writes.push(args[0]);
+          return origSet(...args);
+        },
+        configurable: true,
+      });
+
+      kernel.changeToken(uuid, 'stickyClearOnDestroyEmpty');
+
+      expect(writes, 'one call asking for the clearing is enough, and no later call takes it back').toEqual([undefined]);
+      expect(value(provider!)).toBeUndefined();
+
+      kernel.destroy();
+    });
+
+    it('keys the clearOnDestroy registration by provider signal, not by name, so a provideContext and a provideGlobalContext of the same name each still clear', async () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      let contextProvider: Signal<string | undefined> | undefined;
+      let globalProvider: Signal<string | undefined> | undefined;
+
+      @ShadowObject({registry, token: 'sharedNameProviders'})
+      class SharedNameProviders {
+        constructor({provideContext, provideGlobalContext}: ShadowObjectCreationAPI) {
+          contextProvider = provideContext<string>('shared', 'ctxFirst');
+          globalProvider = provideGlobalContext<string>('shared', 'globalFirst');
+        }
+      }
+      expect(SharedNameProviders).toBeDefined();
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'sharedNameProviders');
+
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+      expect(value(contextProvider!)).toBe('ctxFirst');
+      expect(value(globalProvider!)).toBe('globalFirst');
+
+      // A Set keyed by name alone would see 'shared' already registered once the context provider's
+      // clearOnDestroy write is added, and skip the global provider's -- the two live in different
+      // maps (#contextProviders vs. #contextRootProviders) but would collide in a name-keyed set.
+      const contextWrites: unknown[] = [];
+      const origContextSet = contextProvider!.set;
+      Object.defineProperty(contextProvider, 'set', {
+        value: (...args: Parameters<typeof origContextSet>) => {
+          contextWrites.push(args[0]);
+          return origContextSet(...args);
+        },
+        configurable: true,
+      });
+
+      const globalWrites: unknown[] = [];
+      const origGlobalSet = globalProvider!.set;
+      Object.defineProperty(globalProvider, 'set', {
+        value: (...args: Parameters<typeof origGlobalSet>) => {
+          globalWrites.push(args[0]);
+          return origGlobalSet(...args);
+        },
+        configurable: true,
+      });
+
+      kernel.changeToken(uuid, 'sharedNameProvidersEmpty');
+
+      expect(contextWrites, 'the provideContext provider of "shared" clears').toEqual([undefined]);
+      expect(globalWrites, 'the provideGlobalContext provider of the same name clears too').toEqual([undefined]);
+
+      kernel.destroy();
+    });
+  });
+
+  describe('bindTo', () => {
     it('refuses a second binding and keeps the first one', () => {
       const {kernel, uuid, scope} = makeUnboundScope();
 
@@ -284,6 +425,49 @@ describe('ShadowObjectCreationScope', () => {
 
       expect(releaseSecond, 'a refused binding leaves no handles behind').not.toHaveBeenCalled();
       expect(forgetSecond).not.toHaveBeenCalled();
+
+      kernel.destroy();
+    });
+  });
+
+  describe('tearDown', () => {
+    it('lets go of the shadow-object and both kernel handles', () => {
+      const {kernel, scope} = makeUnboundScope();
+
+      const shadowObject = {} as ShadowObjectType;
+      const releaseScope = vi.fn();
+      const forgetShadowObject = vi.fn();
+
+      scope.bindTo(shadowObject, releaseScope, forgetShadowObject);
+
+      // `debugHandles` reads the same four fields `tearDown()` clears -- checking it before and
+      // after is a direct read of what the fix changes, not an inference from what a garbage
+      // collector happened to do with them.
+      let handles = scope.debugHandles;
+      expect(handles.shadowObject, 'the scope holds the shadow-object once bound').toBe(shadowObject);
+      expect(handles.releaseScope, 'the scope holds the kernel release once bound').toBe(releaseScope);
+      expect(handles.forgetShadowObject, 'the scope holds the other kernel release once bound').toBe(forgetShadowObject);
+      expect(handles.unsubscribeFromEntityDestroy, 'the scope holds its entity subscription once bound').toBeDefined();
+
+      scope.tearDown();
+
+      handles = scope.debugHandles;
+      expect(handles.shadowObject, 'the shadow-object is let go of').toBeUndefined();
+      expect(handles.releaseScope, 'the kernel release is let go of').toBeUndefined();
+      expect(handles.forgetShadowObject, 'the other kernel release is let go of').toBeUndefined();
+      expect(handles.unsubscribeFromEntityDestroy, 'the entity subscription is let go of').toBeUndefined();
+
+      expect(() => scope.bindTo({} as ShadowObjectType, vi.fn(), vi.fn())).toThrow(/torn down/);
+
+      kernel.destroy();
+    });
+
+    it('refuses a binding on a scope that tore down without ever being bound', () => {
+      const {kernel, scope} = makeUnboundScope();
+
+      scope.tearDown();
+
+      expect(() => scope.bindTo(eventize({}), vi.fn(), vi.fn())).toThrow(/torn down/);
 
       kernel.destroy();
     });

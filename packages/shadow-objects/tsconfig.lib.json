@@ -13,6 +13,7 @@
     "importHelpers": false,
     "noEmit": false,
     "incremental": false,
-    "composite": false
+    "composite": false,
+    "types": []
   }
 }
