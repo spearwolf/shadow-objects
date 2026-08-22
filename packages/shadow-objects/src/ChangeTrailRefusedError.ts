@@ -13,7 +13,8 @@
  * A refusal for a reason that says nothing about how far the Kernel got — a confirmation window
  * that ran out, a worker that died, a proxy of someone else's making — is not one of these. The
  * view reads such a reason as "the whole trail may well have been applied", which is the safe
- * direction: re-sending a creation for an entity the Kernel already holds would replace it.
+ * direction: a creation the Kernel already holds an entity for is refused, and the same trail
+ * comes back to the same refusal for as long as the view keeps sending it.
  */
 export class ChangeTrailRefusedError extends Error {
   /** how many entries of the change trail the Kernel applied before it stopped */

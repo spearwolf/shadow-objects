@@ -628,8 +628,8 @@ export class ComponentContext {
    *
    * A component is retired -- its entry dropped -- only where the build read it as spent and every
    * entry it contributed is settled. One component can hold a creation and an event in the same
-   * trail, and a creation sent twice would replace the entity the Shadow Environment already
-   * holds behind that uuid.
+   * trail, and a creation sent twice is refused by the Shadow Environment, which already holds an
+   * entity behind that uuid.
    *
    * @param appliedCount how many entries the Shadow Environment applied, counted from the front.
    *   Clamped to the length of the trail.
@@ -662,6 +662,10 @@ export class ComponentContext {
   /**
    * Resets the internal component change states so that all view components are regenerated with the next change trail.
    * The outstanding events are taken over.
+   *
+   * The trail this produces belongs to a Shadow Environment that holds none of these uuids -- a
+   * fresh proxy. One whose Kernel still holds them refuses the first re-created creation it reads,
+   * and every cycle that follows, because a uuid names one entity at a time.
    *
    * @see {@link ComponentContext.buildChangeTrails}
    */

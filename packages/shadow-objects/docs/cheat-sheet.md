@@ -399,7 +399,7 @@ loop();
 | `ShadowEnv.ProxyFailed` | The proxy lost its Shadow Environment; the reason comes with the event |
 
 ```typescript
-import {ChangeTrailRefusedError} from '@spearwolf/shadow-objects';
+import {ChangeTrailRefusedError, RemoteWorkerEnv} from '@spearwolf/shadow-objects';
 
 // resolves with the change trail of an applied cycle, rejects with the reason a refused one gave
 try {
@@ -409,8 +409,14 @@ try {
     // the kernel applied reason.appliedCount of reason.entryCount entries, reason.cause says why
     // it stopped -- the rest is still pending and goes out again with the next cycle
   } else {
-    // a reason that says nothing about how far the kernel got: the whole trail counts as applied
-    env.view?.reCreateChanges();
+    // a reason that says nothing about how far the kernel got: the whole trail counts as applied.
+    // a fresh worker is the way back -- the kernel behind the old proxy may still hold the uuids,
+    // and a creation for a uuid it holds is refused. three steps, none of them optional:
+    const proxy = new RemoteWorkerEnv();
+    env.envProxy = proxy;
+    await env.ready();                                   // ShadowEnv re-creates the components
+    await proxy.importScript('/my-shadow-objects.js');   // a new worker has an empty registry
+    await env.syncWait();                                // sends the rebuilt trail
   }
 }
 ```
@@ -440,6 +446,15 @@ new ViewComponent('b', {context: live, uuid: 'a-uuid'});  // throws ComponentUui
 Both destroy the components they hold — each one reports `isDestroyed === true` afterwards and has no context. The difference is the namespace: `clear()` keeps it and takes components back in (`vc.context = ctx`), `dispose()` releases it and rejects every join.
 
 Tear down in this order: `env.destroy()`, then `ctx.dispose()`.
+
+The Kernel keeps the same rule on its own side of the wire — one Entity to a uuid:
+
+```typescript
+kernel.createEntity('a-uuid', 'my-token');
+kernel.createEntity('a-uuid', 'other-token');  // throws EntityUuidInUseError, the standing
+                                               // entity keeps everything it has; the uuid is
+                                               // free once destroyEntity('a-uuid') has been through
+```
 
 ## FrameLoop
 

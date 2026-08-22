@@ -1,6 +1,7 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {ComponentChangeType} from '../constants.js';
+import {EntityUuidInUseError} from '../EntityUuidInUseError.js';
 import {Registry} from '../in-the-dark/Registry.js';
 import {shadowObjects} from '../in-the-dark/ShadowObject.js';
 import {ComponentContext} from './ComponentContext.js';
@@ -159,6 +160,66 @@ describe('LocalShadowObjectEnv', () => {
       expect((refusal as ChangeTrailRefusedError).entryCount).toBe(2);
 
       env.destroy();
+    });
+
+    // What the documented recovery rests on: the components rebuilt from the Component Memory go
+    // to an environment that holds none of their uuids. This is the whole claim, measured without
+    // a worker in the way -- one and the same rebuilt trail against two kernels.
+    describe('a trail re-created from the Component Memory', () => {
+      const buildReCreatedTrail = () => {
+        const ctx = ComponentContext.get();
+
+        const vc = new ViewComponent('foo');
+        vc.setProperty('bar', 42);
+
+        const first = ctx.buildChangeTrails();
+
+        ctx.reCreateChanges();
+
+        return {uuid: vc.uuid, first, reCreated: ctx.buildChangeTrails(false)};
+      };
+
+      it('is refused by an environment that still holds the uuids', async () => {
+        const env = new LocalShadowObjectEnv();
+        const {uuid, first, reCreated} = buildReCreatedTrail();
+
+        await env.applyChangeTrail(first, true);
+        expect(env.kernel.hasEntity(uuid)).toBe(true);
+
+        const refusal = await env.applyChangeTrail(reCreated, true).then(
+          () => {
+            throw new Error('expected the promise to reject, but it resolved');
+          },
+          (reason) => reason,
+        );
+
+        expect(refusal).toBeInstanceOf(ChangeTrailRefusedError);
+        expect(
+          (refusal as ChangeTrailRefusedError).appliedCount,
+          'the creation is the first entry, so nothing goes through',
+        ).toBe(0);
+        expect((refusal as ChangeTrailRefusedError).cause).toBeInstanceOf(EntityUuidInUseError);
+        expect(((refusal as ChangeTrailRefusedError).cause as EntityUuidInUseError).uuid).toBe(uuid);
+
+        env.destroy();
+      });
+
+      it('goes through in full against a fresh environment', async () => {
+        const first = new LocalShadowObjectEnv();
+        const {uuid, first: firstTrail, reCreated} = buildReCreatedTrail();
+
+        await first.applyChangeTrail(firstTrail, true);
+
+        const fresh = new LocalShadowObjectEnv();
+
+        await fresh.applyChangeTrail(reCreated, true);
+
+        expect(fresh.kernel.hasEntity(uuid)).toBe(true);
+        expect(fresh.kernel.getEntity(uuid).getProperty('bar'), 'the state the view is in arrives with it').toBe(42);
+
+        first.destroy();
+        fresh.destroy();
+      });
     });
   });
 

@@ -16,9 +16,10 @@ export interface IShadowObjectEnvProxy {
    *
    * Every other reason is read as "the whole trail counts as applied" -- a confirmation window
    * that ran out or a proxy that says nothing about its Kernel leaves an environment that may
-   * well hold all of it, and a creation sent a second time would replace the entity behind that
-   * uuid. An implementation that has always rejected with something else therefore keeps behaving
-   * exactly as it did.
+   * well hold all of it, and a creation sent a second time to a Kernel that holds the entity is
+   * refused, so a trail kept pending on a guess would come back to that refusal cycle after
+   * cycle. An implementation that has always rejected with something else therefore keeps
+   * behaving exactly as it did.
    *
    * @param waitForConfirmation whether the caller waits for the environment to confirm the trail.
    *   A proxy that can only report a refusal on the confirmed route says nothing about a trail

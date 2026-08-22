@@ -67,6 +67,15 @@ export class ShadowEnv {
 
     createEffect(() => {
       if (this.viewReady && this.proxyReady) {
+        // Both halves being ready is what this reacts to, and either half can be the one that
+        // arrived last. A fresh proxy under the standing view is the case the recovery is written
+        // for: it holds none of the uuids, and the re-created trail goes through. A view that is
+        // taken off and hung back on -- `env.view = undefined; env.view = ctx`, and `get(ns)`
+        // hands back the very same context -- is the one that does not: its memory is still full,
+        // the proxy that stayed still holds every uuid in it, and the trail is refused at its
+        // first creation and stays refused. A context that is genuinely new carries an empty
+        // memory and re-creates nothing at all. Whoever swaps the view of a live environment
+        // tears the proxy down with it.
         this.view!.reCreateChanges();
         emit(self, ShadowEnv.ContextCreated, self);
         if (this.#syncAfterContextCreated) {
@@ -240,9 +249,13 @@ export class ShadowEnv {
    *
    * A reason that says nothing about how far the Kernel got -- a confirmation window that ran out,
    * a proxy whose environment is gone -- counts the whole trail as applied, because a Shadow
-   * Environment that fell silent may well hold all of it. Then the trail is gone, and only
-   * {@link ComponentContext.reCreateChanges} brings it back; calling it is the consumer's
-   * decision, the same way recovering from a {@link ShadowEnv.ProxyFailed} is.
+   * Environment that fell silent may well hold all of it. Then the trail is gone, and only a
+   * re-creation from the Component Memory brings it back. That re-creation belongs to a fresh
+   * proxy: an environment that still holds the entities refuses a creation for a uuid it already
+   * has. Handing {@link ShadowEnv.envProxy} a new proxy is therefore the way back -- the Shadow
+   * Environment calls {@link ComponentContext.reCreateChanges} itself once the new proxy is ready.
+   * Making that call is the consumer's decision, the same way recovering from a
+   * {@link ShadowEnv.ProxyFailed} is.
    *
    * @throws {ShadowEnvDestroyedError} if the environment is destroyed before the cycle completes
    */
@@ -365,8 +378,9 @@ export class ShadowEnv {
   #commitSyncCycle(changeTrail: ChangeTrailType, reason?: unknown): void {
     // A reason that does not say how far the Kernel got says nothing about the trail either: a
     // confirmation window that ran out leaves an environment that may well have applied every
-    // entry, and re-sending a creation on top of an entity it already holds replaces that entity.
-    // The line moves only where the Kernel itself named the count.
+    // entry, and a creation re-sent for an entity it already holds is refused -- a trail kept
+    // pending on a guess would come back to that refusal cycle after cycle. The line moves only
+    // where the Kernel itself named the count.
     const appliedCount = reason instanceof ChangeTrailRefusedError ? reason.appliedCount : changeTrail.length;
 
     // `?.` rather than `!`: a destroy() can have run between the await above and this line

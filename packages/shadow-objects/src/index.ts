@@ -1,5 +1,6 @@
 export * from './ChangeTrailRefusedError.js';
 export * from './constants.js';
+export * from './EntityUuidInUseError.js';
 export * from './elements/constants.js';
 export type * from './elements/events.js';
 export * from './elements/requestEntAncestor.js';

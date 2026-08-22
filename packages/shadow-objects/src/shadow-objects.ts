@@ -1,5 +1,6 @@
 export * from './ChangeTrailRefusedError.js';
 export * from './constants.js';
+export * from './EntityUuidInUseError.js';
 export * from './in-the-dark/events.js';
 export * from './in-the-dark/Kernel.js';
 export * from './in-the-dark/Registry.js';

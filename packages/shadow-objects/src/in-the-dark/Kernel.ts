@@ -2,6 +2,7 @@ import {emit, eventize, off, on} from '@spearwolf/eventize';
 import {batch} from '@spearwolf/signalize';
 import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {ComponentChangeType, MessageToView} from '../constants.js';
+import {EntityUuidInUseError} from '../EntityUuidInUseError.js';
 import type {
   ComponentPropertiesType,
   IComponentChangeType,
@@ -296,6 +297,14 @@ export class Kernel {
     properties?: ComponentPropertiesType,
     autoDestructionOnParentRemoval = false,
   ): void {
+    // A uuid names one entity at a time. Taking the entry over would leave the entity behind it
+    // standing -- with its shadow objects, its signals and its contexts -- and out of reach of
+    // every teardown the kernel has, because nothing holds that uuid any more. The uuid is free
+    // again once `destroyEntity()` has been through.
+    if (this.#entities.has(uuid)) {
+      throw new EntityUuidInUseError(uuid);
+    }
+
     const e = new Entity(this, uuid);
 
     e.order = order;

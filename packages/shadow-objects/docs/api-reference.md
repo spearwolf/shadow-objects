@@ -1020,7 +1020,7 @@ Three event names that arrive as ordinary events on a `ViewComponent`; see [Rece
 | :--- | :--- |
 | `buildChangeTrails(commit = true)` | The changes since the previous call, as a `ChangeTrailType`. Returns an empty array when the context holds no components. With `commit` it also counts the trail as applied and writes the Component Memory; with `commit = false` it does neither, and `commitChangeTrail()` settles the trail afterwards. |
 | `commitChangeTrail(appliedCount, changeTrail?)` | Fold the first `appliedCount` entries of the trail built last into the state the next trail is diffed against, and write them to the Component Memory. Everything behind that line stays pending and goes out again with the next trail. `changeTrail`, when given, is the trail this call settles -- the call is ignored unless it is the one the context built last. |
-| `reCreateChanges()` | Rebuild every component from the Component Memory, so that the next trail re-creates all of them. This is how a fresh proxy is brought up to the state the view is already in. |
+| `reCreateChanges()` | Rebuild every component from the Component Memory, so that the next trail re-creates all of them. This is how a fresh proxy is brought up to the state the view is already in -- and the only kind of environment it belongs to: one that still holds the entities refuses every re-created `CreateEntities` it is sent, with an `EntityUuidInUseError`. |
 
 A change trail returned by `buildChangeTrails()` is a snapshot: nothing in the library writes to it again, not even the property tuples of its entries. This holds for anything derived from it too, including the value `ShadowEnv.syncWait()` resolves with and the payloads of `ShadowEnv.AfterSync` and `ShadowEnv.SyncFailed`.
 
@@ -1041,6 +1041,13 @@ Two builds without a commit in between are allowed: the older trail is then comm
 is the optimistic reading, rather than leaving two trails claiming the same entries.
 
 `reCreateChanges()` announces itself: it broadcasts the `ContextLost` event to every `ViewComponent` in the context, parents and children alike. It returns immediately when the memory is empty -- after a `clear()`, for instance, there is nothing left to recover.
+
+What it rebuilds goes to a Shadow Environment that no longer holds those uuids. A Kernel that still
+holds them refuses the re-created creation of the first one and every cycle that follows, because a
+uuid names one Entity at a time. The recovery therefore starts with a fresh proxy, and `ShadowEnv`
+makes the `reCreateChanges()` call itself once that proxy reports ready -- the two steps that follow
+it, the `importScript()` that gives the new worker its Registry and the `sync()` that sends the
+rebuilt trail, belong to the application; [`syncWait()`](#syncwait) spells the sequence out.
 
 #### `clear()`
 
@@ -1215,13 +1222,18 @@ by tearing the environment down.
 A reason that says nothing about how far the Kernel got is read differently: a confirmation window
 that ran out, a `WorkerDestroyedError`, a proxy of someone else's making. The whole trail then counts
 as applied, which is the safe direction -- a worker that timed out may well hold all of it, and a
-creation sent a second time would replace the entity behind that uuid. Over a worker this is also
+creation sent a second time to a Kernel that holds the entity is refused, so a trail kept pending on
+a guess would come back to that refusal cycle after cycle. Over a worker this is also
 the case for every trail sent without a confirmation, `ShadowEnv.sync()` among them: nobody asks,
 so nobody answers, and the view has nothing to draw a line with.
 
-`env.view.reCreateChanges()` remains the way back from a lost proxy, not from a refused trail: it
-rebuilds the pending changes from the Component Memory, and the next `sync()` sends the full state
-of every component.
+A re-creation from the Component Memory remains the way back from a lost proxy, not from a refused
+trail: it rebuilds the pending changes, and the next `sync()` sends the full state of every
+component. It belongs to a fresh proxy, though -- against an environment whose Kernel still holds
+those uuids, every re-created creation is refused. Assigning `env.envProxy` a new proxy is the first
+of three steps: `ShadowEnv` calls `reCreateChanges()` itself once the new environment reports ready,
+then the new worker needs its Registry through `importScript()`, and the rebuilt trail needs a
+`sync()` to go out. [`syncWait()`](#syncwait) has the whole sequence.
 
 ### Methods
 
@@ -1239,24 +1251,50 @@ It rejects with the reason the proxy gave when the Shadow Environment could not 
 
 Where the Kernel refused the trail, that reason is a `ChangeTrailRefusedError`: `appliedCount` and `entryCount` say how far it got, and `cause` carries what the entry actually threw -- the error object itself locally, the wording the worker put on the wire across a worker boundary. The entries the Kernel did not apply are still pending and go out again with the next cycle.
 
+The two kinds of reason want two different answers, so the `catch` tells them apart:
+
 ```typescript
 try {
   const changeTrail = await env.syncWait();
   console.log('Synced changes:', changeTrail);
 } catch (error) {
-  console.warn('the change trail did not make it:', error);
-
-  // the only way back: the Component Memory rebuilds what the trail was carrying,
-  // and the next sync() sends the full state of every component
-  env.view?.reCreateChanges();
-  env.sync();
+  if (error instanceof ChangeTrailRefusedError) {
+    // the Kernel said how far it got. The entries from `appliedCount` on are still pending and
+    // go out again with the next cycle -- the environment is intact, and nothing has to be
+    // rebuilt here. What is worth doing is reading `cause`: a reason that stays put refuses
+    // every following cycle the same way.
+    console.warn('refused at entry', error.appliedCount, 'of', error.entryCount, error.cause);
+  } else {
+    // a reason that says nothing about how far the Kernel got -- a confirmation window that ran
+    // out, a worker that is gone. The whole trail counts as applied, and only a rebuild from the
+    // Component Memory brings the two sides back together. That rebuild goes to a fresh proxy:
+    // the Kernel behind the old one may still hold those uuids.
+    const proxy = new RemoteWorkerEnv();
+    env.envProxy = proxy;
+    await env.ready();                                   // ShadowEnv re-creates the components here
+    await proxy.importScript('/my-shadow-objects.js');   // a new worker starts empty
+    await env.syncWait();                                // and this sends the rebuilt trail
+  }
 }
 ```
 
-The `reCreateChanges()` call is deliberately left to the consumer. A cycle can fail because a
+Three steps, and none of them is optional. `env.envProxy = …` starts the new worker and, once it
+reports ready, `ShadowEnv` calls `ComponentContext.reCreateChanges()` itself -- the components are
+rebuilt, the trail is pending. `importScript()` is what gives that worker its Registry: a fresh one
+knows no token at all, so entities created before the import get no Shadow Objects. And the rebuilt
+trail waits for a `sync()` like any other pending change; `syncWait()` sends it and says whether it
+arrived.
+
+Why a fresh proxy rather than a rebuild into the one that is there: the environment behind the old
+proxy may still hold the entities of the trail, and a `CreateEntities` for a uuid its Kernel holds is
+refused with an [`EntityUuidInUseError`](#entityuuidinuseerror) -- a rebuild sent there is turned
+away entry for entry, cycle after cycle. A Kernel that has just been started holds nothing, so the
+same rebuild goes through in full.
+
+The decision to rebuild at all is deliberately left to the consumer. A cycle can fail because a
 single worker hiccup swallowed one trail, and it can fail because the Shadow Environment refuses
-everything it is sent -- the first case wants the rebuild, the second one spins on it. Only the
-application knows which of the two it is in.
+everything it is sent -- the first case is over with a fresh environment, the second one produces
+the same failure in it. Only the application knows which of the two it is in.
 
 #### `ChangeTrailRefusedError`
 
@@ -2386,7 +2424,7 @@ kernel.noteEntityTreeChange(child.uuid);
 
 | Method | Signature | Description |
 | :--- | :--- | :--- |
-| `createEntity` | `(uuid, token, parentUuid?, order?, properties?, autoDestructionOnParentRemoval?)` | Creates an Entity and its Shadow Objects. `properties` is a list of `[name, value]` pairs; an entry that names only `name` sets the property to `undefined`. A creation that does not get through leaves no Entity behind: the error reaches the caller, and the Entity the call was made for is not in the Kernel afterwards. What its constructors did to *other* Entities before the throw is not taken back, and the rollback reaches one step further: an Entity a constructor hung or moved under the failed one is left as a root, or destroyed where it carries `autoDestructionOnParentRemoval`. The paragraph below spells that out. |
+| `createEntity` | `(uuid, token, parentUuid?, order?, properties?, autoDestructionOnParentRemoval?)` | Creates an Entity and its Shadow Objects. A uuid the Kernel already holds an Entity for is refused with an [`EntityUuidInUseError`](#entityuuidinuseerror), and the Entity standing behind that uuid is left exactly as it is. `properties` is a list of `[name, value]` pairs; an entry that names only `name` sets the property to `undefined`. A creation that does not get through leaves no Entity behind: the error reaches the caller, and the Entity the call was made for is not in the Kernel afterwards. What its constructors did to *other* Entities before the throw is not taken back, and the rollback reaches one step further: an Entity a constructor hung or moved under the failed one is left as a root, or destroyed where it carries `autoDestructionOnParentRemoval`. The paragraph below spells that out. |
 | `destroyEntity` | `(uuid: string)` | Destroys the Entity, its Shadow Objects and its children. Detaching the Entity from its parent, each Shadow Object's teardown, and the Entity's own release each stand behind a guard of their own, so a throw at any one of them costs nothing behind it — a teardown that throws costs no sibling its own; every throw is reported through the `ConsoleLogger` rather than handed to the caller, and the Entity is out of the Kernel when the call returns either way. A listener on the Entity's own destruction notification is held to the same contract: the creation scopes tear down and the Entity releases its properties, listeners, subscriptions and contexts step by step, whether or not that notification reached them and whether or not an earlier step of that release threw — see [`onDestroy(callback)`](#ondestroycallback). |
 | `setParent` | `(uuid, parentUuid?, order?)` | Moves the Entity under a new parent, or makes it a root when `parentUuid` is omitted. An absent `order` keeps the current one -- it is not a reset to `0`. A `parentUuid` naming the Entity itself or one of its descendants is refused with an error, and the Entity stays where it was. |
 | `updateOrder` | `(uuid: string, order: number)` | Sets the sort order among siblings. |
@@ -2398,11 +2436,40 @@ kernel.noteEntityTreeChange(child.uuid);
 
 **A failed creation takes its own Entity back.** While `createEntity` runs, the Entity is already registered in the Kernel, because a Shadow Object constructor may address the Kernel with its own UUID -- hanging a child under it with `createEntity`, moving another Entity under it with `setParent`, or looking it up. Should one of those constructors throw, the Shadow Objects that already stand go through their regular teardown, their `onDestroy` included, and the Entity the call was made for is gone when the error reaches the caller. The rollback covers that one Entity, not the Kernel as a whole: an Entity the failing constructor created or destroyed elsewhere stays as the constructor left it, and the teardown adds to that, because it walks the children list of the failed Entity. Whatever hangs there when the throw comes is promoted to a root -- a child the constructor created under it as much as an Entity that was already there and got moved under it with `setParent`, which is taken off the parent it came from in the process. The exception is read off that Entity itself, not off the way it got there: one carrying `autoDestructionOnParentRemoval` is destroyed instead, its Shadow Objects hearing their `onDestroy`. Either way it ends up in a state that is neither the one before the call nor the one the constructor built; covering that would take a snapshot of the Kernel, which this path does not make. In a Worker, `MessageRouter` answers the Change Trail the throw came out of with a rejection -- an `AppliedChangeTrail` carrying an `error` -- which arrives on the View Layer side as `ShadowEnv.SyncFailed`.
 
+**A uuid names one Entity at a time.** `createEntity` refuses a uuid the Kernel already holds an Entity for, with an [`EntityUuidInUseError`](#entityuuidinuseerror) carrying that uuid on `error.uuid`. The refusal comes before the call writes anything, so there is nothing to take back: the Entity standing behind the uuid keeps its Shadow Objects, its signals, its contexts, its token and its properties, and a `parentUuid` the refused call named gains no child. The uuid is free again once `destroyEntity()` has been through -- rebuilding an Entity under the same uuid means destroying the one that stands first. In a Change Trail the refusal is the `cause` of the `ChangeTrailRefusedError` the trail ends with, and `appliedCount` names the entries ahead of it that did go through -- as the error object itself in a local environment, and as the wording the Kernel put on the wire across a worker boundary, where an `instanceof` check therefore finds a string.
+
 **A failed token change is taken back.** `changeToken` writes the new token before the constructors run, because that token is what the constructor set is resolved from. Should one of those constructors -- or one of the `[onCreate]` hooks behind them -- throw, the Kernel puts the previous token back, takes the Shadow Objects of the new token down again, builds the ones the old token had, and only then hands the error to the caller. The order is the one it reads as: the token first, so the rebuild runs against the token the Entity carries afterwards, and the new Shadow Objects leave before the old ones return, so the two sets never stand on the Entity at the same time. An error thrown on that way back does not replace the one the caller is waiting for -- it goes to the `ConsoleLogger`. Two things stay outside it. `changeProperties` has written its properties by the time a constructor runs, and they stay written; only the Shadow Objects go back — which can leave a restored Shadow Object standing on an Entity whose properties no longer route to its constructor. That disagreement lasts until the next re-resolution of the set: the constructor is not in the list `changeProperties`, `changeToken` or `upgradeEntities()` resolves next, so the Shadow Object is taken down there. And `upgradeEntities()` puts everything its first pass took down out of reach, at the Entity whose rebuild throws as much as at every other one: teardown and rebuild are two separate passes over the whole Entity tree, and the rollback belongs to the call the throw fell in — the second-pass call, which has taken nothing down of its own. That Entity carries the token it came in with, because an upgrade writes no token, and it is left with the Shadow Objects the first pass spared. Where its whole constructor set changed, that is none at all. Nor is that Entity the only one left that way: the throw leaves the second pass altogether, so every Entity behind it in the traversal order never reaches its rebuild and stands with what the first pass spared as well.
 
 Neither check reaches a children list written without the parent link -- `Entity.addChild()` and `ComponentContext.addToChildren()` do exactly that. Neither does the Kernel's bookkeeping, and `Entity.removeChild()` and `Entity.resortChildren()` join the two there: all four write or reorder a children list and report nothing, so the cached traversal can lag a call behind them. Whoever writes the children list drives that themselves with `kernel.noteEntityTreeChange(uuid)`, which drops the cache -- the root set stays out of reach, as it follows the parent link none of the four wrote. The four traversals over the children lists carry the ring case instead: `Kernel.traverseLevelOrderBFS()`, `Kernel.getEntityGraph()`, `entity.traverse()` and `ComponentContext.traverseLevelOrderBFS()` each visit every node once and terminate.
 
 Termination is all they carry, though. A ring closed through `Entity.addChild()` or `ComponentContext.addToChildren()` and reachable from no root is not walked by `Kernel.destroy()`, which sweeps from the roots: its Entities go with the bookkeeping and their `onDestroy` never runs. Keep such a ring reachable from a root, or take it down yourself before the Kernel goes.
+
+#### `EntityUuidInUseError`
+
+The reason the Kernel gives when it is asked to create an Entity under a uuid it already holds one
+for. Exported from `@spearwolf/shadow-objects` for the view side and from
+`@spearwolf/shadow-objects/shadow-objects` for the Kernel side.
+
+| Member | Type | Description |
+| :--- | :--- | :--- |
+| `uuid` | `string` | The uuid the Kernel already holds an Entity for. |
+
+Only a local environment hands the object itself to the view side. A Worker puts the wording of the
+refusal on the wire, so the `cause` of the `ChangeTrailRefusedError` that arrives there is a string
+and carries no `uuid` field -- the same limit the `ChangeTrailRefusedError` section names.
+
+```typescript
+import { EntityUuidInUseError } from '@spearwolf/shadow-objects/shadow-objects';
+
+try {
+  kernel.createEntity(uuid, 'my-token');
+} catch (error) {
+  if (error instanceof EntityUuidInUseError) {
+    // the entity behind error.uuid stands untouched; destroy it to free the uuid
+    kernel.destroyEntity(error.uuid);
+  }
+}
+```
 
 #### `dispatchMessageToView(message)`
 

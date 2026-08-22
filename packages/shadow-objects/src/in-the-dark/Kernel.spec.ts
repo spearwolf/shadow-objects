@@ -12,6 +12,7 @@ import {
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {ChangeTrailPhase, ComponentChangeType, MessageToView} from '../constants.js';
+import {EntityUuidInUseError} from '../EntityUuidInUseError.js';
 import type {IComponentChangeType, ICreateEntitiesChange, ShadowObjectCreationAPI} from '../types.js';
 import {generateUUID} from '../utils/generateUUID.js';
 import {ComponentChanges} from '../view/ComponentChanges.js';
@@ -4360,6 +4361,115 @@ describe('Kernel', () => {
       expect(() => kernel.createEntity(uuid, 'node', 'no-such-parent')).toThrow();
 
       expect(kernel.hasEntity(uuid)).toBe(false);
+
+      kernel.destroy();
+    });
+  });
+
+  describe('createEntity with a uuid the kernel already holds', () => {
+    it('refuses the second creation and names the uuid', () => {
+      const kernel = new Kernel(new Registry());
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'node');
+
+      expect(() => kernel.createEntity(uuid, 'other')).toThrow(EntityUuidInUseError);
+
+      let refusal: unknown;
+      try {
+        kernel.createEntity(uuid, 'other');
+      } catch (error) {
+        refusal = error;
+      }
+
+      expect((refusal as EntityUuidInUseError).uuid, 'the uuid is part of the promise, not just of the message').toBe(uuid);
+
+      kernel.destroy();
+    });
+
+    it('leaves the entity that stands untouched', async () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const destroyed: string[] = [];
+
+      @ShadowObject({registry, token: 'keeper'})
+      class Keeper {
+        constructor({onDestroy: onScopeDestroy, provideContext, useProperty}: ShadowObjectCreationAPI) {
+          onScopeDestroy(() => destroyed.push('keeper'));
+          provideContext('probe', 42);
+          useProperty('x');
+        }
+      }
+      expect(Keeper).toBeDefined();
+
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'keeper', undefined, 0, [['x', 7]]);
+
+      const before = kernel.getEntity(uuid);
+      const soBefore = kernel.findShadowObjects(uuid);
+
+      expect(soBefore).toHaveLength(1);
+
+      expect(() => kernel.createEntity(uuid, 'node', undefined, 0, [['x', 99]])).toThrow(EntityUuidInUseError);
+
+      // The context signal is fed through a deferred update, so the read waits one microtask out.
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+      expect(kernel.getEntity(uuid), 'the entity behind the uuid is the very same one').toBe(before);
+      expect(kernel.findShadowObjects(uuid), 'its shadow objects stand as they were').toEqual(soBefore);
+      expect(destroyed, 'nothing of it was torn down').toEqual([]);
+      expect(before.getProperty('x'), 'the properties of the refused creation land nowhere').toBe(7);
+      expect(value(before.useContext('probe')), 'its contexts keep their value').toBe(42);
+      expect(kernel.getEntityGraph()[0].token, 'its token is the one it was created with').toBe('keeper');
+
+      kernel.destroy();
+    });
+
+    it('holds nothing of the refused creation', () => {
+      const kernel = new Kernel(new Registry());
+      const [a, b] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(a, 'node');
+      kernel.createEntity(b, 'node');
+
+      expect(() => kernel.createEntity(b, 'node', a)).toThrow(EntityUuidInUseError);
+
+      // The guard stands ahead of every write the creation makes, so there is nothing to roll back.
+      expect(kernel.getEntity(a).children, 'the parent named by the refused creation stays childless').toEqual([]);
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([a, b]);
+      expect(kernel.getEntity(b).parentUuid).toBeUndefined();
+
+      kernel.destroy();
+    });
+
+    it('refuses the change trail at that entry and says how far it got', () => {
+      const kernel = new Kernel(new Registry());
+      const uuids = [generateUUID(), generateUUID()];
+
+      const changeTrail: IComponentChangeType[] = [
+        {type: ComponentChangeType.CreateEntities, uuid: uuids[0], token: 'node'},
+        {type: ComponentChangeType.CreateEntities, uuid: uuids[0], token: 'node'},
+        {type: ComponentChangeType.CreateEntities, uuid: uuids[1], token: 'node'},
+      ];
+
+      let refusal: unknown;
+      try {
+        kernel.run({changeTrail});
+      } catch (error) {
+        refusal = error;
+      }
+
+      expect(refusal).toBeInstanceOf(ChangeTrailRefusedError);
+
+      const refused = refusal as ChangeTrailRefusedError;
+      expect(refused.appliedCount).toBe(1);
+      expect(refused.entryCount).toBe(3);
+      expect(refused.cause).toBeInstanceOf(EntityUuidInUseError);
+
+      expect(kernel.hasEntity(uuids[0])).toBe(true);
+      expect(kernel.hasEntity(uuids[1]), 'the entries behind the refused one were never attempted').toBe(false);
 
       kernel.destroy();
     });

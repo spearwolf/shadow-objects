@@ -538,7 +538,7 @@ The trail is not lost. A Kernel applies a change trail entry by entry and the fi
 
 ```javascript
 import { on } from '@spearwolf/eventize';
-import { ChangeTrailRefusedError, ShadowEnv } from '@spearwolf/shadow-objects';
+import { ChangeTrailRefusedError, RemoteWorkerEnv, ShadowEnv } from '@spearwolf/shadow-objects';
 
 on(env, ShadowEnv.SyncFailed, (reason, changeTrail) => {
   if (reason instanceof ChangeTrailRefusedError) {
@@ -548,17 +548,36 @@ on(env, ShadowEnv.SyncFailed, (reason, changeTrail) => {
   }
 
   // a reason that says nothing about how far the kernel got: the whole trail counts as
-  // applied, and only the Component Memory can bring the view and the environment back together
-  env.view.reCreateChanges();
-  env.sync();
+  // applied, and only the Component Memory can bring the view and the environment back
+  // together -- in a worker that has just been started. A listener cannot await, so the
+  // rejections of the recovery need a catch of their own, or they vanish
+  recoverInAFreshWorker().catch((error) => {
+    console.error('the recovery did not get through:', error);
+  });
 });
+
+async function recoverInAFreshWorker() {
+  const proxy = new RemoteWorkerEnv();
+  env.envProxy = proxy;
+
+  await env.ready();                                    // ShadowEnv re-creates the components here
+  await proxy.importScript('/my-shadow-objects.js');    // a new worker starts with an empty registry
+
+  // and this sends the rebuilt trail. A cycle refused here is not a failure of the recovery: it
+  // comes back as SyncFailed and is read at the top of this listener like any other cycle.
+  await env.syncWait().catch(() => {});
+}
 ```
 
 `syncWait()` reports the same thing to whoever awaited that cycle: it rejects with the reason instead of resolving with a trail that never arrived. `ShadowEnv.AfterSync` does not fire for a cycle that failed, so a listener of that event hears the successful cycles and nothing else.
 
 The other side of the promise: a cause that stays put refuses every following cycle the same way. A token no definition exists for, or a Shadow Object whose constructor always throws, produces the same refusal again and again rather than failing once and leaving the environment quietly short of a state nobody notices. This listener is where an application ends that -- by taking the component that provokes it out of the view, or by tearing the environment down. Counting the attempts is worth it either way.
 
-Two limits belong to this. Over a worker the count only travels on the confirmed route: `syncWait()` asks for a confirmation, `sync()` does not, and a trail nobody waits for gets no answer at all -- a refusal on that route reaches the view neither as a count nor as an event. And a reason that is not a `ChangeTrailRefusedError` -- a confirmation window that ran out, a worker that is already gone -- says nothing about how far the Kernel got. The whole trail then counts as applied, which is the safe direction: a worker that timed out may well hold all of it, and a creation sent a second time would replace the entity behind that uuid.
+Two limits belong to this. Over a worker the count only travels on the confirmed route: `syncWait()` asks for a confirmation, `sync()` does not, and a trail nobody waits for gets no answer at all -- a refusal on that route reaches the view neither as a count nor as an event. And a reason that is not a `ChangeTrailRefusedError` -- a confirmation window that ran out, a worker that is already gone -- says nothing about how far the Kernel got. The whole trail then counts as applied, which is the safe direction: a worker that timed out may well hold all of it, and a creation sent a second time to a Kernel that holds the entity is refused with an `EntityUuidInUseError`, so a trail kept pending on a guess would come back to that refusal cycle after cycle.
+
+That is also why the recovery above hands `envProxy` a new proxy instead of re-creating into the one that is there. A uuid names one Entity at a time, and the Kernel behind the old proxy may still hold every uuid the Component Memory would send again. A Kernel that has just been started holds none of them, and `ShadowEnv` re-creates the components into it by itself as soon as it reports ready.
+
+The two steps behind that one are the application's. A worker that has just been started has an empty Registry and knows no token, so the entities arriving in it would get no Shadow Objects -- `importScript()` is what gives it the definitions. And the re-created changes are pending changes like any other: they go out with the next `sync()`, and `syncWait()` is the one that also says whether they arrived. What a refused trail does **not** want is any of this: its entries are already pending, the environment is intact, and the next cycle carries them by itself.
 
 With the declarative setup this arrives as a DOM event too: `<shae-worker>` dispatches `syncfailed` on itself, with `reason`, `changeTrail` and `shadowEnv` in the `detail`.
 
