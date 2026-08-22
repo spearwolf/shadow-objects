@@ -501,12 +501,38 @@ export class Kernel {
     // The root set and the traversal cache follow the three writes above: each of them reports to
     // `noteEntityTreeChange()` from inside the entity, on this route as on any other.
 
-    queueMicrotask(() => {
-      if (this.logger.isDebug) {
-        this.logger.debug('entity.onParentChanged', {uuid, parentUuid, order: nextOrder, entity: e});
-      }
+    if (this.logger.isDebug) {
+      this.logger.debug('entity.onParentChanged', {uuid, parentUuid, order: nextOrder, entity: e});
+    }
+
+    // The notification is the last thing this method does, and it goes out while the caller is
+    // still inside the call: the entity is fully placed by now, and an entity that is destroyed
+    // later in the same task has heard about its last move before its listeners come off.
+    //
+    // What a handler reads inline differs by reader. `useParentContext()` is a direct link to the
+    // parent's own context signal (`Entity.#subscribeToParent()`), rebound the moment
+    // `e.parentUuid = parentUuid` runs above -- it already names the new parent here. That link
+    // reads whatever the parent's own context signal currently holds, though, and that signal runs
+    // through the same one-microtask collector named below: a parent whose own provided value was
+    // set in the same task has not settled it there yet, and `useParentContext()` reads `undefined`
+    // until it does. `useContext()` runs through `Entity`'s `deferContextValueUpdate()`, a
+    // one-microtask batch collector of its own; it still names the value the entity is leaving here,
+    // and a handler that needs the new one reads it through an effect instead.
+    //
+    // Inside a change trail this call runs inside the `batch()` of `Kernel.run()`: a signal write the
+    // handler makes here settles its dependent effects only once that batch releases at the end of
+    // the trail, where the same write outside a change trail settles them right away.
+    //
+    // The guard is the one `destroyEntity()` puts around its own entity-wide notification: a
+    // handler that throws is reported and costs nothing else -- and so is an error a Kernel call
+    // the handler makes throws back into it, such as `createEntity()` refusing a uuid already in
+    // use. Without it either throw would leave through `setParent()` and turn one bad handler into
+    // a refused change trail.
+    try {
       emit(e, onParentChanged, e);
-    });
+    } catch (error) {
+      this.logger.error('entity onParentChanged notification failed:', uuid, error);
+    }
   }
 
   updateOrder(uuid: string, order: number): void {

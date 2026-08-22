@@ -17,7 +17,7 @@ import type {IComponentChangeType, ICreateEntitiesChange, ShadowObjectCreationAP
 import {generateUUID} from '../utils/generateUUID.js';
 import {ComponentChanges} from '../view/ComponentChanges.js';
 import type {Entity} from './Entity.js';
-import {type OnCreate, type OnDestroy, onCreate, onDestroy} from './events.js';
+import {type OnCreate, type OnDestroy, onCreate, onDestroy, onParentChanged} from './events.js';
 import {Kernel, type MessageToViewEvent} from './Kernel.js';
 import {Registry} from './Registry.js';
 import {ShadowObject, shadowObjects} from './ShadowObject.js';
@@ -5703,6 +5703,62 @@ describe('Kernel', () => {
       expect(kernel.hasEntity(uuid), 'the entry itself went through').toBe(true);
 
       destroySignal(testSignal);
+      kernel.destroy();
+    });
+  });
+
+  describe('the parent-change notification inside a change trail', () => {
+    it('reaches its listener before the next entry of the trail is applied', () => {
+      const kernel = new Kernel(new Registry());
+      const [aUuid, pUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(aUuid, 'a');
+      kernel.createEntity(pUuid, 'p');
+
+      // `delivered` is the discriminator: a delivery still sitting in a queued microtask has not
+      // reached the listener by the time `run()` returns, so this stays `0` on the old path and
+      // only tells the two paths apart once the notification itself has actually gone out.
+      let delivered = 0;
+      let propAtDelivery: unknown;
+      on(kernel.getEntity(aUuid), onParentChanged, () => {
+        delivered += 1;
+        propAtDelivery = kernel.getEntity(aUuid).getProperty('x');
+      });
+
+      kernel.run({
+        changeTrail: [
+          {type: ComponentChangeType.SetParent, uuid: aUuid, parentUuid: pUuid, order: 0},
+          {type: ComponentChangeType.ChangeProperties, uuid: aUuid, properties: [['x', 1]]},
+        ],
+      });
+
+      expect(delivered, 'the notification has already reached its listener once run() returns').toBe(1);
+      expect(propAtDelivery).toBeUndefined();
+      expect(kernel.getEntity(aUuid).getProperty('x')).toBe(1);
+
+      kernel.destroy();
+    });
+
+    it('does not refuse the trail when a handler throws', () => {
+      const kernel = new Kernel(new Registry());
+      const [aUuid, pUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(aUuid, 'a');
+      kernel.createEntity(pUuid, 'p');
+
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      on(kernel.getEntity(aUuid), onParentChanged, () => {
+        throw new Error('handler fails');
+      });
+
+      expect(() =>
+        kernel.run({
+          changeTrail: [{type: ComponentChangeType.SetParent, uuid: aUuid, parentUuid: pUuid, order: 0}],
+        }),
+      ).not.toThrow();
+
+      consoleError.mockRestore();
       kernel.destroy();
     });
   });

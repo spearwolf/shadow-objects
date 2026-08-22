@@ -2,6 +2,7 @@ import {on} from '@spearwolf/eventize';
 import {createEffect, createSignal, Signal, value} from '@spearwolf/signalize';
 import {describe, expect, it, vi} from 'vitest';
 import {generateUUID} from '../utils/generateUUID.js';
+import type {Entity} from './Entity.js';
 import {onDestroy, onParentChanged} from './events.js';
 import {Kernel} from './Kernel.js';
 import {Registry} from './Registry.js';
@@ -934,6 +935,125 @@ describe('Entity', () => {
       await nextMicrotask();
 
       expect(parentChanged, 'the notification belongs to the kernel method').toBe(1);
+
+      kernel.destroy();
+    });
+
+    it('delivers the parent change before setParent() returns', () => {
+      const kernel = makeKernel();
+      const [aUuid, pUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(aUuid, 'a');
+      kernel.createEntity(pUuid, 'p');
+
+      let parentChanged = 0;
+      on(kernel.getEntity(aUuid), onParentChanged, () => {
+        parentChanged += 1;
+      });
+
+      kernel.setParent(aUuid, pUuid);
+
+      expect(parentChanged).toBe(1);
+
+      kernel.destroy();
+    });
+
+    it('delivers the parent change of an entity destroyed in the same task', async () => {
+      const kernel = makeKernel();
+      const [aUuid, pUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(aUuid, 'a');
+      kernel.createEntity(pUuid, 'p');
+
+      let parentChanged = 0;
+      on(kernel.getEntity(aUuid), onParentChanged, () => {
+        parentChanged += 1;
+      });
+
+      kernel.setParent(aUuid, pUuid);
+      kernel.destroyEntity(aUuid);
+
+      await nextMicrotask();
+
+      expect(parentChanged).toBe(1);
+
+      kernel.destroy();
+    });
+
+    it('reports a handler that throws instead of carrying it to the caller', () => {
+      const kernel = makeKernel();
+      const [aUuid, pUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(aUuid, 'a');
+      kernel.createEntity(pUuid, 'p');
+
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      on(kernel.getEntity(aUuid), onParentChanged, () => {
+        throw new Error('handler fails');
+      });
+
+      expect(() => kernel.setParent(aUuid, pUuid)).not.toThrow();
+
+      expect(consoleError).toHaveBeenCalledTimes(1);
+      const args = consoleError.mock.calls[0];
+      expect(args).toContain('entity onParentChanged notification failed:');
+      expect(args).toContain(aUuid);
+
+      consoleError.mockRestore();
+      kernel.destroy();
+    });
+
+    it('hands the handler its new position through useParentContext() inline, its own settled context one microtask behind', async () => {
+      const kernel = makeKernel();
+      const [aUuid, p1Uuid, p2Uuid] = [generateUUID(), generateUUID(), generateUUID()];
+
+      kernel.createEntity(aUuid, 'a');
+      kernel.createEntity(p1Uuid, 'p1');
+      kernel.createEntity(p2Uuid, 'p2');
+
+      kernel.getEntity(p1Uuid).provideContext('ctx').set('from-p1');
+      kernel.getEntity(p2Uuid).provideContext('ctx').set('from-p2');
+
+      // Attached to `p1` and settled before the case starts: `#subscribeToParent()` links
+      // `useParentContext()` straight to the parent's own context signal, which updates the link
+      // the moment the parent is set -- one microtask carries that into `useContext()`, the reader
+      // this case also wants settled going in, so the transition below is the only open question.
+      kernel.setParent(aUuid, p1Uuid);
+      await nextMicrotask();
+
+      const child = kernel.getEntity(aUuid);
+      const inherited = child.useParentContext('ctx');
+      const ownContext = child.useContext('ctx');
+      await nextMicrotask();
+
+      let seenParent: string | undefined;
+      let seenInherited: unknown;
+      let seenOwnContext: unknown;
+      on(child, onParentChanged, (entity: Entity) => {
+        seenParent = entity.parent?.uuid;
+        seenInherited = value(inherited);
+        seenOwnContext = value(ownContext);
+      });
+
+      kernel.setParent(aUuid, p2Uuid);
+
+      expect(seenParent).toBe(p2Uuid);
+
+      // `useParentContext()` is a direct link to the parent's own context signal, rebound
+      // synchronously inside `setParent()` before the notification goes out -- so it already names
+      // `p2` at the delivery point.
+      expect(seenInherited, 'useParentContext() already names the new parent inline').toBe('from-p2');
+
+      // `useContext()` runs through `deferContextValueUpdate()`, a one-microtask batch collector of
+      // its own: the entity's own settled context still names the parent it is leaving at the moment
+      // the handler runs, and only catches up one microtask later.
+      expect(seenOwnContext, 'useContext() still names the value the entity leaves behind').toBe('from-p1');
+
+      await nextMicrotask();
+
+      expect(value(inherited)).toBe('from-p2');
+      expect(value(ownContext)).toBe('from-p2');
 
       kernel.destroy();
     });
