@@ -493,22 +493,13 @@ export class ComponentContext {
    * Inform all root components that they should re-request their parents.
    *
    * Every root is asked, because there is nothing here to ask about: the message carries no
-   * sender, so this side cannot narrow the set down at all. A round runs once per entity that
-   * connects, which makes n roots coming up in one namespace n²/2 messages, each one a full
-   * ancestor request through the DOM. That is the more expensive of the two re-request channels —
-   * six hundred roots spend some two hundred seventy milliseconds on it where the same build
-   * without the channel spends about twenty, while a hundred roots in one namespace are not worth
-   * the thought.
+   * sender, so this side cannot narrow the set down at all. The receiver is the one that can:
+   * it re-asks the element tree, and whoever answers first wins.
    *
-   * A sender alone would not settle it. The receiver would still have to work out whether it sits
-   * below that sender, and the only test that sees the whole way is an ascent per candidate —
-   * quadratic again, and blind at a closed shadow boundary on top. Both channels would have to be
-   * rebuilt in one go: one round for everything that connects in the same task, instead of one
-   * round each.
-   *
-   * Numbers above are for 600 roots in one namespace, measured 2026-08-18 in Chromium via
-   * Playwright 1.62.1 — a snapshot, not a guarantee; see `Backlog.md`'s Performance section for
-   * the full size series and how to reproduce it.
+   * Delivery is immediate: the round is over by the time the call returns. Nothing inside the
+   * library calls it — an entity that has just arrived hands its round to the collector
+   * below — and it stays because running a round at a moment of one's own choosing is what this
+   * method is for.
    */
   dispatchReRequestParentRoots() {
     // a root that answers with a parent is taken out of #rootComponents right away, so walking
@@ -554,6 +545,9 @@ export class ComponentContext {
    * component that gets the same answer back re-joins its parent's children at the end;
    * {@link ComponentContext.ReRequestParent} asks first and releases only where nobody answers,
    * which leaves every component that is already bound where it stands, order included.
+   *
+   * Delivery is immediate, and nothing inside the library calls it — it stays for the
+   * same reason {@link ComponentContext.dispatchReRequestParentRoots} does.
    */
   dispatchReRequestParentSiblings(component: ViewComponent, data: unknown = undefined) {
     const parent = component.parent;
@@ -571,6 +565,105 @@ export class ComponentContext {
   }
 
   /**
+   * The peers waiting for a round: sender by sender in arrival order, each with the data the
+   * round it asks for would carry.
+   */
+  #pendingPeerReRequests = new Map<ViewComponent, unknown>();
+
+  #peerReRequestFlushScheduled = false;
+
+  /**
+   * Take a peer re-request from `sender` — an entity that has just become one and may be the new
+   * closest ancestor for entities that bound while it was not yet answering.
+   *
+   * Everything that arrives in the same task shares one round. Alone, each arrival is a broadcast
+   * over the whole candidate set: the root channel carries no sender and has to ask every root,
+   * the sibling channel asks every child of one parent. n entities coming up together then cost
+   * n(n+1)/2 messages, and each message is a full ancestor request through the DOM — for 600 roots
+   * in one namespace that is 180 300 messages and some 257 ms on top of a build that takes 42 ms
+   * with the channel switched off. One round per task costs 600 messages and 2 ms on top. The
+   * point where a round per arrival costs more than a frame lies at about 145 roots in one
+   * namespace; one round per task stays clear of it over the whole measured range, up to 600.
+   *
+   * Numbers measured 2026-08-22 in Chromium via Playwright 1.62.1 — a snapshot, not a guarantee;
+   * `Backlog.md`'s Performance section carries the size series and how to reproduce it.
+   *
+   * @param data travels with the round as long as `sender` is the only one in it — see
+   *   {@link ComponentContext.dispatchReRequestParentSiblings} for what a receiver does with it.
+   *
+   * @internal
+   */
+  collectPeerReRequest(sender: ViewComponent, data: unknown = undefined): void {
+    this.#pendingPeerReRequests.set(sender, data);
+
+    if (!this.#peerReRequestFlushScheduled) {
+      this.#peerReRequestFlushScheduled = true;
+      queueMicrotask(() => {
+        this.#flushPeerReRequests();
+      });
+    }
+  }
+
+  /** Run the collected rounds, one per candidate set. */
+  #flushPeerReRequests(): void {
+    this.#peerReRequestFlushScheduled = false;
+
+    if (this.#pendingPeerReRequests.size === 0) return;
+
+    // emptied before the first message goes out: an entity that arrives while the round is being
+    // delivered lands in a fresh map and books a round of its own, instead of disappearing into a
+    // round that is already running
+    const pending = this.#pendingPeerReRequests;
+    this.#pendingPeerReRequests = new Map();
+
+    // the candidate set is decided here and not when the request came in: a sender's parent can
+    // have been settled since, and a sender that has left this context in the meantime is a new
+    // ancestor for nobody. `null` stands for the roots, which is the candidate set of a sender
+    // without a parent
+    const rounds = new Map<ViewComponent | null, {data: unknown}>();
+
+    for (const [sender, data] of pending) {
+      // membership, and #componentInstances is the only thing that answers it: an entry in
+      // #components outlives the departure of its component until the next change trail, so a
+      // lookup by uuid still hands back the sender that has left — and hands back the entry of a
+      // namesake that took the uuid over. Both are the same mistake, a round for an ancestor that
+      // is not there any more
+      if (!this.#componentInstances.has(sender)) continue;
+
+      const key = sender.parent ?? null;
+      const round = rounds.get(key);
+      if (round === undefined) {
+        rounds.set(key, {data});
+      } else {
+        // `data` names one new ancestor and a receiver can only be filtered against one. Where
+        // several senders share a candidate set, the round asks unconditionally — the wider
+        // answer, and the one a receiver gives itself when it is told no ancestor at all.
+        //
+        // What decides this is the number of senders, not how they compare to the candidate set:
+        // two elements inserted at runtime below six hundred siblings already cost six hundred
+        // ascents instead of two. The filter is kept for the case that produces it — a single
+        // element arriving on its own — and the round stays linear either way
+        round.data = undefined;
+      }
+    }
+
+    for (const [parent, round] of rounds) {
+      if (parent == null) {
+        this.dispatchReRequestParentRoots();
+      } else {
+        // the sender is asked along with the rest: a second sender of the same round can sit above
+        // it, and an element never answers its own request — the message costs it one ascent and
+        // can save it a wrong parent.
+        // getChildren() hands out a fresh array, so a child that re-parents mid-loop cannot
+        // displace the entry behind it
+        for (const child of this.getChildren(parent)) {
+          this.dispatchMessage(child.uuid, ComponentContext.ReRequestParent, round.data);
+        }
+      }
+    }
+  }
+
+  /**
    * Create the component change trails at this point in time.
    * The next call will only return the differences from the previous call.
    *
@@ -582,6 +675,11 @@ export class ComponentContext {
    * @see {@link ComponentContext.reCreateChanges}
    */
   buildChangeTrails(commit = true): ChangeTrailType {
+    // a collected round settles where entities hang, and a trail built before it ran would carry
+    // the hierarchy of a moment that is already over. Running it here makes that a rule rather
+    // than a matter of which microtask happens to come first
+    this.#flushPeerReRequests();
+
     if (this.#uncommittedTrail != null) {
       // Two sync cycles can be in flight at once, and the older one no longer has a trail to
       // settle once this one has taken the diff. It falls back on the optimistic reading --

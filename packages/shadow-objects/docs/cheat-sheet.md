@@ -269,7 +269,9 @@ along slot projections, across closed boundaries — regardless of its namespace
 whenever the element moves and whenever something above it changes: a tag registered late, a shadow
 root attached afterwards, a changed slot assignment, the `<slot>` element itself moving into
 another entity, a host that leaves the tree. A move binds anew right away; a change above the
-element takes effect one microtask later. With no entity above it at all, the property is set
+element takes effect one microtask later. The same two speeds hold for a `<shae-ent>` looking for
+its parent, and on both sides there is one change that is announced at once: the entity above the
+element leaving the tree. With no entity above it at all, the property is set
 nowhere and reported once per element through the `ConsoleLogger` at warn level.
 
 Every slot move is followed, wherever the slot lands — `slot.remove()` included: the entity giving

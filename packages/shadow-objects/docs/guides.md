@@ -368,7 +368,7 @@ Sooner or later you wrap the built-in elements in one of your own: a subclass of
 
 **The order you register your tags in does not decide the shape of the Entity Tree.** An element that becomes an entity while the markup around it already stands announces itself to everything below it: `<shae-ent>` children look for their parent once more, `<shae-prop>` children for their host. The answer they get is the tree as it is now, not the tree as it was when they first asked. So a wrapper defined after its contents ends up with the same Entity Tree as one defined before -- and a wrapper that is not an entity is simply skipped on the way up.
 
-**The one thing to know is that the timing is split.** The entities below have re-bound by the time `customElements.define()` returns -- that channel is a synchronous event. The properties follow one microtask later, because their channel waits for the tree to stop moving before it looks again. If you assert on an entity's properties right after registering a tag, `await Promise.resolve()` first.
+**The one thing to know is when it takes effect.** Both channels wait for the tree to stop moving before they look again: everything that becomes an entity in one task is answered by one round, one microtask later. So `customElements.define()` returns before the entities below have re-bound and before the properties have found their new host. If you assert on either right after registering a tag, `await Promise.resolve()` first.
 
 The registration modules themselves are independent and can be imported one at a time; the mechanics of the lookup, the exported request function, and the three event names are in [`<shae-ent>` → Driving the Lookup by Hand](./api-reference.md#driving-the-lookup-by-hand).
 

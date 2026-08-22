@@ -24,24 +24,15 @@ const flattenedParentOf = (node: Node): Node | undefined =>
 /**
  * Whether `node` sits below `ancestor`, across shadow boundaries and slot projections.
  *
- * One ascent per candidate, and a peer round runs once per entity that connects — so n entity
- * siblings under one parent pay n²/2 ascents while the tree around them builds. The test is the
- * cheap half of that, not the expensive one: with the round left in but the test taken out, the
- * same build costs roughly four and a half times as much. What the test buys back grows with the
- * candidate set and with nothing else — under a hundred siblings under one parent it does not show
- * up at all, at six hundred it adds some two hundred fifty milliseconds to a build that would
- * otherwise take about seventy.
+ * One ascent per candidate, and the round it saves is a full ancestor request per candidate — a
+ * bubbling, composed event through the whole chain against a few pointer hops. What it buys grows
+ * with the candidate set and with nothing else, so it is worth having wherever one element is
+ * inserted below a parent that already holds many.
  *
- * A cheaper test would not remove the quadratic term, because every round still visits every
- * candidate; only one round for all the entities connecting in the same task would. Deciding on
- * the sending side instead runs into two walls: the root channel carries no sender to decide
- * about, and an ancestor test that skips the ascent cannot see through a closed shadow boundary —
- * which is why the caller drops the ancestor for an element inside a closed tree and asks
- * everyone.
- *
- * Numbers above are for 600 siblings under one parent, measured 2026-08-18 in Chromium via
- * Playwright 1.62.1 — a snapshot, not a guarantee; see `Backlog.md`'s Performance section for
- * the full size series and how to reproduce it.
+ * Deciding on the sending side instead runs into two walls: the root channel carries no sender to
+ * decide about, and an ancestor test that skips the ascent cannot see through a closed shadow
+ * boundary — which is why the caller drops the ancestor for an element inside a closed tree and
+ * asks everyone.
  */
 const isBelow = (node: Node, ancestor: Node): boolean => {
   for (let current = flattenedParentOf(node); current != null; current = flattenedParentOf(current)) {
@@ -621,8 +612,15 @@ export class ShaeEntElement extends ShaeElement {
     // where their elements sit. Only one below `newAncestor` can get a different answer, and
     // walking up to find out costs a few pointer hops against a bubbling event through the whole
     // ancestor chain. A signal that carries no ancestor asks unconditionally — the sender leaves
-    // it out wherever the ascent could not see the whole way
-    if (newAncestor != null && !isBelow(this, newAncestor)) return;
+    // it out wherever the ascent could not see the whole way.
+    //
+    // An ancestor that is out of the tree is such a place too, and it reaches here through a
+    // direct `dispatchReRequestParentSiblings()`: the collected round drops a sender that has
+    // left the ComponentContext, and an element leaving the tree leaves the context with it.
+    // The ascent against a detached element answers "not below" for every receiver alike, which
+    // is true and useless — the tree that element left behind is a different one. Asking is the
+    // answer that costs an ascent instead of a wrong parent
+    if (newAncestor?.isConnected && !isBelow(this, newAncestor)) return;
 
     this.#dispatchRequestParent();
   }
@@ -631,19 +629,30 @@ export class ShaeEntElement extends ShaeElement {
   // closest ancestor for entities that bound while it was not yet answering. Those entities are
   // its peers in the component context — the children of its own parent, or the roots while it
   // has none — and they are asked to request their parent once more.
+  //
+  // The context collects the request and runs one round a microtask later, for everything that
+  // arrives in the same task. Which peers that round reaches is decided when it runs, from this
+  // element's parent as it stands then — an element with no entity of its own is in no tree and
+  // is nobody's ancestor, so there is nothing to ask for.
+  //
+  // Both ways of having no entity end here, and neither costs a peer its parent. This element
+  // reaches the early return only when the join into the context threw before a component was
+  // ever built; the reachable half of that case is a component that was built and refused, which
+  // the round drops on its own because a refused component is no member of the context. What such
+  // an element could have handed a peer is an `entParentNode` pointing at an element that stands
+  // in no entity tree — the peer's `viewComponent.parent` would stay empty and the peer would
+  // stay a root either way. The next namespace change books the round again.
   #askPeersToReRequestParent() {
     const vc = this.viewComponent;
-    if (vc == null) {
-      this.componentContext?.dispatchReRequestParentRoots();
-    } else {
-      // the peer decides from the element tree whether it really sits below this element, and it
-      // can only do so while the way up to here stays visible to it. From inside a closed shadow
-      // tree it does not: the ascent of a projected peer steps over the closed tree and would
-      // rule out exactly the case that needs correcting. The filter is an optimization, so where
-      // it cannot see, it does not travel — every peer is then asked and answers for itself
-      const newAncestor = isInClosedShadowTree(this) ? undefined : this;
-      this.componentContext?.dispatchReRequestParentSiblings(vc, {newAncestor} satisfies ReRequestParentData);
-    }
+    if (vc == null) return;
+
+    // the peer decides from the element tree whether it really sits below this element, and it
+    // can only do so while the way up to here stays visible to it. From inside a closed shadow
+    // tree it does not: the ascent of a projected peer steps over the closed tree and would
+    // rule out exactly the case that needs correcting. The filter is an optimization, so where
+    // it cannot see, it does not travel — every peer is then asked and answers for itself
+    const newAncestor = isInClosedShadowTree(this) ? undefined : this;
+    this.componentContext?.collectPeerReRequest(vc, {newAncestor} satisfies ReRequestParentData);
   }
 
   // Properties below this element bind to the closest entity above them. This element becoming

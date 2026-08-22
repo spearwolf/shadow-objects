@@ -176,6 +176,34 @@ describe('ComponentContext', () => {
     ctx.dispose();
   });
 
+  it('should tell the roots and the siblings of a component to re-request their parents, right away', () => {
+    // the three dispatch methods deliver synchronously: they are the public way to run a round at
+    // a moment the caller picks, and a caller that picks the moment has already waited
+    const ctx = ComponentContext.get('re-request-parent-now');
+
+    const parent = new ViewComponent('parent', {context: ctx});
+    const children = ['a', 'b', 'c'].map((token) => new ViewComponent(token, {parent, context: ctx}));
+    const root = new ViewComponent('root', {context: ctx});
+
+    const received = [];
+    on(parent, ComponentContext.ReRequestParentRoots, () => received.push('parent'));
+    on(root, ComponentContext.ReRequestParentRoots, () => received.push('root'));
+    for (const child of children) {
+      on(child, ComponentContext.ReRequestParent, () => received.push(child.token));
+    }
+
+    ctx.dispatchReRequestParentRoots();
+
+    expect(received, 'both roots are told before the call returns').to.deep.equal(['parent', 'root']);
+
+    received.length = 0;
+    ctx.dispatchReRequestParentSiblings(children[0], {newAncestor: undefined});
+
+    expect(received, 'the siblings are told before the call returns, the sender excepted').to.deep.equal(['b', 'c']);
+
+    ctx.dispose();
+  });
+
   it('should ignore create and destroy in same change trail', () => {
     const a = new ViewComponent('a');
 

@@ -1018,7 +1018,7 @@ Three event names that arrive as ordinary events on a `ViewComponent`; see [Rece
 
 | Method | Description |
 | :--- | :--- |
-| `buildChangeTrails(commit = true)` | The changes since the previous call, as a `ChangeTrailType`. Returns an empty array when the context holds no components. With `commit` it also counts the trail as applied and writes the Component Memory; with `commit = false` it does neither, and `commitChangeTrail()` settles the trail afterwards. |
+| `buildChangeTrails(commit = true)` | The changes since the previous call, as a `ChangeTrailType`. Returns an empty array when the context holds no components. With `commit` it also counts the trail as applied and writes the Component Memory; with `commit = false` it does neither, and `commitChangeTrail()` settles the trail afterwards. It runs a pending re-request round before it reads anything, so the call can move entities in the hierarchy — and the trail it hands back carries the result. |
 | `commitChangeTrail(appliedCount, changeTrail?)` | Fold the first `appliedCount` entries of the trail built last into the state the next trail is diffed against, and write them to the Component Memory. Everything behind that line stays pending and goes out again with the next trail. `changeTrail`, when given, is the trail this call settles -- the call is ignored unless it is the one the context built last. |
 | `reCreateChanges()` | Rebuild every component from the Component Memory, so that the next trail re-creates all of them. This is how a fresh proxy is brought up to the state the view is already in -- and the only kind of environment it belongs to: one that still holds the entities refuses every re-created `CreateEntities` it is sent, with an `EntityUuidInUseError`. |
 
@@ -1969,6 +1969,19 @@ and so does moving the `<slot>` element itself; and an entity that stays in the 
 while its parent entity leaves it looks for the closest ancestor still answering. None of this
 needs the application to trigger anything.
 
+The first two take effect one microtask after the change, the third right away — the parent leaving
+is the one case the entity hears about directly instead of through a round over its peers. Read
+`entParentNode` in the same step as a `customElements.define()` or a slot change and you read the
+state from before; `await Promise.resolve()` first.
+
+Everything that becomes an entity in one task is answered by a single round, and that round is what
+keeps the cost of a large namespace flat: a round is a broadcast, so one round per arriving entity
+would cost n(n+1)/2 messages for n entities coming up together, each message a full ancestor
+request through the DOM — a bill that passes a frame at around 145 entities in one namespace and
+passes a quarter of a second at six hundred. One round per task costs n messages instead, and
+stays clear of a frame over the whole measured range, up to six hundred entities coming up
+together.
+
 The move is followed wherever the slot goes: into another entity, into a part of the same shadow
 root with no entity above it, and `slot.remove()` along with the window until the slot is put back.
 `slotchange` is not `composed` and reaches only the shadow root the slot has landed in, so the
@@ -2064,9 +2077,9 @@ import '@spearwolf/shadow-objects/shae-worker.js';
 
 An element that becomes an entity while the markup around it already stands announces itself to
 everything below it: entities look for their parent once more, properties for their host. The same
-holds for a subclass of `ShaeEntElement` registered from a lazily loaded module. The entities below
-have re-bound by the time `customElements.define()` returns; the properties follow one microtask
-later, because their channel waits for the tree to stop moving.
+holds for a subclass of `ShaeEntElement` registered from a lazily loaded module. Both take effect
+one microtask after `customElements.define()` returns — the two channels wait for the tree to stop
+moving, and everything that becomes an entity in one task is answered by one round.
 
 Wrapping the built-in elements in tags of your own is walked through in [Guides → Registering Your Own Entity Elements](./guides.md#registering-your-own-entity-elements).
 
@@ -2107,7 +2120,8 @@ closest entity the flattened tree still shows above it, and to none where there 
 The timing is worth knowing, because the code does not show it: a re-binding takes effect one
 microtask after the change, not in the same step. Rebuild the tree and read `entNode` right
 afterwards and you read the state from before. This is the timing of the re-request channel — of
-every message that says "something above you changed". The first lookup, the one the element makes
+every message that says "something above you changed" — and a `<shae-ent>` follows it just the
+same, so the two sides of a re-binding land together. The first lookup, the one the element makes
 when it enters the tree, is synchronous, and letting go when the element leaves runs in a microtask
 of its own.
 

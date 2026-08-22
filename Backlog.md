@@ -237,20 +237,34 @@ Der Abschluss-Wartelauf schließt seine Kette jetzt mit einem `catch()`: bleibt 
 | **`Transferables` nur bei `SendEvents`** — große `ArrayBuffer` in `ChangeProperties` werden strukturell kopiert, nicht transferiert. | Property-API für Transferables fehlt. |
 | **`ContextLost`-Replay** (`reCreateChanges`): bei N Entities × M Props ein voller Re-Build inkl. allen `postMessage`. | Akzeptabel für Recovery, aber teuer; sollte bewusst getriggert werden. |
 | **`Registry.findTokensByRoute`** ist O(tokens × props × tokens) pro Pass. | Bei tiefen Routen-Graphen messbar; akzeptabel für typische Größenordnungen. |
-| **Der Vorfahren-Aufstieg `isBelow`** (`ShaeEntElement.ts:45-50`) mildert die Kosten der Re-Request-Runde, verursacht sie aber nicht: die Runde selbst läuft pro verbindender Entity über alle Kandidaten (n²/2) und bleibt quadratisch, auch ohne den Filter. Gemessen (2026-08-18, Chromium via Playwright 1.62.1, Reihe 6/50/150/300/600): Seitenaufbau von 600 kinderlosen Geschwistern kostet mit Filter 72 ms, mit Runde ganz aus (Boden) 29,2 ms, ohne Filter (Runde an, Test raus) 322,6 ms (Faktor 4,5 gegen den Boden); Verdopplungsquotient 150→300→600 bei 3,1/4,1 — quadratisch. | Überhang bei n=600: 72 − 29,2 = 42,8 ms. Skaliert mit n² (Verdopplungsfaktor ~4, siehe 3,1/4,1 oben) bleibt er unter einem Bild (16,7 ms) bis rund **375** Geschwistern unter einem Elternteil. Die größte Geschwisterschar im Repository hat **6** (`packages/shadow-objects-e2e/pages/multi-env.html:24-68`) — Faktor ≈62,5 darunter. Ein Umbau lohnt heute nicht. |
-| **`ComponentContext.dispatchReRequestParentRoots()`** (`ComponentContext.ts:513-519`) kennt keinen Absender und kann deshalb gar nicht filtern — quadratisch schon ohne jede Milderung, und die teurere der beiden Runden: bei 600 Wurzeln in einem Namespace 273,8 ms gegen 23,3 ms im Kanal-aus-Vergleich (Boden), Verdopplungsquotient 150→300→600 bei 3,5/3,7. Das Audit führt diesen Kanal nur als »N+1 Nachrichten« und unterschätzt ihn damit. | Überhang bei n=600: 273,8 − 23,3 = 250,5 ms. Skaliert mit n² vom Anker n=600 bleibt er unter einem Bild bis rund **155** Wurzeln in einem Namespace — eine konservative Extrapolation: die Messpunkte, die die reale Schwelle einrahmen (n=150: 13,8 ms, darunter; n=300: 56,5 ms, darüber), deuten eher auf ~163-165. Niedriger als beim Geschwisterkanal, weil hier gar kein Filter mildert. Die reale Obergrenze im Repository bleibt **6** (`packages/shadow-objects-e2e/pages/multi-env.html:24-68`), Faktor ≈25,8 darunter — das ist die eigentliche Aussage der Messung. Ein Umbau müsste beide Kanäle in einem Zug fassen: ein Absender am Wurzelkanal (`#reRequestParentAsRoot`, `ShaeEntElement.ts:583-588`) bringt nichts ohne einen aufstiegsfreien Unterhalb-Test, der an geschlossenen Shadow-Grenzen ohnehin ausfällt (`isInClosedShadowTree`, `ShaeEntElement.ts:61`). Gemessen 2026-08-18, Chromium via Playwright 1.62.1. |
+| **Die Re-Request-Runde der View-Seite** (`ComponentContext.collectPeerReRequest()`) sammelt je Task und läuft einmal statt einmal je ankommender Entity. Beide Kanäle: Wurzeln (`ReRequestParentRoots` an jede Wurzel des Namespace) und Geschwister (`ReRequestParent` an die Kinder eines Elternteils). Gemessen (2026-08-22, Chromium via Playwright 1.62.1, ein Lauf über die Reihe 100/125/150/300/600, Median aus fünf Läufen je Punkt): 600 Wurzeln in einem Namespace kosten 600 Nachrichten und 44,0 ms gegen 41,8 ms Boden (Kanal aus), je Ankunft wären es 180 300 Nachrichten und 298,6 ms; 600 Geschwister kosten 600 Nachrichten und 49,3 ms gegen 46,7 ms Boden, je Ankunft 179 700 Nachrichten und 95,8 ms. Überhang gesammelt bei 100/125/150/300/600: 0,7/0,6/0,6/1,3/2,2 ms (Wurzeln), 0,6/0,7/0,5/1,3/2,6 ms (Geschwister) — linear. Je Ankunft wächst derselbe Überhang am Wurzelkanal auf 7,9/12,8/17,8/64,3/256,8 ms: ein Bild (16,7 ms) liegt zwischen 125 und 150 Wurzeln, interpoliert bei rund **145** — die Größenordnung, ab der die Runde je Ankunft weh tut, und die Zahl, die in `packages/shadow-objects/docs/api-reference.md` und im Kommentar über `collectPeerReRequest()` steht. | Der Aufstieg je Empfänger bleibt: jede Nachricht des Wurzelkanals ist eine vollständige `shaeRequestEntParent`-Anfrage durch die Vorfahrenkette (bei n=600 1200 Aufstiege statt 180 900). Der `isBelow`-Filter des Geschwisterkanals trägt nur, wenn genau eine Absenderin in der Runde steht — bei mehreren fällt `newAncestor` weg und jedes Kind steigt auf (1202 statt 602 Aufstiege bei n=600). Das ist der häufige Fall »ein Element wird zur Laufzeit eingehängt« gegen den seltenen »sechshundert auf einmal«, und beide bleiben linear. |
 
-Reproduktion der beiden Zeilen oben: n `<shae-ent>` per `innerHTML` in einen bereits im DOM
-hängenden Container einhängen (nicht über `mount()` aus `shadow-objects-testing/src/mount.js` —
-das parst in einen abgetrennten `<div>` und unterdrückt `#wasUpgradedInPlace`, wodurch die
-Peer-Runde gar nicht läuft). Drei Auslöser getrennt messen: Geschwisterkanal mit n kinderlosen
-`<shae-ent>` unter einem `<shae-ent>`-Elternteil (`isBelow`/`dispatchReRequestParentSiblings`,
-je einmal wie es ist / Runde aus / Filter aus), Wurzelkanal mit n `<shae-ent>` ohne
-Entity-Elternteil im selben Namespace (`dispatchReRequestParentRoots`, wie es ist / Kanal aus),
-Slot-Auslöser als Preis einer einzelnen `broadcastEvent(ReRequestParent)` beziehungsweise
-`broadcastEvent(ReRequestEntHost)`-Runde über einem bereits stehenden Baum. Lief als Wegwerf-Spec
-in `packages/shadow-objects-testing/test/`, nach der Messung wieder entfernt; der Absatz oben ist
-das ganze Rezept, aus dem sie sich wieder aufbauen lässt.
+Reproduktion der Zeile oben — der Aufbau kommt ohne eine Datei im Repository aus:
+
+1. Mit `esbuild` aus `node_modules` ein IIFE-Bündel bauen. Einstieg per `stdin` mit `resolveDir`
+   auf `packages/shadow-objects`, Inhalt: die drei Element-Klassen aus `dist/src/elements/`
+   importieren und selbst per `customElements.define()` registrieren (die `sideEffects`-Liste des
+   Pakets wirft `import './shae-ent.js'` sonst weg), dazu `ComponentContext`, `ViewComponent`,
+   `ShaeEntElement`, `ShadowEnv` und `on` aus `@spearwolf/eventize` auf `globalThis` legen.
+   `bundle: true`, `format: 'iife'`, `minify: false`, `absWorkingDir` auf das Paket.
+2. Chromium über `@playwright/test` aus `packages/shadow-objects-e2e/node_modules` starten,
+   `page.setContent('<div id="host"></div>')`, das Bündel per `page.addScriptTag({content})`
+   einspielen. Je Messpunkt eine frische Seite.
+3. Zähler: `ComponentContext.prototype.dispatchMessage` umhüllen und nach `type` zählen; ein
+   `capture`-Hörer auf `document` für `shaeRequestEntParent` zählt die Aufstiege.
+4. Aufbau *Wurzeln*: `host.innerHTML = '<shae-ent ns="…"></shae-ent>'.repeat(n)`. Aufbau
+   *Geschwister*: dieselben n Elemente in einem `<shae-ent>`-Elternteil. Gemessen wird von vor der
+   Zuweisung bis nach zwei `await Promise.resolve()`, Median aus fünf Läufen je Punkt. Der Aufbau
+   muss per `innerHTML` in einen bereits im DOM hängenden Container gehen — `mount()` aus
+   `shadow-objects-testing/src/mount.js` parst in einen abgetrennten `<div>` und unterdrückt
+   `#wasUpgradedInPlace`, wodurch die Runde gar nicht läuft.
+5. Vergleichsvariante *Kanal aus* (der Boden): `dispatchReRequestParentRoots`,
+   `dispatchReRequestParentSiblings` und `collectPeerReRequest` auf dem Prototyp durch leere
+   Funktionen ersetzen. Vergleichsvariante *je Ankunft*: `collectPeerReRequest` auf dem Prototyp
+   durch eine Fassung ersetzen, die sofort zustellt (`sender.parent == null` →
+   `dispatchReRequestParentRoots()`, sonst `dispatchReRequestParentSiblings(sender, data)`).
+   Der Slot-Auslöser wird als Preis einer einzelnen `broadcastEvent(ReRequestParent)`
+   beziehungsweise `broadcastEvent(ReRequestEntHost)`-Runde über einem stehenden Baum gemessen.
 
 ### 3.6 API-/Design-Smells
 

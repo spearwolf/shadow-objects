@@ -154,7 +154,8 @@ async function main() {
 
     await Promise.all([customElements.whenDefined('late-ent'), customElements.whenDefined('late-wrapper')]);
 
-    // the upgrade itself is synchronous; the wait is for the slot assignment
+    // the upgrade itself is synchronous; the wait is for what follows it — the round in which the
+    // entities below look for their parent again, and the slot assignment
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 
