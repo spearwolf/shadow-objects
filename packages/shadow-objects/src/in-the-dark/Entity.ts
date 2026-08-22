@@ -204,42 +204,60 @@ export class Entity {
    * single run.
    *
    * The flag is raised before the first step rather than after the last, because that is what a release
-   * running twice would cost: the steps below are written for one pass, not for a repeat. The price of
-   * standing there is that a step which throws leaves the ones behind it undone for good -- the direct
-   * call finds the flag raised and returns. Every step is a library-internal release of something this
-   * entity owns, and none of them is expected to throw; the one that can is the one that needs a guard
-   * of its own, the way `ShadowObjectCreationScope.tearDown()` gives each of its steps one.
+   * running twice would cost: the steps below are written for one pass, not for a repeat.
+   *
+   * Every step below runs behind a guard of its own, the way `ShadowObjectCreationScope.tearDown()`
+   * gives each of its steps one: a step that throws is reported through the kernel's logger, named by
+   * the step and by the uuid of this entity, and costs only itself -- the steps behind it still run.
+   * The method therefore never throws to its own caller. The plain resets at the end -- clearing a
+   * collection, overwriting a field -- cannot throw and run unguarded, exactly as `tearDown()` empties
+   * its own sets at the end.
    */
   [onDestroy]() {
     if (this.#isReleased) return;
     this.#isReleased = true;
 
-    this.#props.clear();
-    off(this);
-
-    this.#autoDestructionSubscription?.();
+    // `SignalAutoMap.clear()` destroys every property signal and only then re-raises whatever a
+    // dependent effect's cleanup threw along the way, so it belongs behind a guard of its own like
+    // every other step here -- it is not the plain reset it looks like.
+    this.#runGuarded('properties', () => this.#props.clear());
+    this.#runGuarded('listeners', () => off(this));
+    this.#runGuarded('auto-destruction subscription', () => this.#autoDestructionSubscription?.());
 
     for (const rootCtx of this.#rootContexts.values()) {
-      rootCtx.cleanup();
-      rootCtx.signal.destroy();
+      this.#runGuarded('global context cleanup', () => rootCtx.cleanup());
+      this.#runGuarded('global context signal', () => rootCtx.signal.destroy());
     }
-    this.#rootContexts.clear();
 
     for (const ctx of this.#context.values()) {
-      ctx.context.set(undefined);
-      ctx.unsubscribePathValue();
-      ctx.unsubscribeFromParent?.();
-      ctx.valuePath.dispose();
-      ctx.inherited.destroy();
-      ctx.provide.destroy();
-      ctx.context.destroy();
+      this.#runGuarded('context value reset', () => ctx.context.set(undefined));
+      this.#runGuarded('context value subscription', () => ctx.unsubscribePathValue());
+      this.#runGuarded('context parent subscription', () => ctx.unsubscribeFromParent?.());
+      this.#runGuarded('context value path', () => ctx.valuePath.dispose());
+      this.#runGuarded('inherited context signal', () => ctx.inherited.destroy());
+      this.#runGuarded('provided context signal', () => ctx.provide.destroy());
+      this.#runGuarded('context signal', () => ctx.context.destroy());
     }
+
+    this.#rootContexts.clear();
     this.#context.clear();
 
     this.#parent = undefined;
 
     this.#childrenUuids.clear();
     this.#children.length = 0;
+  }
+
+  /**
+   * Isolates one release step from the ones around it: a step that throws is reported through the
+   * kernel's logger and does not stop `[onDestroy]()` from reaching the steps that follow.
+   */
+  #runGuarded(step: string, run: () => void): void {
+    try {
+      run();
+    } catch (error) {
+      this.#kernel.logger.error(`entity teardown step failed (${step}):`, this.#uuid, error);
+    }
   }
 
   /**

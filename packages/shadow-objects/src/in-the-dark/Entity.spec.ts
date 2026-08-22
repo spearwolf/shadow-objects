@@ -1,6 +1,6 @@
 import {on} from '@spearwolf/eventize';
-import {createEffect, createSignal, value} from '@spearwolf/signalize';
-import {describe, expect, it} from 'vitest';
+import {createEffect, createSignal, Signal, value} from '@spearwolf/signalize';
+import {describe, expect, it, vi} from 'vitest';
 import {generateUUID} from '../utils/generateUUID.js';
 import {onDestroy, onParentChanged} from './events.js';
 import {Kernel} from './Kernel.js';
@@ -935,6 +935,83 @@ describe('Entity', () => {
 
       expect(parentChanged, 'the notification belongs to the kernel method').toBe(1);
 
+      kernel.destroy();
+    });
+  });
+
+  describe('a release with a step that throws', () => {
+    // `Signal.prototype.destroy` stands in for a step deep inside the release that this test cannot
+    // reach any other way -- the context entries it walks are private state, reachable only through
+    // the signals the entity itself hands out. Patching the shared prototype reaches every signal the
+    // entity destroys in one release, which is the point: several of the guarded steps fail at once,
+    // and what is left standing afterwards is what the case is about.
+    it('still reaches the steps behind the one that throws', () => {
+      const kernel = makeKernel();
+      const [parentUuid, childUuid, grandchildUuid] = [generateUUID(), generateUUID(), generateUUID()];
+
+      kernel.createEntity(parentUuid, 'parent');
+      kernel.createEntity(childUuid, 'child', parentUuid);
+      kernel.createEntity(grandchildUuid, 'grandchild', childUuid);
+
+      const child = kernel.getEntity(childUuid);
+
+      // A context entry gives the release something to walk over: `useContext()` creates one, with
+      // three signals of its own (`inherited`, `provide`, `context`).
+      child.useContext('ctx');
+
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const originalDestroy = Signal.prototype.destroy;
+      Signal.prototype.destroy = function destroyFails() {
+        throw new Error('signal destroy fails');
+      };
+
+      try {
+        expect(() => (child as unknown as {[onDestroy](): void})[onDestroy]()).not.toThrow();
+      } finally {
+        Signal.prototype.destroy = originalDestroy;
+      }
+
+      expect(child.children, 'the children are released regardless of the failing signals').toEqual([]);
+      expect(child.parent, 'the parent link is released regardless of the failing signals').toBeUndefined();
+      // Four of the seven context-loop steps reach a `Signal.destroy()` call: `valuePath.dispose()`
+      // through `value$`, then `inherited`, `provide` and `context` directly. `context.set()`,
+      // `unsubscribePathValue()` and `unsubscribeFromParent()` never call it, so the patch fires once
+      // per failing step rather than once for the whole release.
+      expect(consoleError, 'every failing step is reported on its own').toHaveBeenCalledTimes(4);
+
+      consoleError.mockRestore();
+      kernel.destroy();
+    });
+
+    it('reaches the steps behind a failing property signal cleanup', () => {
+      const kernel = makeKernel();
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'withThrowingPropCleanup', undefined, 0, [['label', 'hello']]);
+
+      const entity = kernel.getEntity(uuid);
+      const childUuid = generateUUID();
+      kernel.createEntity(childUuid, 'child', uuid);
+
+      // An effect that reads the property leaves a cleanup behind. Destroying the property's signal
+      // runs that cleanup, and a throw from it is what `SignalAutoMap.clear()` re-raises once every
+      // entry is gone -- the failure this step of the release has to survive.
+      createEffect(() => {
+        entity.getPropertyReader('label')();
+        return () => {
+          throw new Error('property cleanup fails');
+        };
+      });
+
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      expect(() => (entity as unknown as {[onDestroy](): void})[onDestroy]()).not.toThrow();
+
+      expect(entity.propEntries(), 'the properties are cleared regardless of the failing cleanup').toEqual([]);
+      expect(entity.children, 'the steps behind the failing one still run').toEqual([]);
+      expect(consoleError, 'the failure is reported').toHaveBeenCalled();
+
+      consoleError.mockRestore();
       kernel.destroy();
     });
   });

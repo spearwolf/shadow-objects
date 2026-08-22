@@ -381,7 +381,11 @@ export class Kernel {
         }
       }
 
-      entity.removeFromParent();
+      try {
+        entity.removeFromParent();
+      } catch (error) {
+        this.logger.error('entity could not be detached from its parent:', entity.uuid, error);
+      }
 
       // The list is read before the first notification goes out, because the bookkeeping behind it is
       // emptied while they run: every scope that tears down takes its shadow-object out of it.
@@ -430,6 +434,10 @@ export class Kernel {
         }
       }
 
+      // `Entity[onDestroy]()` guards every one of its own steps and reports a failing one through
+      // this same logger under its own label, so this catch is a backstop rather than the path a
+      // failing release actually takes -- it stands for whatever reaches this call from outside that
+      // guarantee.
       try {
         entity[onDestroy]();
       } catch (error) {

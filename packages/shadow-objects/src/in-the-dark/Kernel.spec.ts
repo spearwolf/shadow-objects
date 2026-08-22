@@ -4635,6 +4635,55 @@ describe('Kernel', () => {
     });
   });
 
+  describe('an entity teardown whose removeFromParent throws', () => {
+    // `removeFromParent()` runs first in `destroyEntity()`, ahead of the shadow-object notifications,
+    // the creation scopes and the entity's own release. Overwriting the instance method is what stands
+    // in for a parent link the detachment cannot walk -- the entity carries no such state on its own
+    // that a test could break from the outside.
+    it('still notifies the shadow-object, tears down its creation scope and releases the entity', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const seen: string[] = [];
+
+      @ShadowObject({registry, token: 'removeFromParentFails'})
+      class Recorder implements OnDestroy {
+        constructor({onDestroy: onScopeDestroy}: ShadowObjectCreationAPI) {
+          onScopeDestroy(() => {
+            seen.push('creation scope');
+          });
+        }
+
+        [onDestroy]() {
+          seen.push('shadow-object hook');
+        }
+      }
+      expect(Recorder).toBeDefined();
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'removeFromParentFails', undefined, 0, [['label', 'hello']]);
+
+      const entity = kernel.getEntity(uuid);
+      entity.removeFromParent = () => {
+        throw new Error('removeFromParent fails');
+      };
+
+      expect(() => kernel.destroyEntity(uuid)).not.toThrow();
+
+      expect(seen, 'the shadow-object and its creation scope are still notified').toEqual([
+        'shadow-object hook',
+        'creation scope',
+      ]);
+      expect(entity.propEntries(), 'the entity has run its own release').toEqual([]);
+      expect(kernel.hasEntity(uuid), 'the kernel no longer holds the entity').toBe(false);
+      expect(consoleError, 'the failure is reported').toHaveBeenCalled();
+
+      consoleError.mockRestore();
+      kernel.destroy();
+    });
+  });
+
   describe('the destruction notification of an entity', () => {
     // The order the four groups are told in is part of what a teardown callback may rely on: it reads
     // the entity, and the entity is still whole. Anything registered below `Priority.Low` therefore
