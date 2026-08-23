@@ -4,6 +4,19 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-23 — the shared test setup stops reading Node's storage accessor
+
+- **`packages/shadow-objects/vitest.setup.ts`:** the check that decides whether to install
+  happy-dom's `localStorage`/`sessionStorage` now reads
+  `Object.getOwnPropertyDescriptor(globalThis, 'localStorage')?.get` instead of
+  `typeof localStorage?.getItem`. Node exposes its own inert storage as an accessor on
+  `globalThis`; reading through it triggers Node's `--localstorage-file` warning once per test
+  process, and the `forks` pool gives each spec file its own process. happy-dom and a real
+  browser install Storage as a plain data property, so the descriptor shape tells the two apart
+  without ever invoking the getter. The file is shared by `packages/shadow-objects`,
+  `packages/shae-offscreen-canvas` and `packages/shadow-objects-testing`, so all three test runs
+  lose the warning.
+
 ## 2026-08-23 — the test process can force a collection
 
 The runtime change behind this — the elements releasing their subscriptions when they leave the

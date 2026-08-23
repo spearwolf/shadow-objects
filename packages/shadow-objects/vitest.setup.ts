@@ -5,7 +5,17 @@ import {afterAll, beforeAll} from 'vitest';
 // environments. Replace the descriptors so happy-dom's Storage is reachable
 // from globalThis. In real-browser test environments the browser already
 // provides a working Storage, so this fix is only applied under node.
-if (typeof process !== 'undefined' && process.versions?.node && typeof localStorage?.getItem !== 'function') {
+//
+// Node exposes its stand-in as an accessor (a getter) on globalThis; reading
+// through it — e.g. `localStorage?.getItem` — triggers Node's own
+// `--localstorage-file` warning once per test process (the `forks` pool gives
+// every spec file its own). happy-dom or a real browser installs Storage as a
+// plain data property instead, so the descriptor shape tells the two apart
+// without ever invoking the getter.
+const isNode = typeof process !== 'undefined' && Boolean(process.versions?.node);
+const storageIsAccessor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')?.get != null;
+
+if (isNode && storageIsAccessor) {
   const {Window} = await import('happy-dom');
   const win = new Window();
   for (const key of ['localStorage', 'sessionStorage'] as const) {
