@@ -296,18 +296,26 @@ describe('ThreeMultiViewRenderer', () => {
       expect(entity.useContext(ThreeMultiViewRendererContext)()).toBeUndefined();
     });
 
-    // Measured, not endorsed: `ThreeMultiViewRenderer` carries a method literally named
-    // `onDestroy`, but the kernel notifies the lifecycle hook under its own symbol
-    // (`events.ts`'s `onDestroy` export, not the string) — a plain method of that name is never
-    // reached. `dispose()` therefore never runs and the WebGL renderer is not released. Whoever
-    // moves the method onto the symbol hook makes this case fail, and should mean to.
-    it('does not dispose the renderer on destroy', () => {
+    it('disposes the renderer and releases the canvas on destroy', () => {
       const {uuid, mvr} = create();
+      const {renderer} = mvr;
 
       env.kernel.destroyEntity(uuid);
 
-      expect(mvr.renderer.log.some((entry) => entry[0] === 'dispose')).toBe(false);
-      expect(mvr.renderer).not.toBeNull();
+      expect(renderer.log).toContainEqual(['dispose']);
+      expect(mvr.renderer).toBeNull();
+      expect(mvr.canvas).toBeNull();
+    });
+
+    it('answers no image once its entity is gone', async () => {
+      const {uuid, mvr} = create();
+      const view = mvr.createView(100, 100);
+      view.scene = {};
+      view.camera = {};
+
+      env.kernel.destroyEntity(uuid);
+
+      await expect(mvr.renderView(view)).resolves.toBeUndefined();
     });
   });
 });

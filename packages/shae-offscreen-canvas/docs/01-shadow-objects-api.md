@@ -89,6 +89,8 @@ Creates a new _RenderView_ structure. Once created, the _view_ will be rendered 
 
 Will destroy the _view_. Once destroyed, it will of course no longer be rendered.
 
+When the entity ends, the renderer releases its WebGL context. `renderView()` answers `undefined` from that point on.
+
 #### provide context
 
 | context name | type | description |

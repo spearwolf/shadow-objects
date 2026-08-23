@@ -15,8 +15,15 @@ export class ThreeMultiViewRenderer {
   constructor({provideContext, onDestroy}) {
     const multiViewRenderer = provideContext(ThreeMultiViewRendererContext, this);
 
+    // The creation API's `onDestroy` callback is the one channel the kernel notifies this
+    // class through when its entity ends, so the release lives here rather than in a
+    // same-named method — a plain method of that name is never called by the kernel.
     onDestroy(() => {
       multiViewRenderer.set(null);
+      this.#views.clear();
+      this.renderer.dispose();
+      this.renderer = null;
+      this.canvas = null;
     });
 
     this.canvas = new OffscreenCanvas(DEFAULT_WIDTH, DEFAULT_HEIGHT);
@@ -36,6 +43,9 @@ export class ThreeMultiViewRenderer {
   }
 
   async renderView(view) {
+    // A frame already in flight when the entity's teardown ran finds neither renderer nor
+    // canvas here; `ThreeRenderView` treats no image the same as nothing to transfer.
+    if (this.renderer == null) return;
     if (view?.scene == null || view?.camera == null) return;
     if (!(view.width > 0 && view.height > 0)) return;
 
@@ -77,10 +87,5 @@ export class ThreeMultiViewRenderer {
     if (_size2.width === width && _size2.height === height) return;
 
     this.renderer.setSize(width, height, false);
-  }
-
-  onDestroy() {
-    this.renderer.dispose();
-    this.renderer = null;
   }
 }
