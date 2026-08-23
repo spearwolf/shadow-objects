@@ -1738,6 +1738,23 @@ browser reports it to the global `error` event instead.
 | `syncShadowObjects()` | Hands the environment of this element's namespace to the next sync. The call is collected per namespace and carried out one microtask later, so calling it more than once in a task costs one sync. Needed with `auto-sync="off"`. Inherited from `ShaeElement`, which means `<shae-ent>` has it too. |
 | `destroy()` | Tears down the environment, its proxy and the element's signals. Called by the element itself one microtask after it leaves the tree, unless it is back in the tree by then. It counts once: every call after the first finds nothing left to do and changes nothing. |
 
+**The subscriptions begin at the first connect.** A `<shae-worker>` built with
+`document.createElement()` and never put into a document listens to nothing — it holds its
+`ShadowEnv`, but no effect and no event subscription — so nothing on the module level points at it.
+Here that call runs exactly once: an element this teardown has reached is turned away at the door.
+
+> **`start()` before the first connect costs two things.** The method is public, and calling it on
+> an element that is out of the document builds the environment while nothing on the element is
+> listening yet. The `contextcreated` event for that environment is therefore not dispatched — nor
+> is `contextlost`, should the environment lose its connection before the element connects; both
+> fire once, at a moment that has passed by the time the element has listeners. And where `ns` is
+> changed between that `start()` and the first connect, `shadowEnv.view` keeps naming the context of
+> the namespace the element was started with: `start()` resolves the view once, and the binding that
+> follows an `ns` change is not up yet. A write of `ns` after the first connect moves it as usual,
+> and assigning `shadowEnv.view` by hand settles it at any point. A `src` set in that window is not
+> affected — the import is caught up on connect. The declarative path meets none of this: an element
+> that connects before it starts has its listeners in place first.
+
 **Leaving the tree and coming back.** The teardown waits one microtask. An element that is
 back in the document before that microtask runs keeps everything it had: the same
 `ShadowEnv`, the same proxy, the same entities in it, and `start()` resolves as before — a
@@ -1820,14 +1837,15 @@ Represents an Entity (game object) in the Shadow Environment. Corresponds to a `
 <shae-ent token="my-player"></shae-ent>
 ```
 
-Both `ns` and `token` are also readable and writable from JavaScript, and the two differ in what
-that does to the markup. `ns` is normalized on the way in: `el.ns = '  hud  '` leaves `ns="hud"` in
-the DOM, and an empty namespace removes the attribute and returns the element to the Global
-Context. The `token` attribute is trimmed when it is read, and markup the element was upgraded from
-keeps what it says — `<shae-ent token="  x  ">` still reads `token="  x  "` while `el.token` reads
-`x`. From then on the reflection writes back: on a live element both `el.token = '  x  '` and
-`setAttribute('token', '  x  ')` end at `token="x"`, and `el.token = undefined` removes the
-attribute.
+Both `ns` and `token` are also readable and writable from JavaScript, and both are normalized on
+the way in. `el.ns = '  hud  '` leaves `ns="hud"` in the DOM, and an empty namespace removes the
+attribute and returns the element to the Global Context. The `token` attribute is trimmed when it
+is read, and the trimmed value goes back onto the attribute: on a live element both
+`el.token = '  x  '` and `setAttribute('token', '  x  ')` end at `token="x"`, and
+`el.token = undefined` removes the attribute. Markup is no exception — `<shae-ent token="  x  ">`
+reads `token="x"` once the element has connected, because connecting is where the element takes the
+reflection up and writes what its signals carry out to the attributes. Only before that first
+connect does the attribute still say what was written into it.
 
 **Forwarding events example:**
 
@@ -1874,8 +1892,11 @@ inherited `ns$` are public, not `protected` — read them with `.value` or subsc
 `forwardCustomEvents$` matters twice over: there is no `forwardCustomEvents` accessor, so the
 signal is the only way to set the filter from JavaScript. The attribute is the serialized form of
 the signal: `false` and an empty `Set` remove it, a `Set` writes the comma-separated list, and
-`true` sets it to the empty string, whatever stood there before. A value already saying the same
-thing as the signal is left exactly as it is written, so markup keeps its spelling.
+`true` sets it to the empty string, whatever stood there before. The element compares spellings and
+not meanings, and writes wherever the two differ: `forward-custom-events="foo, bar"` becomes
+`forward-custom-events="foo,bar"`, and `forward-custom-events="   "` — a whitespace-only value,
+which reads as "every event" — becomes the empty string that spells the same thing. An attribute
+already carrying the exact serialization is the one case left untouched.
 
 ```javascript
 const ent = document.querySelector('shae-ent');
@@ -1887,7 +1908,10 @@ ent.forwardCustomEvents$.set(false);                      // attribute removed
 
 The element reads the attribute back whenever it connects, and the forwarding follows that result.
 Signal, attribute and what actually reaches the DOM therefore say the same thing over the whole
-lifecycle, across any number of removals and re-appends. The one window in which they can disagree
+lifecycle, across any number of removals and re-appends — the first connect included, where the
+element writes each of these signals out before it reads anything back. That is where markup reaches
+the canonical spelling: `forward-custom-events=" , , "` names no event type, so the attribute is
+removed, and `token="  x  "` becomes `token="x"`. The one window in which the two can disagree
 closes on its own: an element that has been out of the document long enough to be released holds no
 reflecting handler, so a write in that state reaches the signal and not the attribute — and the
 element writes it out as it reconnects, before it reads any attribute back. The signal wins that
@@ -1906,9 +1930,11 @@ subclass that overrides one has to call `super`.
 Two more `protected` methods carry the lifecycle, and a subclass that holds subscriptions of its own
 has to use both or lose them. `teardown()` is the overridable half of `destroy()` — release what the
 subclass holds and call `super.teardown()` last. `restore()` is its counterpart — call
-`super.restore()` first, take the same subscriptions up again, and write any signal that reflects
+`super.restore()` first, take the same subscriptions up, and write any signal that reflects
 into an attribute back out while doing so, because `connectedCallback` reads those attributes
-immediately afterwards. Overriding `destroy()` itself is possible but rarely right: the guard that
+immediately afterwards. `restore()` runs from `connectedCallback`, on the first connect as well as
+on a return after a release; a constructor takes no subscriptions up, and a subclass constructor
+must not either — it reads attributes into signals and leaves it at that. Overriding `destroy()` itself is possible but rarely right: the guard that
 makes the teardown run once, and run once even when releasing something calls back into the element,
 lives there. A subclass that overrides `teardown()` without overriding `restore()` works exactly
 once — after the first release its own subscriptions are gone for the life of the element, with
@@ -1916,7 +1942,12 @@ nothing reported.
 
 #### Leaving the Tree and Coming Back
 
-Three things hold for an element that leaves the document. The first two hold for
+**Subscriptions begin at the first connect.** An element that has been built and never put into a
+document holds no effect, no signal subscription and no event listener, so nothing on the module
+level points at it and it can be collected. `restore()` is what takes them up, and the first connect
+calls it exactly the way a return after a release does. This holds for all three elements.
+
+Three further things hold for an element that leaves the document. The first two hold for
 [`<shae-prop>`](#shae-prop) as well; on the third the two elements differ, and that section says how.
 
 **A move inside one task costs nothing.** The release waits one microtask, and an element that is
@@ -2274,10 +2305,26 @@ Unlike the two other elements, `<shae-prop>` keeps its signals to itself: `entNo
 `connectedCallback`, `disconnectedCallback`, `attributeChangedCallback` — are implemented; a
 subclass that overrides one has to call `super`.
 
+`teardown()` and `restore()` are `protected` and carry the lifecycle here exactly as they do on
+`ShaeElement`, which this element does not extend. A subclass that holds subscriptions of its own
+has to use both or lose them: `teardown()` is the overridable half of `destroy()` — release what the
+subclass holds and call `super.teardown()` last — and `restore()` takes the same subscriptions up
+again after `super.restore()`. There is nothing to write back out to an attribute here, unlike
+`<shae-ent>`: this element re-reads its own attributes on every connect. `restore()` runs from
+`connectedCallback`, on the first connect as well as on a return after a release; a subclass
+constructor takes no subscriptions up. Overriding `destroy()` itself is possible but rarely right:
+the guard that makes the teardown run once, and run once even when releasing something calls back
+into the element, lives there. A subclass that overrides `teardown()` without overriding `restore()`
+works exactly once — after the first release its own subscriptions are gone for the life of the
+element, with nothing reported.
+
 #### Leaving the Tree and Binding Again
 
-The first two things hold as for
-[`<shae-ent>`](#leaving-the-tree-and-coming-back); the third is where this element goes its own way.
+**Subscriptions begin at the first connect**, as they do for [`<shae-ent>`](#leaving-the-tree-and-coming-back):
+an element built and never put into a document holds nothing and can be collected.
+
+Of what follows, the first two things hold as for `<shae-ent>` as well; the third is where this
+element goes its own way.
 
 **A move inside one task costs nothing.** The release waits one microtask. An element back in the
 document before that microtask runs keeps its host, its declaration on the entity and its value.

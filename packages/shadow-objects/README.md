@@ -64,11 +64,17 @@ Need to register a shadow object at runtime instead? `@spearwolf/shadow-objects/
 The custom elements clean up after themselves — no teardown call for you to make, because a
 framework re-rendering a subtree would not make one either.
 
-`<shae-ent>` and `<shae-prop>` release their subscriptions one microtask after they leave the
-document, which makes them collectable. A move within a single task never reaches that point, so a
-re-render costs nothing. And the release is reversible: an element put back into the document takes
-its subscriptions up again and carries the same `ViewComponent` and the same uuid it left with.
-`destroy()` does it by hand, `isDestroyed` reads the current state.
+All three elements take their subscriptions up when they first connect, not when they are built —
+an element created with `document.createElement()` and never put into a document holds no effect and
+no event subscription, so nothing on the module level points at it and it can be collected. A
+`<shae-worker>` does own its `ShadowEnv` from the moment it is built; what it does not own is
+anything that listens.
+
+`<shae-ent>` and `<shae-prop>` release their subscriptions again one microtask after they leave the
+document, which makes them collectable once more. A move within a single task never reaches that
+point, so a re-render costs nothing. And the release is reversible: an element put back into the
+document takes its subscriptions up again and carries the same `ViewComponent` and the same uuid it
+left with. `destroy()` does it by hand, `isDestroyed` reads the current state.
 
 What a released element is written in the meantime is where the two part company. `<shae-ent>` keeps
 it — `token`, `ns` and `forward-custom-events` stand in the signals and are written out to the

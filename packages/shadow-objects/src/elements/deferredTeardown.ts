@@ -35,9 +35,13 @@ export class DeferredTeardown {
 
     queueMicrotask(() => {
       this.#isAsking = false;
-      if (this.#isBooked) {
-        this.#run();
-      }
+      if (!this.#isBooked) return;
+      // the booking is cleared in front of the run, not behind it: the field says whether a
+      // teardown is waiting, and one that is being carried out is not waiting. It also decides what
+      // a `schedule()` from inside the teardown means — a fresh round, rather than a booking that
+      // the line behind the call would wipe out
+      this.#isBooked = false;
+      this.#run();
     });
   }
 

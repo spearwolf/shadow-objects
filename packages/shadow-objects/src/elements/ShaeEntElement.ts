@@ -1,5 +1,5 @@
 import {on} from '@spearwolf/eventize';
-import {beQuiet, createEffect, createSignal, Effect} from '@spearwolf/signalize';
+import {beQuiet, createEffect, createSignal, Effect, hibernate} from '@spearwolf/signalize';
 import {VoidToken} from '../constants.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {ComponentContext} from '../view/ComponentContext.js';
@@ -226,18 +226,17 @@ export class ShaeEntElement extends ShaeElement {
   constructor() {
     super();
 
+    // both reads run with nothing listening yet: what they put into the signals is the state the
+    // attributes already spell out. The subscriptions are taken up at the first connect
     this.#updateTokenValue();
     this.#updateForwardCustomEventsValue();
-
-    this.#subscribe();
   }
 
   /**
    * Take up everything this element listens to.
    *
-   * Runs from the constructor and again from {@link ShaeEntElement.restore}, and the two reads
-   * above it in the constructor stand where they do on purpose: what they put into the signals is
-   * the state the attributes already spell out, and no handler has to hear about it.
+   * Called from {@link ShaeEntElement.restore} and from nowhere else — that is the one place where
+   * this element's subscriptions begin, at the first connect as well as after a teardown.
    */
   #subscribe(): void {
     this.#namespaceBinding = this.ns$.onChange((ns) => {
@@ -395,15 +394,21 @@ export class ShaeEntElement extends ShaeElement {
   }
 
   #writeTokenToViewComponent(token: string | undefined): void {
+    // the comparison is what makes the catch-up in `restore()` free: a return during which nobody
+    // touched the token hands the entity the value it is already on, and a sync for a change trail
+    // that would carry nothing is a sync not worth queueing
     const vc = this.viewComponent$.value;
-    if (vc) {
-      vc.token = token;
-      this.syncShadowObjects();
-    }
+    if (vc == null || vc.token === token) return;
+
+    vc.token = token;
+    this.syncShadowObjects();
   }
 
   /**
-   * Take the subscriptions up again and settle what drifted while none of them were listening.
+   * Take the subscriptions up and settle what drifted while none of them were listening.
+   *
+   * Runs on the first connect, where this element has never listened to anything, and again for one
+   * that comes back after a teardown.
    *
    * The three catch-up calls are not decoration. A released element still takes writes, so `token`,
    * `ns` and `forward-custom-events` can each stand on a value its attribute never heard about —
@@ -504,72 +509,79 @@ export class ShaeEntElement extends ShaeElement {
   }
 
   override connectedCallback() {
-    super.connectedCallback();
+    // the whole body outside any reactive context of the caller, for the reason spelled out in
+    // `ShaeElement.connectedCallback`: an `append()` inside a foreign effect would otherwise own
+    // every subscription taken up here. `#setupViewComponentEffect()` carries that just as much as
+    // `restore()` does — it subscribes to `componentContext$` on every single connect. Nesting is
+    // fine: `super.connectedCallback()` opens a frame of its own inside this one
+    hibernate(() => {
+      super.connectedCallback();
 
-    this.#shadowRootHostNeedsUpdate = true;
+      this.#shadowRootHostNeedsUpdate = true;
 
-    this.addEventListener('slotchange', this.#onSlotChange, {capture: false, passive: false});
-    this.addEventListener(RequestEntParentEventName, this.#onRequestParent, {capture: false, passive: false});
+      this.addEventListener('slotchange', this.#onSlotChange, {capture: false, passive: false});
+      this.addEventListener(RequestEntParentEventName, this.#onRequestParent, {capture: false, passive: false});
 
-    this.#setupViewComponentEffect();
+      this.#setupViewComponentEffect();
 
-    // --- token ---
-    beQuiet(() => this.#updateTokenValue());
+      // --- token ---
+      beQuiet(() => this.#updateTokenValue());
 
-    // --- forward-custom-events ---
-    // the patch on the ViewComponent's dispatchEvent hangs on this signal, so the read-back has to
-    // reach it: a write nothing observes would leave the patch standing on a filter the element no
-    // longer carries. A list is a fresh Set on every read and would count as a change by identity
-    // alone, so an unchanged filter is left alone instead of written again
-    const forwardCustomEvents = this.#readForwardCustomEventsAttribute();
-    if (!isSameFilter(forwardCustomEvents, this.forwardCustomEvents$.value)) {
-      this.forwardCustomEvents$.set(forwardCustomEvents);
-    }
+      // --- forward-custom-events ---
+      // the patch on the ViewComponent's dispatchEvent hangs on this signal, so the read-back has to
+      // reach it: a write nothing observes would leave the patch standing on a filter the element no
+      // longer carries. A list is a fresh Set on every read and would count as a change by identity
+      // alone, so an unchanged filter is left alone instead of written again
+      const forwardCustomEvents = this.#readForwardCustomEventsAttribute();
+      if (!isSameFilter(forwardCustomEvents, this.forwardCustomEvents$.value)) {
+        this.forwardCustomEvents$.set(forwardCustomEvents);
+      }
 
-    // --- componentContext | viewComponent ---
-    if (this.componentContext == null) {
-      this.componentContext$.set(ComponentContext.get(this.ns));
-    } else {
-      // the namespace may have been set or changed while the element was outside the tree. The
-      // context signal then already stands on its new value, nothing is going to fire for it
-      // again, and the element would sit in a namespace without ever becoming an entity in it.
-      // In the ordinary case this hands over the very same context the component already has,
-      // which the setter answers with a return
-      this.#applyComponentContext(this.componentContext);
-    }
+      // --- componentContext | viewComponent ---
+      if (this.componentContext == null) {
+        this.componentContext$.set(ComponentContext.get(this.ns));
+      } else {
+        // the namespace may have been set or changed while the element was outside the tree. The
+        // context signal then already stands on its new value, nothing is going to fire for it
+        // again, and the element would sit in a namespace without ever becoming an entity in it.
+        // In the ordinary case this hands over the very same context the component already has,
+        // which the setter answers with a return
+        this.#applyComponentContext(this.componentContext);
+      }
 
-    // --- viewComponent.parent ---
-    this.#dispatchRequestParent();
+      // --- viewComponent.parent ---
+      this.#dispatchRequestParent();
 
-    // --- parents ---
-    // the order matters: before the line above, this element's own parent is not settled and the
-    // candidate set would be the wrong one.
-    //
-    // The guard decides in constant time whether the question arises at all, and it has to,
-    // because this runs on every connect. It cannot hide a case the request would have found: an
-    // element constructed before it entered the tree is answering by the time anything below it
-    // connects. What this element holds is no such question — a shadow root can be attached to it
-    // before it is defined, and a closed one is invisible from the inside, so `shadowRoot` reads
-    // null while the entities in it are bound to an ancestor further up. An empty element is not
-    // an element with nothing below it.
-    //
-    // --- properties ---
-    // The same reasoning carries the second call, and so does the same limit: an element built in
-    // a detached subtree and inserted afterwards does *not* announce itself, because the
-    // properties below it connect after it and find it on their own. A property already connected
-    // and then projected into that subtree is reached by the `#onSlotChange` call further down.
-    if (this.#wasUpgradedInPlace) {
-      this.#askPeersToReRequestParent();
-      this.#askPropertiesToReRequestHost();
-    }
+      // --- parents ---
+      // the order matters: before the line above, this element's own parent is not settled and the
+      // candidate set would be the wrong one.
+      //
+      // The guard decides in constant time whether the question arises at all, and it has to,
+      // because this runs on every connect. It cannot hide a case the request would have found: an
+      // element constructed before it entered the tree is answering by the time anything below it
+      // connects. What this element holds is no such question — a shadow root can be attached to it
+      // before it is defined, and a closed one is invisible from the inside, so `shadowRoot` reads
+      // null while the entities in it are bound to an ancestor further up. An empty element is not
+      // an element with nothing below it.
+      //
+      // --- properties ---
+      // The same reasoning carries the second call, and so does the same limit: an element built in
+      // a detached subtree and inserted afterwards does *not* announce itself, because the
+      // properties below it connect after it and find it on their own. A property already connected
+      // and then projected into that subtree is reached by the `#onSlotChange` call further down.
+      if (this.#wasUpgradedInPlace) {
+        this.#askPeersToReRequestParent();
+        this.#askPropertiesToReRequestHost();
+      }
 
-    // --- hosted slots ---
-    this.#collectHostedSlots();
+      // --- hosted slots ---
+      this.#collectHostedSlots();
 
-    this.#createParentObserver();
+      this.#createParentObserver();
 
-    // --- sync! ---
-    this.syncShadowObjects();
+      // --- sync! ---
+      this.syncShadowObjects();
+    });
   }
 
   #createParentObserver() {

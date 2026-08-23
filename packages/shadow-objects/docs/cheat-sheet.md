@@ -257,8 +257,12 @@ had before the attempt, live one included. Either way, the way back is the next 
 (writing the same value again does not count) or a leave-and-rejoin of the tree. See
 `docs/api-reference.md`, "A context the entity cannot join".
 
+**Subscriptions begin at the first connect.** An element that has been built and never put into a
+document holds no effect, no signal subscription and no event listener, so it can be collected. The
+constructor reads attributes into signals and nothing else.
+
 **Teardown.** Leaving the tree releases every subscription the element holds, one microtask later,
-and makes it collectable — `isDestroyed` reads `true`, `destroy()` does it by hand. Back in the tree
+and makes it collectable again — `isDestroyed` reads `true`, `destroy()` does it by hand. Back in the tree
 before that microtask and nothing happens at all. And the release is reversible: reconnecting takes
 the subscriptions up again, with the same `ViewComponent`, the same uuid and the same values. A
 `token`, `ns` or `forward-custom-events` written to a released element lands in the signal and is

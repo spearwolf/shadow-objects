@@ -21,30 +21,30 @@ afterEach(() => {
 });
 
 describe('shae-ent token attribute', () => {
-  it('token="  x  " is trimmed on the property, the attribute is left alone', () => {
-    // the attribute is not written back on first read: ShaeEntElement's constructor reads
-    // `token` before it registers the reflecting onChange handler, and connectedCallback reads
-    // it again under `beQuiet` — so nothing ever observes the trimmed value as a change
+  it('token="  x  " is trimmed on the property and written back onto the attribute', () => {
+    // the element takes its subscriptions up as it first connects, and writes every reflecting
+    // signal out to its attribute while doing so — so the canonical spelling reaches the markup
+    // on the first connect, exactly as it does on every later one
     const container = mount('<shae-ent token="  x  "></shae-ent>');
     const el = container.querySelector('shae-ent');
     expect(el.token).to.equal('x');
-    expect(el.getAttribute('token')).to.equal('  x  ');
+    expect(el.getAttribute('token')).to.equal('x');
     expect(el.viewComponent.token).to.equal('x');
   });
 
-  it('token="   " collapses to undefined, the attribute is left alone', () => {
+  it('token="   " collapses to undefined and takes the attribute with it', () => {
     const container = mount('<shae-ent token="   "></shae-ent>');
     const el = container.querySelector('shae-ent');
     expect(el.token).to.be.undefined;
-    expect(el.getAttribute('token')).to.equal('   ');
+    expect(el.hasAttribute('token')).to.be.false;
     expect(el.viewComponent.token).to.equal(VoidToken);
   });
 
-  it('token="" collapses to undefined, the attribute is left alone', () => {
+  it('token="" collapses to undefined and takes the attribute with it', () => {
     const container = mount('<shae-ent token=""></shae-ent>');
     const el = container.querySelector('shae-ent');
     expect(el.token).to.be.undefined;
-    expect(el.getAttribute('token')).to.equal('');
+    expect(el.hasAttribute('token')).to.be.false;
     expect(el.viewComponent.token).to.equal(VoidToken);
   });
 
@@ -133,30 +133,30 @@ describe('shae-ent ns attribute', () => {
   });
 
   it('ns="  local  " is trimmed on both the property and the attribute', () => {
-    // unlike token, ns registers its reflecting onChange handler before the first read, so the
-    // trimmed value is a change the handler observes. The write itself waits for the first
-    // connect — a constructor must not give its element an attribute — and `mount` connects the
-    // container synchronously, so it has happened by the time this reads back
+    // the write waits for the first connect — a constructor must not give its element an
+    // attribute — and `mount` connects the container synchronously, so it has happened by the
+    // time this reads back
     const container = mount('<shae-ent ns="  local  "></shae-ent>');
     const el = container.querySelector('shae-ent');
     expect(el.ns).to.equal('local');
     expect(el.getAttribute('ns')).to.equal('local');
   });
 
-  it('ns="" falls back to the global namespace, the attribute is left alone', () => {
-    // the signal value never changes here (it was already GlobalNS), so the reflecting
-    // onChange handler never fires and nothing writes the attribute back
+  it('ns="" falls back to the global namespace and takes the attribute with it', () => {
+    // the global namespace is a symbol and has no spelling an attribute could carry, so the
+    // reflection removes the attribute rather than writing one — the same answer `el.ns = ''`
+    // has always given
     const container = mount('<shae-ent ns=""></shae-ent>');
     const el = container.querySelector('shae-ent');
     expect(el.ns).to.equal(GlobalNS);
-    expect(el.getAttribute('ns')).to.equal('');
+    expect(el.hasAttribute('ns')).to.be.false;
   });
 
-  it('ns="   " falls back to the global namespace, the attribute is left alone', () => {
+  it('ns="   " falls back to the global namespace and takes the attribute with it', () => {
     const container = mount('<shae-ent ns="   "></shae-ent>');
     const el = container.querySelector('shae-ent');
     expect(el.ns).to.equal(GlobalNS);
-    expect(el.getAttribute('ns')).to.equal('   ');
+    expect(el.hasAttribute('ns')).to.be.false;
   });
 
   it('el.ns = "other" swaps the component context, keeps the entity and its identity', () => {

@@ -283,7 +283,7 @@ Reproduktion der Zeile oben — der Aufbau kommt ohne eine Datei im Repository a
 
 ### 4.1 Inventar
 
-**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 23 Dateien, 769 Fälle):
+**vitest** (`packages/shadow-objects/src/**/*.spec.ts`, 23 Dateien, 775 Fälle):
 `Kernel.spec.ts` (5484 LoC), `Entity.spec.ts`, `Registry.spec.ts`, `ShadowObject.spec.ts`, `ShadowObjectCreationScope.spec.ts`, `SignalsPath.spec.ts`, `ShadowEnv.spec.ts`, `LocalShadowObjectEnv.spec.ts`, `RemoteWorkerEnv.spec.ts`, `MessageRouter.spec.ts`, `WorkerRuntime.spec.ts`, `ViewComponent.spec.ts`, `ComponentContext.spec.ts`, `ComponentChanges.spec.ts`, `ComponentMemory.spec.ts`, `props-utils.spec.ts`, `FrameLoop.spec.ts`, `toUrlString.spec.ts`, `waitForMessageOfType.spec.ts`, `ConsoleLogger.spec.ts`, `ConsoleLogger.storage.spec.ts`, `elements/propValueConverters.spec.ts`, `elements/elementReachability.spec.ts`.
 
 **vitest** (`packages/shae-offscreen-canvas/src/**/*.spec.js`, 5 Dateien, 118 Fälle): `CanvasRenderingContext.spec.js`, `ShaeOffscreenCanvasElement.spec.js`, `ThreeMultiViewRenderer.spec.js`, `ThreeRenderView.spec.js`, `ShaeOffscreenCanvas.spec.js`.

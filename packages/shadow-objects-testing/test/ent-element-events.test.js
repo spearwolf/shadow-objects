@@ -32,21 +32,19 @@ describe('shae-ent forward-custom-events attribute forms', () => {
     ['forward-custom-events', true, ''],
     ['forward-custom-events=""', true, ''],
     // a whitespace-only value reads the same as a bare attribute: the signal becomes `true`,
-    // not a Set. The reflection never runs for this form — the constructor reads the attribute
-    // and puts the signal on `true` before the `onChange` handler exists, and the
-    // `attributeChangedCallback` that follows writes the very same primitive value. "foo, bar"
-    // below lands on a fresh Set instead, which is a change by identity, so the reflection
-    // normalizes the attribute to the joined spelling.
-    ['forward-custom-events="   "', true, '   '],
+    // not a Set, and the empty string is how `true` is spelled on the attribute. Every form in
+    // this table ends up on the canonical spelling of the value it names — the element writes
+    // each reflecting signal out to its attribute as it first connects.
+    ['forward-custom-events="   "', true, ''],
     ['forward-custom-events="foo"', ['foo'], 'foo'],
     ['forward-custom-events="foo, bar"', ['foo', 'bar'], 'foo,bar'],
     ['forward-custom-events="foo,,bar"', ['foo', 'bar'], 'foo,bar'],
     ['forward-custom-events=" foo , bar "', ['foo', 'bar'], 'foo,bar'],
     ['forward-custom-events="foo,"', ['foo'], 'foo'],
-    // a list without entries names no event type, so nothing is forwarded. The attribute stays as
-    // written: the signal never leaves its default, so the reflection has no change to write back
-    ['forward-custom-events=","', false, ','],
-    ['forward-custom-events=" , , "', false, ' , , '],
+    // a list without entries names no event type, so nothing is forwarded — and "forward
+    // nothing" is spelled by leaving the attribute out, which is what the reflection does with it
+    ['forward-custom-events=","', false, null],
+    ['forward-custom-events=" , , "', false, null],
     // splitting is comma-only: whitespace inside an entry is part of the type name
     ['forward-custom-events="foo foo"', ['foo foo'], 'foo foo'],
     ['', false, null],

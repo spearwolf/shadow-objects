@@ -1,4 +1,5 @@
-import {beforeAll, describe, expect, it} from 'vitest';
+import {createEffect, createSignal} from '@spearwolf/signalize';
+import {afterEach, beforeAll, describe, expect, it} from 'vitest';
 
 import '../shae-ent.js';
 import '../shae-prop.js';
@@ -55,13 +56,34 @@ const liveAndLeave = async (tagName: string, prepare?: (el: HTMLElement) => void
   return new WeakRef(el);
 };
 
+/**
+ * Build one element, leave it where it was built, and hand back nothing but a weak reference to it.
+ *
+ * Same rule as {@link liveAndLeave}: the element must be unreachable from the spec body by the time
+ * the collection runs, so it lives in this function and nowhere else.
+ */
+const createAndDrop = async (tagName: string, prepare?: (el: HTMLElement) => void): Promise<WeakRef<HTMLElement>> => {
+  const el = document.createElement(tagName);
+  prepare?.(el);
+  return new WeakRef(el);
+};
+
 /** An element out of the tree, one microtask past its removal. */
 const removeAndSettle = async (el: HTMLElement): Promise<void> => {
   el.remove();
   await Promise.resolve();
 };
 
+// No case here may rest on where it stands in this file. A collection case answers for one element,
+// and it only does so while nothing else holds that element — a case further up that left something
+// in the document, or in a detached node it still points at, would decide the answer for every case
+// below it. Hence the `afterEach` that empties the document and the rule that each case gives up its
+// own local bindings before it returns.
 describe('element reachability', () => {
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
   beforeAll(() => {
     customElements.define(PLAIN_TAG, class extends HTMLElement {});
 
@@ -95,6 +117,65 @@ describe('element reachability', () => {
     const ref = await liveAndLeave(SHAE_WORKER, (el) => el.setAttribute(ATTR_NO_AUTOSTART, ''));
     await collect();
     expect(ref.deref()).toBeUndefined();
+  });
+
+  it('collects a plain custom element that is created and never connected — the control case', async () => {
+    const ref = await createAndDrop(PLAIN_TAG);
+    await collect();
+    expect(ref.deref()).toBeUndefined();
+  });
+
+  it('collects a <shae-ent> that is created and never connected', async () => {
+    const ref = await createAndDrop(SHAE_ENT);
+    await collect();
+    expect(ref.deref()).toBeUndefined();
+  });
+
+  it('collects a <shae-prop> that is created and never connected', async () => {
+    const ref = await createAndDrop(SHAE_PROP, (el) => el.setAttribute('name', 'foo'));
+    await collect();
+    expect(ref.deref()).toBeUndefined();
+  });
+
+  it('collects a <shae-worker> that is created and never connected', async () => {
+    const ref = await createAndDrop(SHAE_WORKER, (el) => el.setAttribute(ATTR_NO_AUTOSTART, ''));
+    await collect();
+    expect(ref.deref()).toBeUndefined();
+  });
+
+  it('writes the normalised namespace onto the attribute of a <shae-ent> as it first connects', async () => {
+    const ent = document.createElement(SHAE_ENT) as ShaeEntElement;
+    ent.setAttribute(ATTR_NS, '  local  ');
+
+    document.body.append(ent);
+
+    expect(ent.ns, 'ns').toBe('local');
+    expect(ent.getAttribute(ATTR_NS), 'ns attribute').toBe('local');
+  });
+
+  it('keeps a <shae-ent> that was appended from inside a foreign effect working when that effect runs again', async () => {
+    const ent = document.createElement(SHAE_ENT) as ShaeEntElement;
+
+    // whoever appends an element decides nothing about that element's subscriptions. A signal
+    // effect of the application is such a caller, and its next run releases everything that was
+    // set up while it was running — the element's subscriptions must not be among them
+    const rerun$ = createSignal(0);
+    const foreign = createEffect(() => {
+      rerun$.get();
+      if (!ent.isConnected) {
+        document.body.append(ent);
+      }
+    });
+
+    rerun$.set(1);
+
+    ent.token = 'after-the-rerun';
+
+    expect(ent.token, 'token').toBe('after-the-rerun');
+    expect(ent.getAttribute(ATTR_TOKEN), 'token attribute').toBe('after-the-rerun');
+    expect(ent.viewComponent?.token, 'the token reached the entity').toBe('after-the-rerun');
+
+    foreign.destroy();
   });
 
   it('tears an element down once it stays out of the document', async () => {

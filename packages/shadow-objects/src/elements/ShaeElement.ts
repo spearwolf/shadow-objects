@@ -1,4 +1,4 @@
-import {createSignal, Signal} from '@spearwolf/signalize';
+import {createSignal, hibernate, Signal} from '@spearwolf/signalize';
 import {GlobalNS} from '../constants.js';
 import type {NamespaceType} from '../types.ts';
 import {readNamespaceAttribute} from '../utils/attr-utils.js';
@@ -32,11 +32,17 @@ const syncShadowObjects = (ns: NamespaceType) => {
 /**
  * The base of the custom elements that pick an environment through their `ns` attribute.
  *
+ * The subscriptions of such an element begin at its first connect, not at its construction. That is
+ * what makes an element that is built and never used collectable at all: signalize registers every
+ * effect and every `onChange` handler under a signal id in a module-level queue, so an element that
+ * subscribed in its constructor would hang there for the lifetime of the page, however little the
+ * application ever did with it. What the constructor does instead is read attributes into signals,
+ * which nobody is listening to yet.
+ *
  * An element that leaves the tree and stays out is torn down: every effect, every `onChange`
  * subscription and every link it holds comes off, and with them the last thing on the module level
- * that pointed at it — signalize registers each of those under a signal id in a global queue, so
- * releasing them is what makes the element collectable. The decision waits one microtask, so a move
- * inside a single task — every re-render is one — costs the element nothing.
+ * that pointed at it. The decision waits one microtask, so a move inside a single task — every
+ * re-render is one — costs the element nothing.
  *
  * What the element carries as state it keeps. Its signals are not destroyed: they hold their
  * identity and their values, a write between the teardown and a return lands in the value, and a
@@ -45,7 +51,8 @@ const syncShadowObjects = (ns: NamespaceType) => {
  * is not what holds the element anyway.
  *
  * A subclass whose teardown *is* final refuses the return in its own `connectedCallback` — see
- * `ShaeWorkerElement`, whose teardown takes an environment with it that cannot be rebuilt.
+ * `ShaeWorkerElement`, whose teardown takes an environment with it that cannot be rebuilt. For such
+ * an element {@link ShaeElement.restore} runs exactly once, on the first connect.
  */
 export class ShaeElement extends HTMLElement {
   static observedAttributes = [ATTR_NS];
@@ -74,6 +81,17 @@ export class ShaeElement extends HTMLElement {
 
   #destroyed = false;
 
+  /**
+   * Whether this element is listening right now.
+   *
+   * A separate field from `#destroyed`, and they must not be folded into one: the two disagree for
+   * a freshly built element, which is listening to nothing and has been torn down by nobody. Read
+   * off a single field, that element would have to report `isDestroyed === true` — which is a lie
+   * the whole public surface would then carry: `destroy()` would find nothing to do, and the
+   * documented promise that a new element reads `false` would be gone.
+   */
+  #subscribed = false;
+
   readonly #teardown = new DeferredTeardown(() => this.destroy());
 
   /** Takes the namespace reflection off again. */
@@ -87,21 +105,19 @@ export class ShaeElement extends HTMLElement {
   constructor() {
     super();
 
-    // The subscription stands before the first read, and that order is observable: the read
-    // normalises what the attribute spells — `ns="  local  "` becomes `local` — and only a handler
-    // that is already listening carries the normalised value back onto the attribute.
-    this.#subscribe();
-
+    // Nothing is listening at this point, and the read does not need anything to: it puts into the
+    // signal what the attribute spells, normalised — `ns="  local  "` becomes `local`. The
+    // normalised value reaches the attribute at the first connect, where `restore()` writes every
+    // reflecting signal back out.
     updateNamespace(this, this.ns$);
   }
 
   /**
    * Take up everything this element listens to.
    *
-   * Private rather than overridable: this runs from the constructor of the base class, at which
-   * point the field initialisers of a subclass have not run yet, and a subclass extending the
-   * method here would reach for signals that do not exist at that moment. A subclass adds its own
-   * subscriptions in {@link ShaeElement.restore} and in its own constructor instead.
+   * Private rather than overridable, and called from {@link ShaeElement.restore} alone: a subclass
+   * extends the pair `restore()`/`teardown()`, which is where its own signals are there to be
+   * subscribed to.
    */
   #subscribe(): void {
     this.#nsReflection = this.ns$.onChange((ns) => this.#reflectNamespace(ns));
@@ -120,18 +136,19 @@ export class ShaeElement extends HTMLElement {
   }
 
   /**
-   * The counterpart to {@link ShaeElement.destroy}: subscribe to everything again, and catch up on
-   * what changed while nothing was listening.
+   * Take the subscriptions up, and catch up on what changed while nothing was listening.
    *
-   * Called from `connectedCallback` for an element that comes back after a teardown, and from
-   * nowhere else — a constructor in particular, where the subclass fields these subscriptions read
-   * are not there yet.
+   * Called from `connectedCallback` and from nowhere else — a constructor in particular, where the
+   * subclass fields these subscriptions read are not there yet. It runs at the first connect, where
+   * the element has never listened to anything, and again for one that comes back after a teardown;
+   * the two are the same job, and the element between them is in the same state either way.
    *
    * The catch-up is the half that is easy to leave out and expensive to miss. A released element
    * still takes writes — the signals are alive — but nothing carries them onto the attributes, so
    * the two drift apart. Writing the signal's value back here settles that before anything reads an
    * attribute again: without it, the attribute read on the way in would push the *old* value back
-   * into the signal and the write would be lost without a word.
+   * into the signal and the write would be lost without a word. At the first connect the same
+   * write is what carries the normalisation of the constructor's attribute read onto the attribute.
    *
    * A subclass overrides this, calls `super.restore()`, takes its own subscriptions up and catches
    * up on its own signals in the same way. Every subscription this element loses in
@@ -146,11 +163,14 @@ export class ShaeElement extends HTMLElement {
   /**
    * Writes an attribute back from a signal, or holds the write until the element first connects.
    *
-   * A constructor must not give its element an attribute — the browser aborts the upgrade over it.
-   * Signals do change during construction, though: the initial attribute read happens there, and
-   * whatever it normalises reaches the reflecting handler right away. So a write that arrives
-   * before the first connect is parked instead of being dropped, and a later write for the same
-   * attribute replaces it — only the value the signal ends up with is worth writing.
+   * The writes that get parked are the ones `restore()` makes on the very first connect, where it
+   * carries every reflecting signal out to its attribute — including whatever the constructor's
+   * attribute read normalised. That call stands in front of the gate on purpose: a `setAttribute`
+   * from inside it would re-enter `attributeChangedCallback` while the subscriptions are still
+   * being set up, and running the writes a few lines further on, once the element is whole, is
+   * cheaper than making every subscription survive being read halfway through. A later write for
+   * the same attribute replaces the parked one — only the value the signal ends up with is worth
+   * writing.
    *
    * What is written back on connect is what the signals already carry, so the
    * `attributeChangedCallback` it triggers sets each signal to the value it is already on. For a
@@ -170,34 +190,46 @@ export class ShaeElement extends HTMLElement {
   }
 
   connectedCallback() {
-    // first, before anything reads or writes: being in the tree is the condition the deferred
-    // teardown waits on, so arriving here calls a booked teardown off
-    this.#teardown.cancel();
+    // The whole body runs outside whatever reactive context the caller is in. An `append()` is an
+    // ordinary call, and it can perfectly well stand inside a `createEffect()` of the application:
+    // a new effect and an `onChange()` hang themselves on the effect that is running at the time,
+    // so every subscription taken up below would become a child of that foreign effect, and its
+    // next run would release them all. The element would go quiet with `isDestroyed` still reading
+    // `false` and nothing said. `hibernate()` clears the effect stack for the duration, so the
+    // subscriptions belong to the element and come off where the element decides.
+    hibernate(() => {
+      // first, before anything reads or writes: being in the tree is the condition the deferred
+      // teardown waits on, so arriving here calls a booked teardown off
+      this.#teardown.cancel();
 
-    // and an element whose teardown already ran takes its subscriptions up again — the signals
-    // behind them stood untouched through it, so this is a reconnect and not a rebuild
-    if (this.#destroyed) {
+      // an element that is not listening takes its subscriptions up: the one that has never
+      // listened yet and the one whose teardown ran are the same case. The signals stood untouched
+      // either way, so this is a subscribe and never a rebuild
       this.#destroyed = false;
-      this.restore();
-    }
-
-    ensureDisplayContentsRule(this.getRootNode(), this.localName);
-
-    // the gate is "has been connected once", not "is connected now": what is held back is only
-    // what accrues before the very first connect. An element between its teardown and its return
-    // reflects nothing for a different reason — it has no reflecting handler at that point, and
-    // `restore()` settles the difference on the way back in. And the flag is set before the parked
-    // writes run, so a write that triggers another one goes straight through instead of landing in
-    // a map nobody reads again
-    this.#wasConnected = true;
-
-    const pending = this.#pendingReflections;
-    this.#pendingReflections = undefined;
-    if (pending) {
-      for (const write of pending.values()) {
-        write();
+      if (!this.#subscribed) {
+        this.#subscribed = true;
+        this.restore();
       }
-    }
+
+      ensureDisplayContentsRule(this.getRootNode(), this.localName);
+
+      // the gate is "has been connected once", not "is connected now": what is held back is only
+      // what accrues before the very first connect — the reflections `restore()` just wrote among
+      // them, which is why the flag falls behind that call. An element between its teardown and its
+      // return reflects nothing for a different reason — it has no reflecting handler at that
+      // point, and `restore()` settles the difference on the way back in. And the flag is set
+      // before the parked writes run, so a write that triggers another one goes straight through
+      // instead of landing in a map nobody reads again
+      this.#wasConnected = true;
+
+      const pending = this.#pendingReflections;
+      this.#pendingReflections = undefined;
+      if (pending) {
+        for (const write of pending.values()) {
+          write();
+        }
+      }
+    });
   }
 
   disconnectedCallback(): void {
@@ -220,6 +252,7 @@ export class ShaeElement extends HTMLElement {
   destroy(): void {
     if (this.#destroyed) return;
     this.#destroyed = true;
+    this.#subscribed = false;
 
     this.teardown();
   }
@@ -232,8 +265,8 @@ export class ShaeElement extends HTMLElement {
    * {@link ShaeElement.restore} — the two are one pair, and a subscription missing from either
    * side is a leak or a silently dead element.
    *
-   * `#pendingReflections` is left alone on purpose: it only ever holds writes from before the very
-   * first connect, and an element that was never connected is never torn down either.
+   * `#pendingReflections` is left alone on purpose: it only ever holds writes made inside the very
+   * first `connectedCallback`, which empties it again a few lines further on in that same call.
    */
   protected teardown(): void {
     this.#nsReflection?.();

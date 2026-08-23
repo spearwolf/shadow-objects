@@ -1,5 +1,5 @@
 import {on} from '@spearwolf/eventize';
-import {batch, createEffect, createSignal, destroySignal, Effect} from '@spearwolf/signalize';
+import {batch, createEffect, createSignal, destroySignal, Effect, hibernate} from '@spearwolf/signalize';
 import {readBooleanAttribute, readNumberAttribute} from '../utils/attr-utils.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {FrameLoop} from '../utils/FrameLoop.js';
@@ -18,6 +18,7 @@ import {
   ATTR_NO_STRUCTURED_CLONE,
   ATTR_SRC,
 } from './constants.js';
+import {ensureDisplayContentsRule} from './displayContentsRule.js';
 import {ShaeElement} from './ShaeElement.js';
 
 const WorkerTimeoutAttributes: [keyof RemoteWorkerEnvOptions, string][] = [
@@ -64,8 +65,35 @@ export class ShaeWorkerElement extends ShaeElement {
    */
   #envViewBinding?: () => void;
 
-  constructor() {
-    super();
+  /**
+   * Take the subscriptions up. Runs exactly once for this element, on the first connect.
+   *
+   * The return that `restore()` stands for on `<shae-ent>` and `<shae-prop>` does not exist here:
+   * `connectedCallback` turns a torn-down `<shae-worker>` away, so nothing ever calls this a second
+   * time.
+   *
+   * One path runs ahead of it, and it is the only one: `start()` is public, and an element started
+   * by hand while it is out of the document builds its environment before anything below is
+   * listening. Two things are lost there and stay lost, because both are moments rather than
+   * values, and there is no honest way to replay a moment that has passed:
+   *
+   * - the `contextcreated` — and, should the environment lose its connection first, the
+   *   `contextlost` — DOM event for that environment. `ShadowEnv.ContextCreated` fires once, with
+   *   nobody on the element listening for it; re-dispatching it from here would announce as new an
+   *   environment that has been up for a while.
+   * - the namespace the environment points at, where `ns` changed between that `start()` and the
+   *   first connect. `start()` resolves the view once with `??=`, the binding below only reacts to
+   *   *changes*, and the change already happened. `shadowEnv.view` then names the context of the
+   *   namespace the element carried when it was started. A write of `ns` after the first connect
+   *   moves it, as it always does.
+   *
+   * A `<shae-worker>` that connects before it starts — the ordinary way, and the only way the
+   * declarative form has — meets neither. The import of `src` is the one case of this shape that
+   * *is* caught up, at the end of this method, because a pending import is a value and not a
+   * moment.
+   */
+  protected override restore(): void {
+    super.restore();
 
     this.#envViewBinding = this.ns$.onChange((ns) => {
       this.shadowEnv.view = ComponentContext.get(ns);
@@ -108,23 +136,42 @@ export class ShaeWorkerElement extends ShaeElement {
       );
     });
 
-    this.autoSync$.onChange((sVal) => {
-      this.reflectAttribute(ATTR_AUTO_SYNC, () => {
-        const hasAttr = this.hasAttribute(ATTR_AUTO_SYNC);
-        const attrVal = hasAttr ? this.getAttribute(ATTR_AUTO_SYNC) : undefined;
+    this.autoSync$.onChange((sVal) => this.#reflectAutoSync(sVal));
 
-        if (sVal === ShaeWorkerElement.DefaultAutoSync) {
-          if (hasAttr && attrVal !== sVal) {
-            this.setAttribute(ATTR_AUTO_SYNC, sVal);
-          }
-        } else if (attrVal !== sVal) {
-          this.setAttribute(ATTR_AUTO_SYNC, sVal);
-        }
-      });
-    });
+    // the catch-up half of `restore()`: `connectedCallback` reads the `auto-sync` attribute back
+    // into the signal a few lines further on, so the canonical spelling has to be on the attribute
+    // by then — otherwise that read pushes the raw one, `auto-sync="YES"`, back over it
+    this.#reflectAutoSync(this.autoSync$.value);
 
+    // no catch-up for the namespace binding, and that is deliberate: the environment gets its view
+    // from `start()`, which resolves the namespace at the one moment it needs it. Resolving it here
+    // would build a `ComponentContext` for every `<shae-worker>` that has merely been connected,
+    // and a context that exists is a context entities join
     this.#createAutoSyncEffect();
     this.#createImportScriptEffect();
+
+    // a `src` that arrived while the environment was already up — only reachable through a
+    // `start()` made by hand on an element outside the document — has nothing that would import it:
+    // the effect is built without an autorun, and both callers that run it were registered a few
+    // lines above. The same test `attributeChangedCallback` makes for `src`
+    if (this.shadowEnv.isReady) {
+      this.#importScript?.run();
+    }
+  }
+
+  #reflectAutoSync(sVal: string): void {
+    this.reflectAttribute(ATTR_AUTO_SYNC, () => {
+      const hasAttr = this.hasAttribute(ATTR_AUTO_SYNC);
+      const attrVal = hasAttr ? this.getAttribute(ATTR_AUTO_SYNC) : undefined;
+
+      if (sVal === ShaeWorkerElement.DefaultAutoSync) {
+        if (hasAttr && attrVal !== sVal) {
+          this.setAttribute(ATTR_AUTO_SYNC, sVal);
+        }
+      } else if (attrVal !== sVal) {
+        this.setAttribute(ATTR_AUTO_SYNC, sVal);
+      }
+    });
   }
 
   #createImportScriptEffect() {
@@ -197,24 +244,34 @@ export class ShaeWorkerElement extends ShaeElement {
   }
 
   override connectedCallback() {
-    // this element does not come back, and the refusal has to stand in front of `super`: the base
-    // takes a returning element's subscriptions up again, and here there is nothing to take up —
-    // the teardown took the environment with it, and an environment cannot be rebuilt around a
-    // proxy that is gone. A `<shae-worker>` that is needed again is a new one
-    if (this.isDestroyed) return;
-
-    super.connectedCallback();
-
-    batch(() => {
-      const autoSync = this.getAttribute(ATTR_AUTO_SYNC);
-      if (autoSync != null) {
-        this.autoSync$.set(autoSync);
+    // the whole body outside any reactive context of the caller — same reason as in
+    // `ShaeElement.connectedCallback`, and the frames nest without trouble
+    hibernate(() => {
+      // this element does not come back, and the refusal has to stand in front of `super`: the base
+      // takes an element's subscriptions up there, and for a torn-down one there is nothing to take
+      // up — the teardown took the environment with it, and an environment cannot be rebuilt around
+      // a proxy that is gone. A `<shae-worker>` that is needed again is a new one.
+      //
+      // How the element renders is a separate question from whether it still listens, so the rule
+      // is installed before the refusal returns
+      if (this.isDestroyed) {
+        ensureDisplayContentsRule(this.getRootNode(), this.localName);
+        return;
       }
-      this.isConnected$.set(true);
+
+      super.connectedCallback();
+
+      batch(() => {
+        const autoSync = this.getAttribute(ATTR_AUTO_SYNC);
+        if (autoSync != null) {
+          this.autoSync$.set(autoSync);
+        }
+        this.isConnected$.set(true);
+      });
+      if (this.shouldAutostart) {
+        this.start().catch(this.#onUnobservedRejection);
+      }
     });
-    if (this.shouldAutostart) {
-      this.start().catch(this.#onUnobservedRejection);
-    }
   }
 
   override disconnectedCallback() {
@@ -300,8 +357,8 @@ export class ShaeWorkerElement extends ShaeElement {
    *
    * Unlike `<shae-ent>` and `<shae-prop>`, this teardown is final: it destroys the signals and
    * takes the environment down with them, and neither comes back. `connectedCallback` turns a
-   * returning element away rather than handing it a half of what it had, and `restore()` is
-   * therefore not overridden — there is nothing to take up again.
+   * returning element away rather than handing it a half of what it had, which is what makes
+   * {@link ShaeWorkerElement.restore} a method that runs once and never again.
    */
   protected override teardown() {
     this.#envViewBinding?.();
