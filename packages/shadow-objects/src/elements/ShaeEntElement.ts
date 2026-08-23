@@ -1,5 +1,5 @@
 import {on} from '@spearwolf/eventize';
-import {beQuiet, createEffect, createSignal} from '@spearwolf/signalize';
+import {beQuiet, createEffect, createSignal, Effect} from '@spearwolf/signalize';
 import {VoidToken} from '../constants.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {ComponentContext} from '../view/ComponentContext.js';
@@ -189,6 +189,24 @@ export class ShaeEntElement extends ShaeElement {
 
   #reSubscribePending = false;
 
+  /** Moves this element's entity into the context of whichever namespace it names. */
+  #namespaceBinding?: () => void;
+
+  /** Writes the token back onto the attribute. */
+  #tokenReflection?: () => void;
+
+  /** Writes the event filter back onto the attribute. */
+  #forwardCustomEventsReflection?: () => void;
+
+  /** The eventize subscriptions this element holds on its component. */
+  #viewComponentListeners?: Effect;
+
+  /** The patch that carries the component's own events out as DOM events. */
+  #forwardCustomEventsPatch?: Effect;
+
+  /** Carries a new token through to the entity. */
+  #tokenToViewComponent?: () => void;
+
   /**
    * The wait for the next microtask is the point, not a detail: the subscriptions come off right
    * behind the announcement, so a listener set up inside the handler would be taken off with them.
@@ -208,7 +226,21 @@ export class ShaeEntElement extends ShaeElement {
   constructor() {
     super();
 
-    this.ns$.onChange((ns) => {
+    this.#updateTokenValue();
+    this.#updateForwardCustomEventsValue();
+
+    this.#subscribe();
+  }
+
+  /**
+   * Take up everything this element listens to.
+   *
+   * Runs from the constructor and again from {@link ShaeEntElement.restore}, and the two reads
+   * above it in the constructor stand where they do on purpose: what they put into the signals is
+   * the state the attributes already spell out, and no handler has to hear about it.
+   */
+  #subscribe(): void {
+    this.#namespaceBinding = this.ns$.onChange((ns) => {
       // the order below is what makes the change symmetric: every entity that could be affected by
       // it is told before this element settles into its new context, and the element asks for its
       // own parent only once it is there
@@ -249,40 +281,11 @@ export class ShaeEntElement extends ShaeElement {
       }
     });
 
-    this.#updateTokenValue();
+    this.#tokenReflection = this.token$.onChange((token) => this.#reflectToken(token));
 
-    this.token$.onChange((token) => {
-      this.reflectAttribute(ATTR_TOKEN, () => {
-        if (token == null) {
-          this.removeAttribute(ATTR_TOKEN);
-        } else if (this.getAttribute(ATTR_TOKEN) !== token) {
-          this.setAttribute(ATTR_TOKEN, token);
-        }
-      });
-    });
+    this.#forwardCustomEventsReflection = this.forwardCustomEvents$.onChange((val) => this.#reflectForwardCustomEvents(val));
 
-    this.#updateForwardCustomEventsValue();
-
-    this.forwardCustomEvents$.onChange((val) => {
-      this.reflectAttribute(ATTR_FORWARD_CUSTOM_EVENTS, () => {
-        if (!val || isEmptyFilter(val)) {
-          this.removeAttribute(ATTR_FORWARD_CUSTOM_EVENTS);
-        } else if (val === true) {
-          // `getAttribute` answers `null` for an absent attribute, and `null !== ''` — the one
-          // comparison covers both the missing attribute and a value that says something else
-          if (this.getAttribute(ATTR_FORWARD_CUSTOM_EVENTS) !== '') {
-            this.setAttribute(ATTR_FORWARD_CUSTOM_EVENTS, '');
-          }
-        } else {
-          const str = Array.from(val).join(',');
-          if (this.getAttribute(ATTR_FORWARD_CUSTOM_EVENTS) !== str) {
-            this.setAttribute(ATTR_FORWARD_CUSTOM_EVENTS, str);
-          }
-        }
-      });
-    });
-
-    createEffect(() => {
+    this.#viewComponentListeners = createEffect(() => {
       const vc = this.viewComponent$.get();
       // both reads stand before the early return, otherwise the dependency on the re-subscribe
       // signal would hang on there being a component at the moment the effect first runs
@@ -303,7 +306,7 @@ export class ShaeEntElement extends ShaeElement {
       };
     });
 
-    createEffect(() => {
+    this.#forwardCustomEventsPatch = createEffect(() => {
       const vc = this.viewComponent$.get();
       // the teardown of a component drops an own `dispatchEvent` along with the subscriptions, so
       // the patch is set again on the same signal that puts those back
@@ -359,13 +362,67 @@ export class ShaeEntElement extends ShaeElement {
       };
     });
 
-    this.token$.onChange((token) => {
-      const vc = this.viewComponent$.value;
-      if (vc) {
-        vc.token = token;
-        this.syncShadowObjects();
+    this.#tokenToViewComponent = this.token$.onChange((token) => this.#writeTokenToViewComponent(token));
+  }
+
+  #reflectToken(token: string | undefined): void {
+    this.reflectAttribute(ATTR_TOKEN, () => {
+      if (token == null) {
+        this.removeAttribute(ATTR_TOKEN);
+      } else if (this.getAttribute(ATTR_TOKEN) !== token) {
+        this.setAttribute(ATTR_TOKEN, token);
       }
     });
+  }
+
+  #reflectForwardCustomEvents(val: Set<string> | boolean): void {
+    this.reflectAttribute(ATTR_FORWARD_CUSTOM_EVENTS, () => {
+      if (!val || isEmptyFilter(val)) {
+        this.removeAttribute(ATTR_FORWARD_CUSTOM_EVENTS);
+      } else if (val === true) {
+        // `getAttribute` answers `null` for an absent attribute, and `null !== ''` — the one
+        // comparison covers both the missing attribute and a value that says something else
+        if (this.getAttribute(ATTR_FORWARD_CUSTOM_EVENTS) !== '') {
+          this.setAttribute(ATTR_FORWARD_CUSTOM_EVENTS, '');
+        }
+      } else {
+        const str = Array.from(val).join(',');
+        if (this.getAttribute(ATTR_FORWARD_CUSTOM_EVENTS) !== str) {
+          this.setAttribute(ATTR_FORWARD_CUSTOM_EVENTS, str);
+        }
+      }
+    });
+  }
+
+  #writeTokenToViewComponent(token: string | undefined): void {
+    const vc = this.viewComponent$.value;
+    if (vc) {
+      vc.token = token;
+      this.syncShadowObjects();
+    }
+  }
+
+  /**
+   * Take the subscriptions up again and settle what drifted while none of them were listening.
+   *
+   * The three catch-up calls are not decoration. A released element still takes writes, so `token`,
+   * `ns` and `forward-custom-events` can each stand on a value its attribute never heard about —
+   * and `connectedCallback` reads exactly those attributes back into exactly those signals a few
+   * lines further on. Without the catch-up that read would overwrite the newer value with the older
+   * one, and the entity would go on carrying a token nobody wrote.
+   *
+   * `super.restore()` runs first and takes `ns` with it. That it writes the `ns` attribute before
+   * this class has re-subscribed to `ns$` costs nothing: the write puts the value the signal
+   * already holds onto the attribute, so the read it triggers changes no signal and reaches no
+   * handler.
+   */
+  protected override restore(): void {
+    super.restore();
+    this.#subscribe();
+
+    this.#reflectToken(this.token$.value);
+    this.#reflectForwardCustomEvents(this.forwardCustomEvents$.value);
+    this.#writeTokenToViewComponent(this.token$.value);
   }
 
   #unsubscribeViewComponentEffect?: () => void;
@@ -559,7 +616,7 @@ export class ShaeEntElement extends ShaeElement {
     }
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     this.#shadowRootHostNeedsUpdate = true;
 
     this.#destroyParentObserver();
@@ -568,8 +625,7 @@ export class ShaeEntElement extends ShaeElement {
     // what it is itself
     this.#releaseHostedSlots();
 
-    this.removeEventListener('slotchange', this.#onSlotChange, {capture: false});
-    this.removeEventListener(RequestEntParentEventName, this.#onRequestParent, {capture: false});
+    this.#stopAnswering();
 
     // after the listener came off, never before: a property that asks again because of this must
     // not be answered by this element any more. The element is out of the tree by now, so the
@@ -596,6 +652,77 @@ export class ShaeEntElement extends ShaeElement {
     this.syncShadowObjects();
 
     this.#destroyViewComponentEffect();
+
+    // last: everything above still reads `this.ns` and the signals, and the deferred teardown has
+    // to be booked behind them rather than in front of them
+    super.disconnectedCallback();
+  }
+
+  /**
+   * Let go of everything this element listens to, and leave what it is made of standing.
+   *
+   * The signals are not destroyed — they are what carries this element's state across a teardown,
+   * and {@link ShaeEntElement.restore} subscribes to them again on the way back in.
+   *
+   * The `ViewComponent` stays too. `disconnectedCallback` has already taken it out of its
+   * `ComponentContext`, which is what unbinds it from this element's position; ending it on top of
+   * that would write a destroy entry into the change trail and take the entity down in the worker
+   * — a decision about the entity, not about this element. It is also what lets an element that
+   * comes back carry the same entity and the same uuid it left with.
+   *
+   * Both effects run their cleanup on `destroy()`, which is what this depends on: the one on the
+   * `dispatchEvent` patch has to, or the patched function would go on holding the component and
+   * everything reachable from it.
+   */
+  protected override teardown() {
+    this.#namespaceBinding?.();
+    this.#namespaceBinding = undefined;
+
+    this.#tokenReflection?.();
+    this.#tokenReflection = undefined;
+
+    this.#forwardCustomEventsReflection?.();
+    this.#forwardCustomEventsReflection = undefined;
+
+    this.#viewComponentListeners?.destroy();
+    this.#viewComponentListeners = undefined;
+
+    this.#forwardCustomEventsPatch?.destroy();
+    this.#forwardCustomEventsPatch = undefined;
+
+    this.#tokenToViewComponent?.();
+    this.#tokenToViewComponent = undefined;
+
+    this.#destroyViewComponentEffect();
+    this.#destroyParentObserver();
+    this.#releaseHostedSlots();
+    // the listener this element holds on its entity parent comes off with the binding. Along the
+    // ordinary way out that has already happened in `disconnectedCallback`, and this call turns
+    // around without touching anything; a `destroy()` made by hand reaches it here
+    this.#setParent(undefined);
+
+    // An element released by hand can still be sitting in the document, and one that answers
+    // requests it no longer acts on is worse than one that stays silent: an entity below it would
+    // bind to a parent that resolves nothing, and a property below it would declare itself on an
+    // entity nobody is maintaining. So the answering stops here too, and whoever asked is told to
+    // ask again — the next entity up is the right answer now. Along the ordinary way out this has
+    // already happened in `disconnectedCallback`, where the same two calls stand in the same order.
+    if (this.isConnected) {
+      this.#stopAnswering();
+      this.#askPropertiesToReRequestHost();
+      const vc = this.viewComponent;
+      if (vc != null) {
+        this.componentContext?.dispatchReRequestParentChildren(vc);
+      }
+    }
+
+    super.teardown();
+  }
+
+  /** Stop answering the parent and host requests that travel past this element. */
+  #stopAnswering(): void {
+    this.removeEventListener('slotchange', this.#onSlotChange, {capture: false});
+    this.removeEventListener(RequestEntParentEventName, this.#onRequestParent, {capture: false});
   }
 
   #reRequestParentAsRoot() {

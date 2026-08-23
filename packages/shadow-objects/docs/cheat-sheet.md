@@ -233,7 +233,9 @@ else, `="false"` and `="0"` included. Of the boolean-looking attributes, only
 `no-structured-clone` asks for presence alone.
 
 **Teardown.** Leaving the tree destroys the environment one microtask later, for good. Back in
-the tree before that microtask — a re-render within one task — and nothing is torn down.
+the tree before that microtask — a re-render within one task — and nothing is torn down. This is the
+strong sense of `destroy()` / `isDestroyed`: put a torn-down `<shae-worker>` back into the document
+and it stays torn down. The other two elements use the same two names for something reversible.
 
 ### `<shae-ent>`
 
@@ -254,6 +256,15 @@ disposed target costs it nothing it did not already lack — the component keeps
 had before the attempt, live one included. Either way, the way back is the next *change* of `ns`
 (writing the same value again does not count) or a leave-and-rejoin of the tree. See
 `docs/api-reference.md`, "A context the entity cannot join".
+
+**Teardown.** Leaving the tree releases every subscription the element holds, one microtask later,
+and makes it collectable — `isDestroyed` reads `true`, `destroy()` does it by hand. Back in the tree
+before that microtask and nothing happens at all. And the release is reversible: reconnecting takes
+the subscriptions up again, with the same `ViewComponent`, the same uuid and the same values. A
+`token`, `ns` or `forward-custom-events` written to a released element lands in the signal and is
+written out to the attribute as the element reconnects — the signal wins, not the attribute that was
+left standing. `destroy()` on an element that is still in the document also stops it answering for
+the entities and properties below it, and it stays released until it has left and come back.
 
 ### `<shae-prop>`
 
@@ -281,6 +292,13 @@ with no entity above it has no host.
 
 Removing the element, renaming it, or moving it to another entity clears the property it declared.
 A move within a single tick is a move, not a removal — the property travels with the element.
+
+**Teardown.** Leaving the tree releases the subscriptions one microtask later and reconnecting takes
+them up again; `destroy()` and `isDestroyed` read the same way as on `<shae-ent>`. One thing differs:
+connecting re-reads `name`, `value`, `type` and `no-trim` off the attributes and looks the host up
+from where the element stands, so a `prop.value` or `prop.entNode` written while the element was
+released is replaced rather than applied. Write the attribute if the value is meant to survive the
+return.
 
 **`type` values for `<shae-prop>`:**
 

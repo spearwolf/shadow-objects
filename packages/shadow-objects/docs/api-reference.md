@@ -1748,9 +1748,16 @@ rejects with a `ShadowEnvDestroyedError`. Putting that element back into the doc
 not revive it — build a new one. `<shae-ent>` elements of the same namespace keep their
 `ViewComponent`s either way; what goes is the environment behind them.
 
+**And that is where this element parts from the other two.** `<shae-ent>` and `<shae-prop>` carry
+`destroy()` and `isDestroyed` as well, and mean something weaker by them: those elements release
+their subscriptions, keep their state and take everything up again when they return to the
+document — see [Leaving the Tree and Coming Back](#leaving-the-tree-and-coming-back). Here the
+teardown takes the environment with it, so there is nothing to return to.
+
 | Property | Description |
 | :--- | :--- |
 | `shadowEnv` | The `ShadowEnv` this element owns, read-only. Available before the environment is started. |
+| `isDestroyed` | Read-only: whether the element has been torn down. Once `true` it stays `true` — putting the element back into the document does not change it. |
 | `logger` | The `ConsoleLogger` this element reports through, read-only. |
 | `autostart` | Whether the element may start on connect. Writable, defaults to `true`; the `no-autostart` attribute is the declarative half of the same decision. |
 | `shouldAutostart` | Read-only: `autostart` and the `no-autostart` attribute taken together. This is what the element asks when it connects. |
@@ -1858,6 +1865,8 @@ stay on the view side.
 | `findShadowRootHost()` | The host element of the shadow root this element sits in, or `undefined` outside one — the answer is decided again whenever the element enters or leaves the tree, and an element that has left it sits in no shadow root. |
 | `onParentChanged(newParent, oldParent)` | Called when the element leaves its parent node. Re-resolves the entity ancestor; an extension point for subclasses, which have to call `super`. |
 | `syncShadowObjects()` | Hands the environment of this element's namespace to the next sync, one microtask later. Inherited from `ShaeElement`. |
+| `destroy()` | Releases every subscription this element holds. Called by the element itself one microtask after it leaves the tree, unless it is back in the tree by then. It counts once: every call after the first changes nothing. Reversible — see [Leaving the Tree and Coming Back](#leaving-the-tree-and-coming-back). |
+| `isDestroyed` | Read-only: whether the element is released right now. Back to `false` the moment it reconnects. |
 | `ShaeEntElement.observedAttributes` | Static: `ns`, `token`, `forward-custom-events`. |
 
 The signals `token$`, `viewComponent$`, `componentContext$`, `forwardCustomEvents$` and the
@@ -1878,7 +1887,11 @@ ent.forwardCustomEvents$.set(false);                      // attribute removed
 
 The element reads the attribute back whenever it connects, and the forwarding follows that result.
 Signal, attribute and what actually reaches the DOM therefore say the same thing over the whole
-lifecycle, across any number of removals and re-appends.
+lifecycle, across any number of removals and re-appends. The one window in which they can disagree
+closes on its own: an element that has been out of the document long enough to be released holds no
+reflecting handler, so a write in that state reaches the signal and not the attribute — and the
+element writes it out as it reconnects, before it reads any attribute back. The signal wins that
+exchange, never the attribute left standing on the older value.
 
 `getParentNodeForObserver()` and the inherited `syncShadowObjectsOf()` are `protected` and meant
 for subclasses, and so is `logger`, a `ConsoleLogger` in the namespace `ShaeEntElement` — see
@@ -1889,6 +1902,60 @@ no such getter on any `ConsoleLogger` instance either, so a report at that level
 below among them — reaches the console whatever the switch says. The Custom Elements callbacks —
 `connectedCallback`, `disconnectedCallback`, `attributeChangedCallback` — are implemented; a
 subclass that overrides one has to call `super`.
+
+Two more `protected` methods carry the lifecycle, and a subclass that holds subscriptions of its own
+has to use both or lose them. `teardown()` is the overridable half of `destroy()` — release what the
+subclass holds and call `super.teardown()` last. `restore()` is its counterpart — call
+`super.restore()` first, take the same subscriptions up again, and write any signal that reflects
+into an attribute back out while doing so, because `connectedCallback` reads those attributes
+immediately afterwards. Overriding `destroy()` itself is possible but rarely right: the guard that
+makes the teardown run once, and run once even when releasing something calls back into the element,
+lives there. A subclass that overrides `teardown()` without overriding `restore()` works exactly
+once — after the first release its own subscriptions are gone for the life of the element, with
+nothing reported.
+
+#### Leaving the Tree and Coming Back
+
+Three things hold for an element that leaves the document. The first two hold for
+[`<shae-prop>`](#shae-prop) as well; on the third the two elements differ, and that section says how.
+
+**A move inside one task costs nothing.** The release waits one microtask, and an element that is
+back in the document before that microtask runs never sees it — `isDestroyed` stays `false` and
+nothing is set up again. Every re-render that removes a node and re-inserts it within the same task
+falls into that window.
+
+**An element that stays out lets go.** One microtask after it left, `destroy()` runs: every effect,
+every signal subscription and every event listener the element holds comes off, `isDestroyed` reads
+`true`, and nothing on the module level points at the element any longer — it can be collected. The
+`ViewComponent` is not ended along with it: leaving the tree already took it out of its
+`ComponentContext`, and ending it as well would take the entity down in the worker.
+
+**An element that comes back picks up where it left off.** Reconnecting sets `isDestroyed` back to
+`false` and takes every subscription up again. The element carries the same `ViewComponent`, the
+same `uuid`, the same token and the same properties it left with, because its signals were never
+destroyed — they held their values throughout.
+
+A `token`, `ns` or `forward-custom-events` written while the element was released lands in the
+signal, where nothing is listening to carry it onto the attribute. The element settles that itself
+on the way back in: it writes those three signals out to their attributes before it reads any
+attribute back, so the newer value wins and the older one on the attribute is overwritten, not the
+other way round. Reading `el.getAttribute('token')` on a released element therefore shows the value
+it had when it left; reading it once the element is connected again shows the value that was
+written.
+
+`destroy()` is callable by hand for an element whose end is known earlier, and it means the same
+thing there: released, not finished. An element released while it is still *in* the document stops
+answering the parent and host requests that travel past it — an entity or property below it binds
+further up instead of to something that no longer maintains the binding — and it does not take its
+own subscriptions up again until it has left the document and come back. Removing it and
+re-inserting it is the way back; re-inserting one that never left is not, because it never
+reconnects.
+
+> **`<shae-worker>` is the exception.** Its `destroy()` and `isDestroyed` name something else: that
+> teardown takes the Shadow Environment with it, and an environment cannot be rebuilt. A
+> `<shae-worker>` that was released stays released, and re-inserting it into the document does
+> nothing — see [`<shae-worker>`](#shae-worker) for its own account of the same window. Do not read
+> the one element's lifecycle off the other.
 
 #### A context the entity cannot join
 
@@ -2197,6 +2264,8 @@ five apply per element to `bool[]` and `boolean[]`.
 | `entNode` | The host entity, get and set. Writing it binds the property to that entity by hand — the next lookup decides again from where the element stands. |
 | `viewComponent` | The `ViewComponent` of the host entity, read-only. Follows `entNode` and is `undefined` without a host. |
 | `isShaePropElement` | `true`. This element does not extend `ShaeElement`, so there is no `isShaeElement` and no `ns` on it. |
+| `destroy()` | Releases every subscription this element holds. Called by the element itself one microtask after it leaves the tree, unless it is back in the tree by then. It counts once: every call after the first changes nothing. Reversible — see below. |
+| `isDestroyed` | Read-only: whether the element is released right now. Back to `false` the moment it reconnects. |
 | `ShaePropElement.observedAttributes` | Static: `name`, `value`, `type`, `no-trim`. |
 
 Unlike the two other elements, `<shae-prop>` keeps its signals to itself: `entNode$`,
@@ -2204,6 +2273,34 @@ Unlike the two other elements, `<shae-prop>` keeps its signals to itself: `entNo
 `protected` and only reachable from a subclass. The Custom Elements callbacks —
 `connectedCallback`, `disconnectedCallback`, `attributeChangedCallback` — are implemented; a
 subclass that overrides one has to call `super`.
+
+#### Leaving the Tree and Binding Again
+
+The first two things hold as for
+[`<shae-ent>`](#leaving-the-tree-and-coming-back); the third is where this element goes its own way.
+
+**A move inside one task costs nothing.** The release waits one microtask. An element back in the
+document before that microtask runs keeps its host, its declaration on the entity and its value.
+
+**An element that stays out lets go.** One microtask after it left, `destroy()` runs: the three
+effects and the host binding come off, `isDestroyed` reads `true`, and the element can be
+collected. The property itself was already taken off the entity on the way out — losing the host is
+what clears it, and that happens whether or not the element is released afterwards.
+
+**An element that comes back reads its position again.** Reconnecting sets `isDestroyed` back to
+`false`, takes the subscriptions up again and then does what this element does on *every* connect:
+it reads `name`, `value`, `type` and `no-trim` off its attributes and looks the host entity up from
+where it now stands. The markup and the tree decide, so a `prop.value` or `prop.entNode` written to
+the element while it was out of the document is replaced rather than applied — set the `value`
+attribute if the write is meant to survive the return.
+
+That is the one place where the two elements differ: a `<shae-ent>` carries `token`, `ns` and
+`forward-custom-events` back out of its signals as it reconnects and keeps what was written to it,
+while a `<shae-prop>` re-reads its own.
+
+> **`<shae-worker>` is the exception.** Its `destroy()` and `isDestroyed` name something else: that
+> teardown takes the Shadow Environment with it and cannot be undone. See
+> [`<shae-worker>`](#shae-worker).
 
 #### Invalid Values
 

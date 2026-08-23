@@ -50,21 +50,24 @@ export class ShaeWorkerElement extends ShaeElement {
   autoSync$ = createSignal(ShaeWorkerElement.DefaultAutoSync);
   src$ = createSignal('');
 
-  // whether the element is out of the tree — written by the two Custom Elements callbacks
-  #shouldDestroy = false;
-  // whether a teardown microtask is already queued
-  #destroyPending = false;
-  // whether the teardown has already run — it runs once and for all
-  #destroyed = false;
   #started = false;
 
   #autoSync?: Effect;
   #importScript?: Effect;
 
+  /**
+   * Points the environment at the namespace this element names.
+   *
+   * It hangs on `ns$`, which belongs to the base class and outlives this element's teardown, so
+   * the handle is kept and released by hand — a listener left on a living signal is a listener the
+   * global signal queue goes on holding, and with it this element.
+   */
+  #envViewBinding?: () => void;
+
   constructor() {
     super();
 
-    this.ns$.onChange((ns) => {
+    this.#envViewBinding = this.ns$.onChange((ns) => {
       this.shadowEnv.view = ComponentContext.get(ns);
     });
 
@@ -194,11 +197,14 @@ export class ShaeWorkerElement extends ShaeElement {
   }
 
   override connectedCallback() {
+    // this element does not come back, and the refusal has to stand in front of `super`: the base
+    // takes a returning element's subscriptions up again, and here there is nothing to take up —
+    // the teardown took the environment with it, and an environment cannot be rebuilt around a
+    // proxy that is gone. A `<shae-worker>` that is needed again is a new one
+    if (this.isDestroyed) return;
+
     super.connectedCallback();
 
-    // being in the tree is the condition the deferred teardown waits on, so a reconnect before
-    // its microtask runs calls it off
-    this.#shouldDestroy = false;
     batch(() => {
       const autoSync = this.getAttribute(ATTR_AUTO_SYNC);
       if (autoSync != null) {
@@ -211,13 +217,16 @@ export class ShaeWorkerElement extends ShaeElement {
     }
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     this.isConnected$.set(false);
-    this.#shouldDestroy = true;
-    this.#deferDestroy();
+    super.disconnectedCallback();
   }
 
   override attributeChangedCallback(name: string) {
+    // the signals of this class are destroyed, so an attribute write would land in a value that
+    // notifies nobody — and there is no return that would ever read it back
+    if (this.isDestroyed) return;
+
     super.attributeChangedCallback(name);
 
     if (name === ATTR_LOCAL) {
@@ -279,36 +288,32 @@ export class ShaeWorkerElement extends ShaeElement {
     return this.shadowEnv.ready();
   }
 
-  destroy() {
-    // the effects and signals below belong to the element alone, so the element is what decides
-    // whether they have already been released — a second call finds nothing left to do
-    if (this.#destroyed) return;
-    this.#destroyed = true;
+  /**
+   * Tear this element down — for good.
+   *
+   * The effects and signals below belong to the element alone, so the element is what decides
+   * whether they have already been released; the guard for that sits in `ShaeElement.destroy()`,
+   * which has already set the flag by the time this runs. Here that matters more than anywhere
+   * else: `shadowEnv.destroy()` dispatches a `contextlost` `CustomEvent` on this element on its
+   * way out, and a listener on it that reaches back into `destroy()` finds the flag down and turns
+   * around instead of tearing the same environment down a second time.
+   *
+   * Unlike `<shae-ent>` and `<shae-prop>`, this teardown is final: it destroys the signals and
+   * takes the environment down with them, and neither comes back. `connectedCallback` turns a
+   * returning element away rather than handing it a half of what it had, and `restore()` is
+   * therefore not overridden — there is nothing to take up again.
+   */
+  protected override teardown() {
+    this.#envViewBinding?.();
+    this.#envViewBinding = undefined;
 
     this.#autoSync?.destroy();
     this.#importScript?.destroy();
     destroySignal(this.isConnected$, this.autoSync$, this.src$);
     this.shadowEnv.envProxy = undefined;
     this.shadowEnv.destroy();
-  }
 
-  #deferDestroy() {
-    // The teardown waits for the next microtask and then asks where the element stands: whoever
-    // moved it in the meantime has left the answer in `#shouldDestroy`, and being back in the tree
-    // calls the teardown off. That window is the one a re-render lives in — the element leaves the
-    // tree and is back in it within the same task — and the environment, its proxy and every
-    // entity in it stay untouched across the move. However often the element is moved inside that
-    // one window, only the first move queues a microtask, so the answer is read once. An element
-    // that is out of the tree when the microtask runs is destroyed for good.
-    if (!this.#destroyPending) {
-      this.#destroyPending = true;
-      queueMicrotask(() => {
-        this.#destroyPending = false;
-        if (this.#shouldDestroy) {
-          this.destroy();
-        }
-      });
-    }
+    super.teardown();
   }
 
   #createAutoSyncEffect() {

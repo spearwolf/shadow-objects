@@ -4,6 +4,31 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-23 — the test process can force a collection
+
+The runtime change behind this — the elements releasing their subscriptions when they leave the
+document — is in
+[`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md). What follows is
+what it did to the test setup.
+
+- **`packages/shadow-objects/vitest.config.ts`:** `test.pool` is `'forks'` and
+  `test.execArgv` is `['--expose-gc']`, both at the top level under `test`. The flag puts
+  `globalThis.gc` into the test process, which is what
+  `src/elements/elementReachability.spec.ts` needs to force a collection instead of waiting for
+  one; `execArgv` only reaches a spawned node process, which is what the `forks` pool gives each
+  test file, so the pool is named explicitly rather than left to the default — a later change of
+  that default would otherwise take the flag away silently. In vitest 4 both keys sit directly
+  under `test`: `test.poolOptions` was removed, and a nested spelling is ignored without an error.
+- **`packages/shadow-objects/src/elements/elementReachability.spec.ts`** (new): nine cases over
+  the element lifecycle. Four hold a `WeakRef` to an element that was appended and removed and
+  assert it is gone after a forced collection, the first of them a plain `HTMLElement` subclass as
+  the control; five read the release directly — that an element which stays out is released, that
+  a move within one task is not a release, that `<shae-ent>` and `<shae-prop>` come back while
+  `<shae-worker>` stays down, that a `<shae-ent>` holds in signal and attribute what was written to
+  it while it was released, and that one released by hand inside the document stops answering for
+  what sits below it. A missing `--expose-gc` fails the suite rather than skipping it.
+  `packages/shadow-objects` case count: 760 → 769.
+
 ## 2026-08-23 — the programmatic construction path is covered by tests
 
 The runtime change behind this — the custom element constructors, and `display: contents` as a
@@ -36,7 +61,7 @@ what it did to the test layers and the documents describing them.
   uses `innerHTML` — one string describes a whole fixture — instead of a constraint that no
   longer exists.
 - **`Backlog.md`:** the `document.createElement()` entry in §4.4 is gone, §4.1 carries the
-  measured counts for `shadow-objects-testing` (27 files, 375 cases) and `shadow-objects-e2e`
+  measured counts for `shadow-objects-testing` (27 files, 377 cases) and `shadow-objects-e2e`
   (215 per project, 430 total), and §4.4 no longer announces an open framework defect.
 
 ## 2026-08-22

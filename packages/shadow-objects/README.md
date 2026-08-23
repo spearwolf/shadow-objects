@@ -59,6 +59,28 @@ Need to register a shadow object at runtime instead? `@spearwolf/shadow-objects/
 
 `@spearwolf/shadow-objects/FrameLoop.js` is the same kind of subpath: it carries the `FrameLoop` class without the view layer, for code that runs inside a worker.
 
+## Element Lifecycle
+
+The custom elements clean up after themselves — no teardown call for you to make, because a
+framework re-rendering a subtree would not make one either.
+
+`<shae-ent>` and `<shae-prop>` release their subscriptions one microtask after they leave the
+document, which makes them collectable. A move within a single task never reaches that point, so a
+re-render costs nothing. And the release is reversible: an element put back into the document takes
+its subscriptions up again and carries the same `ViewComponent` and the same uuid it left with.
+`destroy()` does it by hand, `isDestroyed` reads the current state.
+
+What a released element is written in the meantime is where the two part company. `<shae-ent>` keeps
+it — `token`, `ns` and `forward-custom-events` stand in the signals and are written out to the
+attributes as the element reconnects. `<shae-prop>` re-reads its attributes and looks its host up
+again on every connect, released or not, so a `prop.value` written in that window is replaced rather
+than applied.
+
+`<shae-worker>` uses the same two names for something stronger. Its teardown takes the Shadow
+Environment with it, and an environment cannot be rebuilt — a released `<shae-worker>` stays
+released, and a new one is the way back. See the
+[API Reference](./docs/api-reference.md#web-components) for all three in detail.
+
 ## The Five Domains
 
 | # | Domain | Responsibility | Where it lives |
