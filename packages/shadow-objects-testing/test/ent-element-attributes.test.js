@@ -134,7 +134,9 @@ describe('shae-ent ns attribute', () => {
 
   it('ns="  local  " is trimmed on both the property and the attribute', () => {
     // unlike token, ns registers its reflecting onChange handler before the first read, so the
-    // trimmed value is a change the handler observes and writes back
+    // trimmed value is a change the handler observes. The write itself waits for the first
+    // connect — a constructor must not give its element an attribute — and `mount` connects the
+    // container synchronously, so it has happened by the time this reads back
     const container = mount('<shae-ent ns="  local  "></shae-ent>');
     const el = container.querySelector('shae-ent');
     expect(el.ns).to.equal('local');

@@ -106,22 +106,22 @@ export class ShaeWorkerElement extends ShaeElement {
     });
 
     this.autoSync$.onChange((sVal) => {
-      const hasAttr = this.hasAttribute(ATTR_AUTO_SYNC);
-      const attrVal = hasAttr ? this.getAttribute(ATTR_AUTO_SYNC) : undefined;
+      this.reflectAttribute(ATTR_AUTO_SYNC, () => {
+        const hasAttr = this.hasAttribute(ATTR_AUTO_SYNC);
+        const attrVal = hasAttr ? this.getAttribute(ATTR_AUTO_SYNC) : undefined;
 
-      if (sVal === ShaeWorkerElement.DefaultAutoSync) {
-        if (hasAttr && attrVal !== sVal) {
+        if (sVal === ShaeWorkerElement.DefaultAutoSync) {
+          if (hasAttr && attrVal !== sVal) {
+            this.setAttribute(ATTR_AUTO_SYNC, sVal);
+          }
+        } else if (attrVal !== sVal) {
           this.setAttribute(ATTR_AUTO_SYNC, sVal);
         }
-      } else if (attrVal !== sVal) {
-        this.setAttribute(ATTR_AUTO_SYNC, sVal);
-      }
+      });
     });
 
     this.#createAutoSyncEffect();
     this.#createImportScriptEffect();
-
-    this.style.display = 'contents';
   }
 
   #createImportScriptEffect() {
@@ -193,7 +193,9 @@ export class ShaeWorkerElement extends ShaeElement {
     return this;
   }
 
-  connectedCallback() {
+  override connectedCallback() {
+    super.connectedCallback();
+
     // being in the tree is the condition the deferred teardown waits on, so a reconnect before
     // its microtask runs calls it off
     this.#shouldDestroy = false;

@@ -4,6 +4,41 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-23 — the programmatic construction path is covered by tests
+
+The runtime change behind this — the custom element constructors, and `display: contents` as a
+stylesheet rule — is in
+[`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md). What follows is
+what it did to the test layers and the documents describing them.
+
+- **`packages/shadow-objects-testing/test/create-element.test.js`** (new): ten cases for the
+  construction path that does not go through the parser. `document.createElement()` for all three
+  tags, the view component an appended `<shae-ent>` receives, and where `display: contents`
+  arrives from — parsed markup, `createElement`, inside a shadow root, on a `ShaeEntElement`
+  subclass registered under a tag of its own, and a rule of the consumer's own that takes the
+  display over without `!important`. Real Chromium, because neither the upgrade abort nor the
+  cascade is something happy-dom reproduces reliably.
+- **`packages/shadow-objects-e2e/tests/create-element.spec.ts`** carries no `knownFailures` and no
+  `allowConsoleErrors` any more: the four `document.createElement()` ids are ordinary cases, and
+  the page provokes no error to allow. The spec therefore gains the harness case
+  `no uncaught or logged errors`. e2e case count: 428 → 430 (one id × two browsers). The
+  `knownFailures` mechanism itself stays in `runPageTests.ts` — no spec registers an entry now.
+- **`packages/shadow-objects-e2e/KNOWN-DEFECTS.md`** lists no open defect. The file stays and
+  describes how the next one is registered; the `Related gap` note about
+  `autoDestructionOnParentRemoval` is untouched.
+- **`packages/shadow-objects-e2e/src/create-element.js`:** the `shae-prop` case asserts
+  `isShaePropElement`, the way its two neighbours assert their own markers, rather than a type
+  test on `el.name` that holds for any object. **`src/dynamic-dom.js`**, **`src/sync-failure.js`**
+  and **`src/worker-failure.js`** say why they build their fixtures from markup without pointing
+  at a defect for it. **`pages/create-element.html`**, **`TEST-PLAN.md`** and **`README.md`**
+  describe the page by what it checks.
+- **`packages/shadow-objects-testing/src/mount.js`:** the docstring names the reason the helper
+  uses `innerHTML` — one string describes a whole fixture — instead of a constraint that no
+  longer exists.
+- **`Backlog.md`:** the `document.createElement()` entry in §4.4 is gone, §4.1 carries the
+  measured counts for `shadow-objects-testing` (27 files, 375 cases) and `shadow-objects-e2e`
+  (215 per project, 430 total), and §4.4 no longer announces an open framework defect.
+
 ## 2026-08-22
 
 - **`packages/shadow-objects/tsconfig.lib.json`:** `compilerOptions.types` is set to `[]`. This
@@ -149,7 +184,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 - **`packages/shadow-objects-testing/test/ent-element-namespace.test.js`** (new): covers what a `ns` change at runtime does to the parent binding — the element's own, the entities that hung on it, and the way back. Also the two states in which an element ends up in a namespace without ever becoming an entity, the parent observation following a `moveBefore()`, which entities a change reaches and which it does not, an entity whose ancestor is taken out of the tree from under it, and two guards showing that the request loop settles instead of feeding itself. `ComponentContext.test.js` gained a case for the message that tells the children of a component to re-request their parents. `packages/shadow-objects-e2e/pages/multi-env.html` gained the same scenario with real workers: an island whose inner entity switches namespace mid-run, five `multi-env-ns-switch-*` ids following it out of one environment and back.
 - **`packages/shadow-objects-testing/test/prop-element-lifecycle.test.js`** and **`test/view-component-context-switch.test.js`** (both new): thirteen cases covering the end of a property binding and what a view component carries into the context it joins. The first file reads the change trail for the mechanism and the kernel of a local environment for the result; the second runs without a DOM, because the element layer is one of two writers and `ViewComponent.setProperty()` is the other. `ent-element-namespace.test.js` gained a `namespace change and properties` block with two more cases. In the e2e suite, `pages/dynamic-dom.html` gained a `DOM-7` block with three ids for a `<shae-prop>` moving between entities, and `pages/multi-env.html` a sixth `multi-env-ns-switch-*` id for the property content after the move.
 - **`packages/shadow-objects-testing/test/prop-element-host.test.js`**: seven more cases for the host binding of a `<shae-prop>` while it stays where it is — a host whose element is defined late, an entity upgrading between the property and its current host, a shadow root attached afterwards, a host that leaves the tree with and without an entity behind it, the report for a property with no entity above it at all, and a guard keeping that report at one per element. `packages/shadow-objects-e2e/pages/upgrade-timing.html` carries a `<shae-prop>` on its late-definition island, with two ids (`upgrade-late-prop-found-its-host`, `upgrade-late-prop-reached-the-worker`) following it from the DOM through to the worker.
-- **`packages/shadow-objects-e2e/tests/dynamic-dom.spec.ts`** carries no `knownFailures` any more — `dynamic-dom-removed-prop-is-gone` is an ordinary case again. The mechanism itself stays in `runPageTests.ts`; `create-element.spec.ts` still uses it.
+- **`packages/shadow-objects-e2e/tests/dynamic-dom.spec.ts`** carries no `knownFailures` any more — `dynamic-dom-removed-prop-is-gone` is an ordinary case again. The mechanism itself stays in `runPageTests.ts`; at the time of this change, `create-element.spec.ts` is the one spec still registering an entry.
 - **`packages/shadow-objects-testing/src/mount.js`**: `unmountAll()` now also clears every `ComponentContext` in `ComponentContext.getContextsMap()`, instead of only the global one, and destroys every `ShadowEnv` left in `globalThis.__shadowEnvs`, instead of relying on each spec's own `el.destroy()` call. A spec that mounts into its own namespace no longer has to clear it by hand, including when the spec throws before reaching its own cleanup — the two now-redundant `finally` blocks in `ent-element-attributes.test.js` and `ent-element-events.test.js` are removed.
 - **`packages/shadow-objects/src/elements/propValueConverters.spec.ts`** (new): a unit spec for the converter table that replaces `ShaePropElement`'s type-conversion `switch` — one case per converter group, the alias-identity check, and the full 42-name key list, running without a DOM. Runtime behavior change and rationale are in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md).
 - **`packages/shadow-objects-testing/test/prop-element-registration-order.test.js`** (new): covers `shae-prop.ts` and `shae-ent.ts` registering independently of each other — importing the `shae-prop.js` subpath on its own defines the element, and a `<shae-prop>` upgraded before `<shae-ent>` still finds its host once `<shae-ent>` registers. The two cases build on one shared page in a fixed order, so the suite disables shuffling for that one `describe`. Runtime behavior change and rationale are in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md). **`packages/shadow-objects-e2e/src/upgrade-timing.js`** and **`tests/upgrade-timing.spec.ts`** lose the `upgrade-shae-prop-is-defined-after-shae-ent` case: the e2e page imports both registration modules together, so it cannot show either side of the ordering on its own — that lives in the new spec instead. e2e case count: 404 → 402 (one id × two browsers).

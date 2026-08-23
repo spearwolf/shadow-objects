@@ -65,7 +65,6 @@ async function main() {
     Promise.all([workerEl.importScript('/mod-hello.js'), workerEl.importScript('/mod-refuse.js')]),
   );
 
-  // the markup path, not document.createElement — see KNOWN-DEFECTS.md
   const host = document.createElement('div');
   document.body.append(host);
   host.innerHTML = '<shae-ent id="survivor" token="foo"></shae-ent>';

@@ -4,12 +4,11 @@ const containers = [];
 
 /**
  * Builds a `<div>`, fills it with `html` via `innerHTML`, and appends it to `document.body`.
- * Uses the markup path on purpose: the Shae element constructors set
- * `this.style.display = 'contents'`, which the Custom Elements specification forbids during
- * construction — `document.createElement('shae-ent')` aborts the upgrade and leaves an
- * `HTMLUnknownElement` behind (tracked as DEFECT-1 in
- * `packages/shadow-objects-e2e/KNOWN-DEFECTS.md`, out of scope here). Only elements upgraded
- * through `innerHTML` reach a fully constructed state.
+ *
+ * The markup path, because that is what most cases here are about: one string describes a whole
+ * fixture — nesting, attributes and ids included — and the elements upgrade the way the parser
+ * produces them. `document.createElement` builds a live element just as well; the cases that
+ * exercise that path build their elements themselves (`test/create-element.test.js`).
  */
 export function mount(html) {
   const container = document.createElement('div');

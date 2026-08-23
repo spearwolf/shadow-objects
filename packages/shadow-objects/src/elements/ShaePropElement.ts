@@ -3,6 +3,7 @@ import {readBooleanAttribute} from '../utils/attr-utils.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import type {ViewComponent} from '../view/ViewComponent.js';
 import {ATTR_NAME, ATTR_NO_TRIM, ATTR_TYPE, ATTR_VALUE, ReRequestEntHostEventName} from './constants.js';
+import {ensureDisplayContentsRule} from './displayContentsRule.js';
 import {propValueConverters} from './propValueConverters.js';
 import {requestEntAncestor} from './requestEntAncestor.js';
 import type {ShaeEntElement} from './ShaeEntElement.js';
@@ -250,11 +251,13 @@ export class ShaePropElement extends HTMLElement {
       this.#readTypeAttribute();
       this.#readNoTrimAttribute();
     });
-
-    this.style.display = 'contents';
   }
 
   connectedCallback() {
+    // called by hand because this class extends `HTMLElement` directly: it shares no base with
+    // `<shae-ent>` and `<shae-worker>`, so it cannot inherit the installation
+    ensureDisplayContentsRule(this.getRootNode(), this.localName);
+
     batch(() => {
       this.#findEntNode();
       this.#readNameAttribute();

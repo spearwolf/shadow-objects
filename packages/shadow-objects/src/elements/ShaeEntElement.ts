@@ -252,30 +252,34 @@ export class ShaeEntElement extends ShaeElement {
     this.#updateTokenValue();
 
     this.token$.onChange((token) => {
-      if (token == null) {
-        this.removeAttribute(ATTR_TOKEN);
-      } else if (this.getAttribute(ATTR_TOKEN) !== token) {
-        this.setAttribute(ATTR_TOKEN, token);
-      }
+      this.reflectAttribute(ATTR_TOKEN, () => {
+        if (token == null) {
+          this.removeAttribute(ATTR_TOKEN);
+        } else if (this.getAttribute(ATTR_TOKEN) !== token) {
+          this.setAttribute(ATTR_TOKEN, token);
+        }
+      });
     });
 
     this.#updateForwardCustomEventsValue();
 
     this.forwardCustomEvents$.onChange((val) => {
-      if (!val || isEmptyFilter(val)) {
-        this.removeAttribute(ATTR_FORWARD_CUSTOM_EVENTS);
-      } else if (val === true) {
-        // `getAttribute` answers `null` for an absent attribute, and `null !== ''` — the one
-        // comparison covers both the missing attribute and a value that says something else
-        if (this.getAttribute(ATTR_FORWARD_CUSTOM_EVENTS) !== '') {
-          this.setAttribute(ATTR_FORWARD_CUSTOM_EVENTS, '');
+      this.reflectAttribute(ATTR_FORWARD_CUSTOM_EVENTS, () => {
+        if (!val || isEmptyFilter(val)) {
+          this.removeAttribute(ATTR_FORWARD_CUSTOM_EVENTS);
+        } else if (val === true) {
+          // `getAttribute` answers `null` for an absent attribute, and `null !== ''` — the one
+          // comparison covers both the missing attribute and a value that says something else
+          if (this.getAttribute(ATTR_FORWARD_CUSTOM_EVENTS) !== '') {
+            this.setAttribute(ATTR_FORWARD_CUSTOM_EVENTS, '');
+          }
+        } else {
+          const str = Array.from(val).join(',');
+          if (this.getAttribute(ATTR_FORWARD_CUSTOM_EVENTS) !== str) {
+            this.setAttribute(ATTR_FORWARD_CUSTOM_EVENTS, str);
+          }
         }
-      } else {
-        const str = Array.from(val).join(',');
-        if (this.getAttribute(ATTR_FORWARD_CUSTOM_EVENTS) !== str) {
-          this.setAttribute(ATTR_FORWARD_CUSTOM_EVENTS, str);
-        }
-      }
+      });
     });
 
     createEffect(() => {
@@ -362,8 +366,6 @@ export class ShaeEntElement extends ShaeElement {
         this.syncShadowObjects();
       }
     });
-
-    this.style.display = 'contents';
   }
 
   #unsubscribeViewComponentEffect?: () => void;
@@ -444,7 +446,9 @@ export class ShaeEntElement extends ShaeElement {
     return this.parentNode ?? this.#readShadowRootHost() ?? undefined;
   }
 
-  connectedCallback() {
+  override connectedCallback() {
+    super.connectedCallback();
+
     this.#shadowRootHostNeedsUpdate = true;
 
     this.addEventListener('slotchange', this.#onSlotChange, {capture: false, passive: false});

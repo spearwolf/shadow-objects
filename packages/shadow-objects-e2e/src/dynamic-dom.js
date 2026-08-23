@@ -13,10 +13,9 @@ const byId = (id) => document.getElementById(id);
 /**
  * Appends a `<shae-ent token="tracked">` with a label and returns it.
  *
- * Deliberately built from markup rather than `document.createElement`: the shae elements set
- * attributes in their constructors, which the custom elements spec forbids, so `createElement`
- * hands back an un-upgraded `HTMLUnknownElement` in both Chromium and Firefox. That defect has
- * its own page (`create-element.html`); here we use the path that works.
+ * Built from markup because one string describes the whole fixture — the entity, its property
+ * element and both their attributes. The programmatic path is checked on its own page
+ * (`create-element.html`).
  */
 const appendEnt = (parent, label) => {
   parent.insertAdjacentHTML(

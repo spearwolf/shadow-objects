@@ -10,7 +10,7 @@ async function main() {
   await customElements.whenDefined('shae-ent');
   await customElements.whenDefined('shae-prop');
 
-  // --- the control case: markup works ----------------------------------------------
+  // --- the markup path ----------------------------------------------
 
   const host = document.createElement('div');
   document.body.append(host);
@@ -26,7 +26,7 @@ async function main() {
     return host.querySelector('shae-ent')?.viewComponent != null;
   });
 
-  // --- DEFECT-1: the programmatic path ----------------------------------------------
+  // --- the programmatic path ----------------------------------------------
 
   const created = {};
   for (const tag of ['shae-ent', 'shae-prop', 'shae-worker']) {
@@ -52,7 +52,7 @@ async function main() {
     if (el.constructor === HTMLUnknownElement) {
       throw new Error('document.createElement("shae-prop") returned an HTMLUnknownElement — the upgrade was aborted');
     }
-    return typeof el.name === 'string' || el.name === undefined;
+    return el.isShaePropElement === true;
   });
 
   testBooleanAction('create-element-shae-worker-upgrades', () => {

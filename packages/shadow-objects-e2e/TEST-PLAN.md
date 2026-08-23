@@ -1,12 +1,12 @@
 # E2E Test Plan — coverage analysis and proposed test cases
 
-Status: 2026-08-20. Analysis of the Playwright suite in this package, the gaps it leaves, and a
+Status: 2026-08-23. Analysis of the Playwright suite in this package, the gaps it leaves, and a
 ticket-ready list of test cases to close them.
 
-> **Where the suite stands.** 428 tests across Chromium and Firefox — 214 per project, eleven spec
-> files over eleven pages. The harness fixes and the P1 blocks of every group below are in place. One
-> framework defect is open, `DEFECT-1` in [`KNOWN-DEFECTS.md`](KNOWN-DEFECTS.md), and
-> `create-element.spec.ts` is the only spec that registers `knownFailures` for it.
+> **Where the suite stands.** 430 tests across Chromium and Firefox — 215 per project, eleven spec
+> files over eleven pages. The harness fixes and the P1 blocks of every group below are in place. No
+> framework defect is open — [`KNOWN-DEFECTS.md`](KNOWN-DEFECTS.md) describes the `knownFailures`
+> mechanism that carries the next one.
 >
 > Still open, all P2/P3: MULTI-9 … MULTI-14, DOM-9 … DOM-12, UPG-6, ASYNC-8 (`src` change after
 > `start()`), ASYNC-10 … ASYNC-12 (worker termination, failing `importScript`, transferables),
@@ -21,7 +21,7 @@ layers. This file is E2E-only and goes one level deeper: it names pages, fixture
 
 ## 1. What exists today
 
-Eleven spec files, 214 registered test cases per project — 428 across Chromium and Firefox. The specs
+Eleven spec files, 215 registered test cases per project — 430 across Chromium and Firefox. The specs
 themselves contain almost no logic: they name a page and a list of ids, and `runPageTests` turns
 each id into one Playwright test that asserts `data-testresult="ok"` on the node the page wrote.
 All real assertions live in `src/*.js`.
@@ -37,13 +37,12 @@ All real assertions live in `src/*.js`.
 | `worker-failure.spec.ts` | `pages/worker-failure.html` | 13 | A worker that dies mid-run: `proxyfailed` and `contextlost` as DOM events, the failure reason, the destroyed proxy, a later call rejecting right away, and the recovery through a new proxy that re-creates the surviving entity. |
 | `sync-failure.spec.ts` | `pages/sync-failure.html` | 12 | A change trail the worker's kernel refuses: `syncfailed` as a DOM event carrying reason and trail, a rejecting `syncWait()`, no `AfterSync`, no proxy failure, the refused entry going out a second time, and a next cycle that round-trips again (SYNC-1 … SYNC-4, SYNC-6). |
 | `auto-destruct.spec.ts` | `pages/auto-destruct.html` | 8 | `autoDestructionOnParentRemoval` cascade vs. promotion-to-root, over a real worker. |
-| `create-element.spec.ts` | `pages/create-element.html` | 7 | The markup path upgrades and gets a view component; the four `document.createElement()` cases are registered as `knownFailures` for `DEFECT-1`. |
+| `create-element.spec.ts` | `pages/create-element.html` | 8 | Both construction paths: markup the parser upgrades, and `document.createElement()` for all three tags — each element carries its marker, and an appended `<shae-ent>` gets its view component. |
 | `remote-worker-env.spec.ts` | `pages/remote-worker-env.html` | 7 | Programmatic `ShadowEnv` + `RemoteWorkerEnv`: `ready()`, `importScript()`, `isReady`, one `sync()`, one message worker → view. |
 
 Two of the cases per page come from the harness rather than from the page: `runPageTests` always
 registers `test suite setup`, and adds `no uncaught or logged errors` unless the page provokes an
-error on purpose (`create-element`, `worker-failure` and `sync-failure` do, so they carry only the
-first).
+error on purpose (`worker-failure` and `sync-failure` do, so they carry only the first).
 
 `auto-destruct` is the scenario that reports through the kernel rather than the DOM: a fixture
 module (`public/mod-auto-destruct.js`) exercises kernel behaviour and reports a structured result

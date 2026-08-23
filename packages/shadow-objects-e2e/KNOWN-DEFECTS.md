@@ -1,47 +1,11 @@
 # Known defects
 
-Framework defects that this E2E suite reproduces. Each one has tests that assert the **correct**
-behaviour and are registered in the spec's `knownFailures`, so they run as expected failures:
-the suite stays green while the defect exists, and turns red the moment it is fixed — which is
-the reminder to delete the entry here and in the spec.
+Framework defects that this E2E suite reproduces. Currently there is none.
 
-Found on 2026-08-02 while building the multi-environment and dynamic-DOM pages. It reproduces
-identically in Chromium and Firefox.
-
----
-
-## DEFECT-1 — the custom elements cannot be created with `document.createElement()`
-
-**Tests:** `tests/create-element.spec.ts` · **Page:** `pages/create-element.html`
-
-```js
-document.createElement('shae-ent');   // -> HTMLUnknownElement, never upgraded
-```
-
-All three elements are affected: `<shae-ent>`, `<shae-prop>` and `<shae-worker>`. The browser
-logs `Failed to execute 'createElement' on 'Document': The result must not have attributes`,
-aborts the upgrade and returns an `HTMLUnknownElement`. The element has no `viewComponent`, no
-`uuid`, and never reaches the shadow environment. Creating the same markup through
-`innerHTML` / `insertAdjacentHTML` works, which is why the defect stayed invisible: every test
-page so far used parser-generated markup.
-
-**Cause.** The custom elements spec forbids a constructor from giving its element attributes or
-children. All three constructors do exactly that:
-
-| File | What the constructor does |
-|---|---|
-| `elements/ShaeElement.ts` | `updateNamespace()` → `ns$.onChange` → `setAttribute('ns', …)` / `removeAttribute('ns')` |
-| `elements/ShaeEntElement.ts` | `this.style.display = 'contents'` (writes a `style` attribute); `token$.onChange` → `removeAttribute('token')` |
-| `elements/ShaePropElement.ts` | `this.style.display = 'contents'` |
-| `elements/ShaeWorkerElement.ts` | `this.style.display = 'contents'` |
-
-**Impact.** Any integration that builds elements programmatically instead of parsing markup gets
-inert elements: React, Vue, Svelte and hand-written wrappers all go through `createElement`.
-
-**Fix direction.** Move everything that touches attributes or styles out of the constructors and
-into `connectedCallback`. `display: contents` is better expressed as a stylesheet rule than as an
-inline style. The attribute reflection in the `onChange` handlers needs to be deferred until the
-element is connected.
+The mechanism for the next one: write tests that assert the **correct** behaviour and register
+their ids in the spec's `knownFailures`, so they run as expected failures. The suite stays green
+while the defect exists and turns red the moment it is fixed — which is the reminder to delete the
+entry here and in the spec.
 
 ---
 

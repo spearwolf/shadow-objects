@@ -9,7 +9,7 @@ This package is not published to npm. It runs full browser tests against a Vite-
 Each page in `pages/` runs its own checks and records them as `data-testresult` nodes; the specs
 in `tests/` turn those into one Playwright test per id via `runPageTests`. See
 [`TEST-PLAN.md`](TEST-PLAN.md) for the coverage analysis and [`KNOWN-DEFECTS.md`](KNOWN-DEFECTS.md)
-for the framework defects this suite reproduces.
+for the mechanism to track framework defects as expected failures.
 
 | Page | Covers |
 |---|---|
@@ -21,7 +21,7 @@ for the framework defects this suite reproduces.
 | `shae-worker` | `<shae-worker>` in remote and local flavour, context lifecycle events |
 | `auto-destruct` | `autoDestructionOnParentRemoval` cascade over a real worker |
 | `bundle` | the single-file build: entity tree, property type parsing, round-trip through the inlined worker |
-| `create-element` | reproduces DEFECT-1 (elements cannot be built with `document.createElement`) |
+| `create-element` | both construction paths: parsed markup and `document.createElement` |
 | `worker-failure` | a worker that dies mid-run: proxy failure, lost context, recovery through a new proxy |
 | `sync-failure` | a change trail the worker's kernel refuses: `syncfailed`, the lost trail, an environment that keeps running |
 

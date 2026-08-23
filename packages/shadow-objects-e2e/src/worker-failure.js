@@ -49,7 +49,6 @@ async function main() {
   // entity arrives, otherwise the worker meets a token it has no definition for
   await testAsyncAction('worker-failure-import-module', () => workerEl.importScript('/mod-crash.js'));
 
-  // the markup path, not document.createElement — see KNOWN-DEFECTS.md
   const host = document.createElement('div');
   document.body.append(host);
   host.innerHTML = '<shae-ent id="survivor" token="foo"></shae-ent><shae-ent id="crasher" token="crasher"></shae-ent>';
