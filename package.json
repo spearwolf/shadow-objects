@@ -15,7 +15,7 @@
     "test": "turbo run test",
     "test:ci": "turbo run test --filter=!shadow-objects-e2e",
     "lint": "biome check . --max-diagnostics 1000",
-    "lint:ci": "biome check . --reporter=summary",
+    "lint:ci": "biome check . --reporter=summary --error-on-warnings",
     "lint:fix": "biome check . --write",
     "format": "biome format . --write",
     "typecheck": "turbo run typecheck",

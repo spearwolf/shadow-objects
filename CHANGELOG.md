@@ -4,6 +4,14 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-23 — the ci lint run fails on warnings
+
+- **`package.json`:** `lint:ci` runs `biome check . --reporter=summary --error-on-warnings`. The
+  five correctness rules that stay at `warn` in `biome.json` — `noUnusedVariables`,
+  `noUnusedImports`, `noUnusedPrivateClassMembers`, `noVoidTypeReturn`, `useParseIntRadix` — used
+  to let `biome check` exit 0 on a clean warning-only run; `lint:ci` is the last step of `pnpm run
+  ci`, so a warning from any of them now fails the run instead of passing through unnoticed.
+
 ## 2026-08-23 — the shared test setup stops reading Node's storage accessor
 
 - **`packages/shadow-objects/vitest.setup.ts`:** the check that decides whether to install

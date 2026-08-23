@@ -38,6 +38,7 @@ Run from the repo root (turbo coordinates per-package scripts):
 | `pnpm build` / `pnpm test` / `pnpm typecheck` | `turbo run …` over all packages |
 | `pnpm test:ci` | All tests except `shadow-objects-e2e` (Playwright) |
 | `pnpm lint` / `pnpm lint:fix` / `pnpm format` | Biome `check` / `check --write` / `format --write` |
+| `pnpm lint:ci` | Biome `check` with `--error-on-warnings` — exits 1 on any warning, unlike `pnpm lint` |
 | `pnpm dev` (alias `pnpm start`) | Dev server for the `shae-offscreen-canvas` demo |
 | `pnpm clean` | `turbo run clean` + remove `dist/`, turbo cache |
 | `pnpm make:todo` | Regenerate `TODO.md` from TODO comments — required if you add/change/remove a `TODO` |
