@@ -1,0 +1,77 @@
+{
+  "topLevelKeys": [
+    "author",
+    "dependencies",
+    "description",
+    "exports",
+    "homepage",
+    "license",
+    "main",
+    "module",
+    "name",
+    "publishConfig",
+    "repository",
+    "sideEffects",
+    "type",
+    "types",
+    "version"
+  ],
+  "entryPoints": {
+    "main": "src/index.js",
+    "module": "src/index.js",
+    "types": "src/index.d.ts"
+  },
+  "exports": {
+    ".": {
+      "import": "./src/index.js",
+      "types": "./src/index.d.ts"
+    },
+    "./elements.js": {
+      "default": "./src/elements.js"
+    },
+    "./bundle.js": {
+      "default": "./bundle.js"
+    },
+    "./shadow-objects.worker.js": {
+      "import": "./src/shadow-objects.worker.js",
+      "types": "./src/shadow-objects.worker.d.ts"
+    },
+    "./shadow-objects.js": {
+      "import": "./src/shadow-objects.js",
+      "types": "./src/shadow-objects.d.ts"
+    },
+    "./shae-ent.js": {
+      "import": "./src/shae-ent.js",
+      "types": "./src/shae-ent.d.ts"
+    },
+    "./shae-prop.js": {
+      "import": "./src/shae-prop.js",
+      "types": "./src/shae-prop.d.ts"
+    },
+    "./shae-worker.js": {
+      "import": "./src/shae-worker.js",
+      "types": "./src/shae-worker.d.ts"
+    },
+    "./ConsoleLogger.js": {
+      "import": "./src/utils/ConsoleLogger.js",
+      "types": "./src/utils/ConsoleLogger.d.ts"
+    },
+    "./FrameLoop.js": {
+      "import": "./src/utils/FrameLoop.js",
+      "types": "./src/utils/FrameLoop.d.ts"
+    }
+  },
+  "sideEffects": [
+    "bundle.js",
+    "src/bundle.js",
+    "src/elements.js",
+    "src/index.js",
+    "src/view/ComponentContext.js",
+    "src/view/ShadowEnv.js",
+    "src/utils/ConsoleLogger.js",
+    "src/shae-ent.js",
+    "src/shae-prop.js",
+    "src/shae-worker.js"
+  ],
+  "dependencyNames": ["@spearwolf/eventize", "@spearwolf/signalize"]
+}

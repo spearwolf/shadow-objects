@@ -4,6 +4,20 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-24 — the core package's dist output is held against a recorded expectation
+
+- **`packages/shadow-objects/src/distContract.spec.ts`:** a new case in the package's existing
+  `test` task reads the built `dist/` directory and compares the sorted file list and the shape
+  of `dist/package.json` (top-level keys, entry points, `exports`, `sideEffects`, dependency
+  names) against two checked-in expectation files. `turbo` already builds before it tests
+  (`turbo.json#tasks.test.dependsOn`), so the case runs against a fresh build in the pipeline; a
+  directly started `pnpm watch` needs a manual build first, and the case says so if `dist` is
+  missing.
+- **`packages/shadow-objects/src/distContract.files.txt`, `packages/shadow-objects/src/distContract.package.json`:**
+  the two recorded expectations. `version` and dependency version ranges are deliberately not
+  part of the `package.json` expectation — they change with every release, and an expectation
+  that has to move on every release stops getting read.
+
 ## 2026-08-23 — the ci lint run fails on warnings
 
 - **`package.json`:** `lint:ci` runs `biome check . --reporter=summary --error-on-warnings`. The

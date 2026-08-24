@@ -135,6 +135,9 @@ importers:
         specifier: 'catalog:'
         version: 1.0.0-beta.0(@spearwolf/eventize@6.0.0)
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
       esbuild-plugin-inline-worker:
         specifier: 'catalog:'
         version: 0.1.1

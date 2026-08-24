@@ -82,6 +82,7 @@
     "update": "pnpm dlx npm-check --update"
   },
   "devDependencies": {
+    "@types/node": "catalog:",
     "esbuild-plugin-inline-worker": "catalog:"
   },
   "dependencies": {
