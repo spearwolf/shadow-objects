@@ -1,6 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, type MockInstance, vi} from 'vitest';
 import {AppliedChangeTrail, ChangeTrail, ComponentChangeType, Destroy, Destroyed, Loaded} from '../constants.js';
-import {CONSOLE_LOGGER, CONSOLE_LOGGER_STORAGE} from '../utils/ConsoleLogger.js';
+import {CONSOLE_LOGGER, CONSOLE_LOGGER_STORAGE, ConsoleLogger, type ConsoleLoggerConfig} from '../utils/ConsoleLogger.js';
 import {WorkerRuntime} from './WorkerRuntime.js';
 
 const message = (data: unknown) => ({data}) as MessageEvent;
@@ -15,6 +15,11 @@ let postMessage: MockInstance;
 
 let consoleLoggerStorage: unknown;
 let hadConsoleLoggerStorage = false;
+
+// `ConsoleLogger.sharedConfig` is a process-wide static object: a case that switches a level on
+// to assert against the runtime's logger output must not leave that switch on for the cases
+// that run after it.
+let sharedConfigSnapshot: ConsoleLoggerConfig;
 
 /**
  * `self` is one and the same object for the whole file, and a case only takes its own listener
@@ -41,6 +46,7 @@ describe('WorkerRuntime', () => {
 
     hadConsoleLoggerStorage = CONSOLE_LOGGER_STORAGE in globals;
     consoleLoggerStorage = globals[CONSOLE_LOGGER_STORAGE];
+    sharedConfigSnapshot = {...ConsoleLogger.sharedConfig};
   });
 
   afterEach(() => {
@@ -53,6 +59,8 @@ describe('WorkerRuntime', () => {
     } else {
       delete globals[CONSOLE_LOGGER_STORAGE];
     }
+
+    Object.assign(ConsoleLogger.sharedConfig, sharedConfigSnapshot);
 
     vi.restoreAllMocks();
   });
@@ -84,9 +92,28 @@ describe('WorkerRuntime', () => {
 
     runtime.onmessage(message({type: CONSOLE_LOGGER, config: {debug: true}}));
 
-    expect(globals[CONSOLE_LOGGER_STORAGE]).toEqual({debug: true});
+    // A subset match, not `toEqual`: reading `this.logger.isDebug` right after installing the
+    // config builds the runtime's own `ConsoleLogger`, and where that is the very first one built
+    // in the process -- the case a real worker with no `localStorage` is always in -- `loadConfig()`
+    // merges the shared defaults into this same slot on top of what was just installed
+    // (`ConsoleLogger.ts`'s no-`localStorage` branch). What matters here is that the installed
+    // value survives that merge, not the exact shape of the object it ends up sitting in.
+    expect(globals[CONSOLE_LOGGER_STORAGE]).toMatchObject({debug: true});
     expect(runtime.router).toBeUndefined();
     expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it('reports the installed console-logger config when debug logging is on', () => {
+    const runtime = new WorkerRuntime();
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    ConsoleLogger.sharedConfig.enable = true;
+    ConsoleLogger.sharedConfig.debug = true;
+
+    runtime.onmessage(message({type: CONSOLE_LOGGER, config: {debug: true}}));
+
+    expect(debug).toHaveBeenCalledWith('%cWorkerRuntime', ConsoleLogger.sharedStyles.debug, 'console-logger config installed', {
+      debug: true,
+    });
   });
 
   it('builds its router once and keeps it', () => {
@@ -107,12 +134,19 @@ describe('WorkerRuntime', () => {
   it.each([null, undefined])('discards a message it cannot read: %s', (value) => {
     const runtime = new WorkerRuntime();
     const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    ConsoleLogger.sharedConfig.enable = true;
+    ConsoleLogger.sharedConfig.debug = true;
 
     expect(() => runtime.onmessage(message(value))).not.toThrow();
 
     expect(runtime.router).toBeUndefined();
     expect(debug).toHaveBeenCalledTimes(1);
-    expect(debug).toHaveBeenCalledWith('[WorkerRuntime] discarding a message it cannot read', value);
+    expect(debug).toHaveBeenCalledWith(
+      '%cWorkerRuntime',
+      ConsoleLogger.sharedStyles.debug,
+      'discarding a message it cannot read',
+      value,
+    );
   });
 
   // What the runtime cannot read costs no kernel.
@@ -120,13 +154,30 @@ describe('WorkerRuntime', () => {
     const runtime = new WorkerRuntime();
     const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    ConsoleLogger.sharedConfig.enable = true;
+    ConsoleLogger.sharedConfig.debug = true;
 
     expect(() => runtime.onmessage(message('nonsense'))).not.toThrow();
 
     expect(runtime.router).toBeUndefined();
     expect(debug).toHaveBeenCalledTimes(1);
-    expect(debug).toHaveBeenCalledWith('[WorkerRuntime] discarding a message it cannot read', 'nonsense');
+    expect(debug).toHaveBeenCalledWith(
+      '%cWorkerRuntime',
+      ConsoleLogger.sharedStyles.debug,
+      'discarding a message it cannot read',
+      'nonsense',
+    );
     expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('writes nothing to the console when debug logging is off', () => {
+    const runtime = new WorkerRuntime();
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    ConsoleLogger.sharedConfig.debug = false;
+
+    runtime.onmessage(message('nonsense'));
+
+    expect(debug).not.toHaveBeenCalled();
   });
 
   // `addEventListener` de-dupes the listener on its own, the announcement to the view is de-duped
@@ -146,7 +197,6 @@ describe('WorkerRuntime', () => {
 
   it('takes its message listener off self and releases its router when a destroy comes through', () => {
     const removeEventListener = vi.spyOn(self, 'removeEventListener');
-    vi.spyOn(console, 'debug').mockImplementation(() => undefined);
     const runtime = startRuntime();
 
     self.dispatchEvent(new MessageEvent('message', {data: {type: Destroy}}));
@@ -167,6 +217,8 @@ describe('WorkerRuntime', () => {
   // destroy just raised.
   it('stays down once a destroy has come through', () => {
     const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+    ConsoleLogger.sharedConfig.enable = true;
+    ConsoleLogger.sharedConfig.debug = true;
     const runtime = startRuntime();
 
     self.dispatchEvent(new MessageEvent('message', {data: {type: Destroy}}));
@@ -178,6 +230,11 @@ describe('WorkerRuntime', () => {
     expect(postMessage).not.toHaveBeenCalled();
     expect(runtime.isStarted).toBe(false);
     expect(runtime.router).toBeUndefined();
-    expect(debug).toHaveBeenCalledWith('[WorkerRuntime] discarding a message that arrived after the teardown', ChangeTrail);
+    expect(debug).toHaveBeenCalledWith(
+      '%cWorkerRuntime',
+      ConsoleLogger.sharedStyles.debug,
+      'discarding a message that arrived after the teardown',
+      ChangeTrail,
+    );
   });
 });

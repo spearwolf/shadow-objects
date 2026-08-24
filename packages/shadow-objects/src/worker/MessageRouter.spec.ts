@@ -1,4 +1,4 @@
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {
   AppliedChangeTrail,
   ChangeTrail,
@@ -12,6 +12,7 @@ import {
 import {Kernel} from '../in-the-dark/Kernel.js';
 import {Registry} from '../in-the-dark/Registry.js';
 import type {IComponentChangeType} from '../types.js';
+import {ConsoleLogger, type ConsoleLoggerConfig} from '../utils/ConsoleLogger.js';
 import {MessageRouter} from './MessageRouter.js';
 
 interface PostedMessage {
@@ -71,8 +72,18 @@ const waitForPosted = async (posted: PostedMessage[], count: number, timeout = 2
 const CALL_COUNTER = 'shadowObjectsSpecCalls';
 
 describe('MessageRouter', () => {
+  // `ConsoleLogger.sharedConfig` is a process-wide static object: a case that switches a level on
+  // to assert against the router's logger output must not leave that switch on for the cases
+  // that run after it.
+  let sharedConfigSnapshot: ConsoleLoggerConfig;
+
   beforeEach(() => {
     vi.restoreAllMocks();
+    sharedConfigSnapshot = {...ConsoleLogger.sharedConfig};
+  });
+
+  afterEach(() => {
+    Object.assign(ConsoleLogger.sharedConfig, sharedConfigSnapshot);
   });
 
   describe('routing', () => {
@@ -110,23 +121,26 @@ describe('MessageRouter', () => {
     it('warns about a message type it does not know', () => {
       const {posted, router} = setup();
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      ConsoleLogger.sharedConfig.enable = true;
 
       router.route(message({type: 'nonsense'}));
 
       expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn).toHaveBeenCalledWith('[MessageRouter] unknown message', 'nonsense');
+      expect(warn).toHaveBeenCalledWith('%cMessageRouter', ConsoleLogger.sharedStyles.warn, 'unknown message', 'nonsense');
       expect(posted).toHaveLength(0);
     });
 
     it('names the whole payload when the message carries no type', () => {
       const {posted, router} = setup();
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      ConsoleLogger.sharedConfig.enable = true;
 
       router.route(message({}));
 
       expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn.mock.calls[0][0]).toBe('[MessageRouter] unknown message');
-      expect(warn.mock.calls[0][1]).toEqual({});
+      expect(warn.mock.calls[0][0]).toBe('%cMessageRouter');
+      expect(warn.mock.calls[0][2]).toBe('unknown message');
+      expect(warn.mock.calls[0][3]).toEqual({});
       expect(posted).toHaveLength(0);
     });
   });
@@ -162,7 +176,6 @@ describe('MessageRouter', () => {
 
     it('stops forwarding kernel messages after a destroy', async () => {
       const {kernel, posted, router} = setup();
-      vi.spyOn(console, 'debug').mockImplementation(() => undefined);
 
       // The precondition belongs in the case: without a message that does arrive, the assertion
       // below would also hold for a kernel that never delivers anything to begin with.
@@ -244,7 +257,8 @@ describe('MessageRouter', () => {
       expect(posted[0].message.type).toBe(ImportedModule);
       expect(posted[0].message.error).toBe('Error: missing "importModule" url');
       expect(error).toHaveBeenCalledTimes(1);
-      expect(error.mock.calls[0][0]).toBe('[MessageRouter] failed to import module');
+      expect(error.mock.calls[0][0]).toBe('%cMessageRouter');
+      expect(error.mock.calls[0][2]).toBe('failed to import module');
     });
 
     it('reports a module that cannot be parsed', async () => {
@@ -308,7 +322,8 @@ describe('MessageRouter', () => {
         appliedCount: 0,
       });
       expect(error).toHaveBeenCalledTimes(1);
-      expect(error.mock.calls[0][0]).toBe('[MessageRouter] failed to apply change trail');
+      expect(error.mock.calls[0][0]).toBe('%cMessageRouter');
+      expect(error.mock.calls[0][2]).toBe('failed to apply change trail');
       expect(kernel.hasEntity('a')).toBe(true);
     });
 
@@ -360,14 +375,14 @@ describe('MessageRouter', () => {
 
       expect(posted).toHaveLength(0);
       expect(error).toHaveBeenCalledTimes(1);
-      expect(error.mock.calls[0][0]).toBe('[MessageRouter] failed to apply change trail');
+      expect(error.mock.calls[0][0]).toBe('%cMessageRouter');
+      expect(error.mock.calls[0][2]).toBe('failed to apply change trail');
     });
   });
 
   describe('teardown', () => {
     it('confirms the destroy', () => {
       const {posted, router} = setup();
-      vi.spyOn(console, 'debug').mockImplementation(() => undefined);
 
       router.route(message({type: Destroy}));
 
@@ -378,7 +393,6 @@ describe('MessageRouter', () => {
     // objects run while the thread is still alive rather than being thrown away with it.
     it('clears the entities of the kernel', () => {
       const {kernel, router} = setup();
-      vi.spyOn(console, 'debug').mockImplementation(() => undefined);
 
       router.route(changeTrailMessage(1, createEntity('a')));
       router.route(message({type: Destroy}));
@@ -391,6 +405,8 @@ describe('MessageRouter', () => {
     it('discards the messages that arrive after the destroy', () => {
       const {kernel, posted, router} = setup();
       const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+      ConsoleLogger.sharedConfig.enable = true;
+      ConsoleLogger.sharedConfig.debug = true;
 
       router.route(message({type: Destroy}));
       router.route(changeTrailMessage(2, createEntity('b')));
@@ -399,9 +415,9 @@ describe('MessageRouter', () => {
       expect(kernel.hasEntity('b')).toBe(false);
       expect(posted.map((entry) => entry.message)).toEqual([{type: Destroyed}]);
       expect(router.isDestroyed).toBe(true);
-      expect(
-        debug.mock.calls.filter((call) => call[0] === '[MessageRouter] discarding a message that arrived after the teardown'),
-      ).toHaveLength(2);
+      expect(debug.mock.calls.filter((call) => call[2] === 'discarding a message that arrived after the teardown')).toHaveLength(
+        2,
+      );
     });
 
     // One teardown, one confirmation. A second destroy meets the same barrier as everything else
@@ -411,22 +427,23 @@ describe('MessageRouter', () => {
       const {kernel, posted, router} = setup();
       const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
       const kernelDestroy = vi.spyOn(kernel, 'destroy');
+      ConsoleLogger.sharedConfig.enable = true;
+      ConsoleLogger.sharedConfig.debug = true;
 
       router.route(message({type: Destroy}));
       router.route(message({type: Destroy}));
 
       expect(posted.map((entry) => entry.message)).toEqual([{type: Destroyed}]);
       expect(kernelDestroy).toHaveBeenCalledTimes(1);
-      expect(
-        debug.mock.calls.filter((call) => call[0] === '[MessageRouter] discarding a message that arrived after the teardown'),
-      ).toHaveLength(1);
+      expect(debug.mock.calls.filter((call) => call[2] === 'discarding a message that arrived after the teardown')).toHaveLength(
+        1,
+      );
     });
 
     // The point of taking the kernel down while the thread is still alive: what a Shadow Object
     // closes, reports or releases in its `onDestroy` actually gets the chance to run.
     it('runs the onDestroy of a shadow object', async () => {
       const {posted, router} = setup();
-      vi.spyOn(console, 'debug').mockImplementation(() => undefined);
       // The module text is a string: neither type-checked nor formatted. The counter is written in
       // dot notation and the token key in double quotes, so the single quotes stay with the spec.
       const url =
@@ -453,7 +470,6 @@ describe('MessageRouter', () => {
     // act on.
     it('confirms the destroy even when the kernel teardown throws', () => {
       const {kernel, posted, router} = setup();
-      vi.spyOn(console, 'debug').mockImplementation(() => undefined);
       const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       vi.spyOn(kernel, 'destroy').mockImplementation(() => {
         throw new Error('teardown failed');
@@ -463,7 +479,8 @@ describe('MessageRouter', () => {
 
       expect(posted.map((entry) => entry.message)).toEqual([{type: Destroyed}]);
       expect(error).toHaveBeenCalledTimes(1);
-      expect(error.mock.calls[0][0]).toBe('[MessageRouter] failed to tear the kernel down');
+      expect(error.mock.calls[0][0]).toBe('%cMessageRouter');
+      expect(error.mock.calls[0][2]).toBe('failed to tear the kernel down');
       expect(router.isDestroyed).toBe(true);
     });
 
@@ -471,7 +488,6 @@ describe('MessageRouter', () => {
     // when the destroy comes in.
     it('discards a module import that resolves after the destroy', async () => {
       const {posted, router} = setup();
-      vi.spyOn(console, 'debug').mockImplementation(() => undefined);
       const url = 'data:text/javascript,export const shadowObjects = {define: {"test-token": function ShadowObjectDouble() {}}}';
 
       router.route(changeTrailMessage(1, createEntity('a')));
@@ -501,12 +517,19 @@ describe('MessageRouter', () => {
     it.each([null, undefined])('discards a message it cannot read: %s', (value) => {
       const {posted, router} = setup();
       const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+      ConsoleLogger.sharedConfig.enable = true;
+      ConsoleLogger.sharedConfig.debug = true;
 
       expect(() => router.route(message(value))).not.toThrow();
 
       expect(posted).toHaveLength(0);
       expect(debug).toHaveBeenCalledTimes(1);
-      expect(debug).toHaveBeenCalledWith('[MessageRouter] discarding a message it cannot read', value);
+      expect(debug).toHaveBeenCalledWith(
+        '%cMessageRouter',
+        ConsoleLogger.sharedStyles.debug,
+        'discarding a message it cannot read',
+        value,
+      );
     });
 
     // The line runs between primitive and object: a primitive cannot be a message of this
@@ -516,13 +539,30 @@ describe('MessageRouter', () => {
       const {posted, router} = setup();
       const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      ConsoleLogger.sharedConfig.enable = true;
+      ConsoleLogger.sharedConfig.debug = true;
 
       expect(() => router.route(message(value))).not.toThrow();
 
       expect(debug).toHaveBeenCalledTimes(1);
-      expect(debug).toHaveBeenCalledWith('[MessageRouter] discarding a message it cannot read', value);
+      expect(debug).toHaveBeenCalledWith(
+        '%cMessageRouter',
+        ConsoleLogger.sharedStyles.debug,
+        'discarding a message it cannot read',
+        value,
+      );
       expect(warn).not.toHaveBeenCalled();
       expect(posted).toHaveLength(0);
+    });
+
+    it('writes nothing to the console when debug logging is off', () => {
+      const {router} = setup();
+      const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+      ConsoleLogger.sharedConfig.debug = false;
+
+      router.route(message('nonsense'));
+
+      expect(debug).not.toHaveBeenCalled();
     });
   });
 });

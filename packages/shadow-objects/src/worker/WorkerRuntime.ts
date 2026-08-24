@@ -1,9 +1,28 @@
 import {Destroy, Loaded} from '../constants.js';
-import {CONSOLE_LOGGER, setConsoleLoggerStorage} from '../utils/ConsoleLogger.js';
+import {CONSOLE_LOGGER, ConsoleLogger, setConsoleLoggerStorage} from '../utils/ConsoleLogger.js';
 import {isReadableMessageData, MessageRouter} from './MessageRouter.js';
 
 export class WorkerRuntime {
   router?: MessageRouter;
+
+  #loggerInstance?: ConsoleLogger;
+
+  /**
+   * Built on first use rather than in a field initializer: `ConsoleLogger` reads its config
+   * store once, when the first instance in a thread is built, and in a worker that config
+   * arrives as a message. A logger that exists before that message pins the defaults for
+   * every logger of the thread, the ones built later included.
+   *
+   * The guarantee ends inside `onmessage` itself: the two guard branches that discard a message
+   * it cannot read or a message that arrived after the teardown reach for this logger ahead of
+   * the `CONSOLE_LOGGER` branch below them. A `RemoteWorkerEnv` cannot trigger either guard before
+   * its configuration arrives -- it sends that message first -- but a foreign host driving this
+   * entry point on its own could send something unreadable ahead of it and build this logger
+   * before the configuration the router and kernel loggers rely on has been installed.
+   */
+  get logger(): ConsoleLogger {
+    return (this.#loggerInstance ??= new ConsoleLogger('WorkerRuntime'));
+  }
 
   #isStarted = false;
 
@@ -25,19 +44,26 @@ export class WorkerRuntime {
     // read before a router exists, so the check belongs here as well: a payload this side
     // cannot read would end the worker before anything of it is even built
     if (!isReadableMessageData(data)) {
-      console.debug('[WorkerRuntime] discarding a message it cannot read', data);
+      if (this.logger.isDebug) {
+        this.logger.debug('discarding a message it cannot read', data);
+      }
       return;
     }
 
     // the router that answered the destroy is released below, so without this the next message
     // would build a fresh one -- an untorn kernel behind the barrier the destroy just raised
     if (this.#isDestroyed) {
-      console.debug('[WorkerRuntime] discarding a message that arrived after the teardown', data.type);
+      if (this.logger.isDebug) {
+        this.logger.debug('discarding a message that arrived after the teardown', data.type);
+      }
       return;
     }
 
     if (data.type === CONSOLE_LOGGER) {
       setConsoleLoggerStorage(data.config);
+      if (this.logger.isDebug) {
+        this.logger.debug('console-logger config installed', data.config);
+      }
       return;
     }
 

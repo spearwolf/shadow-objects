@@ -13,6 +13,7 @@ import {
 import {importModule, missingShadowObjectsExportMessage} from '../in-the-dark/importModule.js';
 import {Kernel, type MessageToViewEvent} from '../in-the-dark/Kernel.js';
 import type {AppliedChangeTrailEvent, ImportedModuleEvent, ShadowObjectsModule, SyncEvent} from '../types.js';
+import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {toUrlString} from '../utils/toUrlString.js';
 
 interface ConfigurePayloadData {
@@ -37,6 +38,16 @@ export interface MessageRouterOptions {
 export class MessageRouter {
   #importedModules: Set<ShadowObjectsModule> = new Set();
 
+  /**
+   * A plain field rather than the lazy getter `WorkerRuntime.logger` needs to be: a `MessageRouter`
+   * is only ever built from `WorkerRuntime.onmessage`, and only past the branch that answers the
+   * `CONSOLE_LOGGER` configuration message and returns -- so by the time this field initializer
+   * runs, that configuration has already been installed. The `Kernel` this router holds builds its
+   * own logger the same way, in its own field initializer, on the same guarantee; which of the two
+   * is built first is not something either one depends on.
+   */
+  readonly logger = new ConsoleLogger('MessageRouter');
+
   #isDestroyed = false;
 
   /** Whether this router has been torn down. Once it is, every message that reaches it is discarded. */
@@ -60,7 +71,9 @@ export class MessageRouter {
     const data = event.data;
 
     if (!isReadableMessageData(data)) {
-      console.debug('[MessageRouter] discarding a message it cannot read', data);
+      if (this.logger.isDebug) {
+        this.logger.debug('discarding a message it cannot read', data);
+      }
       return;
     }
 
@@ -69,7 +82,9 @@ export class MessageRouter {
     // meets the same barrier: the confirmation belongs to the destroy that was answered, and the
     // one waiter there is settled on it.
     if (this.#isDestroyed) {
-      console.debug('[MessageRouter] discarding a message that arrived after the teardown', data.type);
+      if (this.logger.isDebug) {
+        this.logger.debug('discarding a message that arrived after the teardown', data.type);
+      }
       return;
     }
 
@@ -87,7 +102,9 @@ export class MessageRouter {
         break;
 
       default:
-        console.warn('[MessageRouter] unknown message', data.type ?? data);
+        if (this.logger.isWarn) {
+          this.logger.warn('unknown message', data.type ?? data);
+        }
     }
   }
 
@@ -105,7 +122,9 @@ export class MessageRouter {
       // the import outlived a teardown that happened while it was in flight: registering it now
       // would fill a kernel that is already down
       if (this.#isDestroyed) {
-        console.debug('[MessageRouter] discarding a module that arrived after the teardown', url);
+        if (this.logger.isDebug) {
+          this.logger.debug('discarding a module that arrived after the teardown', url);
+        }
         return;
       }
 
@@ -120,21 +139,22 @@ export class MessageRouter {
         } as ImportedModuleEvent);
       }
     } catch (error) {
-      console.error('[MessageRouter] failed to import module', error);
+      // an error report is not gated on a debug switch, the same way `RemoteWorkerEnv` keeps its
+      // own error reports ungated: a failure is worth printing regardless of what debug logging
+      // is set to
+      this.logger.error('failed to import module', error);
       this.postMessage({type: ImportedModule, url, error: `${error}`} as ImportedModuleEvent);
     }
   }
 
   #onChangeTrail(data: SyncEvent) {
-    // console.debug('[MessageRouter] parseChangeTrail', {data, kernel: this.kernel});
-
     // One change trail, one confirmation -- and only where a serial asked for one. A caller
     // waiting on that serial decides between rejection and resolution on the first message it
     // sees, so a second one behind it would make the outcome a matter of order.
     try {
       this.kernel.run(data);
     } catch (error) {
-      console.error('[MessageRouter] failed to apply change trail', error);
+      this.logger.error('failed to apply change trail', error);
       if (data.serial) {
         const refusal = error instanceof ChangeTrailRefusedError ? error : undefined;
         this.postMessage({
@@ -155,7 +175,9 @@ export class MessageRouter {
   }
 
   #onDestroy(data: any) {
-    console.debug('[MessageRouter] on destroy', data);
+    if (this.logger.isDebug) {
+      this.logger.debug('on destroy', data);
+    }
 
     // `route()` is the barrier, so this runs once: every later message, a second destroy included,
     // is discarded before it gets here.
@@ -172,7 +194,7 @@ export class MessageRouter {
     } catch (error) {
       // the confirmation is owed either way -- without it the view sits out its destroy
       // timeout before terminating the worker, and learns nothing it could act on
-      console.error('[MessageRouter] failed to tear the kernel down', error);
+      this.logger.error('failed to tear the kernel down', error);
     }
 
     // releases the module objects this router imported; nothing can import into it again
