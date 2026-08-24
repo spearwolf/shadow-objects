@@ -99,6 +99,16 @@ released, and a new one is the way back. See the
 
 Each domain, what it owns, what it must not touch, and the invariants that hold the whole thing together are written up in the [project README](https://github.com/spearwolf/shadow-objects#the-five-domains) and in [Concepts](./docs/concepts.md).
 
+## Security
+
+The `src` of a `<shae-worker>` is a module URL, resolved against the document and run with a dynamic `import()`; the loaded module acts as the application's origin. Set it only from values the application trusts, and constrain it in production with a Content Security Policy delivered on every response of the origin — a policy scoped to only the document's response, or set through `<meta>`, never reaches a worker script loaded from a network URL.
+
+```
+Content-Security-Policy: script-src 'self'; worker-src 'self' blob:
+```
+
+Full detail — why `worker-src` needs `blob:` for the `@spearwolf/shadow-objects/bundle.js` entry point, and which response has to carry the header for every other one — is in the [API Reference](./docs/api-reference.md#security).
+
 ## Documentation
 
 - [Overview](./docs/README.md)

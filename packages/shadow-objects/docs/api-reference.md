@@ -29,6 +29,8 @@ This is the complete API reference for the Shadow Objects framework. Entities ar
   - [shae-prop](#shae-prop)
   - [Namespacing and Contexts](#namespacing-and-contexts)
 - [Kernel (ECS System Runner)](#kernel-ecs-system-runner)
+- [Security](#security)
+  - [The Module URL is a Trust Boundary](#the-module-url-is-a-trust-boundary)
 - [Advanced](#advanced)
   - [Programmatic Registration](#programmatic-registration)
   - [The @ShadowObject Decorator](#the-shadowobject-decorator)
@@ -1407,6 +1409,9 @@ The `envProxy` property accepts any implementation of `IShadowObjectEnvProxy`. T
 | `onMessageToView` | `(event: Omit<MessageToViewEvent, 'transferables'>) => any` | no |
 | `onProxyFailed` | `(reason: unknown) => any` | no |
 
+`importScript`'s `url` is executable code, not data, for the interface and for both implementations
+below alike -- see [Security](#security).
+
 A rejected `applyChangeTrail` is part of the contract, not an accident: the environment reads it
 as a cycle that failed, emits `ShadowEnv.SyncFailed` with the reason the Promise carries, and
 rejects the `syncWait()` waiting on that cycle. `ShadowEnv.AfterSync` stays quiet. Reject when the
@@ -1673,7 +1678,7 @@ The root of any Shadow Objects application. Initializes the Shadow Environment (
 
 | Attribute | Description |
 | :--- | :--- |
-| `src` | URL of the JavaScript file with your Shadow Object definitions. Required for the declarative approach. The value is trimmed. Changing it once the environment is ready imports the new module into it. |
+| `src` | URL of the JavaScript file with your Shadow Object definitions. Required for the declarative approach. The value is trimmed. Changing it once the environment is ready imports the new module into it. It names executable code that runs with the privileges of the application's origin — see [Security](#security). |
 | `local` | Runs logic on the Main Thread instead of a Web Worker. Read as a truthy value, not as a presence — see below. Default: Worker mode. |
 | `auto-sync` | Controls sync frequency. See values below. |
 | `ns` | Namespace (Component Context). Defaults to the Global Context. |
@@ -1743,7 +1748,7 @@ is parked until the first connect, so `hasAttribute('local')` reads the refused 
 | Method | Description |
 | :--- | :--- |
 | `start()` | Creates the Shadow Environment and waits until it is ready. The element calls it on connect by itself, unless `no-autostart` is set. |
-| `importScript(src)` | Waits for the environment and imports a shadow objects module into it. Rejects with a `ShadowEnvDestroyedError` when the environment is torn down before the import begins. A blank `src` rejects with `Error('src is blank')` — the method is `async`, so nothing is thrown at the call site and a `try`/`catch` around it catches nothing; use `await` or `.catch()`. |
+| `importScript(src)` | Waits for the environment and imports a shadow objects module into it. Rejects with a `ShadowEnvDestroyedError` when the environment is torn down before the import begins. A blank `src` rejects with `Error('src is blank')` — the method is `async`, so nothing is thrown at the call site and a `try`/`catch` around it catches nothing; use `await` or `.catch()`. `src` is executable code, not data — see [Security](#security). |
 | `syncShadowObjects()` | Hands the environment of this element's namespace to the next sync. The call is collected per namespace and carried out one microtask later, so calling it more than once in a task costs one sync. Needed with `auto-sync="off"`. Inherited from `ShaeElement`, which means `<shae-ent>` has it too. |
 | `destroy()` | Tears down the environment, its proxy and the element's signals. Called by the element itself one microtask after it leaves the tree, unless it is back in the tree by then. It counts once: every call after the first finds nothing left to do and changes nothing. |
 
@@ -2715,6 +2720,30 @@ on(kernel, MessageToView, (message) => {
   console.log('Message to view:', message);
 });
 ```
+
+---
+
+## Security
+
+### The Module URL is a Trust Boundary
+
+The `src` value of a `<shae-worker>` — and equally the argument of `importScript()` on the element and on every Environment Proxy — is a module URL. `RemoteWorkerEnv.importScript()` resolves it against the document's URL before the value ever leaves the main thread, and `LocalShadowObjectEnv` imports directly in the document — so in both modes the value resolves against the document, and any origin resolves, including a foreign one. The Shadow Environment then loads and runs it with a dynamic `import()`.
+
+The loaded module acts as the application's origin: the same credentials on every `fetch()`, the same access to IndexedDB and Cache Storage. Under `RemoteWorkerEnv` it runs in the worker thread, which has no `document.cookie` and no `localStorage` of its own but authenticates and stores as the rest of the origin does; under `LocalShadowObjectEnv` it runs in the document's realm outright, `document.cookie` and `localStorage` included. Either way, the module is the application, security-wise.
+
+This is the purpose of the mechanism, not a gap in the implementation: the framework loads application logic through a URL, and which URL that is is the application's choice.
+
+The rule for the caller follows from that: the value must not be set from unvalidated input — not from a query parameter, not from a field a user or a foreign system fills in, not from a response the application does not trust. Wiring the attribute from application data, which a framework integration invites, chooses the code that runs.
+
+The protection in production is a Content Security Policy, not a check inside this library — but which response has to carry it depends on the entry point the application imports. `script-src` and `worker-src` filter what a document may load and what a worker may be built from. The `@spearwolf/shadow-objects/bundle.js` entry point builds its worker from an embedded `blob:` URL, and a `blob:` worker inherits the policy container of the document that created it — a policy delivered through a `<meta http-equiv>` tag included — so the document's `script-src` reaches the `import()` inside that worker too. Every other entry point — the root `@spearwolf/shadow-objects`, `@spearwolf/shadow-objects/elements.js`, `@spearwolf/shadow-objects/shae-worker.js` — creates the worker from `shadow-objects.worker.js` next to the imported module, fetched over the network as a response of its own, wherever an application build emits that file. What governs the `import()` inside that worker is the `Content-Security-Policy` header on the response for that script; nothing the document declares reaches it, neither the header on the document's own response nor a `<meta>` tag. Serving the header on every response of the origin, the worker script included, is what closes that gap.
+
+```
+Content-Security-Policy: script-src 'self'; worker-src 'self' blob:
+```
+
+This example protects the embedded `blob:` worker of the `bundle.js` entry point. A deployment that serves `shadow-objects.worker.js` needs the same header, or an equivalent one, on that script's own response as well.
+
+Neither the element nor the proxy validate the URL, and neither offers a hook where an application could register allowed origins; the restriction belongs to the CSP and to the code that sets the value.
 
 ---
 

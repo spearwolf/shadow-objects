@@ -228,6 +228,18 @@ Three pillars hold up a roof. Five domains hold up a framework.
 
 ---
 
+## Security
+
+The `src` of a `<shae-worker>` names a JavaScript module the Shadow Environment loads with a dynamic `import()` — resolved against the document's URL either way, then run in the worker thread or the document's realm depending on the mode. The loaded module acts as the application's origin. Set it only from values the application trusts, never from a query parameter, user input, or an untrusted response, and constrain it in production with a Content Security Policy delivered on every response of the origin: a policy set only on the document's own response, or through a `<meta>` tag, never reaches a worker script loaded from a network URL.
+
+```
+Content-Security-Policy: script-src 'self'; worker-src 'self' blob:
+```
+
+`worker-src` needs `blob:` for the embedded worker of the `@spearwolf/shadow-objects/bundle.js` entry point; every other entry point creates the worker from `shadow-objects.worker.js` over the network, and that response needs a header of its own. The full picture, including both Environment implementations, is in [`api-reference.md`](packages/shadow-objects/docs/api-reference.md#security).
+
+---
+
 ## Documentation
 
 **The complete and authoritative documentation is in [`packages/shadow-objects/docs/`](packages/shadow-objects/docs/).**
