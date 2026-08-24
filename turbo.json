@@ -28,6 +28,7 @@
         "tests/**",
         "vitest.config.ts",
         "vitest.setup.ts",
+        "vitest.globalSetup.ts",
         "../shadow-objects/vitest.setup.ts",
         "playwright.config.ts",
         "pages/**",

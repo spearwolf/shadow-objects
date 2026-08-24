@@ -4,6 +4,20 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-24 — the two unpublished packages declare what their test task actually writes
+
+- **`packages/shadow-objects-testing/turbo.json`, `packages/shadow-objects-e2e/turbo.json`:** two new
+  package configurations (`extends: ["//"]`) that override `outputs` for the `test` task only —
+  everything else, `dependsOn` and `inputs` included, still comes from the root definition. The root
+  task declares `coverage/**`, which neither package produces, so every run ended in
+  `WARNING no output files found for task …#test`. `shadow-objects-testing` runs `vitest --run`
+  without `--coverage` and writes no files at all, hence `[]`; `shadow-objects-e2e` runs Playwright
+  with the `html` reporter and writes `playwright-report/**`, which is now cached and restored with
+  the task. `test-results/` stays undeclared — it is failure-only output, and turbo does not cache
+  failed tasks.
+- **`turbo.json`:** `vitest.globalSetup.ts` joins the `inputs` of the `test` task. Only
+  `shadow-objects-testing` has one, and editing it did not invalidate that package's test cache.
+
 ## 2026-08-24 — `makePackageJson.mjs` resolves named catalogs
 
 - **`pnpm-workspace.yaml`:** a `catalogs:` block, one nesting level deeper than the existing

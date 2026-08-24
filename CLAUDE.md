@@ -120,3 +120,4 @@ After updating the changelogs, **sync `Backlog.md`**: cross off or remove items 
 
 - After modifying source or docs, re-check `AGENTS.md` for staleness — it's expected to be updated alongside the code, not retrofitted later.
 - Turbo's task graph and caching is defined in `turbo.json`. If a build/test task seems to be reading stale artifacts, run with `--force` to bypass cache or `pnpm clean` to nuke.
+- Two packages carry their own `turbo.json` (`shadow-objects-testing`, `shadow-objects-e2e`). Each is a package configuration with `extends: ["//"]` that overrides a single field — the `test` task's `outputs`, because neither writes the `coverage/**` the root task declares. Field-level merge applies: `dependsOn` and `inputs` still come from the root. A task whose outputs are declared but never written makes turbo print `no output files found for task …`; a task that writes files it never declares silently loses them on a cache hit.
