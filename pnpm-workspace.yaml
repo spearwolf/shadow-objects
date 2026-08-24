@@ -93,6 +93,14 @@ catalog:
   rimraf: ^6.1.3
   leasot: ^14.4.0
 
+# Named catalogs for ranges that are not install pins. A peer range names
+# the floor a consumer is held to, and it has to stay wider than the pin
+# the workspace itself installs — the consumer resolves `three` on its own,
+# and only one copy of it may stand in a dependency tree.
+catalogs:
+  peer:
+    three: '>=0.180.0'
+
 # `minimumReleaseAge` (1 day, pnpm >=11 default) exists to keep a freshly
 # compromised third-party release out of the tree. The @spearwolf packages are
 # first-party — published from this account, reviewed here — so the cooling-off

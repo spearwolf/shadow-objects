@@ -52,13 +52,16 @@
     "happy-dom": "catalog:",
     "lil-gui": "catalog:",
     "lit-html": "catalog:",
+    "three": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "three": "catalog:peer"
   },
   "dependencies": {
     "@spearwolf/eventize": "catalog:",
     "@spearwolf/shadow-objects": "workspace:*",
-    "@spearwolf/signalize": "catalog:",
-    "three": "catalog:"
+    "@spearwolf/signalize": "catalog:"
   }
 }

@@ -9,10 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-> **Next release: minor.** The package is below `1.0.0`, so the breaking change below bumps the
-> minor position — `0.6.0` → `0.7.0`. It reaches only consumers that hand their own template to the
+> **Next release: minor.** The package is below `1.0.0`, so the breaking changes below bump the
+> minor position — `0.6.0` → `0.7.0`. One reaches only consumers that hand their own template to the
 > constructor of `ShaeOffscreenCanvasElement`; the namespace lands on whatever element in that
-> template carries the `entity` id, so a template without a placeholder is all it takes.
+> template carries the `entity` id, so a template without a placeholder is all it takes. The other
+> — `three` moving to `peerDependencies` — reaches every consumer.
 
 - `<shae-offscreen-canvas>` builds its shadow root from a detached template and hands the `ns` attribute to the entity element with `setAttribute()`. A namespace containing `"`, `<` or `>` arrives as the string it is; previously it ended the attribute it was spliced into and the remainder of its value was written into the shadow root as markup, which made anyone binding `ns` from application data reachable through an XSS vector.
 - The `initialHTML` argument of the constructor no longer knows a `%NS%` placeholder. A template that still writes `%NS%` into the start tag of the entity element gets an empty attribute of that name out of the HTML parser (`%ns%` in the browsers, `ns` under happy-dom). The namespace reaches the entity element through `setAttribute()` either way, so every template whose entity element carries the `entity` id keeps its namespace, placeholder or not.
@@ -29,3 +30,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A destroyed `ThreeMultiViewRenderer` calls `dispose()` on its `WebGLRenderer`, gives up `renderer` and `canvas`, and clears its render view collection. `renderView()` answers `undefined` afterwards.
 - The subscriptions of `<shae-offscreen-canvas>` belong to the element, whoever put it into the document. `connectedCallback()` runs outside the caller's reactive context, so an `append()` from inside a `createEffect()` of the application no longer hands the view-component effect it sets up to that foreign effect, whose next run used to release it again. That context is suspended, not ignored: a `batch()` the caller has open is flushed before the connect runs, so in `batch(() => { someSignal.set(1); container.append(el); })` the effects of that write now run before the element is appended rather than after the batch closes.
 - The `CubeScene` and `TestImage2OnCanvas2D` sample Shadow Objects run their cleanup under the `[onDestroy]` symbol from `@spearwolf/shadow-objects/shadow-objects.js` instead of a plain `onDestroy` method, so it runs.
+- `three` is a peer dependency of the package (`>=0.180.0`), installed by the application, so exactly one copy of it stands in the dependency tree. A `npm install @spearwolf/shae-offscreen-canvas` without `three` next to it ends with an unmet peer dependency, and this holds even for a purely `Canvas2D` application: the entry point `./shadow-objects.js` loads `ThreeMultiViewRenderer` statically.

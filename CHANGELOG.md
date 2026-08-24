@@ -4,6 +4,17 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-24 — `makePackageJson.mjs` resolves named catalogs
+
+- **`pnpm-workspace.yaml`:** a `catalogs:` block, one nesting level deeper than the existing
+  `catalog:` block, holds named catalogs for dependency ranges that are not install pins. The
+  first entry, `catalogs.peer`, carries `three: '>=0.180.0'` — the floor a peer dependency holds
+  a consumer to, distinct from the caret-pinned version the workspace itself installs.
+- **`scripts/makePackageJson.mjs`:** `loadPnpmCatalog()` reads the `catalogs:` block alongside the
+  main `catalog:` block. `resolveDependencies()` tells a plain `catalog:` reference from a named
+  one (`catalog:<name>`) and resolves each against its own catalog, warning the same way as before
+  when an entry is missing.
+
 ## 2026-08-24 — the canvas package's .npm-pkg output is held against a recorded expectation
 
 - **`packages/shae-offscreen-canvas/src/distContract.spec.js`:** a new case in the package's

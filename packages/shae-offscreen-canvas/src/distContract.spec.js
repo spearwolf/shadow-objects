@@ -84,6 +84,11 @@ describe('the .npm-pkg layout of @spearwolf/shae-offscreen-canvas', () => {
     // checked at all: both move on every release, so an expectation that has to be edited on
     // every release is an expectation nobody reads before editing it.
     expect(Object.keys(pkg.dependencies ?? {}).sort()).toEqual(expectedPackageJsonShape.dependencyNames);
+    expect(Object.keys(pkg.peerDependencies ?? {}).sort()).toEqual(expectedPackageJsonShape.peerDependencyNames);
+    // Unlike the dependency-name check above, this one does hold a shape (not just a name):
+    // a peer names a floor a consumer is held to, not a version this package installs, so a
+    // `^` or `~` range here would be the exact regression this contract exists to catch.
+    expect(pkg.peerDependencies?.three).toMatch(/^>=/);
   });
 
   it('every entry point in .npm-pkg/package.json resolves to an existing file', () => {

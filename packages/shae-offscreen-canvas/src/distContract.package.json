@@ -9,6 +9,7 @@
     "main",
     "module",
     "name",
+    "peerDependencies",
     "publishConfig",
     "repository",
     "sideEffects",
@@ -31,5 +32,6 @@
     }
   },
   "sideEffects": ["src/bundle.js", "src/shae-offscreen-canvas.js"],
-  "dependencyNames": ["@spearwolf/eventize", "@spearwolf/shadow-objects", "@spearwolf/signalize", "three"]
+  "dependencyNames": ["@spearwolf/eventize", "@spearwolf/shadow-objects", "@spearwolf/signalize"],
+  "peerDependencyNames": ["three"]
 }

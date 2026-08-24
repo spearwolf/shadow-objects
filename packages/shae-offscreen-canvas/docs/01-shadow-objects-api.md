@@ -65,6 +65,8 @@ The _CanvasBitmapRenderer_ shadow object creates an [ImageBitmapRenderingContext
 
 ### ThreeMultiViewRenderer
 
+This shadow object works against the `three` version of the application, which the package requires as a peer dependency.
+
 Creates an offscreen canvas and initializes a [THREE.WebGLRenderer](https://threejs.org/docs/index.html?q=webglrenderer#api/en/renderers/WebGLRenderer).
 Provides an API to create and render multiple rendering views:
 

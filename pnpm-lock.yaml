@@ -212,9 +212,6 @@ importers:
       '@spearwolf/signalize':
         specifier: 'catalog:'
         version: 1.0.0-beta.0(@spearwolf/eventize@6.0.0)
-      three:
-        specifier: 'catalog:'
-        version: 0.185.1
     devDependencies:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
@@ -231,6 +228,9 @@ importers:
       lit-html:
         specifier: 'catalog:'
         version: 3.3.3
+      three:
+        specifier: 'catalog:'
+        version: 0.185.1
       vite:
         specifier: ^7.3.6
         version: 7.3.6(@types/node@24.13.3)(lightningcss@1.33.0)

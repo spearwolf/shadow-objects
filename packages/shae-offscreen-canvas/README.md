@@ -7,8 +7,17 @@ This package provides custom HTML elements that set up a Shadow Objects environm
 ## Installation
 
 ```bash
-npm install @spearwolf/shae-offscreen-canvas
+npm install @spearwolf/shae-offscreen-canvas three
 ```
+
+`three` is a peer dependency of this package, installed by the application so
+exactly one copy of it sits in the dependency tree -- two instances mean two
+registries for WebGL resources, and `instanceof` checks stop working across
+the boundary between them. The peer is not optional: the entry point
+`./shadow-objects.js` names `ThreeMultiViewRenderer` in its `define` object
+and loads it statically, so `three` belongs in the tree even for an
+application that only uses `Canvas2D` or `CanvasBitmapRenderer`. The required
+range is `>=0.180.0`.
 
 ## Usage Example
 

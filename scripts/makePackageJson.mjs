@@ -54,9 +54,15 @@ function resolveDependencies(dependenciesSection) {
       const pkgVersion = resolvePackageVersion(depName);
       if (pkgVersion) dependenciesSection[depName] = pkgVersion;
     } else if (version.startsWith('catalog:')) {
-      const catalogVersion = CATALOG[depName];
+      const catalogName = version.slice('catalog:'.length);
+      // The main catalog is the pin this workspace installs. A named catalog
+      // (`catalog:<name>`) carries ranges that mean something else — a peer
+      // range is not an install wish, it's a compatibility promise.
+      const catalogVersion = catalogName ? CATALOG.named[catalogName]?.[depName] : CATALOG.default[depName];
       if (catalogVersion) {
         dependenciesSection[depName] = catalogVersion;
+      } else if (catalogName) {
+        console.warn('Catalog entry not found for', depName, 'in catalog', catalogName, '- leaving as-is');
       } else {
         console.warn('Catalog entry not found for', depName, '- leaving as-is');
       }
@@ -66,27 +72,68 @@ function resolveDependencies(dependenciesSection) {
 
 function loadPnpmCatalog() {
   const ymlPath = path.resolve(workspaceRoot, 'pnpm-workspace.yaml');
-  if (!fs.existsSync(ymlPath)) return {};
+  if (!fs.existsSync(ymlPath)) return {default: {}, named: {}};
   const text = fs.readFileSync(ymlPath, 'utf8');
   const lines = text.split(/\r?\n/);
+  const entryPattern = /^\s+['"]?([^'":]+?)['"]?\s*:\s*(.+?)\s*(?:#.*)?$/;
+  const unquote = (value) => value.replace(/^['"]|['"]$/g, '');
+
   const catalog = {};
+  const named = {};
   let inCatalog = false;
+  let inNamedCatalogs = false;
+  let currentNamedCatalog = null;
+
   for (const raw of lines) {
     if (/^catalog:\s*$/.test(raw)) {
       inCatalog = true;
+      inNamedCatalogs = false;
+      currentNamedCatalog = null;
+      continue;
+    }
+    if (/^catalogs:\s*$/.test(raw)) {
+      inCatalog = false;
+      inNamedCatalogs = true;
+      currentNamedCatalog = null;
       continue;
     }
     if (inCatalog) {
       if (/^\S/.test(raw)) {
         // top-level key encountered (other than comments) → end of catalog
-        if (raw.trim() && !raw.trim().startsWith('#')) break;
+        if (raw.trim() && !raw.trim().startsWith('#')) {
+          inCatalog = false;
+        } else {
+          continue;
+        }
+      } else {
+        const m = raw.match(entryPattern);
+        if (m) catalog[m[1]] = unquote(m[2]);
         continue;
       }
-      const m = raw.match(/^\s+['"]?([^'":]+?)['"]?\s*:\s*(.+?)\s*(?:#.*)?$/);
-      if (m) catalog[m[1]] = m[2].replace(/^['"]|['"]$/g, '');
+    }
+    if (inNamedCatalogs) {
+      if (/^\S/.test(raw)) {
+        // top-level key encountered (other than comments) → end of catalogs
+        if (raw.trim() && !raw.trim().startsWith('#')) {
+          inNamedCatalogs = false;
+          currentNamedCatalog = null;
+        }
+        continue;
+      }
+      // one nesting level deeper than `catalog:`: a catalog name, then its pairs
+      const nameMatch = raw.match(/^\s{2}['"]?([^'":]+?)['"]?\s*:\s*$/);
+      if (nameMatch) {
+        currentNamedCatalog = nameMatch[1];
+        named[currentNamedCatalog] ??= {};
+        continue;
+      }
+      if (currentNamedCatalog) {
+        const m = raw.match(entryPattern);
+        if (m) named[currentNamedCatalog][m[1]] = unquote(m[2]);
+      }
     }
   }
-  return catalog;
+  return {default: catalog, named};
 }
 
 function resolvePackageVersion(pkgName) {

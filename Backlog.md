@@ -405,7 +405,7 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 - ~~Das Beispiel zeigt, dass `vc.syncShadowObjects()` nach Property-Batches **explizit** aufgerufen werden muss. Im README/Getting-Started ist das nicht ausreichend hervorgehoben — ein Naiv-Konsument bekommt Latenz, ohne zu verstehen, warum.~~ ✅ Der Sync-Takt ist jetzt in README, `getting-started.md`, `concepts.md`, `cheat-sheet.md` und `best-practices.md` als eigener Punkt inklusive Race-Condition-Warnung erklärt.
 - Der Transferable-Parameter (`[offscreen]`) bei `dispatchShadowObjectsEvent` ist ein **mächtiges, aber kaum dokumentiertes** Feature.
 - `console.debug('hello … 🦄')` in `src/bundle.js` ist eine Log-Rauschen-Falle für Konsumenten.
-- `three@^0.179.1` als harte Demo-Dep zieht beim `pnpm install` viel Volumen.
+- ~~`three@^0.179.1` als harte Demo-Dep zieht beim `pnpm install` viel Volumen.~~ ✅ `three` ist Peer-Dependency (`>=0.180.0`) plus devDependency des Canvas-Pakets; der Workspace installiert weiterhin den Katalog-Pin, das Volumen beim `pnpm install` des Repositories bleibt unverändert.
 
 ---
 

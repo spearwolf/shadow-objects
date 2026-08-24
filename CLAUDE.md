@@ -17,7 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Lint + format | `biome` 2.5 (replaces eslint + prettier) |
 | Dev server | `vite` 7 (only `shae-offscreen-canvas` demo and `shadow-objects-e2e`) |
 
-Versions live exclusively in `pnpm-workspace.yaml` (`catalog:` block). Reference them from each package as `"<dep>": "catalog:"` — never write a plain version range in a per-package `package.json`.
+Versions live exclusively in `pnpm-workspace.yaml` (`catalog:` block). Reference them from each package as `"<dep>": "catalog:"` — never write a plain version range in a per-package `package.json`. A range that is not an install pin — today only the `three` peer dependency of `shae-offscreen-canvas` — lives in a named catalog under a `catalogs:` block and is referenced as `"<dep>": "catalog:<name>"`.
 
 Two entries in that file are deliberate holdbacks, each with the reason in a comment above it. Don't "fix" them by bumping to latest:
 
@@ -80,7 +80,7 @@ Three stages, all in one Node script:
 1. **Lib transpile** — esbuild with `bundle: false`, glob `src/**/*.{ts,js}` (specs excluded), `outdir: dist/src`. Preserves the source layout so deep imports like `@spearwolf/shadow-objects/shae-ent.js` resolve to `dist/src/shae-ent.js`.
 2. **Types** — `tsc -p tsconfig.lib.json` with `emitDeclarationOnly: true`. Same outdir.
 3. **Bundle** — esbuild with `bundle: true` on `dist/src/bundle.js` (the *transpiled* entry, not `src/bundle.ts`, so the package.json `sideEffects` array — which references `dist/src/*.js` paths — keeps the side-effect imports from being tree-shaken). Two custom resolvers swap `create-worker.js` → `create-worker.bundle.js` (the inlined-blob variant) and route the virtual `./bundle.worker.js` import to `dist/src/shadow-objects.worker.js`. The `esbuild-plugin-inline-worker` then bundles + base64-inlines that worker.
-4. `scripts/makePackageJson.mjs` writes `dist/package.json` (resolves `workspace:*` and `catalog:` refs, applies `package.override.json`, strips the `dist/` prefix from `exports`/`main`/`module`/`types`).
+4. `scripts/makePackageJson.mjs` writes `dist/package.json` (resolves `workspace:*`, `catalog:` and `catalog:<name>` refs, applies `package.override.json`, strips the `dist/` prefix from `exports`/`main`/`module`/`types`).
 
 The published `dist/` layout is part of the public API contract — its file list and `dist/package.json` shape must stay stable. `src/distContract.spec.ts` holds both against a recorded expectation, `src/distContract.files.txt` (the sorted file list) and `src/distContract.package.json` (top-level keys, entry points, `exports`, `sideEffects`, dependency names); a change that adds, removes or renames a file under `dist/`, or reshapes `dist/package.json`, has to update both expectation files and a `CHANGELOG.md` entry in the same change. To see what a change does to the output, diff `find packages/shadow-objects/dist -type f | sort` and `packages/shadow-objects/dist/package.json` against a build of the previous commit.
 
@@ -113,7 +113,7 @@ After updating the changelogs, **sync `Backlog.md`**: cross off or remove items 
 - **Banned analogies**: "shadow theater", "puppet", "puppeteer", "light world", "screen". Use ECS terminology (Entity, Component, Kernel, View, Token).
 - All docs and code comments in English, Markdown for docs.
 - Lint + format are Biome only — config lives at repo root (`biome.json`). No per-package overrides.
-- Dependency versions live in `pnpm-workspace.yaml` `catalog:`. Reference as `"<dep>": "catalog:"` from package.json. Don't pin versions per package.
+- Dependency versions live in `pnpm-workspace.yaml` `catalog:`. Reference as `"<dep>": "catalog:"` from package.json. Don't pin versions per package. A range that is not an install pin lives in a named catalog under `catalogs:` and is referenced as `"<dep>": "catalog:<name>"`.
 - `.worktrees/` is gitignored and used for parallel work; don't clean it up casually.
 
 ## When unsure
