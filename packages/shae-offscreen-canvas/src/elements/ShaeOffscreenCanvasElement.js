@@ -1,7 +1,7 @@
 import {on} from '@spearwolf/eventize';
 import {ContextLost, FrameLoop} from '@spearwolf/shadow-objects';
 import {ConsoleLogger} from '@spearwolf/shadow-objects/ConsoleLogger.js';
-import {createEffect} from '@spearwolf/signalize';
+import {createEffect, hibernate} from '@spearwolf/signalize';
 import {
   CanvasHeight,
   CanvasWidth,
@@ -114,11 +114,9 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
   // Answering a canvas request or a lost context is something this element only does while it is
   // part of the document — the effect that listens for both is built here, not once in the
   // constructor, so an element outside the document has nothing left listening on its
-  // ViewComponent. That holds as long as connectedCallback() runs outside of another signal
-  // effect's callback: createEffect() attaches a new effect to whichever effect is currently on
-  // the stack (EffectImpl#attachChildEffect), and a child effect is destroyed along with its
-  // parent's own teardown — so an element connected from within somebody else's effect answers
-  // only until that effect's next run or destruction, not until this element's own disconnect.
+  // ViewComponent. That holds as long as the element stays connected: connectedCallback() runs
+  // this inside hibernate(), so the effect built here belongs to the element regardless of which
+  // reactive context the caller was in when it appended it.
   #setupViewComponentEffect() {
     this.#destroyViewComponentEffect();
 
@@ -206,11 +204,20 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
   }
 
   connectedCallback() {
-    this.#setupViewComponentEffect();
-    this.#observeDisplaySize();
-    this.#watchPixelRatio();
-    this.#frameLoop.start(this);
-    this.frameLoopIsRunning = true;
+    // The whole body runs outside whatever reactive context the caller is in. An append() is an
+    // ordinary call, and it can perfectly well stand inside a createEffect() of the application:
+    // createEffect() attaches a new effect to whichever effect is currently on the stack, so the
+    // effect built below would become a child of that foreign effect, and its next run would
+    // release it — the element would go quiet without anyone destroying it. hibernate() clears the
+    // effect stack for the duration, so the subscriptions belong to the element and come off where
+    // the element decides.
+    hibernate(() => {
+      this.#setupViewComponentEffect();
+      this.#observeDisplaySize();
+      this.#watchPixelRatio();
+      this.#frameLoop.start(this);
+      this.frameLoopIsRunning = true;
+    });
   }
 
   get frameLoopIsRunning() {

@@ -1,6 +1,7 @@
 import {emit} from '@spearwolf/eventize';
 import {ComponentChangeType, ComponentContext, ContextLost, FrameLoop, GlobalNS} from '@spearwolf/shadow-objects';
 import '@spearwolf/shadow-objects/shae-ent.js';
+import {createEffect, createSignal} from '@spearwolf/signalize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {CanvasHeight, CanvasWidth, Fps, OffscreenCanvas, PixelRatio, RequestOffscreenCanvas} from '../shared/constants.js';
 import {ShaeOffscreenCanvasElement} from './ShaeOffscreenCanvasElement.js';
@@ -268,6 +269,33 @@ describe('ShaeOffscreenCanvasElement', () => {
       expect(transferSpy).toHaveBeenCalled();
 
       host2.remove();
+    });
+
+    it('keeps an element that was appended from inside a foreign effect working when that effect runs again', () => {
+      const el = createWithNamespace(`foreign-effect-${++connectCounter}`);
+      el.logger.enable = false;
+      connectedElements.push(el);
+
+      // whoever appends the element decides nothing about its subscriptions. A signal effect of
+      // the application is such a caller, and its next run releases everything that was set up
+      // while it was running — the element's subscriptions must not be among them.
+      const rerun$ = createSignal(0);
+      const foreign = createEffect(() => {
+        rerun$.get();
+        if (!el.isConnected) {
+          document.body.appendChild(el);
+        }
+      });
+
+      rerun$.set(1);
+
+      const transferSpy = vi.spyOn(el.canvas, 'transferControlToOffscreen');
+
+      emit(el.viewComponent, RequestOffscreenCanvas);
+
+      expect(transferSpy).toHaveBeenCalled();
+
+      foreign.destroy();
     });
   });
 
