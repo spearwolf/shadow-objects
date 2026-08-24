@@ -1,6 +1,6 @@
 import {on} from '@spearwolf/eventize';
 import {MessageToView, ShadowObjectsExport} from '../constants.js';
-import {importModule} from '../in-the-dark/importModule.js';
+import {importModule, missingShadowObjectsExportMessage} from '../in-the-dark/importModule.js';
 import {Kernel, type MessageToViewEvent} from '../in-the-dark/Kernel.js';
 import {Registry} from '../in-the-dark/Registry.js';
 import type {ChangeTrailType, ShadowObjectsModule, SyncEvent} from '../types.js';
@@ -68,9 +68,12 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
 
   async importScript(url: URL | string): Promise<void> {
     const module = await import(/* @vite-ignore */ toUrlString(url));
-    if (module[ShadowObjectsExport]) {
-      await this.importModule(module[ShadowObjectsExport]);
+    // A module without this export is wrong in both environments, and a local run rejects it
+    // right here instead of staying quiet -- so a developer sees it before switching to a worker.
+    if (!module[ShadowObjectsExport]) {
+      throw new Error(missingShadowObjectsExportMessage);
     }
+    await this.importModule(module[ShadowObjectsExport]);
   }
 
   async importModule(module: ShadowObjectsModule): Promise<void> {

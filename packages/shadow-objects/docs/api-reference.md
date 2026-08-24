@@ -1464,7 +1464,7 @@ const scopedEnv = new LocalShadowObjectEnv(new Registry());
 | `constructor(registry?)` | Without an argument the environment uses the default registry; pass a `Registry` to isolate it. See the example above. |
 | `start()` | Resolves immediately -- there is no thread to bring up. |
 | `applyChangeTrail(data, waitForConfirmation)` | Runs the change trail through the Kernel synchronously, before this method returns. `waitForConfirmation` does not change that -- only the settling of the returned promise moves: one microtask later than the call instead of in the same microtask, so it never settles in the same microtask as the call that made it. That is not the same relative ordering `RemoteWorkerEnv` gives its own promises -- that one settles only after its worker round-trip and can land later still. |
-| `importScript(url)` | Import a shadow objects module from a URL. |
+| `importScript(url)` | Import a shadow objects module from a URL. Rejects with `Error('module has no "shadowObjects" export')` when the module carries no such export -- the same wording `RemoteWorkerEnv` reports for the same case. |
 | `importModule(module)` | Import a shadow objects module directly. |
 | `destroy()` | Tears the environment down: the Kernel is destroyed and the set of imported modules is forgotten. The `Registry` in use is cleared too, unless it is the default registry — that one is shared with every other environment in the thread and stays untouched. |
 
@@ -1514,7 +1514,7 @@ that quietly means something else than it says is turned away rather than honour
 
 | Method | Description |
 | :--- | :--- |
-| `importScript(url)` | Import a shadow objects module inside the worker. Rejects with a `WorkerDestroyedError` after `destroy()`. |
+| `importScript(url)` | Import a shadow objects module inside the worker. Rejects with a `WorkerDestroyedError` after `destroy()`. A module with no `shadowObjects` export rejects with the string `module has no "shadowObjects" export` that came in over the wire, rather than the `Error` a `LocalShadowObjectEnv` rejects the same case with. |
 | `applyChangeTrail(changeTrail, waitForConfirmation)` | Send a change trail to the worker; with `waitForConfirmation` the promise resolves once the worker has applied it, and rejects with a `ChangeTrailRefusedError` where the worker's Kernel refused it. A trail sent without a confirmation carries no serial, gets no answer, and therefore never reports a refusal. Rejects with a `WorkerDestroyedError` after `destroy()`. |
 | `start()` | Spawn the worker and wait for the load handshake. Rejects with a `WorkerDestroyedError` after `destroy()`. |
 | `destroy()` | Tears the environment down and terminates the worker — once it has acknowledged, or after `WorkerDestroyTimeout` if it stays silent. Takes effect whether or not a worker was ever spawned. On that message the worker tears its own kernel down — its entities are destroyed and the `onDestroy` callbacks of their Shadow Objects run — acknowledges with `Destroyed` once, and hears nothing after that. The environment stops listening to the worker as the teardown begins, so whatever it still sends -- a `MessageToView` among it -- does not arrive. |

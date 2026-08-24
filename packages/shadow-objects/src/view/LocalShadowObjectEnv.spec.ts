@@ -272,4 +272,28 @@ describe('LocalShadowObjectEnv', () => {
       expect(registry.hasToken('env-own-token')).toBe(false);
     });
   });
+
+  // The module urls are `data:` urls: `toUrlString()` hands them through unchanged and the loader
+  // imports them, same as the module-import cases in `worker/MessageRouter.spec.ts`.
+  describe('importScript', () => {
+    it('refuses a module without the shadow-objects export', async () => {
+      const env = new LocalShadowObjectEnv(new Registry());
+
+      await expect(env.importScript('data:text/javascript,export const nothing = 1')).rejects.toThrow(
+        'module has no "shadowObjects" export',
+      );
+
+      env.destroy();
+    });
+
+    it('imports a module that has the export', async () => {
+      const env = new LocalShadowObjectEnv(new Registry());
+
+      await env.importScript('data:text/javascript,export const shadowObjects = {define: {"env-import-token": class {}}}');
+
+      expect(env.registry.hasToken('env-import-token')).toBe(true);
+
+      env.destroy();
+    });
+  });
 });

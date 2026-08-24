@@ -10,7 +10,7 @@ import {
   MessageToView,
   ShadowObjectsExport,
 } from '../constants.js';
-import {importModule} from '../in-the-dark/importModule.js';
+import {importModule, missingShadowObjectsExportMessage} from '../in-the-dark/importModule.js';
 import {Kernel, type MessageToViewEvent} from '../in-the-dark/Kernel.js';
 import type {AppliedChangeTrailEvent, ImportedModuleEvent, ShadowObjectsModule, SyncEvent} from '../types.js';
 import {toUrlString} from '../utils/toUrlString.js';
@@ -116,7 +116,7 @@ export class MessageRouter {
         this.postMessage({
           type: ImportedModule,
           url,
-          error: `module has no "${ShadowObjectsExport}" export`,
+          error: missingShadowObjectsExportMessage,
         } as ImportedModuleEvent);
       }
     } catch (error) {

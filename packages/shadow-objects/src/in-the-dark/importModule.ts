@@ -1,5 +1,13 @@
+import {ShadowObjectsExport} from '../constants.js';
 import type {ShadowObjectConstructor, ShadowObjectsModule} from '../types.js';
 import type {Kernel} from './Kernel.js';
+
+/**
+ * The wording both environments use when a module they import carries no `shadowObjects` export.
+ * `worker/MessageRouter.ts` puts it in the `error` field of the `ImportedModule` message it posts
+ * to the view, `view/LocalShadowObjectEnv.ts` rejects `importScript()` with an `Error` carrying it.
+ */
+export const missingShadowObjectsExportMessage = `module has no "${ShadowObjectsExport}" export`;
 
 export async function importModule(
   kernel: Kernel,
