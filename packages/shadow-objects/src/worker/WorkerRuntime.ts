@@ -8,17 +8,16 @@ export class WorkerRuntime {
   #loggerInstance?: ConsoleLogger;
 
   /**
-   * Built on first use rather than in a field initializer: `ConsoleLogger` reads its config
-   * store once, when the first instance in a thread is built, and in a worker that config
-   * arrives as a message. A logger that exists before that message pins the defaults for
-   * every logger of the thread, the ones built later included.
+   * Built on first use rather than in a field initializer: a `ConsoleLogger` reads its own
+   * `<namespace>.enable` key once, when it is built, and in a worker the config that key lives in
+   * arrives as a message. A logger built ahead of that message keeps the default for its own switch
+   * for the rest of the thread; the shared switches reach it either way.
    *
-   * The guarantee ends inside `onmessage` itself: the two guard branches that discard a message
-   * it cannot read or a message that arrived after the teardown reach for this logger ahead of
-   * the `CONSOLE_LOGGER` branch below them. A `RemoteWorkerEnv` cannot trigger either guard before
-   * its configuration arrives -- it sends that message first -- but a foreign host driving this
-   * entry point on its own could send something unreadable ahead of it and build this logger
-   * before the configuration the router and kernel loggers rely on has been installed.
+   * The window is narrow: the two guard branches of `onmessage` that discard a message it cannot
+   * read or a message that arrived after the teardown reach for this logger ahead of the
+   * `CONSOLE_LOGGER` branch below them. A `RemoteWorkerEnv` cannot trigger either guard before its
+   * configuration arrives -- it sends that message first -- but a foreign host driving this entry
+   * point on its own could send something unreadable ahead of it.
    */
   get logger(): ConsoleLogger {
     return (this.#loggerInstance ??= new ConsoleLogger('WorkerRuntime'));

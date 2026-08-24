@@ -1,5 +1,5 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {CONSOLE_LOGGER, CONSOLE_LOGGER_STORAGE} from './ConsoleLogger.js';
+import {CONSOLE_LOGGER, CONSOLE_LOGGER_STORAGE, type ConsoleLoggerConfig} from './ConsoleLogger.js';
 
 // A host can offer the name `localStorage` without offering a Storage: node defines an inert
 // object on `globalThis`, and a browser with cookies disabled throws a `SecurityError` -- either
@@ -88,5 +88,50 @@ describe('ConsoleLogger storage capability', () => {
     const fallbackStore = globalRecord[CONSOLE_LOGGER_STORAGE];
     expect(fallbackStore, 'the config falls back to the global object store').toBeTypeOf('object');
     expect(Object.keys(fallbackStore as object)).not.toContain('quiet-namespace.enable');
+  });
+
+  it('reaches the loggers of a thread that already built one', async () => {
+    const {ConsoleLogger, setConsoleLoggerStorage} = await importWithLocalStorage({value: {}});
+
+    new ConsoleLogger('early-namespace');
+
+    const forwarded: ConsoleLoggerConfig = {
+      enable: true,
+      debug: true,
+      info: true,
+      warn: true,
+      'styles.debug': ConsoleLogger.sharedStyles.debug,
+      'styles.info': ConsoleLogger.sharedStyles.info,
+      'styles.warn': ConsoleLogger.sharedStyles.warn,
+      'styles.error': ConsoleLogger.sharedStyles.error,
+      'late-namespace.enable': false,
+    };
+
+    setConsoleLoggerStorage(forwarded);
+
+    expect(ConsoleLogger.sharedConfig.debug, 'the shared config takes the installed value').toBe(true);
+    expect(ConsoleLogger.isDebug, 'and the loggers of the thread read it').toBe(true);
+    expect(new ConsoleLogger('late-namespace').enable, 'a per-namespace key stays readable').toBe(false);
+  });
+
+  it('takes a config installed before the first logger of the thread', async () => {
+    const {ConsoleLogger, setConsoleLoggerStorage} = await importWithLocalStorage({value: {}});
+
+    const forwarded: ConsoleLoggerConfig = {
+      enable: true,
+      debug: true,
+      info: true,
+      warn: true,
+      'styles.debug': ConsoleLogger.sharedStyles.debug,
+      'styles.info': ConsoleLogger.sharedStyles.info,
+      'styles.warn': ConsoleLogger.sharedStyles.warn,
+      'styles.error': ConsoleLogger.sharedStyles.error,
+      'early-namespace.enable': false,
+    };
+
+    setConsoleLoggerStorage(forwarded);
+
+    expect(new ConsoleLogger('early-namespace').enable, 'the per-namespace key is read on construction').toBe(false);
+    expect(ConsoleLogger.sharedConfig.debug, 'the installed value survives the merge').toBe(true);
   });
 });

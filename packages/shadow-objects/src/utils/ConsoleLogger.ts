@@ -131,8 +131,21 @@ export const loadConsoleLoggerConfig = (key: string | string[], defaultValue: st
  * Installs a config object as the fallback store, bypassing the storage probe. `WorkerRuntime`
  * calls this with the config a `RemoteWorkerEnv` forwards from the main thread, where there is no
  * `localStorage` to probe in the first place.
+ *
+ * Once a logger exists in such a thread, `ConsoleLogger.sharedConfig` *is* that store, and the
+ * values are written into it rather than a fresh object taking its place in the slot: the shared
+ * switches reach every logger of the thread, the ones already built included. One flag stays
+ * behind -- a logger reads its own `<namespace>.enable` key when it is built, and a config that
+ * arrives afterwards no longer moves it.
  */
 export function setConsoleLoggerStorage(config: ConsoleLoggerConfig): void {
+  const store = gGlobalSlots.ConsoleLoggerStorage;
+  if (store != null && store === ConsoleLogger.sharedConfig) {
+    // the marker travels with the merge: it says this object is the live config, and a config
+    // that crossed a worker boundary carries no symbol key to say so for itself
+    Object.assign(store, config, {[ConsoleLogger$]: true});
+    return;
+  }
   gGlobalSlots.ConsoleLoggerStorage = config;
 }
 
