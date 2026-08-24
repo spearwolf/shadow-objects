@@ -1,3 +1,4 @@
+import {onDestroy} from '@spearwolf/shadow-objects/shadow-objects.js';
 import {BoxGeometry, Mesh, MeshNormalMaterial, PerspectiveCamera, Scene} from 'three';
 import {OnFrame, ThreeRenderViewContext} from '../../shared/constants.js';
 
@@ -34,7 +35,7 @@ export function CubeScene({useContext, createEffect}) {
       box.rotation.y += 0.6 * deltaTime;
     },
 
-    onDestroy() {
+    [onDestroy]() {
       console.debug('CubeScene: destroy', this);
     },
   };

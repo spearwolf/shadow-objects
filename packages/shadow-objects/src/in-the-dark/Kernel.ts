@@ -13,7 +13,7 @@ import type {
 } from '../types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {Entity} from './Entity.js';
-import {type OnCreate, type OnDestroy, onCreate, onDestroy, onParentChanged} from './events.js';
+import {type OnCreate, type OnDestroy, onCreate, onDestroy, onParentChanged, onViewEvent} from './events.js';
 import {Registry} from './Registry.js';
 import {ShadowObjectCreationScope} from './ShadowObjectCreationScope.js';
 import {SignalsPath} from './SignalsPath.js';
@@ -46,6 +46,17 @@ enum ShadowObjectAction {
 }
 
 const getDisplayName = (construct: ShadowObjectConstructor) => construct.displayName || construct.name;
+
+// The four lifecycle hooks are symbols, and a string key of the same name is never picked up by
+// eventize or by the direct calls in `attachShadowObject()` -- a shadow-object that writes one as
+// a plain method looks correct and never runs, with nothing to say so. This table is what
+// `attachShadowObject()` walks to catch that case.
+const LIFECYCLE_HOOKS: [string, symbol][] = [
+  ['onCreate', onCreate],
+  ['onDestroy', onDestroy],
+  ['onParentChanged', onParentChanged],
+  ['onViewEvent', onViewEvent],
+];
 
 /**
  * The entity kernel manages the lifecycle of all entities and shadow-objects.
@@ -814,6 +825,22 @@ export class Kernel {
   }
 
   private attachShadowObject(shadowObject: object, entity: Entity): void {
+    // A plain method under one of the four hook names, without the matching symbol, is the
+    // silent-failure case `LIFECYCLE_HOOKS` exists for: report it through the logger before the
+    // shadow-object goes live, on the same `warn`-vs-`error` reasoning as the refusal notice at
+    // `ShaeWorkerElement.ts` -- `logger.error` always prints, where `logger.warn` is gated behind
+    // `isWarn` and stays off outside `localhost`, which would make this check as silent as the
+    // bug it looks for.
+    for (const [name, symbol] of LIFECYCLE_HOOKS) {
+      if (typeof (shadowObject as any)[name] === 'function' && typeof (shadowObject as any)[symbol] !== 'function') {
+        const displayName = this.#shadowObjectScopes.get(shadowObject)?.displayName;
+        this.logger.error(
+          `the "${name}" lifecycle hook is a plain method and is never called; use the [${name}] symbol from "@spearwolf/shadow-objects/shadow-objects.js":`,
+          displayName,
+        );
+      }
+    }
+
     // Like all other objects, the new shadow-object should be able to respond to the events that the entity receives.
     //
     on(entity, shadowObject);

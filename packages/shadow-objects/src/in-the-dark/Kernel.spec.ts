@@ -5762,4 +5762,73 @@ describe('Kernel', () => {
       kernel.destroy();
     });
   });
+
+  describe('a lifecycle hook written under its string name', () => {
+    it('reports a plain method that shadows the onDestroy symbol', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Defined through `shadowObjects.define()` rather than `@ShadowObject`, so `construct.name`
+      // stays the class's own name -- see the comment at the other `ThrowsOnDestroyReported` case
+      // above for why the decorator's wrapper class would read differently.
+      class OnDestroyAsPlainMethod {
+        onDestroy() {}
+      }
+
+      shadowObjects.define('onDestroyAsPlainMethod', OnDestroyAsPlainMethod, registry);
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'onDestroyAsPlainMethod');
+
+      expect(consoleError).toHaveBeenCalledTimes(1);
+      const args = consoleError.mock.calls[0];
+      expect(args.some((arg) => typeof arg === 'string' && arg.includes('onDestroy'))).toBe(true);
+      expect(args).toContain('OnDestroyAsPlainMethod');
+
+      consoleError.mockRestore();
+      kernel.destroy();
+    });
+
+    it('stays silent for a shadow-object carrying the onDestroy symbol', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      class OnDestroyUnderItsSymbol implements OnDestroy {
+        [onDestroy]() {}
+      }
+
+      shadowObjects.define('onDestroyUnderItsSymbol', OnDestroyUnderItsSymbol, registry);
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'onDestroyUnderItsSymbol');
+
+      expect(consoleError).not.toHaveBeenCalled();
+
+      consoleError.mockRestore();
+      kernel.destroy();
+    });
+
+    it('stays silent when the symbol and a same-named plain method are both present', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      class OnDestroySymbolAndPlainMethod implements OnDestroy {
+        onDestroy() {}
+        [onDestroy]() {}
+      }
+
+      shadowObjects.define('onDestroySymbolAndPlainMethod', OnDestroySymbolAndPlainMethod, registry);
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'onDestroySymbolAndPlainMethod');
+
+      expect(consoleError).not.toHaveBeenCalled();
+
+      consoleError.mockRestore();
+      kernel.destroy();
+    });
+  });
 });

@@ -1,3 +1,4 @@
+import {onDestroy} from '@spearwolf/shadow-objects/shadow-objects.js';
 import {CanvasRenderingContext2D, OnFrame} from '../../shared/constants.js';
 
 export function TestImage2OnCanvas2D({useContext}) {
@@ -27,7 +28,7 @@ export function TestImage2OnCanvas2D({useContext}) {
       ctx.commit?.();
     },
 
-    onDestroy() {
+    [onDestroy]() {
       const ctx = getCanvas2D();
       if (ctx) {
         ctx.fillStyle = 'red';

@@ -127,6 +127,8 @@ createResource(
 | `onDestroy(fn)` | Same moment as the row above, callable from the functional API. Both are reported through the `ConsoleLogger` when they throw and neither stops the rest of the teardown -- see `docs/api-reference.md`, "onDestroy(callback)". |
 | `createEffect(fn)` | Immediately on setup, then again whenever any signal it reads changes. |
 
+`[onCreate]`, `[onDestroy]`, `[onParentChanged]` and `[onViewEvent]` are symbols. A plain method of the same name (`onCreate() {}` instead of `[onCreate]() {}`) is not the hook and is never called; the Kernel reports the mismatch through the `ConsoleLogger` when it attaches the Shadow Object to its entity.
+
 **The Shadow Object lifecycle is not the entity lifecycle.** An entity carries whatever Shadow Objects its token and its truthy properties currently route to, and that set is re-resolved on every token change and on every property change. A constructor that drops out of the set has its Shadow Object destroyed -- `[onDestroy]` and every `onDestroy(fn)` callback run, and everything the creation API handed out is disposed -- while the entity lives on; a constructor that joins gets a fresh setup run on an entity that has been around for a while. Both directions happen without an entity being created or destroyed.
 
 ---
