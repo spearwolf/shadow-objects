@@ -1,5 +1,6 @@
 import {on, once} from '@spearwolf/eventize';
-import {afterEach, describe, expect, it, vi} from 'vitest';
+import {batch, createEffect, createSignal, getEffectsCount} from '@spearwolf/signalize';
+import {afterEach, beforeAll, describe, expect, it, vi} from 'vitest';
 import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {type OnCreate, type OnDestroy, onCreate, onDestroy} from '../in-the-dark/events.js';
 import {Registry} from '../in-the-dark/Registry.js';
@@ -1217,6 +1218,147 @@ describe('ShadowEnv', () => {
       expect(dispatchMessage).not.toHaveBeenCalled();
 
       env.destroy();
+    });
+  });
+  it('pushes an open batch through when it builds its context effect', () => {
+    const env = new ShadowEnv();
+
+    const trigger$ = createSignal(0);
+    const runs: number[] = [];
+    const watcher = createEffect(() => {
+      runs.push(trigger$.get());
+    });
+    runs.length = 0;
+
+    batch(() => {
+      trigger$.set(1);
+      expect(runs, 'the open batch holds the foreign effect back').toEqual([]);
+
+      // nothing to answer for, nothing to build: a half handed nothing leaves the batch where it is
+      env.view = null;
+      expect(runs, 'an empty assignment builds no effect').toEqual([]);
+
+      // the effect this environment builds belongs to the environment, and taking it out of the
+      // caller's reactive context carries the open batch through with it
+      env.view = ComponentContext.get();
+      expect(runs, 'building the context effect flushes the batch').toEqual([1]);
+    });
+
+    // with the effect standing, an assignment is an ordinary write again
+    runs.length = 0;
+    batch(() => {
+      trigger$.set(2);
+      env.envProxy = new LocalShadowObjectEnv();
+      expect(runs, 'a further assignment leaves an open batch alone').toEqual([]);
+    });
+    expect(runs, 'that batch settles when it closes').toEqual([2]);
+
+    watcher.destroy();
+    env.destroy();
+  });
+
+  describe('reachability', () => {
+    /** `--expose-gc` puts this on the global object; without the flag it is not there at all. */
+    const forceGc = (): (() => void) | undefined => (globalThis as {gc?: () => void}).gc;
+
+    /**
+     * Force a collection and give the runtime room to actually run one.
+     *
+     * One call is not enough to settle the question: a first pass can clear the last strong
+     * reference to an object that is only then eligible, and a task boundary in between releases
+     * whatever the runtime still holds from the frames that just ran.
+     */
+    const collect = async (): Promise<void> => {
+      for (let round = 0; round < 3; round++) {
+        forceGc()?.();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    };
+
+    /**
+     * An environment nothing outside this function can reach, handed back as a weak reference.
+     *
+     * A binding in the case body would hold it and the case below would pass for the wrong reason,
+     * so the environment lives in here and nowhere else.
+     */
+    const buildAndDrop = (): WeakRef<ShadowEnv> => new WeakRef(new ShadowEnv());
+
+    /** Same rule as {@link buildAndDrop}, for an environment that came up and was torn down. */
+    const buildReadyAndDestroy = async (): Promise<WeakRef<ShadowEnv>> => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get();
+      env.envProxy = new LocalShadowObjectEnv();
+      await env.ready();
+      env.destroy();
+      return new WeakRef(env);
+    };
+
+    beforeAll(() => {
+      // A missing `--expose-gc` has to fail this suite instead of skipping it: a case that quietly
+      // does not run says nothing about reachability, and would keep saying nothing for as long as
+      // nobody looks. The flag comes from `execArgv` in `vitest.config.ts`.
+      expect(typeof forceGc(), 'globalThis.gc is missing \u2014 the test process needs --expose-gc').toBe('function');
+    });
+
+    it('builds no effect before it is used', () => {
+      // ahead of the measurement: the component context builds effects of its own, and those must
+      // not land in the difference this case reads
+      const ctx = ComponentContext.get();
+      const before = getEffectsCount();
+
+      const env = new ShadowEnv();
+      expect(getEffectsCount(), 'a fresh environment builds no effect').toBe(before);
+
+      env.view = ctx;
+      expect(getEffectsCount(), 'the first view builds the context effect').toBe(before + 1);
+
+      env.destroy();
+      expect(getEffectsCount(), 'destroy() releases it again').toBe(before);
+    });
+
+    it('collects a ShadowEnv that never received a view or a proxy', async () => {
+      const ref = buildAndDrop();
+      await collect();
+      expect(ref.deref()).toBeUndefined();
+    });
+
+    it('collects a ShadowEnv that was destroyed', async () => {
+      const ref = await buildReadyAndDestroy();
+      await collect();
+      expect(ref.deref()).toBeUndefined();
+    });
+
+    it('reports the lost context exactly once when it is destroyed', async () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get();
+      env.envProxy = new LocalShadowObjectEnv();
+      await env.ready();
+
+      const contextLostSpy = vi.fn();
+      on(env, ShadowEnv.ContextLost, contextLostSpy);
+
+      env.destroy();
+
+      expect(contextLostSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports the lost context exactly once when it is destroyed inside an open batch', async () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get();
+      env.envProxy = new LocalShadowObjectEnv();
+      await env.ready();
+
+      const contextLostSpy = vi.fn();
+      on(env, ShadowEnv.ContextLost, contextLostSpy);
+
+      // the batch parks the `proxyReady` drop the destroy makes, so the report comes out of the
+      // effect being taken down rather than out of a rerun -- and it comes once either way
+      batch(() => {
+        env.destroy();
+        expect(contextLostSpy, 'the report does not wait for the batch to close').toHaveBeenCalledTimes(1);
+      });
+
+      expect(contextLostSpy).toHaveBeenCalledTimes(1);
     });
   });
 });

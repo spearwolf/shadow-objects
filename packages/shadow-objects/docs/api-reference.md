@@ -1157,6 +1157,10 @@ const env = new ShadowEnv();
 
 `viewReady` and `proxyReady` are writable signal accessors, and together they are the input of the effect that emits `ContextCreated` and `ContextLost`. Assigning them by hand drives those events -- setting `proxyReady = false` is what a proxy failure does internally.
 
+That effect is built with the first `view` or `envProxy` the environment is given, and `destroy()` takes it down again -- an environment that receives neither half never builds it, and stays collectable. Assigning the two flags by hand therefore drives the events on an environment that has one of its halves; on an untouched one it writes the flags and nothing else.
+
+That one build step runs outside the reactive context of whoever assigns the half -- the effect belongs to the environment, not to a `createEffect()` the assignment happens to stand in. One part of that is observable: an assignment of the first `view` or `envProxy` from inside an open `batch()` flushes it, so the effects the batch holds back run at that point. The writes the setter itself makes stay in the batch and run when it closes. It is the first assignment that carries something which builds the effect and flushes -- a `null` or `undefined` handed to either property builds nothing -- and once the effect stands, every further assignment leaves an open batch alone.
+
 They are *not*, however, what `isReady` reads. It asks whether a `view` and an `envProxy` are actually set, whether `proxyReady` holds, and whether the environment is still alive; `viewReady` does not enter that calculation. Assigning `viewReady = false` therefore leaves `isReady` reporting `true`. Ask `isReady` when you want to know whether the environment can sync, and treat the two flags as the wiring behind the events rather than as its ingredients.
 
 ### Static Methods

@@ -1,5 +1,12 @@
 import {emit, off, on, onceAsync, Priority, retain, retainClear} from '@spearwolf/eventize';
-import {createEffect, createSignal, destroyObjectSignals, findObjectSignalByName} from '@spearwolf/signalize';
+import {
+  createEffect,
+  createSignal,
+  destroyObjectSignals,
+  type Effect,
+  findObjectSignalByName,
+  hibernate,
+} from '@spearwolf/signalize';
 import {signal} from '@spearwolf/signalize/decorators';
 import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import type {MessageToViewEvent} from '../shadow-objects.js';
@@ -65,30 +72,59 @@ export class ShadowEnv {
       retainClear(self, ShadowEnv.ContextCreated);
     });
 
-    createEffect(() => {
-      if (this.viewReady && this.proxyReady) {
-        // Both halves being ready is what this reacts to, and either half can be the one that
-        // arrived last. A fresh proxy under the standing view is the case the recovery is written
-        // for: it holds none of the uuids, and the re-created trail goes through. A view that is
-        // taken off and hung back on -- `env.view = undefined; env.view = ctx`, and `get(ns)`
-        // hands back the very same context -- is the one that does not: its memory is still full,
-        // the proxy that stayed still holds every uuid in it, and the trail is refused at its
-        // first creation and stays refused. A context that is genuinely new carries an empty
-        // memory and re-creates nothing at all. Whoever swaps the view of a live environment
-        // tears the proxy down with it.
-        this.view!.reCreateChanges();
-        emit(self, ShadowEnv.ContextCreated, self);
-        if (this.#syncAfterContextCreated) {
-          this.#syncAfterContextCreated = false;
-          this.#syncNow();
+    // the effect that reports the context comes with the first `view` or `envProxy` this
+    // environment is given: an effect stands in a module-wide queue until it is destroyed, and an
+    // environment that never receives either half must stay collectable
+  }
+
+  #contextEffect?: Effect;
+
+  /**
+   * Builds the effect that reports {@link ShadowEnv.ContextCreated} and {@link ShadowEnv.ContextLost}
+   * once, on the first half of the environment that arrives.
+   */
+  #ensureContextEffect(): void {
+    if (this.#isDestroyed || this.#contextEffect != null) return;
+
+    const self = this as ShadowEnv;
+
+    // `hibernate()` clears the effect stack for the duration, and that is not optional here. Both
+    // setters below are public API and are called from application code that may well sit inside a
+    // `createEffect()` -- `<shae-worker>` is one such caller: it assigns `view` from inside an
+    // `ns$.onChange()` callback. An effect built while a foreign effect is running becomes that
+    // effect's child and dies at its next run, taking the context reports with it. The three custom
+    // elements shield their `connectedCallback` the same way.
+    //
+    // One observable side effect comes with it: a `batch()` the caller has open is pushed through
+    // before this returns, so the effects it was holding back run at this point. The writes the
+    // setter makes afterwards go back into that batch and wait for it to close, the way they would
+    // without any of this.
+    hibernate(() => {
+      this.#contextEffect = createEffect(() => {
+        if (this.viewReady && this.proxyReady) {
+          // Both halves being ready is what this reacts to, and either half can be the one that
+          // arrived last. A fresh proxy under the standing view is the case the recovery is written
+          // for: it holds none of the uuids, and the re-created trail goes through. A view that is
+          // taken off and hung back on -- `env.view = undefined; env.view = ctx`, and `get(ns)`
+          // hands back the very same context -- is the one that does not: its memory is still full,
+          // the proxy that stayed still holds every uuid in it, and the trail is refused at its
+          // first creation and stays refused. A context that is genuinely new carries an empty
+          // memory and re-creates nothing at all. Whoever swaps the view of a live environment
+          // tears the proxy down with it.
+          this.view!.reCreateChanges();
+          emit(self, ShadowEnv.ContextCreated, self);
+          if (this.#syncAfterContextCreated) {
+            this.#syncAfterContextCreated = false;
+            this.#syncNow();
+          }
+          return () => {
+            emit(self, ShadowEnv.ContextLost, self);
+          };
         }
-        return () => {
-          emit(self, ShadowEnv.ContextLost, self);
-        };
-      }
-      // the two @signal accessors above create their signals during field initialization,
-      // so both lookups resolve by the time the constructor body runs
-    }, [findObjectSignalByName(this, 'viewReady')!, findObjectSignalByName(this, 'proxyReady')!]);
+        // the two @signal accessors above create their signals during field initialization,
+        // so both lookups resolve by the time a setter runs
+      }, [findObjectSignalByName(this, 'viewReady')!, findObjectSignalByName(this, 'proxyReady')!]);
+    });
   }
 
   get view(): ComponentContext | undefined {
@@ -97,6 +133,8 @@ export class ShadowEnv {
 
   set view(ctx: ComponentContext | null | undefined) {
     if (ctx !== this.#comCtx) {
+      if (ctx) this.#ensureContextEffect();
+
       this.#releaseNamespace(this.#comCtx?.ns);
 
       this.#comCtx = ctx ?? undefined;
@@ -145,6 +183,8 @@ export class ShadowEnv {
 
   set envProxy(proxy: IShadowObjectEnvProxy | null | undefined) {
     if (proxy !== this.#shaObjEnvProxy) {
+      if (proxy) this.#ensureContextEffect();
+
       const prevProxy = this.#shaObjEnvProxy;
       this.#shaObjEnvProxy = proxy ?? undefined;
 
@@ -319,6 +359,15 @@ export class ShadowEnv {
     this.#rejectWhenDestroyed?.(new ShadowEnvDestroyedError());
     this.#afterNextSync = undefined;
     this.#settleAfterNextSync = undefined;
+
+    // The effect is built here, so it is released here: its lifetime hangs on this class rather
+    // than on what a reactivity library makes of an effect whose dependencies are taken away.
+    // `ContextLost` goes out exactly once, from whichever of the two gets there first: the effect
+    // rerun that `this.envProxy = undefined` triggers above, or -- while an open `batch()` parks
+    // that drop of `proxyReady` -- the destroy on this line. A cleanup function belongs to the run
+    // that returned it, and is spent by the one that runs it.
+    this.#contextEffect?.destroy();
+    this.#contextEffect = undefined;
 
     destroyObjectSignals(this);
     off(this);

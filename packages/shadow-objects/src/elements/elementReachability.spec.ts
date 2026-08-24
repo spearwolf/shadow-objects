@@ -4,6 +4,7 @@ import {afterEach, beforeAll, describe, expect, it} from 'vitest';
 import '../shae-ent.js';
 import '../shae-prop.js';
 import '../shae-worker.js';
+import type {ShadowEnv} from '../view/ShadowEnv.js';
 import {
   ATTR_FORWARD_CUSTOM_EVENTS,
   ATTR_NO_AUTOSTART,
@@ -66,6 +67,20 @@ const createAndDrop = async (tagName: string, prepare?: (el: HTMLElement) => voi
   const el = document.createElement(tagName);
   prepare?.(el);
   return new WeakRef(el);
+};
+
+/**
+ * Build one `<shae-worker>`, leave it where it was built, and hand back nothing but a weak
+ * reference to the shadow environment it carries.
+ *
+ * Same rule as {@link createAndDrop}, for both objects at once: neither the element nor its
+ * environment may stay reachable from the spec body, so both live in this function and nowhere
+ * else.
+ */
+const createWorkerAndDropItsEnv = async (): Promise<WeakRef<ShadowEnv>> => {
+  const el = document.createElement(SHAE_WORKER) as ShaeWorkerElement;
+  el.setAttribute(ATTR_NO_AUTOSTART, '');
+  return new WeakRef(el.shadowEnv);
 };
 
 /** An element out of the tree, one microtask past its removal. */
@@ -139,6 +154,12 @@ describe('element reachability', () => {
 
   it('collects a <shae-worker> that is created and never connected', async () => {
     const ref = await createAndDrop(SHAE_WORKER, (el) => el.setAttribute(ATTR_NO_AUTOSTART, ''));
+    await collect();
+    expect(ref.deref()).toBeUndefined();
+  });
+
+  it('collects the shadow environment of a <shae-worker> that is created and never connected', async () => {
+    const ref = await createWorkerAndDropItsEnv();
     await collect();
     expect(ref.deref()).toBeUndefined();
   });
