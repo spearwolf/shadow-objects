@@ -389,7 +389,6 @@ Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements
 - Manuelles `CHANGELOG.md`-Pflegen ohne Changesets/release-please.
 - **npm-Publish läuft über OIDC Trusted Publishing**, nicht über ein `NPM_TOKEN`-Secret. Einmalig auf npmjs.com je Paket einzutragen (GitHub Actions, Repo `spearwolf/shadow-objects`, Workflow `deploy.yml`); ohne diesen Eintrag bricht `deploy.yml` beim OIDC-Austausch ab. `turbo` läuft im Strict-Env-Mode — wer dem Publish-Pfad eine neue Umgebungsvariable gibt, muss sie in `turbo.json#tasks.publishNpmPkg.passThroughEnv` eintragen, sonst kommt sie im Skript nie an.
 - **`deploy.yml` darf nicht umbenannt und nicht in einen `workflow_call`-Reusable verschoben werden.** npm prüft den OIDC-Claim gegen den registrierten Dateinamen und validiert dabei den *aufrufenden* Workflow — aus `ci.yml` heraus aufgerufen käme der Publish als `ci.yml` an und der Trusted-Publisher-Eintrag würde nicht mehr greifen. Deshalb bleibt das Gating bei `workflow_run`; der Checkout ist seit 2026-08-15 auf `github.event.workflow_run.head_sha` gepinnt, sonst publiziert der Job den Default-Branch-HEAD statt des von der CI geprüften Commits.
-- Die `.npm-pkg`-Form von `@spearwolf/shae-offscreen-canvas` entsteht aus einem Kopierlauf (`packages/shae-offscreen-canvas/build.mjs`) ohne jede Gegenprobe — anders als beim Kernpaket hält kein Test ihre Dateiliste oder die Form ihres `package.json` gegen eine eingecheckte Erwartung.
 
 ---
 

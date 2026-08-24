@@ -1,0 +1,35 @@
+{
+  "topLevelKeys": [
+    "author",
+    "dependencies",
+    "description",
+    "exports",
+    "homepage",
+    "license",
+    "main",
+    "module",
+    "name",
+    "publishConfig",
+    "repository",
+    "sideEffects",
+    "type",
+    "version"
+  ],
+  "entryPoints": {
+    "main": "src/bundle.js",
+    "module": "src/bundle.js"
+  },
+  "exports": {
+    ".": {
+      "default": "./src/bundle.js"
+    },
+    "./shae-offscreen-canvas.js": {
+      "default": "./src/shae-offscreen-canvas.js"
+    },
+    "./shadow-objects.js": {
+      "default": "./src/shadow-objects.js"
+    }
+  },
+  "sideEffects": ["src/bundle.js", "src/shae-offscreen-canvas.js"],
+  "dependencyNames": ["@spearwolf/eventize", "@spearwolf/shadow-objects", "@spearwolf/signalize", "three"]
+}

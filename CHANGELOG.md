@@ -4,6 +4,23 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-24 — the canvas package's .npm-pkg output is held against a recorded expectation
+
+- **`packages/shae-offscreen-canvas/src/distContract.spec.js`:** a new case in the package's
+  existing `test` task reads the copied `.npm-pkg` directory and compares the sorted file list
+  and the shape of `.npm-pkg/package.json` (top-level keys, entry points, `exports`,
+  `sideEffects`, dependency names) against two checked-in expectation files, mirroring the core
+  package's own case. `turbo` already builds before it tests (`turbo.json#tasks.test.dependsOn`),
+  so the case runs against a fresh build in the pipeline; a directly started `pnpm watch` needs a
+  manual build first, and the case says so if `.npm-pkg` is missing.
+- **`packages/shae-offscreen-canvas/src/distContract.files.txt`, `packages/shae-offscreen-canvas/src/distContract.package.json`:**
+  the two recorded expectations. `version` and dependency version ranges are deliberately not
+  part of the `package.json` expectation, for the same reason as the core package's.
+- **`packages/shae-offscreen-canvas/build.mjs`:** the copy filter that builds `.npm-pkg` from
+  `src/` now also excludes `distContract.files.txt` and `distContract.package.json` by basename,
+  alongside the existing `.spec.js`/`.test.js` exclusion — those two files are fixtures for the
+  case above and must not end up inside the package they describe the shape of.
+
 ## 2026-08-24 — the core package's dist output is held against a recorded expectation
 
 - **`packages/shadow-objects/src/distContract.spec.ts`:** a new case in the package's existing
