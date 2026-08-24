@@ -333,16 +333,91 @@ describe('local, no-structured-clone, src', () => {
     el.destroy();
   });
 
-  it('removing "local" after start() throws inside the reaction, reported as a global error', async () => {
+  it('removing "local" after start() is refused, reported through the console and written back', async () => {
     const container = mount(`<shae-worker local no-autostart ns="${nextNs()}"></shae-worker>`);
     const el = container.querySelector('shae-worker');
     await el.start();
+    const envProxy = el.shadowEnv.envProxy;
 
-    const messages = withSwallowedErrors(() => {
-      el.removeAttribute('local');
-    });
-    expect(messages).to.have.lengthOf(1);
-    expect(messages[0]).to.contain('Changing the "local" attribute after the shadowEnv has been created is not supported.');
+    const errors = [];
+    const consoleError = console.error;
+    console.error = (...args) => errors.push(args);
+
+    let messages;
+    try {
+      messages = withSwallowedErrors(() => {
+        el.removeAttribute('local');
+      });
+    } finally {
+      console.error = consoleError;
+    }
+
+    expect(messages, 'the refusal never reaches the global error channel').to.have.lengthOf(0);
+    expect(errors, 'the refusal is reported through the console instead').to.have.lengthOf(1);
+    expect(errors[0].join(' ')).to.contain('the "local" attribute cannot change once the shadowEnv is built');
+    expect(errors[0].join(' '), 'names what the attribute is reset to, for a local environment').to.contain(
+      'reset to the bare "local" form',
+    );
+    expect(el.hasAttribute('local')).to.be.true;
+    expect(el.getAttribute('local')).to.equal('');
+    expect(el.shadowEnv.envProxy).to.equal(envProxy);
+    el.destroy();
+  });
+
+  it('setting "local" to "false" after start() is refused the same way — "false" counts as unset', async () => {
+    const container = mount(`<shae-worker local no-autostart ns="${nextNs()}"></shae-worker>`);
+    const el = container.querySelector('shae-worker');
+    await el.start();
+    const envProxy = el.shadowEnv.envProxy;
+
+    const errors = [];
+    const consoleError = console.error;
+    console.error = (...args) => errors.push(args);
+
+    let messages;
+    try {
+      messages = withSwallowedErrors(() => {
+        el.setAttribute('local', 'false');
+      });
+    } finally {
+      console.error = consoleError;
+    }
+
+    expect(messages).to.have.lengthOf(0);
+    expect(errors).to.have.lengthOf(1);
+    expect(errors[0].join(' ')).to.contain('the "local" attribute cannot change once the shadowEnv is built');
+    expect(errors[0].join(' '), 'names what the attribute is reset to, for a local environment').to.contain(
+      'reset to the bare "local" form',
+    );
+    expect(el.hasAttribute('local')).to.be.true;
+    expect(el.getAttribute('local')).to.equal('');
+    expect(el.shadowEnv.envProxy).to.equal(envProxy);
+    el.destroy();
+  });
+
+  it('setting "local" to "yes" after start() moves nothing — "yes" is truthy like the bare attribute', async () => {
+    const container = mount(`<shae-worker local no-autostart ns="${nextNs()}"></shae-worker>`);
+    const el = container.querySelector('shae-worker');
+    await el.start();
+    const envProxy = el.shadowEnv.envProxy;
+
+    const errors = [];
+    const consoleError = console.error;
+    console.error = (...args) => errors.push(args);
+
+    let messages;
+    try {
+      messages = withSwallowedErrors(() => {
+        el.setAttribute('local', 'yes');
+      });
+    } finally {
+      console.error = consoleError;
+    }
+
+    expect(messages).to.have.lengthOf(0);
+    expect(errors, 'the effective value did not move, so nothing is reported').to.have.lengthOf(0);
+    expect(el.getAttribute('local')).to.equal('yes');
+    expect(el.shadowEnv.envProxy).to.equal(envProxy);
     el.destroy();
   });
 

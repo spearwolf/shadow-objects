@@ -1699,9 +1699,14 @@ observed: they are read at the one moment they matter, when the worker environme
 setting one afterwards changes nothing about an environment that already exists. Under `local` they
 do nothing and say nothing — a local environment waits for no reply and has none of the four.
 
-Changing `local` after the environment has been created is refused. The attribute callback throws,
-and a throw from a Custom Elements reaction does not reach the caller of `setAttribute` — the
-browser reports it to the global `error` event instead.
+Changing `local` after the environment has been created is refused: the write is reported through
+the `ConsoleLogger` (`logger.error`, not gated behind `ConsoleLogger.sharedConfig.enable`) and the
+attribute is written back to the canonical spelling of the environment that is actually in effect —
+the bare `local` attribute for a local environment, or its absence for a worker environment. A write
+that does not move the effective value (`local` to `local="yes"`) does nothing and reports nothing.
+Switching environments requires building a new `<shae-worker>` element. On an element built and
+`start()`ed by hand while it was never in the document, the report is immediate but the write-back
+is parked until the first connect, so `hasAttribute('local')` reads the refused value until then.
 
 **`auto-sync` values:** the value is trimmed and lower-cased before it is read.
 

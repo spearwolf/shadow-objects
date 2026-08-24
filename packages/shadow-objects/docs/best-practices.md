@@ -174,7 +174,7 @@ Shadow environments can run on the main thread (local) or in a web worker (remot
 - You have a lot of entities running complex effects
 - The data crossing the boundary is small compared to the work done behind it
 
-The Shadow Object code is identical either way. Only the proxy changes: swap `LocalShadowObjectEnv` for `RemoteWorkerEnv`, or add/remove the `local` attribute on `<shae-worker>`. Pick by what your logic needs to touch, not by whether you are in development or production.
+The Shadow Object code is identical either way. Only the proxy changes: build the environment with `LocalShadowObjectEnv` or `RemoteWorkerEnv`, or write `<shae-worker>` with or without the `local` attribute. Pick by what your logic needs to touch, not by whether you are in development or production; a `<shae-worker>` already built and running keeps the mode it started with, and switching means building a new one.
 
 ### Both Modes Clone the Change Trail
 

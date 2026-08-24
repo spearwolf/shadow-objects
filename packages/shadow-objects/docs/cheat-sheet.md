@@ -220,7 +220,7 @@ ent.addEventListener('login-success', (e) => console.log(e.detail.user));
 | Attribute | Values | Description |
 |---|---|---|
 | `src` | URL string | Path to the Shadow Object Registry module. Required for the declarative approach, not for `start()`. Trimmed; a change at runtime re-imports. |
-| `local` | truthy value | Run Kernel on main thread instead of web worker. `local="false"` stays in worker mode — see below |
+| `local` | truthy value | Run Kernel on main thread instead of web worker. `local="false"` stays in worker mode — see below. Decided once, when the environment is built; a later write is refused and reset to the value in effect |
 | `ns` | string | Namespace for the Component Context |
 | `auto-sync` | `"frame"`/`"on"`/`"yes"`/`"true"`/`"auto-sync"`, `"60fps"`, `"100"`, `"no"`/`"off"`/`"false"` | Sync frequency. Default and fallback for an empty value: `"frame"`. `Nfps` with N ≤ 0 warns and does not sync; anything unreadable logs an error and switches off |
 | `no-structured-clone` | boolean (presence) | Skip data cloning (local only, performance opt); silently without effect when `local` is missing |

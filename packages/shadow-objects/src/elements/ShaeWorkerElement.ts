@@ -287,9 +287,7 @@ export class ShaeWorkerElement extends ShaeElement {
     super.attributeChangedCallback(name);
 
     if (name === ATTR_LOCAL) {
-      if (this.shadowEnv.envProxy != null) {
-        throw new Error('Changing the "local" attribute after the shadowEnv has been created is not supported.');
-      }
+      this.#refuseLocalChange();
     }
 
     if (name === ATTR_NO_STRUCTURED_CLONE) {
@@ -426,5 +424,47 @@ export class ShaeWorkerElement extends ShaeElement {
     if (env?.isLocalEnv) {
       env.disableStructuredClone = this.hasAttribute(ATTR_NO_STRUCTURED_CLONE);
     }
+  }
+
+  /**
+   * `local` picks the environment kind once, at `start()`. The proxy, its kernel and its
+   * entities all belong to the side they were built on, and there is no way to move them onto
+   * the other one afterwards — a later write to this attribute is refused, not carried out.
+   *
+   * A throw from this reaction would not reach the caller of `setAttribute` either way: per spec,
+   * a Custom Element reaction reports its own exceptions to the global `error` event instead of
+   * propagating them synchronously, so a `try`/`catch` around the write would catch nothing. The
+   * refusal writes the attribute back through `reflectAttribute`, the one path this element uses
+   * to write its own attributes from inside, and reports the refusal separately through the
+   * `ConsoleLogger`. `logger.error` and not `logger.warn`: there is no `isError` getter to check
+   * before calling it, so the call always prints; a `warn` call on this element is checked
+   * against `isWarn` first, which is off outside `localhost`, and a refusal that goes silent
+   * there is exactly what this call needs to avoid.
+   *
+   * The write back re-enters `attributeChangedCallback` once, where the attribute now matches
+   * the effective state and the check below returns before logging again. On an element built
+   * and started by hand while it was never in the document, that write is parked until the first
+   * connect (see `reflectAttribute`), while the log line above runs immediately.
+   */
+  #refuseLocalChange(): void {
+    const envProxy = this.shadowEnv.envProxy;
+    if (envProxy == null) return;
+
+    const isLocalEnv = Boolean((envProxy as LocalShadowObjectEnv).isLocalEnv);
+    if (readBooleanAttribute(this, ATTR_LOCAL) === isLocalEnv) return;
+
+    this.logger.error(
+      `the "local" attribute cannot change once the shadowEnv is built; it is reset to ${
+        isLocalEnv ? 'the bare "local" form' : 'its absence'
+      } — build a new <shae-worker> element to switch environments`,
+    );
+
+    this.reflectAttribute(ATTR_LOCAL, () => {
+      if (isLocalEnv) {
+        this.setAttribute(ATTR_LOCAL, '');
+      } else {
+        this.removeAttribute(ATTR_LOCAL);
+      }
+    });
   }
 }

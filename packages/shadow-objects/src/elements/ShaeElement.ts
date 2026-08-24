@@ -163,14 +163,15 @@ export class ShaeElement extends HTMLElement {
   /**
    * Writes an attribute back from a signal, or holds the write until the element first connects.
    *
-   * The writes that get parked are the ones `restore()` makes on the very first connect, where it
-   * carries every reflecting signal out to its attribute — including whatever the constructor's
-   * attribute read normalised. That call stands in front of the gate on purpose: a `setAttribute`
-   * from inside it would re-enter `attributeChangedCallback` while the subscriptions are still
-   * being set up, and running the writes a few lines further on, once the element is whole, is
-   * cheaper than making every subscription survive being read halfway through. A later write for
-   * the same attribute replaces the parked one — only the value the signal ends up with is worth
-   * writing.
+   * A write is parked whenever it happens before the element has connected once — `restore()`'s
+   * own writes on the very first connect are one source, carrying every reflecting signal out to
+   * its attribute, including whatever the constructor's attribute read normalised; any other
+   * write that lands ahead of that first connect is parked the same way. `restore()`'s call sits
+   * in front of the gate on purpose: a `setAttribute` from inside it would re-enter
+   * `attributeChangedCallback` while the subscriptions are still being set up, and running the
+   * writes a few lines further on, once the element is whole, is cheaper than making every
+   * subscription survive being read halfway through. A later write for the same attribute
+   * replaces the parked one — only the value the signal ends up with is worth writing.
    *
    * What is written back on connect is what the signals already carry, so the
    * `attributeChangedCallback` it triggers sets each signal to the value it is already on. For a
@@ -265,8 +266,9 @@ export class ShaeElement extends HTMLElement {
    * {@link ShaeElement.restore} — the two are one pair, and a subscription missing from either
    * side is a leak or a silently dead element.
    *
-   * `#pendingReflections` is left alone on purpose: it only ever holds writes made inside the very
-   * first `connectedCallback`, which empties it again a few lines further on in that same call.
+   * `#pendingReflections` is left alone on purpose: it holds every write parked before the
+   * element's first connect, and that connect is what drains it — a `destroy()` reached first
+   * leaves the map standing for whichever connect comes next.
    */
   protected teardown(): void {
     this.#nsReflection?.();
