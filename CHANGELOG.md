@@ -4,6 +4,19 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — no package is exempt from the release-age cooling-off
+
+- **`pnpm-workspace.yaml`:** `minimumReleaseAgeExclude` is gone, and with it the last package
+  that stood outside pnpm's one-day `minimumReleaseAge`. A clean `pnpm install
+  --frozen-lockfile` reports "Lockfile passes supply-chain policies (254 entries)" with no
+  exemption in the file, so the cooling-off that keeps a freshly compromised third-party
+  release out of the tree now covers every entry. pnpm writes such an entry itself while a
+  release is younger than the cutoff; this one has aged past it.
+- **`CLAUDE.md`:** the paragraph on the eventize/signalize pair names what happens on a bump
+  to a fresh beta — the install is blocked until the release is listed under
+  `minimumReleaseAgeExclude`, and the entry is removed again once the release has aged past
+  the cutoff — instead of describing the key as one the file carries.
+
 ## 2026-08-26 — the readme says what the custom elements do
 
 - **`README.md`:** the entry for `packages/shadow-objects/src/elements/` under "What's in the Box?"
