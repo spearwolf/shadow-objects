@@ -1,8 +1,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Audit shadow-objects</title>
-<script id="audit-data" type="application/json">
-{
+<script id="audit-data" type="application/json">{
   "summary": {
     "project": "shadow-objects",
     "stack": [
@@ -15,27 +14,27 @@
       "biome 2.5",
       "Node >=24.13"
     ],
-    "date": "2026-08-24",
-    "previousDate": "2026-08-23",
+    "date": "2026-08-26",
+    "previousDate": "2026-08-24",
     "theme": "light",
-    "score": 79.5,
-    "previousScore": 62.5,
-    "scoreDelta": 17,
+    "score": 81.5,
+    "previousScore": 79.5,
+    "scoreDelta": 2.0,
     "bySeverity": {
       "critical": 0,
       "high": 0,
       "medium": 0,
-      "low": 41,
+      "low": 37,
       "info": 39
     },
     "byCategory": {
-      "Developer Experience": 19,
-      "Konsistenz": 16,
+      "Developer Experience": 20,
+      "Konsistenz": 11,
       "Testabdeckung & Teststrategie": 11,
       "Lesbarkeit & Clean Code": 8,
       "Typsicherheit": 5,
-      "Async & Concurrency": 4,
       "Bugs & Korrektheitsrisiken": 4,
+      "Async & Concurrency": 4,
       "Projektaufbau & Build": 4,
       "Dependencies": 2,
       "Memory Leaks & Ressourcen": 2,
@@ -43,10 +42,10 @@
       "Sicherheit": 2,
       "Performance": 1
     },
-    "findingCount": 80,
-    "resolvedCount": 11,
+    "findingCount": 76,
+    "resolvedCount": 8,
     "improvedCount": 0,
-    "newCount": 13,
+    "newCount": 4,
     "scoreHistory": [
       {
         "date": "2026-05-14",
@@ -114,52 +113,57 @@
         "date": "2026-08-24",
         "score": 79.5,
         "source": "remediation"
+      },
+      {
+        "date": "2026-08-26",
+        "score": 81.5,
+        "source": "remediation"
       }
     ],
     "deltaCause": "remediation",
-    "deltaExplanation": "Ein Remediation-Lauf am 2026-08-23 hat die drei schwersten Befunde geschlossen: die drei Custom Elements setzen im Konstruktor weder Attribute noch Styles mehr und überstehen deshalb document.createElement(); sie geben ihre Signale, Effekte und Hörer wieder frei, sowohl beim Verlassen des Dokuments als auch für ein Element, das nie hineingekommen ist; und der ThreeMultiViewRenderer gibt seinen WebGL-Kontext frei, wenn seine Entity endet. Fünf Pakete, fünf Commits, jeder mit Reviewer-Urteil an der Fundstelle und einem eigenen Verify-Lauf. Der Abzug für ein critical und zwei high fällt damit weg, was 20 Punkte ausmacht; zehn neue Nebenbefunde — drei medium, drei low, vier info — nehmen 7,5 davon wieder. Diese Zahl ist gerechnet, nicht gemessen: der Code ist seit dem Audit desselben Tages nicht erneut geprüft worden.",
+    "deltaExplanation": "Ein dritter Remediation-Lauf am 2026-08-26 hat die acht Findings rund um den ConsoleLogger geschlossen: eine spät eintreffende Logger-Konfiguration erreicht die Logger, die ein Thread schon gebaut hat; ein Fehlergrund aus dem Worker kommt als Error über die Grenze statt als nackte Zeichenkette; die drei rohen console.warn des geteilten Kernel-Zweigs laufen über den Logger; der publizierte Einstiegspunkt des Canvas-Pakets grüßt seine Consumer nicht mehr beim Import; und vier tote ESLint-Direktiven samt vier verwaisten Konfigurationen sind aus einem Repository verschwunden, das ausschließlich mit Biome lintet. Fünf Pakete, fünf Commits, jeder mit Reviewer-Urteil an der Fundstelle und eigenem Verify-Lauf. Die vier neuen Einträge sind Nebenbefunde aus diesen Paketen, alle vorbestehend und außerhalb der Scope-Regel des Laufs; sie tragen je Datei und Zeile und sind nach Wirkung eingeschätzt, nicht nachgemessen.",
     "domains": {
       "code": {
         "label": "Code & Laufzeit",
-        "score": 89,
-        "bySeverity": {
-          "critical": 0,
-          "high": 0,
-          "medium": 0,
-          "low": 22,
-          "info": 16
-        },
-        "byCategory": {
-          "Konsistenz": 16,
-          "Lesbarkeit & Clean Code": 8,
-          "Async & Concurrency": 4,
-          "Bugs & Korrektheitsrisiken": 4,
-          "Memory Leaks & Ressourcen": 2,
-          "Öffentliche API": 2,
-          "Performance": 1,
-          "Sicherheit": 1
-        },
-        "executiveSummary": "Der Kern des Frameworks ist ungewöhnlich sorgfältig gebaut: Kernel, Entity und Creation Scope führen jeden Abbauschritt hinter eigenem Wächter, nehmen gescheiterte Aufbauten zurück und begründen die Reihenfolge ihrer Schritte im Kommentar. Die Naht zur Plattform trägt inzwischen: die Custom Elements überstehen document.createElement(), geben ihre Signale, Effekte und Hörer wieder frei, und kein Effekt hängt mehr an einem fremden Kontext oder an der modulweiten Signal-Queue, wenn sein Halter nie ins Dokument kommt. Auch die stillen Stellen sind benannt — ein Hook unter falschem Namen meldet sich, ein Modul ohne shadowObjects-Export wird in beiden Umgebungen gleich abgelehnt, und der Worker-Zweig schreibt über den Logger statt an ihm vorbei. Was bleibt, wiegt leicht und liegt verstreut: eine Handvoll Konsistenzfragen an den Rändern — ein Fehlergrund, der als Zeichenkette über die Worker-Grenze reist, drei unabschaltbare Warnungen im geteilten Zweig, ein öffentliches Signal, das nie beschrieben wird — dazu Lesbarkeit und tote Lint-Direktiven aus einem Werkzeug, das dieses Repository nicht benutzt."
-      },
-      "harness": {
-        "label": "Projekt-Harness",
         "score": 90.5,
         "bySeverity": {
           "critical": 0,
           "high": 0,
           "medium": 0,
           "low": 19,
-          "info": 23
+          "info": 14
         },
         "byCategory": {
-          "Developer Experience": 19,
+          "Konsistenz": 11,
+          "Lesbarkeit & Clean Code": 8,
+          "Bugs & Korrektheitsrisiken": 4,
+          "Async & Concurrency": 4,
+          "Memory Leaks & Ressourcen": 2,
+          "Öffentliche API": 2,
+          "Performance": 1,
+          "Sicherheit": 1
+        },
+        "executiveSummary": "Der Kern des Frameworks ist ungewöhnlich sorgfältig gebaut: Kernel, Entity und Creation Scope führen jeden Abbauschritt hinter eigenem Wächter, nehmen gescheiterte Aufbauten zurück und begründen die Reihenfolge ihrer Schritte im Kommentar. Die Naht zur Plattform trägt inzwischen: die Custom Elements überstehen document.createElement(), geben ihre Signale, Effekte und Hörer wieder frei, und kein Effekt hängt mehr an einem fremden Kontext oder an der modulweiten Signal-Queue, wenn sein Halter nie ins Dokument kommt. Auch die stillen Stellen sind benannt — ein Hook unter falschem Namen meldet sich, ein Modul ohne shadowObjects-Export wird in beiden Umgebungen gleich abgelehnt, und der Worker-Zweig schreibt über den Logger statt an ihm vorbei. Was bleibt, wiegt leicht und liegt verstreut: ein öffentliches Signal, das nie beschrieben wird, eine Handvoll Lesbarkeitsfragen an den Rändern, und im Fehlerpfad des Routers eine Umwandlung, die ihre eigene Ausnahme nicht abfängt."
+      },
+      "harness": {
+        "label": "Projekt-Harness",
+        "score": 91.0,
+        "bySeverity": {
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 18,
+          "info": 25
+        },
+        "byCategory": {
+          "Developer Experience": 20,
           "Testabdeckung & Teststrategie": 11,
           "Typsicherheit": 5,
           "Projektaufbau & Build": 4,
           "Dependencies": 2,
           "Sicherheit": 1
         },
-        "executiveSummary": "Das Gerüst ist in gutem Zustand und an mehreren Stellen vorbildlich: Versionen liegen ausschließlich im Katalog, jede Zurückhaltung trägt ihre Begründung als Kommentar, die CI baut, typprüft, testet und lintet in einem Lauf, und pnpm audit meldet nichts. 1295 Fälle laufen grün, verteilt auf drei Runner mit sauber getrennten Zuständigkeiten, dazu 430 in zwei Browsern. Die Zusagen haben jetzt ihre Wächter: der Lint-Lauf der CI bricht bei jeder Warnung ab, und die dist-Form beider Pakete wird nach dem Build gegen eine eingecheckte Erwartung gehalten, Dateiliste und Auflösungspfade eingeschlossen. three ist ein Peer des Canvas-Pakets und kann nicht mehr als zweite Instanz in einen fremden Baum geraten. Was offen bleibt, ist Beschreibung statt Mechanik: eine README, die eine Toolchain verlangt, die der Workspace ablehnt, und einen Paketpfad nennt, den es nicht gibt; ein ausgeliefertes Shadow Object ohne Eintrag in der einzigen API-Referenz seines Pakets; und ein Agentenleitfaden, der seinen Lesern eine Rolle zuweist, die den eigenen Regeln der Datei widerspricht."
+        "executiveSummary": "Das Gerüst ist in gutem Zustand und an mehreren Stellen vorbildlich: Versionen liegen ausschließlich im Katalog, jede Zurückhaltung trägt ihre Begründung als Kommentar, die CI baut, typprüft, testet und lintet in einem Lauf, und pnpm audit meldet nichts. 1303 Fälle laufen grün, verteilt auf drei Runner mit sauber getrennten Zuständigkeiten, dazu 430 in zwei Browsern. Die Zusagen haben jetzt ihre Wächter: der Lint-Lauf der CI bricht bei jeder Warnung ab, und die dist-Form beider Pakete wird nach dem Build gegen eine eingecheckte Erwartung gehalten, Dateiliste und Auflösungspfade eingeschlossen. three ist ein Peer des Canvas-Pakets und kann nicht mehr als zweite Instanz in einen fremden Baum geraten. Was offen bleibt, ist Beschreibung statt Mechanik: eine README, die eine Toolchain verlangt, die der Workspace ablehnt, und einen Paketpfad nennt, den es nicht gibt; ein ausgeliefertes Shadow Object ohne Eintrag in der einzigen API-Referenz seines Pakets; und ein Agentenleitfaden, der seinen Lesern eine Rolle zuweist, die den eigenen Regeln der Datei widerspricht."
       }
     }
   },
@@ -217,6 +221,58 @@
     ]
   },
   "findings": [
+    {
+      "id": "BUG-028",
+      "category": "Bugs & Korrektheitsrisiken",
+      "domain": "code",
+      "severity": "low",
+      "status": "new",
+      "title": "Ein werfendes toString() im Fehlerpfad lässt den Router verstummen",
+      "location": "packages/shadow-objects/src/worker/MessageRouter.ts:39-42",
+      "description": "describeError() wandelt den gefangenen Wert innerhalb des catch in eine Zeichenkette. Für einen geworfenen Wert, der kein Error ist, ruft String(error) in Zeile 42 dessen toString() auf, und zwar innerhalb des catch. Wirft diese Methode ihrerseits, verlässt die Ausnahme den catch: der Router meldet gar nichts, und die View wartet ihr configureTimeout beziehungsweise changeTrailTimeout aus, statt den Grund zu erfahren. Ein Shadow Object, das ein Objekt mit werfendem toString wirft, genügt dafür. Für einen Error ist die Tür schmaler — er liefert seine message, ohne toString() anzufassen.",
+      "recommendation": "Die Umwandlung gegen ihre eigene Ausnahme absichern und im Fehlerfall auf eine feste Ersatzbeschreibung zurückfallen, damit der catch unter allen Umständen bis zur Antwort kommt.",
+      "effort": "S",
+      "evidence": "Aus dem Remediation-Lauf vom 26. August 2026: Nebenbefund unter Paket 2 (Commit f5bcc23), an der Scope-Regel des Laufs gemessen und als vorbestehend ins Audit zurückgegeben. Vor dem Lauf lag dieselbe Umwandlung in den beiden catch-Blöcken selbst; das Paket hat sie in describeError() zusammengezogen und die Tür damit verschmälert, nicht geschlossen."
+    },
+    {
+      "id": "DX-020",
+      "category": "Developer Experience",
+      "domain": "harness",
+      "severity": "info",
+      "status": "new",
+      "title": "Die API-Referenz zählt einen Fall nicht auf, in dem der ganze Trail als angewandt gilt",
+      "location": "packages/shadow-objects/docs/api-reference.md:1228-1229",
+      "description": "Die Aufzählung der Gründe, die nichts darüber sagen, wie weit der Kernel kam, nennt das abgelaufene Bestätigungsfenster, den WorkerDestroyedError und den fremden Proxy — aber nicht die Bestätigung, die einen Grund ohne appliedCount trägt. Auch dieser Fall lässt den ganzen Trail als angewandt gelten. Die Methodentabelle in Zeile 1523 nennt ihn ausdrücklich, der Absatz darüber nicht.",
+      "recommendation": "Den vierten Fall in die Aufzählung aufnehmen, mit dem Wortlaut, den die Methodentabelle bereits führt.",
+      "effort": "S",
+      "evidence": "Aus dem Remediation-Lauf vom 26. August 2026: Nebenbefund unter Paket 2 (Commit f5bcc23), vorbestehend und außerhalb der Scope-Regel des Laufs. Die Fundstelle ist am Stand nach dem Lauf nachgeprüft."
+    },
+    {
+      "id": "DX-021",
+      "category": "Developer Experience",
+      "domain": "harness",
+      "severity": "info",
+      "status": "new",
+      "title": "Die Fallzahl für MessageRouter.spec.ts im Backlog stimmt nicht",
+      "location": "Backlog.md:314",
+      "description": "Die Zeile beziffert MessageRouter.spec.ts mit 31 Fällen. Die Datei führt 34. Die Lücke bestand bereits, bevor der Lauf sie um einen weiteren Fall vergrößert hat.",
+      "recommendation": "Die Zahl nachziehen — oder die Fallzahlen ganz aus dem Backlog nehmen, wenn niemand sie pflegt. Eine Zahl, die nur manchmal stimmt, kostet mehr als keine.",
+      "effort": "S",
+      "evidence": "Aus dem Remediation-Lauf vom 26. August 2026: Nebenbefund unter Paket 3 (Commit 9c3abb7), vorbestehend und außerhalb der Scope-Regel des Laufs."
+    },
+    {
+      "id": "DX-022",
+      "category": "Developer Experience",
+      "domain": "harness",
+      "severity": "info",
+      "status": "new",
+      "title": "Die Dateispalte eines Backlog-Eintrags nennt die falsche Datei",
+      "location": "Backlog.md:213",
+      "description": "Die Dateispalte des Eintrags KERN-7 nennt allein Kernel.ts, obwohl useContext, useParentContext und useProperty samt der Meldung über den abgelehnten zweiten compare in packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts sitzen. Der Logger des Kernels trägt die Ausgabe tatsächlich, die Fundstelle stimmt nicht.",
+      "recommendation": "Die Spalte um die Datei ergänzen, in der die genannten Funktionen wirklich stehen.",
+      "effort": "S",
+      "evidence": "Aus dem Remediation-Lauf vom 26. August 2026: Nebenbefund unter Paket 3 (Commit 9c3abb7), vorbestehend und außerhalb der Scope-Regel des Laufs."
+    },
     {
       "id": "ASYNC-002",
       "category": "Async & Concurrency",
@@ -367,19 +423,6 @@
       "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
     },
     {
-      "id": "CONS-008",
-      "category": "Konsistenz",
-      "domain": "code",
-      "severity": "low",
-      "status": "carried-over",
-      "title": "Der Grund eines abgelehnten Change Trails geht als String über die Leitung",
-      "location": "packages/shadow-objects/src/worker/MessageRouter.ts:138",
-      "description": "Fängt der Router einen Kernel-Fehler, schickt er ihn als interpolierten String zurück. Auf der View-Seite kommt damit eine Zeichenkette an, wo ProxyFailed eine WorkerFailedError-Instanz trägt. Wer im catch eines syncWait() steht, hat für den einen Ausgang einen Typ und für den anderen eine Zeichenkette — und muss sich seine Fallunterscheidung aus Textvergleichen bauen.",
-      "recommendation": "Name und Nachricht strukturiert übertragen und auf der View-Seite in eine Fehlerklasse zurückverwandeln, wie es die Strecke für den Ausfall des Workers bereits tut. Was ein Konsument im catch sieht, ändert sich dabei — Changelog-Eintrag.",
-      "effort": "M",
-      "evidence": "An der Fundstelle nachgelesen (2026-08-20)."
-    },
-    {
       "id": "CONS-012",
       "category": "Konsistenz",
       "domain": "code",
@@ -440,19 +483,6 @@
       "recommendation": "Die SVG-Datei löschen. Für »Component Tag« entscheiden: entweder als zulässige Glosse in die Tabelle aufnehmen, oder an allen neun Stellen streichen und §2 mitziehen. Eine Regel, die ihre eigene Referenzdokumentation verletzt, wird beim nächsten Zweifelsfall nicht befolgt.",
       "effort": "S",
       "evidence": "Nachgezählt (2026-08-19): eine SVG-Datei, neun Glossen-Fundstellen. Die Markdown-Dateien selbst sind ansonsten frei von den verbotenen Analogien."
-    },
-    {
-      "id": "DX-002",
-      "category": "Developer Experience",
-      "domain": "harness",
-      "severity": "low",
-      "status": "carried-over",
-      "title": "Der publizierte Einstiegspunkt von shae-offscreen-canvas schreibt beim Import in die Konsole",
-      "location": "packages/shae-offscreen-canvas/src/bundle.js:6",
-      "description": "Ein console.debug mit einem Gruß steht ungefiltert in der Datei, auf die main, module und der Default-Export der exports-Map zeigen. Jeder Consumer, der das Paket importiert, bekommt die Zeile in seiner Konsole — auch in Produktion, auch ohne jede Logger-Konfiguration. Das Paket bringt mit ConsoleLogger einen Mechanismus mit, der genau diese Frage beantwortet, und benutzt ihn an seiner sichtbarsten Stelle nicht.",
-      "recommendation": "Streichen, oder durch einen ConsoleLogger führen, der die geltende Gate-Logik anwendet. Ein Gruß gehört nicht in die Konsole einer fremden Anwendung.",
-      "effort": "S",
-      "evidence": "Bestand aus dem Audit vom 2026-08-19, an der Fundstelle nachgelesen; der Einstiegspunkt-Status ist in package.json:34-40 nachgeprüft."
     },
     {
       "id": "DX-013",
@@ -642,19 +672,6 @@
       "description": "#rootContexts.clear() steht hinter der Kontext-Schleife statt zwischen den beiden Durchläufen, die sie trennt. Folgenlos ist das nachweislich — die einzigen Leser der Sammlung sitzen in Entity.ts:615-622 und laufen zu diesem Zeitpunkt nicht mehr. Nur muss jeder, der den Abbau liest, diesen Nachweis selbst führen: an ihrer Stelle sieht die Zeile nach einer Reihenfolgeabhängigkeit aus, die es nicht gibt.",
       "recommendation": "Die Zeile dorthin setzen, wo ihre Wirkung offensichtlich ist, oder einen Halbsatz danebenschreiben, der sagt, warum ihre Position gleichgültig ist. Beides kostet eine Minute und spart der nächsten Leserin fünf.",
       "effort": "S"
-    },
-    {
-      "id": "CONS-001",
-      "category": "Konsistenz",
-      "domain": "code",
-      "severity": "info",
-      "status": "carried-over",
-      "title": "Die Merkliste der Deprecation-Warnungen lebt am Modul, nicht am Kernel",
-      "location": "packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts:19-34",
-      "description": "Beim Re-Check dieses Laufs trug die im Vorgänger genannte Stelle (Kernel.ts:62-66) den Befund nicht: dort stehen die Buchführungsfelder der Entities. Die Sache selbst steht in ShadowObjectCreationScope.ts, und sie ist kleiner als beschrieben: eine einzige Modul-Menge isEqualDeprecationShown merkt sich je Methodenname, ob die Warnung schon fiel. Sie lebt so lange wie das Modul, nicht wie der Kernel, also sieht in einer Testsuite oder in einer Anwendung mit mehreren Umgebungen nur der erste Aufrufer die Warnung. Der Kommentar darüber begründet die Feinheit der Entdopplung, nicht die Lebensdauer, und die Spec-Datei hängt bereits an ihr: TEST-007 und TEST-008 beschreiben, wie ihre Fälle um die Modulflagge herumgebaut sind.",
-      "recommendation": "Den Zustand an den Kernel oder die Registry hängen, dann verschwindet die Reihenfolgeabhängigkeit der Fälle mit. Ist die realmweite Einmaligkeit gewollt, gehört genau dieser Satz neben die Menge, damit der nächste Leser nicht wieder bei den Fällen anfängt.",
-      "effort": "S",
-      "evidence": "Bestand aus dem Audit vom 2026-08-19, an der Fundstelle nachgelesen; die Zeilen sind von 61-65 auf 62-66 gewandert."
     },
     {
       "id": "CONS-002",
@@ -1063,7 +1080,7 @@
       "domain": "harness",
       "severity": "low",
       "effort": "S",
-      "status": "new",
+      "status": "carried-over",
       "title": "Zwei Konfigurationen schließen ein Verzeichnis aus, das es nie gab",
       "location": "biome.json:20; turbo.json (tasks.test.inputs)",
       "description": "biome.json nimmt packages/shadow-objects/tests aus files.includes heraus, und turbo.json führt dieselbe Attrappe als tests/** unter den Eingaben des test-Tasks. Das Verzeichnis existiert im Arbeitsbaum nicht und hat in der Historie dieses Repositories nie existiert. Beide Einträge kosten nichts und tragen nichts; sie beschreiben eine Struktur, nach der jemand vergeblich sucht, und ein Verzeichnis dieses Namens, das später wirklich angelegt wird, wäre ohne Vorwarnung von Lint und Testeingaben ausgenommen.",
@@ -1075,59 +1092,11 @@
       "domain": "harness",
       "severity": "low",
       "effort": "S",
-      "status": "new",
+      "status": "carried-over",
       "title": "Der Ablehnungsweg gegen eine echte Worker-Umgebung ist von keiner Suite geprüft",
       "location": "packages/shadow-objects/src/elements/ShaeWorkerElement.ts:294-314; packages/shadow-objects-testing/test/worker-element-attributes.test.js",
       "description": "#refuseLocalChange() schreibt den abgelehnten Wert über zwei Zweige zurück: einen für die lokale Umgebung und einen, der das Attribut entfernt, wenn die Umgebung keine lokale ist. Die drei Fälle in worker-element-attributes.test.js laufen alle gegen eine lokale Umgebung und erreichen damit nur den ersten Zweig. Der zweite trägt die Richtung, die ein Anwender in der Produktion fährt, und niemand prüft ihn.",
       "recommendation": "Einen Fall nach shadow-objects-e2e legen, wo ein echter Worker läuft: local an einem laufenden <shae-worker> setzen und prüfen, dass das Attribut wieder verschwindet und die Umgebung ihren Modus behält."
-    },
-    {
-      "id": "CONS-017",
-      "category": "Konsistenz",
-      "domain": "code",
-      "severity": "info",
-      "effort": "S",
-      "status": "new",
-      "title": "Vier tote ESLint-Direktiven in einem Repository, das nur mit Biome lintet",
-      "location": "packages/shadow-objects/src/view/ShadowEnv.ts:19; src/bundle.ts:6; src/view/ComponentContext.ts:18; src/utils/waitForMessageOfType.ts:24",
-      "description": "An vier Stellen steht ein eslint-disable-next-line, dreimal für no-var, einmal für prefer-const. Eine ESLint-Konfiguration gibt es im Repository nirgends; Lint und Format sind ausschließlich Biome. Die Zeilen unterdrücken nichts und lesen sich für den nächsten Leser wie eine bewusste Ausnahme von einer Regel, die niemand stellt.",
-      "recommendation": "Die vier Zeilen entfernen. Wo Biome dieselbe Regel führt und die Ausnahme gewollt ist, tritt eine biome-ignore-Direktive mit Begründung an ihre Stelle."
-    },
-    {
-      "id": "CONS-018",
-      "category": "Konsistenz",
-      "domain": "code",
-      "severity": "low",
-      "effort": "S",
-      "status": "new",
-      "title": "Ein Fehlergrund reist als Zeichenkette über die Worker-Grenze und wird dort geworfen",
-      "location": "packages/shadow-objects/src/worker/MessageRouter.ts:119 gegen packages/shadow-objects/src/view/RemoteWorkerEnv.ts:380",
-      "description": "Schlägt ein importScript() im Worker fehl, legt der MessageRouter den Grund als nackte Zeichenkette auf die Leitung, und RemoteWorkerEnv wirft sie unverändert. Ein Aufrufer bekommt dort eine Zeichenkette in seinem catch, wo die lokale Umgebung einen Error liefert — dieselbe Asymmetrie, die CONS-008 für den Change Trail beschreibt, an der zweiten Strecke. Ein catch, das .message liest oder auf instanceof Error prüft, verhält sich je nach Umgebung anders.",
-      "recommendation": "Auf der View-Seite einen Error aus dem übertragenen Grund bauen, bevor er geworfen wird, so wie es für den Change Trail bereits vorgesehen ist. Die Botschaft bleibt, die Form wird die, die ein Aufrufer erwartet."
-    },
-    {
-      "id": "CONS-019",
-      "category": "Konsistenz",
-      "domain": "code",
-      "severity": "low",
-      "effort": "S",
-      "status": "new",
-      "title": "Drei unabschaltbare console.warn im geteilten Kernel-Zweig",
-      "location": "packages/shadow-objects/src/in-the-dark/importModule.ts:19; src/in-the-dark/ShadowObjectCreationScope.ts:31 und :372",
-      "description": "Die übersprungene Doppel-Einfuhr eines Moduls, die Deprecation-Warnung zur isEqual-Option und der abgelehnte zweite compare an einem gecachten Signal schreiben roh auf console.warn. Der Zweig läuft in beiden Umgebungen, und ShadowObjectCreationScope hält selbst einen ConsoleLogger (:57). Eine Anwendung, die den Logger für die Produktion abschaltet, bekommt diese drei Zeilen trotzdem. Der Umbau trägt eine Entscheidung in sich: ConsoleLogger.sharedConfig.enable ist außerhalb von localhost ausgeschaltet, und eine Deprecation-Warnung, die genau dort schweigt, wo ein Consumer sie sehen müsste, ist keine Warnung mehr.",
-      "recommendation": "Die drei Zeilen über den vorhandenen ConsoleLogger führen und dabei die Stufe bewusst wählen: logger.error für das, was ein Consumer sehen muss, weil es ungegatet druckt, logger.warn für das, was nur in der Entwicklung zählt. Die Wahl gehört als Kommentar daneben."
-    },
-    {
-      "id": "BUG-027",
-      "category": "Bugs & Korrektheitsrisiken",
-      "domain": "code",
-      "severity": "low",
-      "effort": "S",
-      "status": "new",
-      "title": "Die Logger-Konfiguration eines Threads friert beim ersten Logger ein",
-      "location": "packages/shadow-objects/src/utils/ConsoleLogger.ts:135 und :241-252",
-      "description": "setConsoleLoggerStorage(config) setzt nur den Slot globalThis.ConsoleLoggerStorage. ConsoleLogger.loadConfig() läuft aber genau einmal je Thread, beim Bau der ersten Instanz, und friert sharedConfig dabei auf ein eigenes Objekt ein. Ein Aufruf danach erreicht keinen Logger mehr. Damit läuft der dokumentierte Weg, einen Worker über ConsoleLogger.RemoteWorkerEnv.workerConfig gesprächig zu machen, ins Leere, sobald im Worker vor der Konfigurationsnachricht irgendein Logger entstanden ist. Latent: die heutige Reihenfolge hält das ein und ist von einem Fall festgehalten, und im Hauptthread wird der Fallback-Store bei vorhandenem localStorage gar nicht gelesen.",
-      "recommendation": "Entweder setConsoleLoggerStorage() die vorhandene sharedConfig mitschreiben lassen, oder loadConfig() den Slot bei jedem Zugriff lesen. Der zweite Weg kostet einen Property-Zugriff je Logzeile und macht die Reihenfolge gleichgültig."
     },
     {
       "id": "API-003",
@@ -1135,7 +1104,7 @@
       "domain": "code",
       "severity": "low",
       "effort": "S",
-      "status": "new",
+      "status": "carried-over",
       "title": "Ein öffentliches Signal, das die Klasse nie beschreibt",
       "location": "packages/shadow-objects/src/view/ShadowEnv.ts:56; docs/api-reference.md:1155; Backlog.md:277",
       "description": "readonly ns$ ist öffentliche API. Kein Produktionscode im Repository schreibt darauf, und der Slot liest für die gesamte Lebensdauer einer Umgebung undefined. Die Dokumentation schreibt das ehrlich hin und verweist auf env.view.ns; der Code bleibt schuldig. Wer dem Namen folgt und ns$ liest oder daran einen Effekt hängt, bekommt einen Wert, der sich nie ändert, und keinen Hinweis darauf, warum.",
@@ -1147,7 +1116,7 @@
       "domain": "harness",
       "severity": "info",
       "effort": "S",
-      "status": "new",
+      "status": "carried-over",
       "title": "Ein untypisierter Payload zwischen zwei typisierten Nachbarn",
       "location": "packages/shadow-objects/src/worker/MessageRouter.ts:157",
       "description": "#onDestroy(data: any) nimmt einen untypisierten Payload, während die beiden Nachbarmethoden #configure(data: ConfigurePayloadData) und #onChangeTrail(data: SyncEvent) ihre Form benennen. Die Nachricht hat eine feste Gestalt, und wer sie ändert, bekommt an dieser Stelle keinen Widerspruch vom Compiler.",
@@ -1159,7 +1128,7 @@
       "domain": "harness",
       "severity": "low",
       "effort": "S",
-      "status": "new",
+      "status": "carried-over",
       "title": "Der Agentenleitfaden weist jedem Leser eine fremde Rolle zu",
       "location": "AGENTS.md:120-127",
       "description": "Der Abschnitt »General Context Information for the AI assistant« weist jedem Agenten, der die Datei liest, eine Rolle zu, die mit dem Projekt nichts zu tun hat — »You are a professional developer advocate from Google« —, samt Tonvorgaben, die den übrigen Vorgaben derselben Datei widersprechen: sie verlangt an anderer Stelle englische, präzise technische Dokumentation und verbietet bestimmte Analogien. AGENTS.md ist laut CLAUDE.md der maßgebliche Agentenleitfaden, die Stelle wirkt also auf jede Sitzung und zieht sie in einen Ton, den das Projekt sonst nirgends will.",
@@ -1171,23 +1140,11 @@
       "domain": "harness",
       "severity": "low",
       "effort": "S",
-      "status": "new",
+      "status": "carried-over",
       "title": "Ein ausgeliefertes Shadow Object fehlt in der einzigen API-Referenz seines Pakets",
       "location": "packages/shae-offscreen-canvas/docs/01-shadow-objects-api.md",
       "description": "Die Datei ist die einzige API-Referenz des Canvas-Pakets und beschreibt vier der fünf ausgelieferten Shadow Objects. ThreeRenderView fehlt vollständig, obwohl src/shadow-objects.js es exportiert und in seiner routes-Tabelle führt. Wer es benutzen will, findet den Namen im Code und nirgends eine Beschreibung.",
       "recommendation": "Einen Abschnitt für ThreeRenderView ergänzen, in der Machart der vier vorhandenen: wofür es da ist, welche Eigenschaften es liest, mit welchen anderen es zusammenspielt."
-    },
-    {
-      "id": "DX-017",
-      "category": "Developer Experience",
-      "domain": "harness",
-      "severity": "info",
-      "effort": "S",
-      "status": "new",
-      "title": "Zwei Sätze der Logger-Dokumentation versprechen mehr Kontrolle, als der Code hält",
-      "location": "packages/shadow-objects/docs/api-reference.md:2992 und :2994",
-      "description": "»ConsoleLogger.<namespace>.enable turns a single logger off on its own« gilt für Kernel, ShadowEnv und die Elemente nur für deren gegatete Zeilen: logger.error() druckt bedingungslos (src/utils/ConsoleLogger.ts:298-304). Und die Begründung, der Schlüssel werde einmal über remoteEnv.logger.warn genannt, das nicht hinter ConsoleLogger.sharedConfig.enable liege, trifft zu, fasst die Sache aber enger, als sie ist — logger.warn() hängt an gar keinem Schalter, auch nicht am Namensraum-Schalter.",
-      "recommendation": "Beide Sätze auf das einschränken, was gilt: welche Stufen der Namensraum-Schalter erreicht und welche bedingungslos drucken. Eine kleine Tabelle Stufe gegen Schalter ist hier kürzer als jede Prosa."
     },
     {
       "id": "DX-018",
@@ -1195,7 +1152,7 @@
       "domain": "harness",
       "severity": "low",
       "effort": "S",
-      "status": "new",
+      "status": "carried-over",
       "title": "Die Wurzel-README nennt das Canvas-Paket unter einem Verzeichnisnamen, den es nicht gibt",
       "location": "README.md:95",
       "description": "Der Abschnitt »What's in the Box?« nennt das Canvas-Paket packages/shadow-offscreen-canvas/. Das Verzeichnis heißt packages/shae-offscreen-canvas/, wie dieselbe Datei in :265 und die package.json des Pakets richtig schreiben. Wer dem Pfad folgt, findet nichts.",
@@ -1207,7 +1164,7 @@
       "domain": "harness",
       "severity": "low",
       "effort": "S",
-      "status": "new",
+      "status": "carried-over",
       "title": "Die Voraussetzungen der README verlangen eine Toolchain, die der Workspace ablehnt",
       "location": "README.md:289 gegen package.json (engines, packageManager)",
       "description": "»Prerequisites: Node.js >=20.12.2, pnpm >=9.1.2« steht gegen ein package.json, das engines.node auf >=24.13.0, engines.pnpm auf >=11.0.0 und packageManager auf pnpm@11.21.0 führt. Wer der README folgt und Node 20 mit pnpm 9 installiert, bekommt beim ersten Installationslauf einen Fehlschlag statt eines Projekts — an der Stelle, an der ein neuer Mitarbeiter am wenigsten Kontext hat.",
@@ -1247,8 +1204,7 @@
       "text": "Vier Lebenszyklus-Hooks sind Symbole, und ein Shadow Object, das sie unter ihrem gewöhnlichen Namen schreibt, scheitert lautlos. Drei Fundstellen im eigenen Haus zeigen, dass die Falle zuschnappt, zwei davon im mitpublizierten Beispielcode. Eine Prüfung beim Anhängen kostet ein Dutzend Zeilen und macht aus einem Fehler, der sich als fehlendes Verhalten tarnt, eine Zeile in der Konsole. Sie wirkt bei jedem Konsumenten, nicht nur hier."
     }
   ]
-}
-</script>
+}</script>
 <style>
 :root{
   --bg:#fafaf9; --surface:#fff; --ink:#1c1917; --ink-2:#57534e; --ink-3:#78716c;
@@ -1381,13 +1337,13 @@ details.sec[open]>summary::after{content:" ▴"}
   <h1>Projekt-Audit · shadow-objects</h1>
   <div class="tags"><span class="tag">TypeScript 7</span><span class="tag">pnpm 11 Monorepo</span><span class="tag">turborepo 2.10</span><span class="tag">esbuild 0.28</span><span class="tag">vitest 4</span><span class="tag">Playwright 1.62</span><span class="tag">biome 2.5</span><span class="tag">Node &gt;=24.13</span></div>
   <div class="scorebox">
-    <span class="score">79,5</span>
-    <span class="trend up">▲ +17</span>
-    <span class="score-sub">Code &amp; Laufzeit 89 · Projekt-Harness 90,5</span>
+    <span class="score">81,5</span>
+    <span class="trend up">▲ +2</span>
+    <span class="score-sub">Code &amp; Laufzeit 90,5 · Projekt-Harness 91</span>
   </div>
-  <p class="diffline">2026-08-24 · vorher 62,5 vom Vortag (Remediation-Lauf, keine neue Prüfung) ·
-     11 Findings behoben, 0 verbessert, 13 neu · 80 offen.</p>
-  <p class="notice">Diese Fassung ist gebucht, nicht neu geprüft. Ein Remediation-Lauf hat die elf medium-Befunde geschlossen, die das Backlog trug — darunter der stille Fehlschlag eines Lebenszyklus-Hooks unter falschem Namen, zwei Stellen, die Effekte über die Lebensdauer ihres Halters hinaus festhielten, ein lokal verschwiegener Importfehler und der Worker-Zweig, der am Logger vorbei auf die Konsole schrieb. Elf Pakete, elf Commits, jeder mit Reviewer-Urteil an der Fundstelle und eigenem Verify-Lauf. Damit trägt das Backlog weder critical noch high noch medium. Die dreizehn neuen Einträge sind Nebenbefunde, die während dieser Arbeit auffielen; sie sind an ihrer Fundstelle notiert und nach Wirkung eingeschätzt, nicht nachgemessen. Die nächste Zahl, die aus einer Prüfung am Code stammt, liefert der folgende Audit-Lauf.</p>
+  <p class="diffline">2026-08-26 · vorher 79,5 vom 2026-08-24 (Remediation-Lauf, keine neue Prüfung) ·
+     8 Findings behoben, 0 verbessert, 4 neu · 76 offen.</p>
+  <p class="notice">Diese Fassung ist gebucht, nicht neu geprüft. Ein Remediation-Lauf hat die acht Findings rund um den ConsoleLogger geschlossen — eine späte Konfiguration erreicht die Logger, die ein Thread schon gebaut hat; ein Fehlergrund aus dem Worker kommt als Error über die Grenze; die rohen console.warn des geteilten Kernel-Zweigs laufen über den Logger; der publizierte Einstiegspunkt des Canvas-Pakets grüßt beim Import nicht mehr; und die toten ESLint-Direktiven samt ihren verwaisten Konfigurationen sind fort. Fünf Pakete, fünf Commits, jeder mit Reviewer-Urteil an der Fundstelle und eigenem Verify-Lauf. Die vier neuen Einträge sind Nebenbefunde aus diesen Paketen, alle vorbestehend und außerhalb der Scope-Regel des Laufs; sie sind an ihrer Fundstelle notiert und nach Wirkung eingeschätzt, nicht nachgemessen. Die nächste Zahl, die aus einer Prüfung am Code stammt, liefert der folgende Audit-Lauf.</p>
 </header>
 
 <section class="sec">
@@ -1410,19 +1366,19 @@ details.sec[open]>summary::after{content:" ▴"}
 <section class="sec">
   <h2>Zusammenfassung</h2>
   <div class="domains"><section class="domain-block">
-      <header class="domain-head"><h3>Code &amp; Laufzeit</h3><span class="domain-score">89</span></header>
-      <p class="prose">Der Kern des Frameworks ist ungewöhnlich sorgfältig gebaut: Kernel, Entity und Creation Scope führen jeden Abbauschritt hinter eigenem Wächter, nehmen gescheiterte Aufbauten zurück und begründen die Reihenfolge ihrer Schritte im Kommentar. Die Naht zur Plattform trägt inzwischen: die Custom Elements überstehen document.createElement(), geben ihre Signale, Effekte und Hörer wieder frei, und kein Effekt hängt mehr an einem fremden Kontext oder an der modulweiten Signal-Queue, wenn sein Halter nie ins Dokument kommt. Auch die stillen Stellen sind benannt — ein Hook unter falschem Namen meldet sich, ein Modul ohne shadowObjects-Export wird in beiden Umgebungen gleich abgelehnt, und der Worker-Zweig schreibt über den Logger statt an ihm vorbei. Was bleibt, wiegt leicht und liegt verstreut: eine Handvoll Konsistenzfragen an den Rändern — ein Fehlergrund, der als Zeichenkette über die Worker-Grenze reist, drei unabschaltbare Warnungen im geteilten Zweig, ein öffentliches Signal, das nie beschrieben wird — dazu Lesbarkeit und tote Lint-Direktiven aus einem Werkzeug, das dieses Repository nicht benutzt.</p><div class="bars"><div class="bar-row"><span class="bar-lbl">critical</span><span class="bar-track"><span class="bar-fill sev-critical" style="width:0.0%"></span></span><span class="bar-num">0</span></div>
+      <header class="domain-head"><h3>Code &amp; Laufzeit</h3><span class="domain-score">90,5</span></header>
+      <p class="prose">Der Kern des Frameworks ist ungewöhnlich sorgfältig gebaut: Kernel, Entity und Creation Scope führen jeden Abbauschritt hinter eigenem Wächter, nehmen gescheiterte Aufbauten zurück und begründen die Reihenfolge ihrer Schritte im Kommentar. Die Naht zur Plattform trägt inzwischen: die Custom Elements überstehen document.createElement(), geben ihre Signale, Effekte und Hörer wieder frei, und kein Effekt hängt mehr an einem fremden Kontext oder an der modulweiten Signal-Queue, wenn sein Halter nie ins Dokument kommt. Auch die stillen Stellen sind benannt — ein Hook unter falschem Namen meldet sich, ein Modul ohne shadowObjects-Export wird in beiden Umgebungen gleich abgelehnt, und der Worker-Zweig schreibt über den Logger statt an ihm vorbei. Was bleibt, wiegt leicht und liegt verstreut: ein öffentliches Signal, das nie beschrieben wird, eine Handvoll Lesbarkeitsfragen an den Rändern, und im Fehlerpfad des Routers eine Umwandlung, die ihre eigene Ausnahme nicht abfängt.</p><div class="bars"><div class="bar-row"><span class="bar-lbl">critical</span><span class="bar-track"><span class="bar-fill sev-critical" style="width:0.0%"></span></span><span class="bar-num">0</span></div>
 <div class="bar-row"><span class="bar-lbl">high</span><span class="bar-track"><span class="bar-fill sev-high" style="width:0.0%"></span></span><span class="bar-num">0</span></div>
-<div class="bar-row"><span class="bar-lbl">medium</span><span class="bar-track"><span class="bar-fill sev-medium" style="width:38.9%"></span></span><span class="bar-num">7</span></div>
-<div class="bar-row"><span class="bar-lbl">low</span><span class="bar-track"><span class="bar-fill sev-low" style="width:100.0%"></span></span><span class="bar-num">18</span></div>
-<div class="bar-row"><span class="bar-lbl">info</span><span class="bar-track"><span class="bar-fill sev-info" style="width:83.3%"></span></span><span class="bar-num">15</span></div></div><ul class="cats"><li><span class="cat-name">Konsistenz</span><span class="cat-num">16</span></li><li><span class="cat-name">Lesbarkeit &amp; Clean Code</span><span class="cat-num">8</span></li><li><span class="cat-name">Async &amp; Concurrency</span><span class="cat-num">4</span></li><li><span class="cat-name">Bugs &amp; Korrektheitsrisiken</span><span class="cat-num">4</span></li><li><span class="cat-name">Memory Leaks &amp; Ressourcen</span><span class="cat-num">2</span></li><li><span class="cat-name">Öffentliche API</span><span class="cat-num">2</span></li><li><span class="cat-name">Performance</span><span class="cat-num">1</span></li><li><span class="cat-name">Sicherheit</span><span class="cat-num">1</span></li></ul>
+<div class="bar-row"><span class="bar-lbl">medium</span><span class="bar-track"><span class="bar-fill sev-medium" style="width:0.0%"></span></span><span class="bar-num">0</span></div>
+<div class="bar-row"><span class="bar-lbl">low</span><span class="bar-track"><span class="bar-fill sev-low" style="width:100.0%"></span></span><span class="bar-num">19</span></div>
+<div class="bar-row"><span class="bar-lbl">info</span><span class="bar-track"><span class="bar-fill sev-info" style="width:73.7%"></span></span><span class="bar-num">14</span></div></div><ul class="cats"><li><span class="cat-name">Konsistenz</span><span class="cat-num">16</span></li><li><span class="cat-name">Lesbarkeit &amp; Clean Code</span><span class="cat-num">8</span></li><li><span class="cat-name">Async &amp; Concurrency</span><span class="cat-num">4</span></li><li><span class="cat-name">Bugs &amp; Korrektheitsrisiken</span><span class="cat-num">4</span></li><li><span class="cat-name">Memory Leaks &amp; Ressourcen</span><span class="cat-num">2</span></li><li><span class="cat-name">Öffentliche API</span><span class="cat-num">2</span></li><li><span class="cat-name">Performance</span><span class="cat-num">1</span></li><li><span class="cat-name">Sicherheit</span><span class="cat-num">1</span></li></ul>
     </section><section class="domain-block">
-      <header class="domain-head"><h3>Projekt-Harness</h3><span class="domain-score">90,5</span></header>
-      <p class="prose">Das Gerüst ist in gutem Zustand und an mehreren Stellen vorbildlich: Versionen liegen ausschließlich im Katalog, jede Zurückhaltung trägt ihre Begründung als Kommentar, die CI baut, typprüft, testet und lintet in einem Lauf, und pnpm audit meldet nichts. 1295 Fälle laufen grün, verteilt auf drei Runner mit sauber getrennten Zuständigkeiten, dazu 430 in zwei Browsern. Die Zusagen haben jetzt ihre Wächter: der Lint-Lauf der CI bricht bei jeder Warnung ab, und die dist-Form beider Pakete wird nach dem Build gegen eine eingecheckte Erwartung gehalten, Dateiliste und Auflösungspfade eingeschlossen. three ist ein Peer des Canvas-Pakets und kann nicht mehr als zweite Instanz in einen fremden Baum geraten. Was offen bleibt, ist Beschreibung statt Mechanik: eine README, die eine Toolchain verlangt, die der Workspace ablehnt, und einen Paketpfad nennt, den es nicht gibt; ein ausgeliefertes Shadow Object ohne Eintrag in der einzigen API-Referenz seines Pakets; und ein Agentenleitfaden, der seinen Lesern eine Rolle zuweist, die den eigenen Regeln der Datei widerspricht.</p><div class="bars"><div class="bar-row"><span class="bar-lbl">critical</span><span class="bar-track"><span class="bar-fill sev-critical" style="width:0.0%"></span></span><span class="bar-num">0</span></div>
+      <header class="domain-head"><h3>Projekt-Harness</h3><span class="domain-score">91</span></header>
+      <p class="prose">Das Gerüst ist in gutem Zustand und an mehreren Stellen vorbildlich: Versionen liegen ausschließlich im Katalog, jede Zurückhaltung trägt ihre Begründung als Kommentar, die CI baut, typprüft, testet und lintet in einem Lauf, und pnpm audit meldet nichts. 1303 Fälle laufen grün, verteilt auf drei Runner mit sauber getrennten Zuständigkeiten, dazu 430 in zwei Browsern. Die Zusagen haben jetzt ihre Wächter: der Lint-Lauf der CI bricht bei jeder Warnung ab, und die dist-Form beider Pakete wird nach dem Build gegen eine eingecheckte Erwartung gehalten, Dateiliste und Auflösungspfade eingeschlossen. three ist ein Peer des Canvas-Pakets und kann nicht mehr als zweite Instanz in einen fremden Baum geraten. Was offen bleibt, ist Beschreibung statt Mechanik: eine README, die eine Toolchain verlangt, die der Workspace ablehnt, und einen Paketpfad nennt, den es nicht gibt; ein ausgeliefertes Shadow Object ohne Eintrag in der einzigen API-Referenz seines Pakets; und ein Agentenleitfaden, der seinen Lesern eine Rolle zuweist, die den eigenen Regeln der Datei widerspricht.</p><div class="bars"><div class="bar-row"><span class="bar-lbl">critical</span><span class="bar-track"><span class="bar-fill sev-critical" style="width:0.0%"></span></span><span class="bar-num">0</span></div>
 <div class="bar-row"><span class="bar-lbl">high</span><span class="bar-track"><span class="bar-fill sev-high" style="width:0.0%"></span></span><span class="bar-num">0</span></div>
-<div class="bar-row"><span class="bar-lbl">medium</span><span class="bar-track"><span class="bar-fill sev-medium" style="width:19.0%"></span></span><span class="bar-num">4</span></div>
-<div class="bar-row"><span class="bar-lbl">low</span><span class="bar-track"><span class="bar-fill sev-low" style="width:61.9%"></span></span><span class="bar-num">13</span></div>
-<div class="bar-row"><span class="bar-lbl">info</span><span class="bar-track"><span class="bar-fill sev-info" style="width:100.0%"></span></span><span class="bar-num">21</span></div></div><ul class="cats"><li><span class="cat-name">Developer Experience</span><span class="cat-num">19</span></li><li><span class="cat-name">Testabdeckung &amp; Teststrategie</span><span class="cat-num">11</span></li><li><span class="cat-name">Typsicherheit</span><span class="cat-num">5</span></li><li><span class="cat-name">Projektaufbau &amp; Build</span><span class="cat-num">4</span></li><li><span class="cat-name">Dependencies</span><span class="cat-num">2</span></li><li><span class="cat-name">Sicherheit</span><span class="cat-num">1</span></li></ul>
+<div class="bar-row"><span class="bar-lbl">medium</span><span class="bar-track"><span class="bar-fill sev-medium" style="width:0.0%"></span></span><span class="bar-num">0</span></div>
+<div class="bar-row"><span class="bar-lbl">low</span><span class="bar-track"><span class="bar-fill sev-low" style="width:72.0%"></span></span><span class="bar-num">18</span></div>
+<div class="bar-row"><span class="bar-lbl">info</span><span class="bar-track"><span class="bar-fill sev-info" style="width:100.0%"></span></span><span class="bar-num">25</span></div></div><ul class="cats"><li><span class="cat-name">Developer Experience</span><span class="cat-num">19</span></li><li><span class="cat-name">Testabdeckung &amp; Teststrategie</span><span class="cat-num">11</span></li><li><span class="cat-name">Typsicherheit</span><span class="cat-num">5</span></li><li><span class="cat-name">Projektaufbau &amp; Build</span><span class="cat-num">4</span></li><li><span class="cat-name">Dependencies</span><span class="cat-num">2</span></li><li><span class="cat-name">Sicherheit</span><span class="cat-num">1</span></li></ul>
     </section></div>
 </section>
 
@@ -1449,9 +1405,57 @@ details.sec[open]>summary::after{content:" ▴"}
 <option value="unchanged">unchanged</option></select></label>
     <span class="count" id="count"></span>
   </div>
-  <div class="rows" id="rows"><article class="row" data-domain="harness" data-sev="low" data-cat="Projektaufbau &amp; Build" data-status="new">
+  <div class="rows" id="rows"><article class="row" data-domain="code" data-sev="low" data-cat="Bugs &amp; Korrektheitsrisiken" data-status="new">
+  <button class="row-head" aria-expanded="false" aria-controls="d94">
+    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">BUG-028</span><span class="badge dom">Code &amp; Laufzeit</span><span class="badge st st-new">new</span></span>
+    <span class="cell c-title">Ein werfendes toString() im Fehlerpfad lässt den Router verstummen</span>
+    <span class="cell c-meta"><span class="meta loc">packages/shadow-objects/src/worker/MessageRouter.ts:39-42</span><span class="meta">Bugs &amp; Korrektheitsrisiken</span><span class="meta">Aufwand S</span></span>
+    <span class="chev" aria-hidden="true">›</span>
+  </button>
+  <div class="row-body" id="d94" hidden>
+    <p class="prose"><strong>Befund.</strong> describeError() wandelt den gefangenen Wert innerhalb des catch in eine Zeichenkette. Für einen geworfenen Wert, der kein Error ist, ruft String(error) in Zeile 42 dessen toString() auf, und zwar innerhalb des catch. Wirft diese Methode ihrerseits, verlässt die Ausnahme den catch: der Router meldet gar nichts, und die View wartet ihr configureTimeout beziehungsweise changeTrailTimeout aus, statt den Grund zu erfahren. Ein Shadow Object, das ein Objekt mit werfendem toString wirft, genügt dafür. Für einen Error ist die Tür schmaler — er liefert seine message, ohne toString() anzufassen.</p>
+    <p class="prose"><strong>Empfehlung.</strong> Die Umwandlung gegen ihre eigene Ausnahme absichern und im Fehlerfall auf eine feste Ersatzbeschreibung zurückfallen, damit der catch unter allen Umständen bis zur Antwort kommt.</p>
+  </div>
+</article>
+<article class="row" data-domain="harness" data-sev="info" data-cat="Developer Experience" data-status="new">
+  <button class="row-head" aria-expanded="false" aria-controls="d95">
+    <span class="cell c-badges"><span class="badge sev-info">info</span><span class="fid">DX-020</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-new">new</span></span>
+    <span class="cell c-title">Die API-Referenz zählt einen Fall nicht auf, in dem der ganze Trail als angewandt gilt</span>
+    <span class="cell c-meta"><span class="meta loc">packages/shadow-objects/docs/api-reference.md:1228-1229</span><span class="meta">Developer Experience</span><span class="meta">Aufwand S</span></span>
+    <span class="chev" aria-hidden="true">›</span>
+  </button>
+  <div class="row-body" id="d95" hidden>
+    <p class="prose"><strong>Befund.</strong> Die Aufzählung der Gründe, die nichts darüber sagen, wie weit der Kernel kam, nennt das abgelaufene Bestätigungsfenster, den WorkerDestroyedError und den fremden Proxy — aber nicht die Bestätigung, die einen Grund ohne appliedCount trägt. Auch dieser Fall lässt den ganzen Trail als angewandt gelten. Die Methodentabelle in Zeile 1523 nennt ihn ausdrücklich, der Absatz darüber nicht.</p>
+    <p class="prose"><strong>Empfehlung.</strong> Den vierten Fall in die Aufzählung aufnehmen, mit dem Wortlaut, den die Methodentabelle bereits führt.</p>
+  </div>
+</article>
+<article class="row" data-domain="harness" data-sev="info" data-cat="Developer Experience" data-status="new">
+  <button class="row-head" aria-expanded="false" aria-controls="d96">
+    <span class="cell c-badges"><span class="badge sev-info">info</span><span class="fid">DX-021</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-new">new</span></span>
+    <span class="cell c-title">Die Fallzahl für MessageRouter.spec.ts im Backlog stimmt nicht</span>
+    <span class="cell c-meta"><span class="meta loc">Backlog.md:314</span><span class="meta">Developer Experience</span><span class="meta">Aufwand S</span></span>
+    <span class="chev" aria-hidden="true">›</span>
+  </button>
+  <div class="row-body" id="d96" hidden>
+    <p class="prose"><strong>Befund.</strong> Die Zeile beziffert MessageRouter.spec.ts mit 31 Fällen. Die Datei führt 34. Die Lücke bestand bereits, bevor der Lauf sie um einen weiteren Fall vergrößert hat.</p>
+    <p class="prose"><strong>Empfehlung.</strong> Die Zahl nachziehen — oder die Fallzahlen ganz aus dem Backlog nehmen, wenn niemand sie pflegt. Eine Zahl, die nur manchmal stimmt, kostet mehr als keine.</p>
+  </div>
+</article>
+<article class="row" data-domain="harness" data-sev="info" data-cat="Developer Experience" data-status="new">
+  <button class="row-head" aria-expanded="false" aria-controls="d97">
+    <span class="cell c-badges"><span class="badge sev-info">info</span><span class="fid">DX-022</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-new">new</span></span>
+    <span class="cell c-title">Die Dateispalte eines Backlog-Eintrags nennt die falsche Datei</span>
+    <span class="cell c-meta"><span class="meta loc">Backlog.md:213</span><span class="meta">Developer Experience</span><span class="meta">Aufwand S</span></span>
+    <span class="chev" aria-hidden="true">›</span>
+  </button>
+  <div class="row-body" id="d97" hidden>
+    <p class="prose"><strong>Befund.</strong> Die Dateispalte des Eintrags KERN-7 nennt allein Kernel.ts, obwohl useContext, useParentContext und useProperty samt der Meldung über den abgelehnten zweiten compare in packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts sitzen. Der Logger des Kernels trägt die Ausgabe tatsächlich, die Fundstelle stimmt nicht.</p>
+    <p class="prose"><strong>Empfehlung.</strong> Die Spalte um die Datei ergänzen, in der die genannten Funktionen wirklich stehen.</p>
+  </div>
+</article>
+<article class="row" data-domain="harness" data-sev="low" data-cat="Projektaufbau &amp; Build" data-status="carried-over">
   <button class="row-head" aria-expanded="false" aria-controls="d81">
-    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">BUILD-007</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-new">new</span></span>
+    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">BUILD-007</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-carried-over">carried-over</span></span>
     <span class="cell c-title">Zwei Konfigurationen schließen ein Verzeichnis aus, das es nie gab</span>
     <span class="cell c-meta"><span class="meta loc">biome.json:20; turbo.json (tasks.test.inputs)</span><span class="meta">Projektaufbau &amp; Build</span><span class="meta">Aufwand S</span></span>
     <span class="chev" aria-hidden="true">›</span>
@@ -1461,9 +1465,9 @@ details.sec[open]>summary::after{content:" ▴"}
     <p class="prose"><strong>Empfehlung.</strong> Beide Einträge entfernen. Soll ein Ausschluss bleiben, weil ein solches Verzeichnis geplant ist, gehört ein Kommentar daneben, der das sagt.</p>
   </div>
 </article>
-<article class="row" data-domain="harness" data-sev="low" data-cat="Testabdeckung &amp; Teststrategie" data-status="new">
+<article class="row" data-domain="harness" data-sev="low" data-cat="Testabdeckung &amp; Teststrategie" data-status="carried-over">
   <button class="row-head" aria-expanded="false" aria-controls="d82">
-    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">TEST-014</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-new">new</span></span>
+    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">TEST-014</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-carried-over">carried-over</span></span>
     <span class="cell c-title">Der Ablehnungsweg gegen eine echte Worker-Umgebung ist von keiner Suite geprüft</span>
     <span class="cell c-meta"><span class="meta loc">packages/shadow-objects/src/elements/ShaeWorkerElement.ts:294-314; packages/shadow-objects-testing/test/worker-element-attributes.test.js</span><span class="meta">Testabdeckung &amp; Teststrategie</span><span class="meta">Aufwand S</span></span>
     <span class="chev" aria-hidden="true">›</span>
@@ -1473,57 +1477,9 @@ details.sec[open]>summary::after{content:" ▴"}
     <p class="prose"><strong>Empfehlung.</strong> Einen Fall nach shadow-objects-e2e legen, wo ein echter Worker läuft: local an einem laufenden &lt;shae-worker&gt; setzen und prüfen, dass das Attribut wieder verschwindet und die Umgebung ihren Modus behält.</p>
   </div>
 </article>
-<article class="row" data-domain="code" data-sev="info" data-cat="Konsistenz" data-status="new">
-  <button class="row-head" aria-expanded="false" aria-controls="d83">
-    <span class="cell c-badges"><span class="badge sev-info">info</span><span class="fid">CONS-017</span><span class="badge dom">Code &amp; Laufzeit</span><span class="badge st st-new">new</span></span>
-    <span class="cell c-title">Vier tote ESLint-Direktiven in einem Repository, das nur mit Biome lintet</span>
-    <span class="cell c-meta"><span class="meta loc">packages/shadow-objects/src/view/ShadowEnv.ts:19; src/bundle.ts:6; src/view/ComponentContext.ts:18; src/utils/waitForMessageOfType.ts:24</span><span class="meta">Konsistenz</span><span class="meta">Aufwand S</span></span>
-    <span class="chev" aria-hidden="true">›</span>
-  </button>
-  <div class="row-body" id="d83" hidden>
-    <p class="prose"><strong>Befund.</strong> An vier Stellen steht ein eslint-disable-next-line, dreimal für no-var, einmal für prefer-const. Eine ESLint-Konfiguration gibt es im Repository nirgends; Lint und Format sind ausschließlich Biome. Die Zeilen unterdrücken nichts und lesen sich für den nächsten Leser wie eine bewusste Ausnahme von einer Regel, die niemand stellt.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Die vier Zeilen entfernen. Wo Biome dieselbe Regel führt und die Ausnahme gewollt ist, tritt eine biome-ignore-Direktive mit Begründung an ihre Stelle.</p>
-  </div>
-</article>
-<article class="row" data-domain="code" data-sev="low" data-cat="Konsistenz" data-status="new">
-  <button class="row-head" aria-expanded="false" aria-controls="d84">
-    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">CONS-018</span><span class="badge dom">Code &amp; Laufzeit</span><span class="badge st st-new">new</span></span>
-    <span class="cell c-title">Ein Fehlergrund reist als Zeichenkette über die Worker-Grenze und wird dort geworfen</span>
-    <span class="cell c-meta"><span class="meta loc">packages/shadow-objects/src/worker/MessageRouter.ts:119 gegen packages/shadow-objects/src/view/RemoteWorkerEnv.ts:380</span><span class="meta">Konsistenz</span><span class="meta">Aufwand S</span></span>
-    <span class="chev" aria-hidden="true">›</span>
-  </button>
-  <div class="row-body" id="d84" hidden>
-    <p class="prose"><strong>Befund.</strong> Schlägt ein importScript() im Worker fehl, legt der MessageRouter den Grund als nackte Zeichenkette auf die Leitung, und RemoteWorkerEnv wirft sie unverändert. Ein Aufrufer bekommt dort eine Zeichenkette in seinem catch, wo die lokale Umgebung einen Error liefert — dieselbe Asymmetrie, die CONS-008 für den Change Trail beschreibt, an der zweiten Strecke. Ein catch, das .message liest oder auf instanceof Error prüft, verhält sich je nach Umgebung anders.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Auf der View-Seite einen Error aus dem übertragenen Grund bauen, bevor er geworfen wird, so wie es für den Change Trail bereits vorgesehen ist. Die Botschaft bleibt, die Form wird die, die ein Aufrufer erwartet.</p>
-  </div>
-</article>
-<article class="row" data-domain="code" data-sev="low" data-cat="Konsistenz" data-status="new">
-  <button class="row-head" aria-expanded="false" aria-controls="d85">
-    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">CONS-019</span><span class="badge dom">Code &amp; Laufzeit</span><span class="badge st st-new">new</span></span>
-    <span class="cell c-title">Drei unabschaltbare console.warn im geteilten Kernel-Zweig</span>
-    <span class="cell c-meta"><span class="meta loc">packages/shadow-objects/src/in-the-dark/importModule.ts:19; src/in-the-dark/ShadowObjectCreationScope.ts:31 und :372</span><span class="meta">Konsistenz</span><span class="meta">Aufwand S</span></span>
-    <span class="chev" aria-hidden="true">›</span>
-  </button>
-  <div class="row-body" id="d85" hidden>
-    <p class="prose"><strong>Befund.</strong> Die übersprungene Doppel-Einfuhr eines Moduls, die Deprecation-Warnung zur isEqual-Option und der abgelehnte zweite compare an einem gecachten Signal schreiben roh auf console.warn. Der Zweig läuft in beiden Umgebungen, und ShadowObjectCreationScope hält selbst einen ConsoleLogger (:57). Eine Anwendung, die den Logger für die Produktion abschaltet, bekommt diese drei Zeilen trotzdem. Der Umbau trägt eine Entscheidung in sich: ConsoleLogger.sharedConfig.enable ist außerhalb von localhost ausgeschaltet, und eine Deprecation-Warnung, die genau dort schweigt, wo ein Consumer sie sehen müsste, ist keine Warnung mehr.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Die drei Zeilen über den vorhandenen ConsoleLogger führen und dabei die Stufe bewusst wählen: logger.error für das, was ein Consumer sehen muss, weil es ungegatet druckt, logger.warn für das, was nur in der Entwicklung zählt. Die Wahl gehört als Kommentar daneben.</p>
-  </div>
-</article>
-<article class="row" data-domain="code" data-sev="low" data-cat="Bugs &amp; Korrektheitsrisiken" data-status="new">
-  <button class="row-head" aria-expanded="false" aria-controls="d86">
-    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">BUG-027</span><span class="badge dom">Code &amp; Laufzeit</span><span class="badge st st-new">new</span></span>
-    <span class="cell c-title">Die Logger-Konfiguration eines Threads friert beim ersten Logger ein</span>
-    <span class="cell c-meta"><span class="meta loc">packages/shadow-objects/src/utils/ConsoleLogger.ts:135 und :241-252</span><span class="meta">Bugs &amp; Korrektheitsrisiken</span><span class="meta">Aufwand S</span></span>
-    <span class="chev" aria-hidden="true">›</span>
-  </button>
-  <div class="row-body" id="d86" hidden>
-    <p class="prose"><strong>Befund.</strong> setConsoleLoggerStorage(config) setzt nur den Slot globalThis.ConsoleLoggerStorage. ConsoleLogger.loadConfig() läuft aber genau einmal je Thread, beim Bau der ersten Instanz, und friert sharedConfig dabei auf ein eigenes Objekt ein. Ein Aufruf danach erreicht keinen Logger mehr. Damit läuft der dokumentierte Weg, einen Worker über ConsoleLogger.RemoteWorkerEnv.workerConfig gesprächig zu machen, ins Leere, sobald im Worker vor der Konfigurationsnachricht irgendein Logger entstanden ist. Latent: die heutige Reihenfolge hält das ein und ist von einem Fall festgehalten, und im Hauptthread wird der Fallback-Store bei vorhandenem localStorage gar nicht gelesen.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Entweder setConsoleLoggerStorage() die vorhandene sharedConfig mitschreiben lassen, oder loadConfig() den Slot bei jedem Zugriff lesen. Der zweite Weg kostet einen Property-Zugriff je Logzeile und macht die Reihenfolge gleichgültig.</p>
-  </div>
-</article>
-<article class="row" data-domain="code" data-sev="low" data-cat="Öffentliche API" data-status="new">
+<article class="row" data-domain="code" data-sev="low" data-cat="Öffentliche API" data-status="carried-over">
   <button class="row-head" aria-expanded="false" aria-controls="d87">
-    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">API-003</span><span class="badge dom">Code &amp; Laufzeit</span><span class="badge st st-new">new</span></span>
+    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">API-003</span><span class="badge dom">Code &amp; Laufzeit</span><span class="badge st st-carried-over">carried-over</span></span>
     <span class="cell c-title">Ein öffentliches Signal, das die Klasse nie beschreibt</span>
     <span class="cell c-meta"><span class="meta loc">packages/shadow-objects/src/view/ShadowEnv.ts:56; docs/api-reference.md:1155; Backlog.md:277</span><span class="meta">Öffentliche API</span><span class="meta">Aufwand S</span></span>
     <span class="chev" aria-hidden="true">›</span>
@@ -1533,9 +1489,9 @@ details.sec[open]>summary::after{content:" ▴"}
     <p class="prose"><strong>Empfehlung.</strong> Verdrahten oder entfernen — beides ist eine API-Entscheidung und gehört als solche getroffen. Bleibt der Slot, gehört an seine Deklaration ein Satz, der sagt, dass er nicht gefüllt wird und wo der Wert stattdessen steht.</p>
   </div>
 </article>
-<article class="row" data-domain="harness" data-sev="info" data-cat="Typsicherheit" data-status="new">
+<article class="row" data-domain="harness" data-sev="info" data-cat="Typsicherheit" data-status="carried-over">
   <button class="row-head" aria-expanded="false" aria-controls="d88">
-    <span class="cell c-badges"><span class="badge sev-info">info</span><span class="fid">TYPE-006</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-new">new</span></span>
+    <span class="cell c-badges"><span class="badge sev-info">info</span><span class="fid">TYPE-006</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-carried-over">carried-over</span></span>
     <span class="cell c-title">Ein untypisierter Payload zwischen zwei typisierten Nachbarn</span>
     <span class="cell c-meta"><span class="meta loc">packages/shadow-objects/src/worker/MessageRouter.ts:157</span><span class="meta">Typsicherheit</span><span class="meta">Aufwand S</span></span>
     <span class="chev" aria-hidden="true">›</span>
@@ -1545,9 +1501,9 @@ details.sec[open]>summary::after{content:" ▴"}
     <p class="prose"><strong>Empfehlung.</strong> Den Payload-Typ benennen wie bei den Nachbarn. Trägt die Nachricht keine Nutzdaten, ist das ebenfalls ein Typ und sagt mehr als any.</p>
   </div>
 </article>
-<article class="row" data-domain="harness" data-sev="low" data-cat="Developer Experience" data-status="new">
+<article class="row" data-domain="harness" data-sev="low" data-cat="Developer Experience" data-status="carried-over">
   <button class="row-head" aria-expanded="false" aria-controls="d89">
-    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">DX-015</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-new">new</span></span>
+    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">DX-015</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-carried-over">carried-over</span></span>
     <span class="cell c-title">Der Agentenleitfaden weist jedem Leser eine fremde Rolle zu</span>
     <span class="cell c-meta"><span class="meta loc">AGENTS.md:120-127</span><span class="meta">Developer Experience</span><span class="meta">Aufwand S</span></span>
     <span class="chev" aria-hidden="true">›</span>
@@ -1557,9 +1513,9 @@ details.sec[open]>summary::after{content:" ▴"}
     <p class="prose"><strong>Empfehlung.</strong> Den Abschnitt entfernen oder durch Vorgaben ersetzen, die zu den übrigen Regeln der Datei passen. Was vom Ton wirklich gelten soll, gehört in dieselbe Sprache und dieselbe Form wie der Rest des Leitfadens.</p>
   </div>
 </article>
-<article class="row" data-domain="harness" data-sev="low" data-cat="Developer Experience" data-status="new">
+<article class="row" data-domain="harness" data-sev="low" data-cat="Developer Experience" data-status="carried-over">
   <button class="row-head" aria-expanded="false" aria-controls="d90">
-    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">DX-016</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-new">new</span></span>
+    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">DX-016</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-carried-over">carried-over</span></span>
     <span class="cell c-title">Ein ausgeliefertes Shadow Object fehlt in der einzigen API-Referenz seines Pakets</span>
     <span class="cell c-meta"><span class="meta loc">packages/shae-offscreen-canvas/docs/01-shadow-objects-api.md</span><span class="meta">Developer Experience</span><span class="meta">Aufwand S</span></span>
     <span class="chev" aria-hidden="true">›</span>
@@ -1569,21 +1525,9 @@ details.sec[open]>summary::after{content:" ▴"}
     <p class="prose"><strong>Empfehlung.</strong> Einen Abschnitt für ThreeRenderView ergänzen, in der Machart der vier vorhandenen: wofür es da ist, welche Eigenschaften es liest, mit welchen anderen es zusammenspielt.</p>
   </div>
 </article>
-<article class="row" data-domain="harness" data-sev="info" data-cat="Developer Experience" data-status="new">
-  <button class="row-head" aria-expanded="false" aria-controls="d91">
-    <span class="cell c-badges"><span class="badge sev-info">info</span><span class="fid">DX-017</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-new">new</span></span>
-    <span class="cell c-title">Zwei Sätze der Logger-Dokumentation versprechen mehr Kontrolle, als der Code hält</span>
-    <span class="cell c-meta"><span class="meta loc">packages/shadow-objects/docs/api-reference.md:2992 und :2994</span><span class="meta">Developer Experience</span><span class="meta">Aufwand S</span></span>
-    <span class="chev" aria-hidden="true">›</span>
-  </button>
-  <div class="row-body" id="d91" hidden>
-    <p class="prose"><strong>Befund.</strong> »ConsoleLogger.&lt;namespace&gt;.enable turns a single logger off on its own« gilt für Kernel, ShadowEnv und die Elemente nur für deren gegatete Zeilen: logger.error() druckt bedingungslos (src/utils/ConsoleLogger.ts:298-304). Und die Begründung, der Schlüssel werde einmal über remoteEnv.logger.warn genannt, das nicht hinter ConsoleLogger.sharedConfig.enable liege, trifft zu, fasst die Sache aber enger, als sie ist — logger.warn() hängt an gar keinem Schalter, auch nicht am Namensraum-Schalter.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Beide Sätze auf das einschränken, was gilt: welche Stufen der Namensraum-Schalter erreicht und welche bedingungslos drucken. Eine kleine Tabelle Stufe gegen Schalter ist hier kürzer als jede Prosa.</p>
-  </div>
-</article>
-<article class="row" data-domain="harness" data-sev="low" data-cat="Developer Experience" data-status="new">
+<article class="row" data-domain="harness" data-sev="low" data-cat="Developer Experience" data-status="carried-over">
   <button class="row-head" aria-expanded="false" aria-controls="d92">
-    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">DX-018</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-new">new</span></span>
+    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">DX-018</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-carried-over">carried-over</span></span>
     <span class="cell c-title">Die Wurzel-README nennt das Canvas-Paket unter einem Verzeichnisnamen, den es nicht gibt</span>
     <span class="cell c-meta"><span class="meta loc">README.md:95</span><span class="meta">Developer Experience</span><span class="meta">Aufwand S</span></span>
     <span class="chev" aria-hidden="true">›</span>
@@ -1593,9 +1537,9 @@ details.sec[open]>summary::after{content:" ▴"}
     <p class="prose"><strong>Empfehlung.</strong> Den Pfad korrigieren. Die Datei nennt ihn an zwei Stellen; nur eine ist falsch.</p>
   </div>
 </article>
-<article class="row" data-domain="harness" data-sev="low" data-cat="Developer Experience" data-status="new">
+<article class="row" data-domain="harness" data-sev="low" data-cat="Developer Experience" data-status="carried-over">
   <button class="row-head" aria-expanded="false" aria-controls="d93">
-    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">DX-019</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-new">new</span></span>
+    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">DX-019</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-carried-over">carried-over</span></span>
     <span class="cell c-title">Die Voraussetzungen der README verlangen eine Toolchain, die der Workspace ablehnt</span>
     <span class="cell c-meta"><span class="meta loc">README.md:289 gegen package.json (engines, packageManager)</span><span class="meta">Developer Experience</span><span class="meta">Aufwand S</span></span>
     <span class="chev" aria-hidden="true">›</span>
@@ -1738,17 +1682,6 @@ details.sec[open]>summary::after{content:" ▴"}
     <p class="prose"><strong>Empfehlung.</strong> Eine eigene Fehlerklasse neben den vorhandenen, damit ein Aufrufer per instanceof zwischen »zu spät« und »abgelehnt« trennt. Der Wechsel ändert, was Konsumenten im catch sehen, und gehört in den Changelog.</p>
   </div>
 </article><article class="row" data-domain="code" data-sev="low" data-cat="Konsistenz" data-status="carried-over">
-  <button class="row-head" aria-expanded="false" aria-controls="d23">
-    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">CONS-008</span><span class="badge dom">Code &amp; Laufzeit</span><span class="badge st st-carried-over">carried-over</span></span>
-    <span class="cell c-title">Der Grund eines abgelehnten Change Trails geht als String über die Leitung</span>
-    <span class="cell c-meta"><span class="meta loc">packages/shadow-objects/src/worker/MessageRouter.ts:138</span><span class="meta">Konsistenz</span><span class="meta">Aufwand M</span></span>
-    <span class="chev" aria-hidden="true">›</span>
-  </button>
-  <div class="row-body" id="d23" hidden>
-    <p class="prose"><strong>Befund.</strong> Fängt der Router einen Kernel-Fehler, schickt er ihn als interpolierten String zurück. Auf der View-Seite kommt damit eine Zeichenkette an, wo ProxyFailed eine WorkerFailedError-Instanz trägt. Wer im catch eines syncWait() steht, hat für den einen Ausgang einen Typ und für den anderen eine Zeichenkette — und muss sich seine Fallunterscheidung aus Textvergleichen bauen.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Name und Nachricht strukturiert übertragen und auf der View-Seite in eine Fehlerklasse zurückverwandeln, wie es die Strecke für den Ausfall des Workers bereits tut. Was ein Konsument im catch sieht, ändert sich dabei — Changelog-Eintrag.</p>
-  </div>
-</article><article class="row" data-domain="code" data-sev="low" data-cat="Konsistenz" data-status="carried-over">
   <button class="row-head" aria-expanded="false" aria-controls="d24">
     <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">CONS-012</span><span class="badge dom">Code &amp; Laufzeit</span><span class="badge st st-carried-over">carried-over</span></span>
     <span class="cell c-title">changeOrder prüft die Existenz des Eintrags, nicht seinen Halter</span>
@@ -1802,17 +1735,6 @@ details.sec[open]>summary::after{content:" ▴"}
   <div class="row-body" id="d28" hidden>
     <p class="prose"><strong>Befund.</strong> AGENTS.md §4 verbietet zwei Analogien ausdrücklich — im Dokumentationsverzeichnis liegt eine Datei, deren Name die erste trägt und deren Quelltext einen Kommentar mit der zweiten enthält. Sie wird von keiner Doku-Seite eingebunden. Dieselbe Sektion führt eine Tabelle verbindlicher Begriffe, in der »Component Tag« als nicht zu verwendende Variante von »Token« steht; die Glosse »Token (Component Tag)« erscheint an neun Stellen in fünf Doku-Dateien — und in AGENTS.md:18, fünfundsechzig Zeilen über der Tabelle, die sie verbietet. Positiv daneben: jedes in api-reference.md dokumentierte API-Symbol existiert im Quelltext, es gibt keine erfundene API.</p>
     <p class="prose"><strong>Empfehlung.</strong> Die SVG-Datei löschen. Für »Component Tag« entscheiden: entweder als zulässige Glosse in die Tabelle aufnehmen, oder an allen neun Stellen streichen und §2 mitziehen. Eine Regel, die ihre eigene Referenzdokumentation verletzt, wird beim nächsten Zweifelsfall nicht befolgt.</p>
-  </div>
-</article><article class="row" data-domain="harness" data-sev="low" data-cat="Developer Experience" data-status="carried-over">
-  <button class="row-head" aria-expanded="false" aria-controls="d29">
-    <span class="cell c-badges"><span class="badge sev-low">low</span><span class="fid">DX-002</span><span class="badge dom">Projekt-Harness</span><span class="badge st st-carried-over">carried-over</span></span>
-    <span class="cell c-title">Der publizierte Einstiegspunkt von shae-offscreen-canvas schreibt beim Import in die Konsole</span>
-    <span class="cell c-meta"><span class="meta loc">packages/shae-offscreen-canvas/src/bundle.js:6</span><span class="meta">Developer Experience</span><span class="meta">Aufwand S</span></span>
-    <span class="chev" aria-hidden="true">›</span>
-  </button>
-  <div class="row-body" id="d29" hidden>
-    <p class="prose"><strong>Befund.</strong> Ein console.debug mit einem Gruß steht ungefiltert in der Datei, auf die main, module und der Default-Export der exports-Map zeigen. Jeder Consumer, der das Paket importiert, bekommt die Zeile in seiner Konsole — auch in Produktion, auch ohne jede Logger-Konfiguration. Das Paket bringt mit ConsoleLogger einen Mechanismus mit, der genau diese Frage beantwortet, und benutzt ihn an seiner sichtbarsten Stelle nicht.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Streichen, oder durch einen ConsoleLogger führen, der die geltende Gate-Logik anwendet. Ein Gruß gehört nicht in die Konsole einer fremden Anwendung.</p>
   </div>
 </article><article class="row" data-domain="harness" data-sev="low" data-cat="Developer Experience" data-status="carried-over">
   <button class="row-head" aria-expanded="false" aria-controls="d30">
@@ -2011,17 +1933,6 @@ details.sec[open]>summary::after{content:" ▴"}
   <div class="row-body" id="d44" hidden>
     <p class="prose"><strong>Befund.</strong> #rootContexts.clear() steht hinter der Kontext-Schleife statt zwischen den beiden Durchläufen, die sie trennt. Folgenlos ist das nachweislich — die einzigen Leser der Sammlung sitzen in Entity.ts:615-622 und laufen zu diesem Zeitpunkt nicht mehr. Nur muss jeder, der den Abbau liest, diesen Nachweis selbst führen: an ihrer Stelle sieht die Zeile nach einer Reihenfolgeabhängigkeit aus, die es nicht gibt.</p>
     <p class="prose"><strong>Empfehlung.</strong> Die Zeile dorthin setzen, wo ihre Wirkung offensichtlich ist, oder einen Halbsatz danebenschreiben, der sagt, warum ihre Position gleichgültig ist. Beides kostet eine Minute und spart der nächsten Leserin fünf.</p>
-  </div>
-</article><article class="row" data-domain="code" data-sev="info" data-cat="Konsistenz" data-status="carried-over">
-  <button class="row-head" aria-expanded="false" aria-controls="d45">
-    <span class="cell c-badges"><span class="badge sev-info">info</span><span class="fid">CONS-001</span><span class="badge dom">Code &amp; Laufzeit</span><span class="badge st st-carried-over">carried-over</span></span>
-    <span class="cell c-title">Die Merkliste der Deprecation-Warnungen lebt am Modul, nicht am Kernel</span>
-    <span class="cell c-meta"><span class="meta loc">packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts:19-34</span><span class="meta">Konsistenz</span><span class="meta">Aufwand S</span></span>
-    <span class="chev" aria-hidden="true">›</span>
-  </button>
-  <div class="row-body" id="d45" hidden>
-    <p class="prose"><strong>Befund.</strong> Beim Re-Check dieses Laufs trug die im Vorgänger genannte Stelle (Kernel.ts:62-66) den Befund nicht: dort stehen die Buchführungsfelder der Entities. Die Sache selbst steht in ShadowObjectCreationScope.ts, und sie ist kleiner als beschrieben: eine einzige Modul-Menge isEqualDeprecationShown merkt sich je Methodenname, ob die Warnung schon fiel. Sie lebt so lange wie das Modul, nicht wie der Kernel, also sieht in einer Testsuite oder in einer Anwendung mit mehreren Umgebungen nur der erste Aufrufer die Warnung. Der Kommentar darüber begründet die Feinheit der Entdopplung, nicht die Lebensdauer, und die Spec-Datei hängt bereits an ihr: TEST-007 und TEST-008 beschreiben, wie ihre Fälle um die Modulflagge herumgebaut sind.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Den Zustand an den Kernel oder die Registry hängen, dann verschwindet die Reihenfolgeabhängigkeit der Fälle mit. Ist die realmweite Einmaligkeit gewollt, gehört genau dieser Satz neben die Menge, damit der nächste Leser nicht wieder bei den Fällen anfängt.</p>
   </div>
 </article><article class="row" data-domain="code" data-sev="info" data-cat="Konsistenz" data-status="carried-over">
   <button class="row-head" aria-expanded="false" aria-controls="d46">
@@ -2379,10 +2290,10 @@ details.sec[open]>summary::after{content:" ▴"}
     <dd>Kein Lauf der Playwright-Suite, deren Aussagen stammen aus Spec- und Konfigurationsdateien. Keine Messung im
       echten Browser und keine Performance-Messung; PERF-001 ist aus dem Code gerechnet, nicht gestoppt. Die
       Spec-Dateien wurden gezielt gelesen, nicht durchgängig. Die drawio-Diagramme und die Bilddateien in docs
-      wurden nicht geöffnet. Für diese Fassung ist gar nichts geprüft worden: sie führt den Stand nach dem Remediation-Lauf vom 2026-08-24 nach, dem zweiten seit dem Audit. Geschlossen wurde nur, wofür ein Reviewer-Urteil mit Fundstelle und ein Commit-Hash vorlag — elf Findings, keines blieb mangels Beleg offen. Die dreizehn Neuzugänge stammen aus der Befund-Queue des Laufs und tragen je Datei und Zeile; bewertet sind sie nach Wirkung, nicht nachgemessen. Prüfumfang und Messungen oben beziehen sich auf den Audit-Lauf vom 2026-08-23; seither sind 1295 Unit-Fälle und 430 Fälle in zwei Browsern grün gelaufen, gemessen im Abschluss-Verify des Laufs.</dd>
+      wurden nicht geöffnet. Für diese Fassung ist gar nichts geprüft worden: sie führt den Stand nach dem Remediation-Lauf vom 2026-08-26 nach, dem dritten seit dem Audit. Geschlossen wurde nur, wofür ein Reviewer-Urteil mit Fundstelle und ein Commit-Hash vorlag — acht Findings, keines blieb mangels Beleg offen. Die vier Neuzugänge stammen aus der Befund-Queue des Laufs und tragen je Datei und Zeile; bewertet sind sie nach Wirkung, nicht nachgemessen. Prüfumfang und Messungen oben beziehen sich auf den Audit-Lauf vom 2026-08-23; seither sind 1303 Unit-Fälle und 430 Fälle in zwei Browsern grün gelaufen, gemessen im Abschluss-Verify des Laufs.</dd>
     <dt>Wie der Score entsteht</dt>
     <dd>Start bei 100, Abzug je Finding: critical −10, high −5, medium −2, low −0,5, info 0, Untergrenze 0.
-      41·0,5 ergibt 20,5 Punkte Abzug und damit 79,5 — das Backlog trägt weder critical noch high noch medium.
+      37·0,5 ergibt 18,5 Punkte Abzug und damit 81,5 — das Backlog trägt weder critical noch high noch medium.
       Dieselbe Formel läuft je Domain über deren eigene Findings; die beiden Teilscores sind keine Summanden des
       Gesamtscores und teilen keine 100 unter sich auf, sie stehen auf derselben Skala nebeneinander.</dd>
     <dt>Abgleich mit dem Vorlauf</dt>
@@ -2393,8 +2304,8 @@ details.sec[open]>summary::after{content:" ▴"}
       beschriebene Provider-Bedingung existiert nicht mehr. Ein dritter, die Merkliste der Deprecation-Warnungen,
       trug an der genannten Stelle nichts; er steht mit korrigierter Location und abgeschwächt weiter im Backlog.
       Bei mehreren Befunden waren die Zeilennummern um wenige Zeilen verschoben, der Sachverhalt aber vorhanden.</dd>
-    <dt>Warum der Score um 17 Punkte steigt</dt>
-    <dd>Ein zweiter Remediation-Lauf am 2026-08-24 hat alle elf medium-Befunde geschlossen, die das Backlog nach dem ersten noch trug: ein Lebenszyklus-Hook unter seinem gewöhnlichen Namen meldet sich, statt still ins Leere zu laufen; eine <code>ShadowEnv</code>, deren Element nie ins Dokument kommt, und der Effekt des Canvas-Elements hängen nicht mehr an fremden Lebensdauern; ein Modul ohne <code>shadowObjects</code>-Export wird lokal genauso abgelehnt wie im Worker; der Worker-Zweig schreibt über den <code>ConsoleLogger</code>; <code>three</code> ist ein Peer des Canvas-Pakets; der Lint-Lauf der CI bricht bei Warnungen ab; die dist-Form beider Pakete wird gegen eine eingecheckte Erwartung gehalten; und die Modul-URL des Workers ist als Vertrauensgrenze benannt. Elf Pakete, elf Commits, jeder mit Reviewer-Urteil an der Fundstelle und einem eigenen Verify-Lauf. Ein zwölfter Punkt entfiel ohne Änderung: die Coverage-Zahl für die Element-Dateien war durch zwei Spec-Dateien des ersten Laufs bereits von 5,7 auf 70,4 Prozent gestiegen, und der geplante Ausschluss hätte den Report verschlechtert. Der Abzug für elf medium fällt weg, was 22 Punkte ausmacht; dreizehn neue Nebenbefunde — zehn low, drei info — nehmen 5 davon wieder. Diese Zahl ist gerechnet, nicht gemessen: der Code ist seit dem Audit vom 2026-08-23 nicht erneut geprüft worden, und die Findings, die stehen blieben, sind unverändert übernommen. Wer eine geprüfte Zahl braucht, braucht einen neuen Audit-Lauf.</dd>
+    <dt>Warum der Score um 2 Punkte steigt</dt>
+    <dd>Ein dritter Remediation-Lauf am 2026-08-26 hat die acht Findings rund um den ConsoleLogger geschlossen: eine spät eintreffende Logger-Konfiguration erreicht die Logger, die ein Thread schon gebaut hat; ein Fehlergrund aus dem Worker kommt als Error über die Grenze statt als nackte Zeichenkette; die drei rohen console.warn des geteilten Kernel-Zweigs laufen über den Logger; der publizierte Einstiegspunkt des Canvas-Pakets grüßt seine Consumer nicht mehr beim Import; und vier tote ESLint-Direktiven samt vier verwaisten Konfigurationen sind aus einem Repository verschwunden, das ausschließlich mit Biome lintet. Fünf Pakete, fünf Commits, jeder mit Reviewer-Urteil an der Fundstelle und eigenem Verify-Lauf. Die vier neuen Einträge sind Nebenbefunde aus diesen Paketen, alle vorbestehend und außerhalb der Scope-Regel des Laufs; sie tragen je Datei und Zeile und sind nach Wirkung eingeschätzt, nicht nachgemessen. Der Abzug für fünf low fällt weg, was 2,5 Punkte ausmacht; der eine neue low-Befund nimmt 0,5 davon wieder, die drei info wiegen null. Diese Zahl ist gerechnet, nicht gemessen: der Code ist seit dem Audit vom 2026-08-23 nicht erneut geprüft worden, und die Findings, die stehen blieben, sind unverändert übernommen. Wer eine geprüfte Zahl braucht, braucht einen neuen Audit-Lauf.</dd>
     <dt>Theme</dt>
     <dd>Light, übernommen aus summary.theme des Vorlaufs, damit die Optik über Folgeläufe stabil bleibt. Fest
       ausgeliefert, ohne prefers-color-scheme.</dd>
@@ -2402,10 +2313,10 @@ details.sec[open]>summary::after{content:" ▴"}
   <figure class="chart">
   <svg viewBox="0 0 640 200" width="640" height="200" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Verlauf der Health-Scores">
     <line x1="34" y1="166.0" x2="626" y2="166.0" class="grid"/><text x="26" y="170.0" class="axis" text-anchor="end">0</text><line x1="34" y1="92.0" x2="626" y2="92.0" class="grid"/><text x="26" y="96.0" class="axis" text-anchor="end">50</text><line x1="34" y1="18.0" x2="626" y2="18.0" class="grid"/><text x="26" y="22.0" class="axis" text-anchor="end">100</text>
-    <polyline points="34,69.8 79.5,89.8 125.1,134.2 170.6,108.3 216.2,46.1 261.7,56.5 307.2,57.2 352.8,40.9 398.3,69.8 443.8,53.5 489.4,49.1 534.9,92 580.5,73.5 626,48.3" class="line"/>
-    <circle cx="34" cy="69.8" r="2.6" class="dot"/><text x="34" y="59.8" class="axis pt" text-anchor="middle">65</text><circle cx="79.5" cy="89.8" r="2.6" class="dot"/><circle cx="125.1" cy="134.2" r="2.6" class="dot"/><circle cx="170.6" cy="108.3" r="2.6" class="dot"/><text x="170.6" y="98.3" class="axis pt" text-anchor="middle">39</text><circle cx="216.2" cy="46.1" r="2.6" class="dot"/><circle cx="261.7" cy="56.5" r="2.6" class="dot"/><circle cx="307.2" cy="57.2" r="2.6" class="dot"/><text x="307.2" y="47.2" class="axis pt" text-anchor="middle">73,5</text><circle cx="352.8" cy="40.9" r="2.6" class="dot"/><circle cx="398.3" cy="69.8" r="2.6" class="dot"/><circle cx="443.8" cy="53.5" r="2.6" class="dot"/><text x="443.8" y="43.5" class="axis pt" text-anchor="middle">76</text><circle cx="489.4" cy="49.1" r="2.6" class="dot"/><circle cx="534.9" cy="92" r="2.6" class="dot"/><circle cx="580.5" cy="73.5" r="2.6" class="dot"/><circle cx="626" cy="48.3" r="4" class="dot dot-now"/><text x="626" y="38.3" class="axis pt" text-anchor="middle">79,5</text>
+    <polyline points="34,69.8 76.3,89.8 118.6,134.2 160.9,108.3 203.1,46.1 245.4,56.5 287.7,57.2 330,40.9 372.3,69.8 414.6,53.5 456.9,49.1 499.1,92 541.4,73.5 583.7,48.3 626,45.4" class="line"/>
+    <circle cx="34" cy="69.8" r="2.6" class="dot"/><text x="34" y="59.8" class="axis pt" text-anchor="middle">65</text><circle cx="76.3" cy="89.8" r="2.6" class="dot"/><circle cx="118.6" cy="134.2" r="2.6" class="dot"/><circle cx="160.9" cy="108.3" r="2.6" class="dot"/><text x="160.9" y="98.3" class="axis pt" text-anchor="middle">39</text><circle cx="203.1" cy="46.1" r="2.6" class="dot"/><circle cx="245.4" cy="56.5" r="2.6" class="dot"/><circle cx="287.7" cy="57.2" r="2.6" class="dot"/><text x="287.7" y="47.2" class="axis pt" text-anchor="middle">73,5</text><circle cx="330" cy="40.9" r="2.6" class="dot"/><circle cx="372.3" cy="69.8" r="2.6" class="dot"/><circle cx="414.6" cy="53.5" r="2.6" class="dot"/><text x="414.6" y="43.5" class="axis pt" text-anchor="middle">76</text><circle cx="456.9" cy="49.1" r="2.6" class="dot"/><circle cx="499.1" cy="92" r="2.6" class="dot"/><circle cx="541.4" cy="73.5" r="2.6" class="dot"/><text x="541.4" y="63.5" class="axis pt" text-anchor="middle">62,5</text><circle cx="583.7" cy="48.3" r="2.6" class="dot"/><circle cx="626" cy="45.4" r="4" class="dot dot-now"/><text x="626" y="35.4" class="axis pt" text-anchor="middle">81,5</text>
     <text x="34" y="190" class="axis" text-anchor="start">2026-05-14</text>
-    <text x="626" y="190" class="axis" text-anchor="end">2026-08-24</text>
+    <text x="626" y="190" class="axis" text-anchor="end">2026-08-26</text>
   </svg>
   <figcaption>Verlauf der Health-Scores seit 2026-05-14. Der Sprung nach unten stammt aus der Prüftiefe dieses Laufs, nicht aus dem Code.</figcaption>
 </figure>

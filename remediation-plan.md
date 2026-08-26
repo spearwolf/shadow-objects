@@ -1,42 +1,33 @@
 # Remediation-Plan — shadow-objects
 
-Quelle: ./audit.html vom 2026-08-23 · Branch: main · erstellt: 2026-08-23
-Baseline (2026-08-23, auf `31baaf0` selbst gefahren): `pnpm lint` ✓ (1 info:
-Biome-Config-Migrationshinweis, vorbestehend) · `pnpm typecheck` ✓ ·
-`pnpm build` ✓ · `pnpm test:ci --force` ✓ 1271 Fälle (775 shadow-objects, 119
-shae-offscreen-canvas, 377 shadow-objects-testing) ·
+Quelle: ./audit.html vom 2026-08-24 · Branch: main · erstellt: 2026-08-24
+Baseline (2026-08-24, auf `92d3c14` selbst gefahren): `pnpm lint` ✓ (1 info:
+Biome-Config-Migrationshinweis, vorbestehend) · `pnpm lint:ci` ✓ ·
+`pnpm typecheck` ✓ · `pnpm build` ✓ · `pnpm test:ci --force` ✓ 1295 Fälle
+(793 shadow-objects, 123 shae-offscreen-canvas, 379 shadow-objects-testing) ·
 `pnpm -F shadow-objects-e2e test` ✓ 430 Fälle (Chromium und Firefox)
-Arbeitsverzeichnis: /tmp/claude-1000/-home-spw-spaceland-shadow-objects/e0d75273-2509-45a0-a823-486e10016d15/scratchpad
+Arbeitsverzeichnis: /tmp/claude-1000/-home-spw-spaceland-shadow-objects/9917ee15-7f97-4f24-903f-e2d5ef1ec647/scratchpad
 (Diffs und Verify-Logs, außerhalb der Versionierung)
-Scope: 11 von 78 Findings (0 critical, 0 high, 11 medium) · ausgenommen: 31 low,
-36 info · `acknowledged` ist leer
-Scope-Regel: alles ab medium aufwärts, jede Kategorie — gilt auch für Befunde,
-die erst im Lauf auffallen
-Stand (2026-08-24): **Lauf abgeschlossen.** Zwölf Pakete, elf Commits auf `main`:
-1 (`dbadb91`), 3a (`16b1609`), 3b (`bb3d412`), 4 (`8424d2c`), 5 (`b78103f`), 6 (`4622161`),
-7 (`780b75b`), 8 (`b32999b`), 9 (`d41d610`), 10 (`2b121ac`), 11 (`4e677d7`), dazu der
-Abschluss-Commit. Paket 2 ist ohne Commit entfallen, weil sein Finding gegenstandslos wurde.
-Nichts blockiert, nichts gestasht, keine offene Folge. Alle elf Findings des Scopes sind
-geschlossen: API-002, BUILD-005, BUILD-006, BUG-026, CONS-010, CONS-011, DEP-002, MEM-009,
-MEM-010, SEC-003 und TEST-009.
-
-Verify auf `HEAD`, vom Orchestrator selbst gefahren: `pnpm lint` ✓ · `pnpm lint:ci` ✓ ·
-`pnpm typecheck` ✓ · `pnpm build` ✓ · `pnpm test:ci --force` ✓ 1295 Fälle (793
-shadow-objects, 123 shae-offscreen-canvas, 379 shadow-objects-testing) ·
-`pnpm -F shadow-objects-e2e test` ✓ 430 Fälle in Chromium und Firefox. Gegen die Baseline:
-24 Unit-Fälle mehr, keiner verschwunden, E2E unverändert.
-
-Semver: keine Versionsanhebung. Beide Pakete führen ihre Änderungen unter `## [Unreleased]`
-und ziehen die Nummer erst beim Release. Der Vorspann des Kern-CHANGELOG bewertet den nächsten
-Release als minor (`0.33.0` → `0.34.0`), der des Canvas-Pakets ebenso (`0.6.0` → `0.7.0`) —
-unter `1.0.0` hebt ein Breaking Change die Minor-Stelle, und beide Pakete tragen welche aus
-diesem Lauf.
-
-`./audit.html` ist nachgeführt: Score 62,5 → 79,5, Code-Bereich 77 → 89, Projekt-Harness
-85,5 → 90,5. Elf Findings geschlossen, dreizehn neu eingetragen, 67 übernommen; das Backlog
-trägt weder critical noch high noch medium. Die Datei ist nicht neu geprüft worden, sondern
-neu gerechnet — das steht so in ihrer Methodik-Sektion. Kein Finding blieb mangels Beleg
-offen: jedes der elf trägt Reviewer-Urteil mit Fundstelle und Paket-Hash.
+Scope: 8 von 80 Findings (0 critical, 0 high, 0 medium, 5 low, 3 info) · vom
+Nutzer benannt: CONS-001, CONS-017, CONS-018, CONS-019, BUG-027, DX-017 · vom
+Orchestrator vorgeschlagen und freigegeben: CONS-008, DX-002 · `acknowledged`
+ist leer
+Scope-Regel: alles, was den ConsoleLogger, seine Konfiguration oder rohe
+`console.*`-Aufrufe betrifft — gilt auch für Befunde, die erst im Lauf
+auffallen. Alles andere geht als neues Finding ins Audit.
+Stand (2026-08-26, abgeschlossen): Der Lauf ist durch. Alle fünf Pakete sind
+committet — Paket 1 (`bdabe1f`), Paket 2 (`f5bcc23`), Paket 3 (`9c3abb7`),
+Paket 4 (`b96ff80`), Paket 5 (`4d145b4`) —, kein Paket blieb blockiert, und
+»Offene Befunde« ist leer: alle vier Einträge sind als neue Findings in
+`./audit.html` eingetragen. Der Abschluss-Verify lief auf dem Stand, der
+übergeben wird: `pnpm lint` ✓ (1 vorbestehender Info-Hinweis), `pnpm lint:ci` ✓,
+`pnpm typecheck` ✓, `pnpm build` ✓, `pnpm test:ci --force` ✓ 1303 Fälle,
+`pnpm -F shadow-objects-e2e test` ✓ 430 Fälle in zwei Browsern — gegen die
+Baseline gehalten, nichts ist rot geworden, was grün war. Keine
+Versionsanhebung: dieses Projekt hebt Versionen in eigenen Release-Commits,
+die Paket-CHANGELOGs führen den Stand unter `## [Unreleased]` und weisen die
+nächste Freigabe bereits als minor aus. `./audit.html` steht nach dem Lauf auf
+81,5 (vorher 79,5), 76 offene Findings, acht geschlossen, vier neu.
 
 Diese Datei führt einen Lauf des Skills `js-ts-audit-remediation` und hält
 seinen Stand. Wer hier weiterarbeitet: diesen Skill laden, die eingetragenen
@@ -45,45 +36,91 @@ einsteigen. Der Lauf ist erst fertig, wenn auch »Offene Befunde« leer ist.
 Statusmarken: `[ ]` offen · `[~]` Detailplan steht, Umsetzung läuft · `[x]`
 erledigt · `[!]` blockiert.
 
-Der Vorlauf desselben Skills (Scope: ab high) ist mit `31baaf0` abgeschlossen;
-sein Plan steht in der Historie dieser Datei. Seine Nebenbefunde sind vollständig
-ins Audit überführt und tauchen hier als reguläre Findings wieder auf.
+**Diese Datei ist in diesem Repository getrackt** — die drei Vorläufe haben sie
+je mit ihrem Abschluss-Commit fortgeschrieben, statt sie aus dem Arbeitsbaum zu
+räumen. Sie ist damit die einzige Änderung, die beim Start des Laufs neben
+`HEAD` steht. Sie gehört in **keinen** Paket-Commit: jedes Paket committet
+ausschließlich die Dateien, die es selbst angefasst hat. Ins Repo kommt sie
+erst mit dem Abschluss-Commit.
+
+Der Vorlauf desselben Skills (Scope: ab medium) ist mit `7340233` abgeschlossen;
+sein Plan steht in der Historie dieser Datei.
 
 ## Entscheidungen
-
-- **`three` wird ein Peer, aber kein optionaler** (2026-08-23). Die Abhängigkeit
-  wandert in `peerDependencies` mit weitem Bereich und zusätzlich in
-  `devDependencies`, damit Build und Tests sie weiter auflösen. Der statische
-  Import in `src/shadow-objects.js` bleibt stehen: `three` bleibt damit für jeden
-  Consumer Pflicht. Gelöst ist die doppelte Instanz im Abhängigkeitsbaum, nicht
-  das Mitinstallieren. Der Gegenweg — optionaler Peer samt dynamischem Nachladen
-  der beiden Three-Shadow-Objects — hätte die Registry an einer Stelle asynchron
-  gemacht und steht in keinem Verhältnis zum Gewinn.
-- **Der Coverage-Report des Kernpakets schließt `src/elements/**` aus**
-  (2026-08-23) und benennt im Report-Kopf, wo diese Dateien stattdessen geprüft
-  werden. Der Gegenweg — beide Roh-Reports mit einem Merge-Schritt vereinen —
-  liefert eine Zahl über alles und einen zusätzlichen Schritt in der
-  Test-Pipeline, den ab dann jemand pflegen muss.
-- **Der Coverage-Zuschnitt bleibt, wie er ist** (2026-08-24). Die Entscheidung
-  vom Vortag, `src/elements/**` aus dem Report des Kernpakets zu nehmen, ist
-  gegenstandslos: auf `dbadb91` gemessen stehen dort 70,36 % Statements und
-  47,53 % Branches, keine der vier Element-Dateien auf null. Zwei Specs des
-  Vorlaufs liegen in `src/elements/` und laufen in der happy-dom-Suite mit. Ein
-  Ausschluss würde heute 874 real gemessene Statements aus dem Report löschen
-  und die Kopfzahl künstlich anheben — dieselbe Unwahrheit mit umgekehrtem
-  Vorzeichen. Der Report beschreibt den Zuschnitt in `AGENTS.md` und `CLAUDE.md`
-  korrekt; nichts nachzuziehen.
-- **Die Vertrauensgrenze der Worker-Modul-URL wird dokumentiert, nicht
-  bewacht** (2026-08-23). Ein Sicherheitsabschnitt in `docs/api-reference.md`
-  und beiden READMEs. Keine Prüffunktion an `RemoteWorkerEnv` — das wäre neue
-  öffentliche API, die dokumentiert, getestet und getragen werden müsste, für
-  eine Absicherung, die im Betrieb ohnehin die Content Security Policy leistet.
+- CONS-008 und DX-002 werden mitgenommen, obwohl der Nutzer sie nicht benannt
+  hat: CONS-008 ist dieselbe Zeichenketten-Asymmetrie wie CONS-018 an der
+  Nachbarstrecke, und CONS-018s Empfehlung verweist auf sie als Vorbild, das es
+  ohne diesen Fix gar nicht gäbe; DX-002 ist die sichtbarste Stelle, an der ein
+  publiziertes Paket am ConsoleLogger vorbei druckt (2026-08-24)
+- Für neu auffallende Befunde gilt die Scope-Regel oben: Logging-Themen werden
+  in diesem Lauf mit behoben, alles andere geht ins Audit (2026-08-24)
+- CONS-019, Stufenwahl nach Adressat: Deprecation-Warnung und abgelehnter
+  zweiter `compare` gehen über `logger.error`, weil beide einen Fehler im Code
+  des Consumers melden und ihn auch außerhalb von localhost erreichen müssen —
+  `ConsoleLogger.sharedConfig.enable` ist dort aus. Die übersprungene
+  Doppel-Einfuhr eines Moduls geht über gegatetes `logger.warn`: sie zählt nur
+  in der Entwicklung. Die Wahl steht als Kommentar neben jeder der drei Zeilen
+  (2026-08-24)
+- CONS-001: die Merkliste der Deprecation-Warnungen wandert an den Kernel. Die
+  Warnung fällt damit einmal je Kernel statt einmal je Realm; die
+  Reihenfolgeabhängigkeit von `ShadowObjectCreationScope.spec.ts` wird im selben
+  Paket aufgelöst (2026-08-24)
+- BUG-027, Weg 1 der beiden Empfehlungen: `setConsoleLoggerStorage()` schreibt
+  die vorhandene `sharedConfig` mit, statt `loadConfig()` bei jedem Zugriff den
+  Slot lesen zu lassen. Kostet nichts je Logzeile. Der Umbau bleibt auf den
+  Zweig ohne `localStorage` beschränkt — im Hauptthread gewinnt weiterhin die
+  echte Storage, und das Verhalten dort ändert sich nicht (2026-08-24)
+- CONS-018 und CONS-008, Wire-Format: `error` bleibt eine Zeichenkette und
+  trägt künftig die Nachricht ohne den Klassennamen davor, ein neues optionales
+  `errorName` trägt den Namen. Kein verschachteltes Objekt: eine Gegenstelle
+  alter Bauart bleibt auf beiden Seiten lesbar, und die öffentlichen Wire-Typen
+  bekommen keine Union (2026-08-24)
+- CONS-018 und CONS-008, Fehlerklasse: die View baut einen neuen, exportierten
+  `WorkerReportedError`, dessen `name` der im Worker gemeldete Name ist. Damit
+  prüft ein Aufrufer `err.name` wie bei einem lokalen Fehler und `instanceof
+  WorkerReportedError`, wenn er wissen will, ob der Grund über die Worker-Grenze
+  kam. Ein eigenes Feld für den Namen wäre genau die Asymmetrie, gegen die dieses
+  Paket antritt (2026-08-24)
+- CONS-008, Grenze der Symmetrie: übertragen werden nur Name und Nachricht. Die
+  View rekonstruiert keine bibliothekseigenen Fehlerklassen — `instanceof
+  EntityUuidInUseError` bleibt drüben falsch und `uuid` bleibt weg. Der Gegenweg
+  bräuchte je Fehlerklasse ein eigenes Wire-Feld und behandelte einen Fehler aus
+  Consumer-Code schlechter als einen der Bibliothek; die Grenze steht dafür in
+  der API-Referenz (2026-08-24)
+- Der JSDoc über `missingShadowObjectsExportMessage`
+  (`src/in-the-dark/importModule.ts`) wird mitgezogen, obwohl beide Halbsätze
+  buchstäblich wahr bleiben: der Kontrast, den er zwischen der Worker-Strecke
+  und `LocalShadowObjectEnv` aufmacht, ist genau die Asymmetrie, die Paket 2
+  beseitigt, und ein Leser nimmt ihn sonst weiterhin für einen Unterschied
+  (2026-08-25, vom Nutzer bestätigt)
+- Die Restlücke von Weg 1 wird dokumentiert, nicht geschlossen: das
+  instanzeigene `enable` liest ein Logger einmal beim Bau, eine später
+  eintreffende Config legt es nicht mehr um. Betroffen ist allein ein Logger,
+  den ein fremder Host über eine unlesbare Nachricht vor der
+  Konfigurationsnachricht bauen lässt — die geteilten Schalter erreicht die
+  späte Config sehr wohl. Die API-Referenz sagt das in Paket 1 ausdrücklich;
+  kein eigener Befund, kein weiteres Paket (2026-08-24)
+- CONS-018 und CONS-008, Form von `WorkerReportedError`: ein Konstrukt statt
+  zweier. Die Klasse nimmt `(name, message)` — die Reihenfolge, die
+  `WorkerFailedError` in derselben Datei vorgibt —, und der Vorgabewert `Error`
+  für einen fehlenden Namen steht in ihrem Konstruktor. Die im Vorentwurf
+  daneben vorgesehene Hilfsfunktion `workerReportedError(message, name)`
+  entfällt: zwei Konstrukte mit gespiegelten Parametern in einer Datei sind eine
+  Falle, und die Klasse wird exportiert, ihre Reihenfolge steht also dauerhaft
+  im Vertrag (2026-08-25, vom Nutzer bestätigt)
+- CONS-018 und CONS-008, Lautstärke der Wire-Format-Änderung: dass `error`
+  künftig den Wortlaut ohne den Klassennamen davor trägt, wird ausschließlich im
+  `### New`-Eintrag zum Nachrichtenprotokoll angesagt, nicht zusätzlich unter
+  `### ⚠️ Breaking Changes`. Der Vorspann von `## [Unreleased]` bekommt dafür
+  keine eigene Zählposition und steht nach diesem Paket auf »Fifty-two«. Was
+  einen gewöhnlichen Consumer trifft, steht im Breaking-Eintrag über
+  `WorkerReportedError`; die Leitung zwischen `MessageRouter` und
+  `RemoteWorkerEnv` ist Transport und keine Anwendungs-API. Kein Implementierer
+  hängt hier einen weiteren Breaking-Eintrag an (2026-08-25)
 
 ## Konventionen
-
 Gelten für jede Zeile, die in diesem Lauf entsteht — Code, Kommentare,
 Dokumentation, CHANGELOG, Migrations-Hinweise, Commit-Messages:
-
 - Inline-Kommentare sind erwünscht, wo sie erklären, *warum* etwas so ist.
 - Keine Finding-IDs, auch nicht in der Commit-Message. Sie gehören diesem einen
   Audit, sind danach tot, und die Commit-Message überdauert den Lauf. Sie leben
@@ -95,1471 +132,1858 @@ Dokumentation, CHANGELOG, Migrations-Hinweise, Commit-Messages:
   der den Vorzustand nie gesehen hat? Dann bleibt er. Braucht er ihn, gehört er
   in die Commit-Message — die Historie ist bereits konserviert.
 
-Projektspezifisch, aus `AGENTS.md` und `CLAUDE.md`:
-
-- Code, Kommentare und Doku in **Englisch**. Antworten und dieser Plan bleiben
-  deutsch, `git log` dieses Projekts ist englisch — Commit-Messages also
-  englisch.
-- **Doku ist Teil des API-Vertrags.** Eine Änderung an der öffentlichen API von
-  `@spearwolf/shadow-objects` führt `packages/shadow-objects/docs/`,
-  `README.md` und `CHANGELOG.md` im selben Zug nach; für
-  `@spearwolf/shae-offscreen-canvas` gilt dasselbe in dessen eigenem Paket.
-  Änderungen am Harness — Build, Testrunner, Lint, turbo/pnpm, devDeps — gehören
-  in das `CHANGELOG.md` der Repo-Wurzel. Neue Arbeit steht unter
-  `## [Unreleased]`.
-- **Verbotene Analogien**: »shadow theater«, »puppet«, »puppeteer«, »light
-  world«, »screen«. ECS-Begriffe verwenden. Die Bindungstabelle aus `AGENTS.md`
-  §4 gilt: `RemoteWorkerEnv`, Entity, Entity Tree, `ComponentContext` bzw.
-  Namespace, Token. `ComponentContext` (View-seitige Registry eines Namespace)
-  und Entity Context (Dependency Injection entlang des Entity Tree) werden nie
-  vermischt.
-- Dependency-Versionen stehen ausschließlich im `catalog:`-Block von
-  `pnpm-workspace.yaml` und werden aus den Paketen als `"<dep>": "catalog:"`
-  referenziert.
-- Lint und Format sind Biome, Konfiguration liegt an der Repo-Wurzel. Keine
-  Overrides je Paket.
-- Wird ein TODO-Kommentar angefasst, läuft `pnpm make:todo`.
+Dazu, aus `AGENTS.md` und `CLAUDE.md` dieses Projekts:
+- Code, Kommentare und Doku ausschließlich auf Englisch, Doku in Markdown.
+- Verbotene Analogien: »shadow theater«, »puppet«, »puppeteer«, »light world«,
+  »screen«. Es gilt die ECS-Terminologie (Entity, Component, Kernel, View,
+  Token) und die Tabelle der bindenden Begriffe in `AGENTS.md` §4.
+- Jede Änderung der öffentlichen API zieht `docs/`, `README.md` und
+  `CHANGELOG.md` **desselben** Pakets nach, im selben Commit. Monorepo-Themen
+  gehen ins `CHANGELOG.md` der Wurzel, Paket-Themen in das des Pakets. Neue
+  Arbeit steht unter `## [Unreleased]`.
+- Dependency-Versionen stehen ausschließlich im `catalog:` von
+  `pnpm-workspace.yaml`, referenziert als `"<dep>": "catalog:"`.
+- Ändert ein Paket eine `TODO`-Kommentarzeile, läuft `pnpm make:todo`.
+- Ändert ein Paket die Form von `dist/` oder `.npm-pkg/`, werden die
+  Erwartungsdateien der `distContract`-Specs im selben Commit nachgezogen.
 - Nach Änderungen an Quelltext oder Doku wird `AGENTS.md` auf Veralterung
   geprüft.
-
-## Modellstufe der Runner
-
-Der Skill sieht für jeden Paket-Runner die stärkste Modellstufe vor, weil er über
-Paketschnitt, Reihenfolge und die Einordnung von Folgen entscheidet. Ab Paket 3a
-laufen die Runner dieses Laufs auf mittlerer Stufe: sechs Anläufe auf der
-stärksten sind an Serverfehlern (529) gestorben, ohne etwas tun zu können, und
-die Kapazität kam über eine abgewartete Überlastwelle hinweg nicht zurück.
-
-Die Abweichung trägt der Orchestrator, und sie kommt mit einer Auflage, die jeder
-Dispatch ab hier wörtlich enthält: Was Paketschnitt, Zielsetzung eines Pakets
-oder eine Architekturentscheidung berührt, entscheidet der Runner nicht selbst —
-Teilung, Abweichung von der Empfehlung eines Findings, ein Nebenbefund über den
-Paketumfang hinaus, jede Umplanung des Restplans. Diese Fälle kommen mit Status
-`rückfrage` zurück und werden zwischen Orchestrator und Nutzer entschieden. Damit
-landen genau die Urteile, für die die stärkste Stufe gedacht ist, außerhalb der
-abgesenkten Stufe.
+- Lint und Format sind Biome. Vor jedem Commit läuft `pnpm lint:ci` mit, nicht
+  nur `pnpm lint` — nur ersteres bricht bei Warnungen ab.
 
 ## Vorbestehende Fehler
-
-Keine. Die Baseline ist auf ganzer Breite grün; der eine Biome-Hinweis ist ein
-Konfigurations-Migrationsvermerk ohne Bezug zu diesem Lauf. Kein Spec des
-Repositories schreibt kaputtes Verhalten als erwarteten Fehlschlag fest.
-
-Zu beachten für Paket 1: sobald `lint:ci` bei Warnungen abbricht, ist der eine
-Biome-Info-Hinweis zu prüfen — Info ist keine Warnung, der Lauf bleibt grün.
-Wer das anders vorfindet, hat einen Nebenbefund.
+- `pnpm lint` meldet 1 info (Hinweis, dass `biome migrate` für die
+  Konfiguration ansteht). Vor Lauf-Beginn vorhanden, kein Teil des Scopes,
+  blockiert keinen Commit — `pnpm lint:ci` läuft trotzdem grün durch.
 
 ## Offene Befunde
-
 Nebenbefunde aus den Paketen: was auch ohne diesen Lauf falsch war. Jeder
 Eintrag wird beschlossen, bevor der Lauf endet — Paket oder Rückgabe ins Audit.
 Ein leerer Abschnitt ist Abschlussbedingung, kein Zufall. Das Urteil am Ende
 der Zeile misst den Eintrag an der Scope-Regel oben: `→ Scope`, `→ Audit`,
 `→ Rückfrage`.
 
-- [x] `biome.json:20` — `files.includes` schließt `packages/shadow-objects/tests`
-  aus, ein Verzeichnis, das es im Arbeitsbaum nicht gibt und das auch in der
-  Historie dieses Repositories nie gab; dieselbe Attrappe steht in
-  `turbo.json#tasks.test.inputs` als `tests/**`. Aufgefallen in Paket 3a.
-  Geschätzte Severity: low → Audit
-- [x] `packages/shadow-objects/src/elements/ShaeWorkerElement.ts:294-314` —
-  `#refuseLocalChange()` schreibt bei `isLocalEnv === false` über den
-  `removeAttribute`-Zweig zurück, aber keine Suite prüft diesen Zweig gegen eine
-  echte `RemoteWorkerEnv`: die drei Fälle in `worker-element-attributes.test.js`
-  laufen alle gegen eine lokale Umgebung, und schon der abgelöste Fall vor diesem
-  Lauf (`git show 31baaf0:packages/shadow-objects-testing/test/worker-element-attributes.test.js`,
-  Zeile 336–347) prüfte nur diese eine Richtung. Ein Fall gehört nach
-  `shadow-objects-e2e`, wo ein echter Worker läuft. Aufgefallen in Paket 4.
-  Geschätzte Severity: low → Audit
-- [x] `packages/shadow-objects/src/view/ShadowEnv.ts:19` — ein
-  `// eslint-disable-next-line no-var` in einem Repository, das ausschließlich
-  mit Biome lintet; eine ESLint-Konfiguration gibt es nirgends. Dieselbe tote
-  Direktive steht in `packages/shadow-objects/src/bundle.ts:6`,
-  `packages/shadow-objects/src/view/ComponentContext.ts:18` und als
-  `prefer-const` in `packages/shadow-objects/src/utils/waitForMessageOfType.ts:24`.
-  An allen vier Stellen vorbestehend (nachgesehen auf `31baaf0`). Aufgefallen in
-  Paket 5. Geschätzte Severity: info → Audit
-- [x] `packages/shadow-objects/src/worker/MessageRouter.ts:119` gegen
-  `packages/shadow-objects/src/view/RemoteWorkerEnv.ts:380` — der Grund eines
-  fehlgeschlagenen `importScript()` reist als nackte Zeichenkette über die
-  Worker-Grenze und wird auf der View-Seite unverändert geworfen; ein Aufrufer
-  bekommt dort eine Zeichenkette, wo die lokale Umgebung seit Paket 7 einen
-  `Error` liefert. Dieselbe Asymmetrie, die CONS-008 für den Change Trail
-  beschreibt, an der zweiten Strecke. Vorbestehend (nachgesehen auf `31baaf0`),
-  im Audit nicht enthalten. Aufgefallen in Paket 7. Geschätzte Severity:
-  low → Audit
-- [x] `packages/shadow-objects/src/worker/MessageRouter.ts:157` —
-  `#onDestroy(data: any)` nimmt einen untypisierten Payload, während die beiden
-  Nachbarn `#configure(data: ConfigurePayloadData)` und `#onChangeTrail(data:
-  SyncEvent)` typisiert sind. Vorbestehend (nachgesehen auf `31baaf0`).
-  Aufgefallen in Paket 7. Geschätzte Severity: info → Audit
-- [x] `AGENTS.md:120-127` — der Abschnitt »General Context Information for the AI
-  assistant« weist jedem Agenten, der die Datei liest, eine fremde Rolle zu
-  (»You are a professional developer advocate from Google«) samt Tonvorgaben,
-  die mit dem Projekt nichts zu tun haben und den übrigen Vorgaben derselben
-  Datei widersprechen. `AGENTS.md` ist laut `CLAUDE.md` der maßgebliche
-  Agentenleitfaden, die Stelle wirkt also auf jede Sitzung. Vorbestehend
-  (nachgesehen auf `31baaf0:AGENTS.md:121`), im Audit nicht enthalten.
-  Aufgefallen in Paket 9. Geschätzte Severity: low → Audit
-- [x] `packages/shae-offscreen-canvas/docs/01-shadow-objects-api.md` — die Datei
-  ist die einzige API-Referenz des Pakets und beschreibt vier der fünf
-  ausgelieferten Shadow Objects; `ThreeRenderView` fehlt vollständig, obwohl
-  `src/shadow-objects.js` es exportiert und in seiner `routes`-Tabelle führt.
-  Vorbestehend (auf `31baaf0` kommt der Name in der Datei kein einziges Mal
-  vor), im Audit nicht enthalten. Aufgefallen in Paket 9. Geschätzte Severity:
-  low → Audit
-- [x] `packages/shadow-objects/docs/api-reference.md:2992` und `:2994` — zwei
-  Sätze, die mehr versprechen, als der Code hält. »`ConsoleLogger.<namespace>.enable`
-  turns a single logger off on its own« gilt für `Kernel`, `ShadowEnv` und die
-  Elemente nur für deren gegatete Zeilen: `logger.error()` druckt bedingungslos
-  (`src/utils/ConsoleLogger.ts:298-304`). Und »the key is named once through
-  `remoteEnv.logger.warn`, which is not gated behind
-  `ConsoleLogger.sharedConfig.enable`« ist wahr, begründet die Sache aber enger,
-  als sie ist — `logger.warn()` hängt an gar keinem Schalter, auch nicht am
-  Namensraum-Schalter. Vorbestehend (beide Sätze standen so auf `31baaf0`), im
-  Audit nicht enthalten. Aufgefallen in Paket 10. Geschätzte Severity:
-  info → Audit
-- [x] `packages/shadow-objects/src/in-the-dark/importModule.ts:19`,
-  `packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts:31` und
-  `:372` — drei `console.warn` im geteilten Kernel-Zweig, den beide Umgebungen
-  durchlaufen: die übersprungene Doppel-Einfuhr eines Moduls, die
-  Deprecation-Warnung zur `isEqual`-Option und der abgelehnte zweite
-  `{compare}` an einem gecachten Signal. Alle drei sind nicht abschaltbar,
-  obwohl `ShadowObjectCreationScope` selbst einen `ConsoleLogger` hält
-  (`:57`). Dagegen spricht ein Argument, das mitentschieden werden muss:
-  `ConsoleLogger.sharedConfig.enable` ist außerhalb von `localhost`
-  ausgeschaltet, und eine Deprecation-Warnung, die genau dort schweigt, wo ein
-  Consumer sie sehen müsste, ist keine Warnung mehr — der Weg wäre dann
-  `logger.error`, das die Bibliothek für ihre Fehlerberichte ebenfalls ungegatet
-  lässt. Vorbestehend an allen drei Stellen (nachgesehen auf `31baaf0`), im
-  Audit nicht enthalten. Aufgefallen in Paket 10. Geschätzte Severity:
-  low → Audit
-- [x] `packages/shadow-objects/src/utils/ConsoleLogger.ts:135` —
-  `setConsoleLoggerStorage(config)` setzt nur den Slot
-  `globalThis.ConsoleLoggerStorage`. `ConsoleLogger.loadConfig()` läuft aber genau
-  einmal je Thread, beim Bau der ersten Instanz, und friert `sharedConfig` dabei
-  auf ein eigenes Objekt ein (Zeile 241–252); ein Aufruf danach erreicht keinen
-  Logger mehr. Damit no-opt der dokumentierte Weg, einen Worker über
-  `ConsoleLogger.RemoteWorkerEnv.workerConfig` gesprächig zu machen, sobald im
-  Worker vor der Konfigurationsnachricht irgendein Logger entstanden ist. Latent:
-  Paket 10 hält die Reihenfolge ein und pinnt sie mit einem Spec, und im
-  Hauptthread wird der Fallback-Store bei vorhandenem `localStorage` gar nicht
-  gelesen. Vorbestehend (nachgesehen auf `31baaf0:packages/shadow-objects/src/utils/ConsoleLogger.ts`),
-  im Audit nicht enthalten. Aufgefallen in Paket 10. Geschätzte Severity:
-  low → Audit
-- [x] `README.md:95` — der Abschnitt »What's in the Box?« nennt das
-  Canvas-Paket `packages/shadow-offscreen-canvas/`; das Verzeichnis heißt
-  `packages/shae-offscreen-canvas/`, wie dieselbe Datei in `:265` und die
-  `package.json` des Pakets richtig schreiben. Vorbestehend (nachgesehen auf
-  `31baaf0:README.md`, dort dieselbe Zeile). Aufgefallen in Paket 11.
-  Geschätzte Severity: low → Audit
-- [x] `README.md:289` — »**Prerequisites:** Node.js >=20.12.2, pnpm >=9.1.2«
-  gegen `package.json`, das `engines.node: ">=24.13.0"`, `engines.pnpm:
-  ">=11.0.0"` und `packageManager: "pnpm@11.21.0"` führt. Wer der README folgt,
-  installiert eine Toolchain, die der Workspace ablehnt. Vorbestehend
-  (`31baaf0:README.md:277` trägt denselben Satz). Aufgefallen in Paket 11.
-  Geschätzte Severity: low → Audit
-- [x] `packages/shadow-objects/src/view/ShadowEnv.ts:56` — `readonly ns$` ist
-  öffentliche API, die die Klasse nie beschreibt: kein Produktionscode im
-  Repository greift darauf zu, und der Slot liest für die gesamte Lebensdauer
-  einer Umgebung `undefined`. `docs/api-reference.md:1155` schreibt das ehrlich
-  hin und verweist auf `env.view.ns`, der Code bleibt schuldig; verdrahten oder
-  entfernen ist eine API-Entscheidung. Vorbestehend (`31baaf0:…/ShadowEnv.ts:49`),
-  im Audit nicht enthalten, in `Backlog.md:277` bereits beschrieben. Aufgefallen
-  in Paket 5. Geschätzte Severity: low → Audit
-
-Alle dreizehn Einträge sind am 2026-08-24 in `./audit.html` überführt worden — je als
-neues Finding mit Fundstelle, Severity und dem Vermerk, dass sie in diesem Lauf auffielen.
-Keiner fiel unter die Scope-Regel: der schwerste wiegt low, die Regel greift ab medium. Dem
-Nutzer wurden sie am 2026-08-24 gebündelt vorgelegt, ohne Widerspruch. Die vergebenen IDs
-stehen im Report, nicht hier — sie gehören ihm.
+- [x] `packages/shadow-objects/src/worker/MessageRouter.ts`, die `catch`-Blöcke
+  von `#configure()` und `#onChangeTrail()` — beide machen aus dem gefangenen
+  Wert eine Zeichenkette, und sie tun es innerhalb des `catch`. Wirft die
+  `toString()` des geworfenen Werts ihrerseits — ein Shadow Object, das ein
+  Objekt mit werfendem `toString` wirft —, verlässt die Ausnahme den `catch`, der
+  Router meldet gar nichts, und die View wartet ihr `configureTimeout` bzw.
+  `changeTrailTimeout` aus, statt den Grund zu erfahren. Vorbestehend, in
+  `92d3c14` unverändert vorhanden. Aus Paket 2. Severity low. → Audit
+  · Fundstelle nach Paket 2 (`f5bcc23`): die Umwandlung ist in die
+  Hilfsfunktion `describeError()` derselben Datei gezogen, Zeile 39–42, die aus
+  beiden `catch`-Blöcken heraus aufgerufen wird. Die Tür ist schmaler — ein
+  `Error` liefert seine `message`, ohne `toString()` anzufassen —, sie bleibt
+  aber offen: für einen geworfenen Wert, der kein `Error` ist, ruft
+  `String(error)` in Zeile 42 weiterhin dessen `toString()` innerhalb des
+  `catch`. Wer den Befund ins Audit überträgt, nennt diese Zeile
+  · **erledigt 2026-08-26:** als BUG-028 (low) in `./audit.html` eingetragen,
+  mit Fundstelle und dem Vermerk, dass der Befund in diesem Lauf auffiel
+- [x] `packages/shadow-objects/docs/api-reference.md:1228-1229` — die Aufzählung
+  der Gründe, die nichts darüber sagen, wie weit der Kernel kam, nennt das
+  abgelaufene Bestätigungsfenster, den `WorkerDestroyedError` und den fremden
+  Proxy, aber nicht die Bestätigung, die einen Grund ohne `appliedCount` trägt.
+  Auch dieser Fall lässt den ganzen Trail als angewandt gelten. Vorbestehend, in
+  `92d3c14` mit derselben Lücke nachgeprüft. Aus Paket 2. Severity info. → Audit
+  · die Methodentabelle in Zeile 1523 nennt den Fall seit Paket 2 ausdrücklich,
+  der Absatz darüber nicht
+  · **erledigt 2026-08-26:** als DX-020 (info) in `./audit.html` eingetragen,
+  mit Fundstelle und dem Vermerk, dass der Befund in diesem Lauf auffiel
+- [x] `Backlog.md:314` — die Zeile beziffert `MessageRouter.spec.ts` mit 31
+  Fällen; die Datei führt auf `f5bcc23` bereits 33 und nach Paket 3 deren 34.
+  Vorbestehend (die Lücke von zwei Fällen stand schon vor dem ersten Commit
+  dieses Laufs), Paket 3 vergrößert sie um den einen neuen Fall. Aus Paket 3.
+  Severity info. → Audit
+  · **erledigt 2026-08-26:** als DX-021 (info) in `./audit.html` eingetragen,
+  mit Fundstelle und dem Vermerk, dass der Befund in diesem Lauf auffiel
+- [x] `Backlog.md:213` — die Dateispalte des Eintrags KERN-7 nennt allein
+  `Kernel.ts`, obwohl `useContext`, `useParentContext` und `useProperty` samt
+  der Meldung über den abgelehnten zweiten `compare` in
+  `packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts` sitzen.
+  Der Logger des Kernels trägt die Ausgabe tatsächlich, die Fundstelle stimmt
+  nicht. Vorbestehend, in `92d3c14` mit derselben Spalte. Aus Paket 3.
+  Severity info. → Audit
+  · **erledigt 2026-08-26:** als DX-022 (info) in `./audit.html` eingetragen,
+  mit Fundstelle und dem Vermerk, dass der Befund in diesem Lauf auffiel
 
 ## Pakete
 
-Die Phase »Tests für die Umbaubereiche« trägt kein eigenes Paket. Jede Datei,
-die dieser Lauf anfasst, hat ihre Suite bereits: `ShadowEnv`,
-`LocalShadowObjectEnv`, `Kernel`, `MessageRouter`, `WorkerRuntime` und
-`ShaeOffscreenCanvasElement` je ein Spec neben der Quelle, `ShaeWorkerElement`
-über `worker-element-attributes.test.js` und `worker-element-teardown.test.js`
-in der Browser-Suite — für Custom-Element-Reaktionen der einzig richtige Ort,
-weil happy-dom die Reaktions-Queue des Browsers nicht originalgetreu fährt. Den
-fehlschlagenden Fall schreibt deshalb jedes Korrektheits-Paket selbst, als
-ersten Zug und rot gesehen, statt ihn in ein vorgezogenes Paket auszulagern, das
-dieselbe Datei ein zweites Mal anfassen müsste.
-
-
-### [x] 1. Der Lint-Lauf der CI bricht bei Warnungen ab
-
-- Findings: BUILD-005 (medium)
-- Ziel: Eine tote Variable, ein vergessener Import oder ein `parseInt` ohne
-  Basis kommen nicht mehr grün an der CI vorbei.
-- Bereich: `package.json` (`lint:ci`), `biome.json`, `.github/workflows/ci.yml`
+### [x] 1. Die Logger-Konfiguration erreicht auch den späten Aufrufer
+- Findings: BUG-027 (low), DX-017 (info)
+- Ziel: `setConsoleLoggerStorage()` wirkt unabhängig davon, ob im Thread schon
+  ein Logger gebaut wurde, und die API-Referenz beschreibt genau die Kontrolle,
+  die der Namensraum-Schalter tatsächlich hat.
+- Bereich: `packages/shadow-objects/src/utils/ConsoleLogger.ts` samt Spec,
+  `packages/shadow-objects/docs/api-reference.md`, `CHANGELOG.md` des Pakets
 - Hängt ab von: —
-- Hash: dbadb91
-- Ergebnis: 1 Runde · BUILD-005 behoben · `lint:ci` trägt `--error-on-warnings`,
-  `biome.json` und `.github/workflows/ci.yml` blieben unangetastet · Nachweis
-  der Sperre statt eines eingecheckten Falls: eine Sondendatei mit genau einer
-  Warnung ergab vor der Änderung Rückgabewert 0, danach 1; sie liegt nicht im
-  Repo, weil ein dauerhaft lint-schmutziges Fixture den Lauf selbst rot färben
-  würde. Vom Runner nachgestellt (`paket-1.verify.log`). Reviewer ohne Befund ·
-  bewusst hingenommen: der CHANGELOG-Absatz nennt den Vorzustand, wie es die
-  Nachbareinträge derselben Datei tun — für Einträge in `CHANGELOG.md` gilt die
-  Konvention »kein Rückblick« damit als erfüllt, wenn der Satz auch ohne den
-  Vorzustand trägt
-- Nebenbefunde: keine
-- Folgen: keine
-- Verify nachgeholt (Orchestrator, 2026-08-23): Die Verify-Zeile der
-  Runner-Rückgabe zeigte auf `paket-1.verify.log`, und diese Datei trägt die
-  Nachstellung der Sperre — einen Lint-Lauf über eine Sondendatei, der
-  bestimmungsgemäß mit Rückgabewert 1 endet —, nicht den Verify-Lauf des
-  Pakets. Ein Log über Lint, Typecheck, Build und Tests lag damit nicht vor.
-  Auf Ansage des Nutzers vom Orchestrator selbst auf `dbadb91` nachgefahren:
-  `pnpm lint` ✓ · `pnpm lint:ci` ✓ · `pnpm typecheck` ✓ · `pnpm build` ✓ ·
-  `pnpm test:ci --force` ✓ 1271 Fälle · `pnpm -F shadow-objects-e2e test` ✓
-  430 Fälle. Gegen die Baseline kein Fall verschwunden, keiner neu. Log:
-  `paket-1.orchestrator-verify.log`. Der Commit steht damit auf geprüftem Grund;
-  die neue Sperre färbt den heutigen Baum nicht rot.
-- Schnittstellen: `pnpm lint:ci` endet mit Rückgabewert 1, sobald Biome eine
-  Warnung meldet — die fünf Regeln auf `warn` in `biome.json`
-  (`noUnusedVariables`, `noUnusedImports`, `noUnusedPrivateClassMembers`,
-  `noVoidTypeReturn`, `useParseIntRadix`) sind ab hier für jedes Paket
-  bindend. Info-Diagnosen färben den Lauf weiterhin nicht rot.
-
-### [x] 2. Der Coverage-Report misst, was er ausweist — entfallen
-
-- Findings: TEST-009 (medium)
-- Ziel: Die Prozentzahl des Kernpakets beschreibt genau die Dateien, die sie
-  misst, und der Report sagt, wo die vier Element-Dateien geprüft werden.
-- Bereich: `packages/shadow-objects/vitest.config.*`, Report-Kopf, `CLAUDE.md`
-  und `AGENTS.md` (beide begründen den heutigen Zuschnitt)
-- Hängt ab von: —
-- Hash: —
-- Verlauf:
-  - 2026-08-23 Zug 0: Abgleich rot · TEST-009 gegenstandslos wie beschrieben ·
-    selbst gemessen auf `dbadb91` (`pnpm -F @spearwolf/shadow-objects test`, 775
-    Fälle grün, Log `paket-2.probe-coverage.log`): `src/elements` 70,36 %
-    Statements / 47,53 % Branches statt der 5,73 % / 0,55 % aus dem Finding,
-    Gesamt 86,43 % statt 69,88 %, und keine der vier Element-Dateien steht auf
-    null (`ShaeElement.ts` 95,45 · `ShaePropElement.ts` 86,44 ·
-    `ShaeEntElement.ts` 57,75 · `ShaeWorkerElement.ts` 54,42) · Ursache:
-    `elementReachability.spec.ts` (`ccf7ad8`) und `propValueConverters.spec.ts`
-    (`282603b`) liegen in `src/elements/` und laufen in der happy-dom-Suite des
-    Kernpakets mit · kein Detailplan geschrieben: der freigegebene Weg (Ausschluss
-    von `src/elements/**`) löscht heute 874 real gemessene Statements aus dem
-    Report und hebt die Kopfzahl künstlich an, er wäre eine Verschlechterung ·
-    `AGENTS.md:96` und der Coverage-Absatz in `CLAUDE.md` beschreiben den
-    Ist-Zustand weiterhin korrekt, also auch dort nichts nachzuziehen · zurück an
-    den Nutzer, weil das Streichen die Entscheidung vom 2026-08-23 gegenstandslos
-    macht
-- Ergebnis: **entfallen** (Nutzer-Ansage 2026-08-24, siehe »Entscheidungen«).
-  Kein Commit, keine Änderung im Arbeitsbaum. Was vom Finding bleibt — die 377
-  Fälle der Browser-Suite zahlen auf keine Zahl ein — ist der Merge-Schritt, den
-  die Entscheidung vom 2026-08-23 verworfen hat; er kommt in diesem Lauf nicht
-  wieder auf.
-- Nebenbefunde: keine
-- Folgen: keine
-
-### [x] 3a. Die dist-Form des Kernpakets wird gegen eine Erwartung gehalten
-
-- Findings: BUILD-006 (medium), Teil »Kernpaket«
-- Ziel: Ein Fall im vorhandenen `test`-Task hält die sortierte Dateiliste unter
-  `dist` und die Auflösungsschlüssel von `dist/package.json` gegen eine
-  eingecheckte Erwartung; eine Änderung daran wird eine Entscheidung, die jemand
-  treffen muss.
-- Bereich: `packages/shadow-objects/src/` (neuer Fall plus zwei
-  Erwartungsdateien), `CLAUDE.md`, `AGENTS.md`, `CHANGELOG.md` der Wurzel,
-  `Backlog.md`
-- Hängt ab von: —
-- Hash: 16b1609
-- Ergebnis: 2 Runden · BUILD-006 (Teil »Kernpaket«) behoben — neuer Fall in
-  `src/distContract.spec.ts` mit den Erwartungsdateien `distContract.files.txt`
-  und `distContract.package.json`, greift nachweislich (`paket-3a.red1.log`,
-  `paket-3a.red2.log` vor dem Fix rot) · Runde 1 behob die zwei `wichtig`:
-  `types: ["node"]` aus `packages/shadow-objects/tsconfig.json` wieder heraus,
-  stattdessen `/// <reference types="node" />` als erste Zeile im Spec nach der
-  `@vitest-environment`-Direktive, mit Kommentar, der die programmweite Wirkung
-  korrekt benennt statt Dateiisolation zu behaupten; Kommentar vor der
-  `dependencyNames`-Prüfung (Zeilen 93–95) ergänzt, warum Versionsbereiche und
-  `pkg.version` nicht Teil der Erwartung sind · vom Runner am Diff bestätigt,
-  keine weitere Review-Runde nötig · Abweichung von der Empfehlung: die
-  Erwartung an `dist/package.json` hält Schlüssel und Auflösungspfade, aber
-  nicht `version` und nicht die Versionsbereiche der Abhängigkeiten · eigener
-  Verify: `pnpm lint:ci && pnpm typecheck && pnpm build && pnpm test:ci --force`,
-  exit 0, 778 Fälle Kernpaket, 119 Canvas-Paket, 377 Browser-Suite, `dist`
-  weiterhin 218 Dateien (Log `paket-3a.orchestrator-verify.log`)
-- Nebenbefunde: → Queue (toter Biome-Ausschluss auf
-  `packages/shadow-objects/tests`, bereits unter »Offene Befunde« eingetragen)
-- Folgen: keine
-
-### [x] 3b. Die .npm-pkg-Form des Canvas-Pakets wird gegen eine Erwartung gehalten
-
-- Findings: BUILD-006 (medium), Teil »Canvas-Paket«
-- Ziel: Dieselbe Prüfung wie in 3a für `@spearwolf/shae-offscreen-canvas`: die
-  sortierte Dateiliste unter `.npm-pkg` und die Auflösungsschlüssel von
-  `.npm-pkg/package.json` stehen gegen eine eingecheckte Erwartung, geprüft im
-  vorhandenen `test`-Task des Pakets.
-- Bereich: `packages/shae-offscreen-canvas/build.mjs` (Kopierlauf),
-  `packages/shae-offscreen-canvas/src/`, `CLAUDE.md`, `AGENTS.md`,
-  `CHANGELOG.md` der Wurzel, `Backlog.md`
-- Hängt ab von: 3a — Machart, Dateinamen und Format der Erwartungsdateien werden
-  von dort übernommen, statt eine zweite Bauart zu erfinden
-- Hash: —
+- Hash: bdabe1f
 - Modell: mittlere Stufe
-- Dateien: `packages/shae-offscreen-canvas/build.mjs`,
-  `packages/shae-offscreen-canvas/src/distContract.spec.js` (neu),
-  `packages/shae-offscreen-canvas/src/distContract.files.txt` (neu),
-  `packages/shae-offscreen-canvas/src/distContract.package.json` (neu),
-  `CLAUDE.md`, `AGENTS.md`, `CHANGELOG.md`, `Backlog.md`
+- Effort: medium
+- Dateien:
+  - `packages/shadow-objects/src/utils/ConsoleLogger.storage.spec.ts`
+  - `packages/shadow-objects/src/utils/ConsoleLogger.ts`
+  - `packages/shadow-objects/src/worker/WorkerRuntime.ts` (nur der JSDoc-Block
+    über `get logger()`)
+  - `packages/shadow-objects/docs/api-reference.md`
+  - `packages/shadow-objects/CHANGELOG.md`
 - Vorgehen:
-  1. Selbst nachgesehen (Zug 0, auf sauberem Baum nach `16b1609`): ein
-     Build (`pnpm -F @spearwolf/shae-offscreen-canvas build`) erzeugt unter
-     `.npm-pkg` 19 Dateien (`find .npm-pkg -type f`) und ein `package.json` mit
-     den Top-Level-Schlüsseln `author, dependencies, description, exports,
-     homepage, license, main, module, name, publishConfig, repository,
-     sideEffects, type, version` — kein `types`-Schlüssel (das Paket liefert
-     keine Deklarationen), kein `scripts`, kein `devDependencies` (beide über
-     `package.override.json` auf `null` gesetzt). `main`/`module` zeigen beide
-     auf `src/bundle.js`. `exports` hat drei Einträge (`.`, `./shae-offscreen-
-     canvas.js`, `./shadow-objects.js`), je mit einem einzelnen `default`-Pfad.
-     `sideEffects` zählt `src/bundle.js` und `src/shae-offscreen-canvas.js`.
-     `dependencies` sortiert: `@spearwolf/eventize`, `@spearwolf/shadow-objects`,
-     `@spearwolf/signalize`, `three`.
-  2. Anders als beim Kernpaket entsteht `.npm-pkg` durch einen rekursiven
-     Kopierlauf (`cp` mit `recursive: true`) über den ganzen `src/`-Baum, nicht
-     durch ein Glob auf `.ts`/`.js`. Der vorhandene `filter` in `build.mjs`
-     schließt nur `*.spec.{js,ts}` und `*.test.{js,ts}` aus. Die zwei neuen
-     Erwartungsdateien (`distContract.files.txt`, `distContract.package.json`)
-     liegen absichtlich neben dem Spec unter `src/` — dieselbe Bauart wie 3a —,
-     würden vom bestehenden Filter aber mitkopiert und damit Teil des
-     veröffentlichten Pakets, das die eigene Prüfung dann gegen sich selbst
-     führt. Der `filter` in `packages/shae-offscreen-canvas/build.mjs` bekommt
-     deshalb eine zweite Bedingung, die die beiden Dateien exakt beim
-     Basisnamen ausschließt (`distContract.files.txt`,
-     `distContract.package.json`), mit einem kurzen Kommentar, warum: sie sind
-     reine Testfixtures für die Form von `.npm-pkg` und dürfen nicht selbst
-     darin landen.
-  3. `packages/shae-offscreen-canvas/src/distContract.spec.js` neu anlegen,
-     als Übertragung von `packages/shadow-objects/src/distContract.spec.ts`
-     (siehe dort für die genaue Logik der drei Fälle) mit diesen Abweichungen:
-     - Kein `/// <reference types="node" />` und kein `@types/node` als neue
-       Abhängigkeit — dieses Paket hat kein `tsconfig.json`, keinen
-       `typecheck`-Script und ist nicht Teil von `pnpm typecheck`.
-     - Die Kopfzeile `// @vitest-environment node` bleibt (die Datei braucht
-       kein DOM, wie das Schwester-Spec).
-     - `distDir` löst auf `../.npm-pkg` auf, nicht `../dist`.
-     - `beforeAll` wirft, wenn `.npm-pkg` oder `.npm-pkg/package.json` fehlt,
-       mit der Meldung `.npm-pkg is missing or incomplete at ${distDir} — run
-       "pnpm -F @spearwolf/shae-offscreen-canvas build" first.`
-     - Fall 1: sortierte Dateiliste unter `.npm-pkg` gegen
-       `distContract.files.txt`.
-     - Fall 2: `{topLevelKeys, entryPoints: {main, module, types}, exports,
-       sideEffects, dependencyNames}` gegen `distContract.package.json` —
-       `version` und Versionsbereiche der Abhängigkeiten bleiben wie beim
-       Kernpaket außen vor, mit demselben Kommentar (bewegen sich bei jedem
-       Release).
-     - Fall 3: jeder über `main`/`module`/`types`/`exports` erreichbare Pfad
-       existiert unter `.npm-pkg`.
-     - Der Kopfkommentar nennt statt `tsc`/TypeScript den Kopierlauf als
-       Ursache möglichen Driftens, und statt eines Hinweises auf
-       `tsconfig.lib.json` (den gibt es hier nicht) nur den Verweis auf
-       `turbo.json#tasks.test.dependsOn`, das auch für dieses Paket vor `test`
-       baut.
-  4. `pnpm -F @spearwolf/shae-offscreen-canvas build` laufen lassen, danach die
-     zwei Erwartungsdateien **aus dem tatsächlichen Output erzeugen** (Skript
-     oder `find`/`node -e`, nicht von Hand abtippen) — die Werte aus Schritt 1
-     sind die Kontrolle, nicht die Vorlage zum Abschreiben. Anschließend das
-     neue Spec laufen lassen und grün sehen. Kein Regressionstest im Sinn
-     »vorher rot« — dieser Fund ist eine fehlende Prüfung, kein Bug, das
-     Kriterium ist: Spec schlägt fehl, wenn `.npm-pkg` von der Erwartung
-     abweicht (z. B. testweise eine Zeile aus `distContract.files.txt`
-     entfernen und den roten Lauf im Report festhalten, danach zurücksetzen).
-  5. `CLAUDE.md`, Zeile zu `packages/shae-offscreen-canvas` im Abschnitt
-     »Per-package commands«: Satz ergänzen, parallel zum Kernpaket-Eintrag —
-     `src/distContract.spec.js` braucht ein gebautes `.npm-pkg`; `turbo`
-     liefert es über `tasks.test.dependsOn`, ein direkt gestartetes `pnpm
-     watch` braucht vorher einen manuellen Build. Der Abschnitt »Build
-     pipeline notes« bleibt unangetastet — er ist explizit auf
-     `packages/shadow-objects/build.mjs` und dessen vier nummerierte Stufen
-     gemünzt, die dieses Paket nicht hat.
-  6. `AGENTS.md`, die Zeile, die aktuell nur `packages/shadow-objects`'s
-     `test`-Task nennt (»`packages/shadow-objects`'s own `test` task holds its
-     built `dist/` output …«): so erweitern, dass sie beide Pakete nennt —
-     das Kernpaket gegen `dist/`, das Canvas-Paket gegen `.npm-pkg/` über
-     `src/distContract.spec.js`.
-  7. Root-`CHANGELOG.md`: neuer datierter Abschnitt (heutiges Commit-Datum),
-     analog zum bestehenden Eintrag für das Kernpaket — nennt das neue Spec
-     und seine zwei Erwartungsdateien.
-  8. `Backlog.md:392` — die Zeile zur `.npm-pkg`-Form (»entsteht aus einem
-     Kopierlauf … ohne jede Gegenprobe«) ersatzlos streichen, sie ist behoben.
-  9. `packages/shae-offscreen-canvas/build.mjs` ist klein — ganz lesen, bevor
-     die Datei verlassen wird, und alles melden, was sonst darin auffällt und
-     nicht zu diesem Paket gehört.
-- Verify: `pnpm lint:ci && pnpm typecheck && pnpm build && pnpm test:ci --force`
-- Commit: `test(build): the canvas package's .npm-pkg layout is held against a recorded expectation`
-- Hash: bb3d412
-- Ergebnis: 1 Runde · BUILD-006 (Teil Canvas-Paket) behoben — neues Spec
-  `packages/shae-offscreen-canvas/src/distContract.spec.js` gegen die zwei
-  Erwartungsdateien `distContract.files.txt` und `distContract.package.json`,
-  aus dem echten Build-Output erzeugt; Kopierfilter in `build.mjs` hält die
-  zwei Fixtures aus `.npm-pkg` heraus. Nachweis der greifenden Prüfung: eine
-  Zeile aus `distContract.files.txt` entfernt ergab einen roten Lauf, danach
-  wieder grün (vom Runner und unabhängig vom Reviewer je einmal nachgestellt,
-  Reviewer zusätzlich mit einer entfernten `sideEffects`-Zeile). Reviewer ohne
-  `kritisch`/`wichtig`; zwei `klein`: die erweiterte Filterzeile in
-  `build.mjs:24` liegt stilistisch am Rand der Lesbarkeit (keine Änderung
-  nötig, Biome sieht darin nichts), und eine bloß bestätigende Prüfung ohne
-  eigenen Fund zur Backlog-Streichung — beide ohne Folgewirkung, keine Runde
-  ausgelöst. Eigener Verify:
-  `pnpm lint:ci && pnpm typecheck && pnpm build && pnpm test:ci --force`,
-  exit 0, 778 Fälle Kernpaket (unverändert), 122 Fälle Canvas-Paket (119 + 3
-  neue), 377 Fälle Browser-Suite (unverändert), `.npm-pkg` weiterhin ohne die
-  zwei Fixtures (Log `paket-3b.verify.log`)
-- Nebenbefunde: keine
-- Folgen: keine
 
-### [x] 4. Ein abgelehnter `local`-Wechsel erreicht den Aufrufer
+  1. **Regressionstest zuerst, und rot sehen.** Er gehört in
+     `src/utils/ConsoleLogger.storage.spec.ts` und nirgendwo sonst: die
+     Vitest-Umgebung stellt über `vitest.setup.ts` eine funktionierende Storage
+     bereit, `HAS_LOCAL_STORAGE` ist dort also `true` und der Fallback-Zweig
+     wird gar nicht betreten. Nur das vorhandene
+     `importWithLocalStorage({value: {}})` samt `vi.resetModules()` liefert eine
+     frische Modulinstanz ohne nutzbare Storage — den Zustand eines Workers.
 
-- Findings: BUG-026 (medium)
-- Ziel: Der Wechsel wird über den Rückweg abgelehnt, den das Element ohnehin
-  führt — Attribut zurückschreiben, Meldung über den `ConsoleLogger` — statt über
-  einen Throw, der nur am `window` landet.
-- Bereich: `packages/shadow-objects/src/elements/ShaeWorkerElement.ts`, Doku des
-  Attributs
-- Hängt ab von: —
-- Hash: 8424d2c
-- Ergebnis: 2 Runden · BUG-026 behoben — `#refuseLocalChange()` schreibt das
-  Attribut über `reflectAttribute` auf die kanonische Schreibweise zurück und
-  meldet über `logger.error`, statt zu werfen · Regressionstest: die drei Fälle
-  `removing "local" after start() is refused, reported through the console and
-  written back`, `setting "local" to "false" after start() is refused the same
-  way` und `setting "local" to "yes" after start() moves nothing` in
-  `worker-element-attributes.test.js` ersetzen den alten Throw-Fall (vor dem Fix
-  rot, `pnpm -F shadow-objects-testing test`) · Runde 1 behob 1 `wichtig`
-  (`errors[0].join(' ')` jetzt gegen den festen und den differenzierenden
-  Textteil geprüft, Wirksamkeit durch testweise verändertes Substring belegt)
-  und 4 `klein` (Kommentar-Herleitung `error` vs. `warn` in
-  `ShaeWorkerElement.ts` korrigiert, Vorzustandssatz gestrichen, Vorbehalt zum
-  geparkten Rückschreiben in `docs/api-reference.md` ergänzt,
-  `docs/best-practices.md:177` umformuliert und in die CHANGELOG-»Named
-  in«-Liste aufgenommen) · Runde 2 behob 1 weiteren `wichtig`: zwei JSDoc-Blöcke
-  in `ShaeElement.ts` (`reflectAttribute` ~163, `teardown` ~266) behaupteten,
-  geparkte Reflektionen kämen nur aus dem ersten `connectedCallback` — durch
-  `#refuseLocalChange` nicht mehr zutreffend, beide Blöcke korrigiert · nicht
-  vergeben: `klein` zum ungetesteten Worker-Zweig gegen eine echte
-  `RemoteWorkerEnv`, siehe »Offene Befunde« · eigener Verify:
-  `pnpm lint:ci && pnpm typecheck && pnpm build && pnpm test:ci --force`, exit
-  0, 778 Fälle Kernpaket, 122 Fälle Canvas-Paket, 379 Fälle Browser-Suite (Log
-  `paket-4.verify.log`)
-- Nebenbefunde: → Queue (ungetesteter Worker-Zweig von `#refuseLocalChange`
-  gegen eine echte `RemoteWorkerEnv`)
-- Folgen: keine
-
-### [x] 5. Eine nie verbundene `ShadowEnv` wird eingesammelt
-
-- Findings: MEM-009 (medium)
-- Ziel: Der Effekt im Konstruktor hält die Umgebung nicht mehr über die
-  modulweite Signal-Queue am Leben; ein `<shae-worker>`, das nie in ein Dokument
-  kommt, nimmt seine Umgebung mit.
-- Bereich: `packages/shadow-objects/src/view/ShadowEnv.ts`, Fall mit `WeakRef`
-- Hängt ab von: —
-- Hash: b78103f
-- Ergebnis: 3 Runden · MEM-009 behoben — der Effekt hinter `ContextCreated` und
-  `ContextLost` entsteht in `#ensureContextEffect()` beim ersten `view` oder
-  `envProxy`, das etwas trägt, und wird in `destroy()` wieder freigegeben; der
-  Bauschritt läuft in `hibernate()`, damit er nicht Kind eines fremden Effekts
-  wird (`<shae-worker>` weist `view` aus einem `ns$.onChange()`-Callback zu) ·
-  Regressionstest: 7 neue Fälle, davon vor dem Fix rot `builds no effect before
-  it is used`, `collects a ShadowEnv that never received a view or a proxy`
-  (beide `ShadowEnv.spec.ts`) und `collects the shadow environment of a
-  <shae-worker> that is created and never connected`
-  (`elements/elementReachability.spec.ts`); der rote Lauf wurde vom Reviewer
-  unabhängig nachgestellt · Runde 1 behob 2 `wichtig` (die Begründung am
-  `#contextEffect?.destroy()` berief sich auf ein Verhalten von
-  `destroyObjectSignals()`, das signalize 1.0.0-beta.0 nicht zeigt; die
-  beobachtbare `batch()`-Folge des `hibernate()` fehlte in `docs/api-reference.md`
-  und `CHANGELOG.md`) und 1 `klein` (falscher Halbsatz im
-  `hibernate`-Kommentar) · Runde 2 behob 2 `klein`, beide an Sätzen dieses
-  Pakets: die Begründung in `destroy()` galt nur ungebatcht, und »Every later
-  assignment« war in Doku und CHANGELOG als Absolutum falsch — eine leere
-  Zuweisung baut nichts, der Flush hängt an der ersten tragenden · nicht in die
-  Queue gegeben, weil ein Nebenbefund ist, was auch ohne dieses Paket falsch
-  gewesen wäre · Wirksamkeit zweifach mutationsgeprüft: ohne `hibernate()` wird
-  genau der Batch-Fall rot, ohne den `if (ctx)`-Guard genau der Flush-Fall ·
-  eigener Verify: `pnpm lint:ci && pnpm typecheck && pnpm build && pnpm test:ci
-  --force`, exit 0, 785 Fälle Kernpaket (778 + 7), 122 Canvas-Paket, 379
-  Browser-Suite (Log `paket-5.verify.log`); zusätzlich
-  `pnpm -F shadow-objects-e2e test` exit 0, 430 Fälle unverändert (Log
-  `paket-5.e2e.log`)
-- Nebenbefunde: → Queue (toter ESLint-Direktiven-Kommentar an vier Stellen ·
-  `ShadowEnv.ns$` als nie beschriebener öffentlicher Signal-Slot)
-- Folgen: keine
-- Schnittstellen: `ShadowEnv` baut den Effekt hinter `ContextCreated` und
-  `ContextLost` erst bei der ersten Zuweisung an `view` oder `envProxy`, die
-  etwas trägt — `null`/`undefined` baut nichts, `destroy()` gibt ihn frei. Zwei
-  Folgen für Aufrufer: diese eine Zuweisung schiebt einen offenen `batch()` des
-  Aufrufers durch (die Schreibvorgänge des Setters bleiben im Batch), und ein
-  Schreiben auf `viewReady`/`proxyReady` von Hand treibt die Ereignisse nur auf
-  einer Umgebung, die eine ihrer beiden Hälften bekommen hat.
-
-### [x] 6. Der Effekt des Canvas-Elements gehört ihm selbst
-
-- Findings: MEM-010 (medium)
-- Ziel: Ein `append()` aus einem fremden `createEffect()` heraus kann dem
-  Element seine Bindung an die View-Komponente nicht mehr abräumen — dieselbe
-  Abschirmung, die die drei Kern-Elemente bereits fahren.
-- Bereich: `packages/shae-offscreen-canvas/src/elements/ShaeOffscreenCanvasElement.js`
-- Hängt ab von: —
-- Modell: mittlere Stufe
-- Dateien: `packages/shae-offscreen-canvas/src/elements/ShaeOffscreenCanvasElement.js`,
-  `packages/shae-offscreen-canvas/src/elements/ShaeOffscreenCanvasElement.spec.js`,
-  `packages/shae-offscreen-canvas/CHANGELOG.md`, `Backlog.md`
-- Vorgehen:
-  1. Abgleich vom Runner (Zug 0, auf sauberem Baum nach `b78103f`): der Befund
-     steht unverändert. `#setupViewComponentEffect()`
-     (`ShaeOffscreenCanvasElement.js:122-151`) ruft `createEffect()` ungeschützt,
-     `connectedCallback()` (Zeile 208-214) ruft es als erste Anweisung, und der
-     Kommentar darüber (Zeile 114-121) beschreibt die Anfälligkeit als
-     fortbestehenden Vorbehalt.
-  2. Die Vorlage steht im Repository und wird übernommen, nicht neu erfunden:
-     `ShaeElement.connectedCallback` (`packages/shadow-objects/src/elements/ShaeElement.ts:193-201`)
-     legt den **ganzen Rumpf** des `connectedCallback` in `hibernate()` aus
-     `@spearwolf/signalize`; `ShaeEntElement` (Zeile 511), `ShaePropElement`
-     (Zeile 320) und `ShaeWorkerElement` (Zeile 249) machen es genauso, und die
-     Rahmen schachteln sich ohne Weiteres. Für dieses Element heißt das: der
-     ganze Rumpf von `connectedCallback()` wandert in `hibernate(() => { … })`,
-     nicht nur der Aufruf von `#setupViewComponentEffect()` — auch
-     `this.frameLoopIsRunning = true` schreibt über
-     `viewComponent.setProperty()` in Signale, und was dabei gelesen wird, darf
-     kein fremder Effekt in seine Abhängigkeiten aufnehmen. `hibernate` wird der
-     bestehenden Import-Zeile aus `@spearwolf/signalize` (Zeile 4) hinzugefügt;
-     das Paket hat die Abhängigkeit bereits, es kommt keine neue dazu.
-  3. Der Kommentar über `#setupViewComponentEffect()` (Zeile 114-121) trägt ab
-     Satz 3 (»That holds as long as connectedCallback() runs outside of another
-     signal effect's callback: …«) eine Einschränkung, die nach der Änderung
-     nicht mehr gilt. Er wird umgeschrieben: die ersten zwei Sätze (Effekt lebt
-     nur, solange das Element im Dokument steht) bleiben der Sache nach stehen,
-     der Vorbehalt weicht der Begründung, die am `hibernate()`-Aufruf selbst
-     steht. Am `hibernate()` in `connectedCallback()` steht ein Kommentar in der
-     Machart von `ShaeElement.connectedCallback`: warum der Rumpf außerhalb des
-     reaktiven Kontexts des Aufrufers läuft — `createEffect()` hängt einen neuen
-     Effekt an den gerade laufenden, dessen nächster Lauf ihn wieder abräumt, und
-     das Element würde verstummen, ohne dass jemand etwas zerstört hätte.
-     Konvention beachten: kein Rückblick auf den Vorzustand, keine Finding-ID,
-     Englisch.
-  4. Regressionstest zuerst, rot gesehen, **bevor** Schritt 2 und 3 laufen. Ort:
-     `packages/shae-offscreen-canvas/src/elements/ShaeOffscreenCanvasElement.spec.js`,
-     im `describe('what the element answers while it is in the document')`
-     (ab Zeile 219). Machart nach dem Vorbild
-     `packages/shadow-objects/src/elements/elementReachability.spec.ts:176-199`
-     (»keeps a <shae-ent> that was appended from inside a foreign effect working
-     when that effect runs again«): ein `createSignal()` als Auslöser, ein
-     `createEffect()`, das dieses Signal liest und das Element anhängt, solange
-     es nicht verbunden ist; danach das Signal setzen, damit der fremde Effekt
-     ein zweites Mal läuft; danach `emit(el.viewComponent,
-     RequestOffscreenCanvas)` und erwarten, dass der Spy auf
-     `el.canvas.transferControlToOffscreen` gerufen wurde (dieselbe Prüfung wie
-     im Fall »an element put back into the document answers again«, Zeile
-     241-251). Am Ende `foreign.destroy()`. Das Element entsteht über
-     `createWithNamespace()` mit einem eigenen, laufend nummerierten Namespace
-     wie in `connect()` (Zeile 106-116), bekommt `el.logger.enable = false` und
-     wird in `connectedElements` abgelegt, damit das `afterEach` (Zeile 188-199)
-     es abräumt. `createEffect` und `createSignal` kommen aus
-     `@spearwolf/signalize`, das im Spec noch nicht importiert ist. Der rote Lauf
-     (`pnpm -F @spearwolf/shae-offscreen-canvas exec vitest src/elements/ShaeOffscreenCanvasElement.spec.js --run`)
-     gehört mit seiner Ausgabe in den Report.
-  5. `packages/shae-offscreen-canvas/CHANGELOG.md`, unter `## [Unreleased]`: ein
-     Eintrag, der sagt, dass die Anmeldungen des Elements dem Element gehören,
-     wer immer es anhängt — `connectedCallback` läuft außerhalb des reaktiven
-     Kontexts des Aufrufers. Der gleichlautende Eintrag des Kernpakets
-     (`packages/shadow-objects/CHANGELOG.md`, Eintrag »the subscriptions of an
-     element belong to the element, whoever put it into the document«) nennt als
-     beobachtbare Folge, dass ein offener `batch()` des Aufrufers vor dem Connect
-     durchgeschoben wird. Diese Folge gilt hier genauso, **wenn** sie sich am
-     installierten signalize (1.0.0-beta.0) tatsächlich zeigt: erst nachsehen
-     (die Doku der Bibliothek liegt unter
-     `node_modules/@spearwolf/signalize/docs/`, dazu gibt es den Skill
-     `using-signalize`), dann schreiben, was hält. Zeigt sie sich nicht, bleibt
-     der Satz weg und der Report sagt warum. Der Eintrag steht in der Reihung der
-     vorhandenen Stichpunkte, nicht in einem neuen Abschnitt, und beschreibt den
-     Zustand, nicht die Umstellung.
-  6. `Backlog.md:289` — die Zeile des vitest-Inventars für
-     `packages/shae-offscreen-canvas` nennt 5 Dateien und 118 Fälle; beides
-     stimmt nicht mehr (`distContract.spec.js` ist dazugekommen, die Fallzahl ist
-     gewachsen). Ebenso Zeile 287 für das Kernpaket (23 Dateien, 775 Fälle) und
-     Zeile 291 für die Browser-Suite (377 Fälle). Alle drei Zeilen auf die Zahlen
-     bringen, die **der eigene Verify-Lauf** ausweist — Dateilisten eingeschlossen
-     (`distContract.spec.ts` beim Kernpaket, `distContract.spec.js` beim
-     Canvas-Paket). Abschnitt 4.2 bleibt unangetastet: seine Prozentzahlen tragen
-     ein Messdatum und sind damit keine falsche Aussage.
-  7. `ShaeOffscreenCanvasElement.js` ist überschaubar — ganz lesen, bevor die
-     Datei verlassen wird, und alles melden, was darin sonst auffällt und nicht
-     zu diesem Paket gehört. Für `AGENTS.md` wurde vom Runner nachgesehen: keine
-     Zeile dort beschreibt dieses Verhalten, es ist nichts nachzuziehen. Auch
-     `README.md` und `docs/01-shadow-objects-api.md` des Canvas-Pakets sagen
-     nichts über Anmeldungen oder den Lebenszyklus des Elements.
-- Verify: `pnpm lint:ci && pnpm typecheck && pnpm build && pnpm test:ci --force`
-- Commit: `fix(canvas): the canvas element's subscriptions belong to the element, whoever appends it`
-- Hash: 4622161
-- Ergebnis: 1 Runde · MEM-010 behoben — der ganze Rumpf von `connectedCallback()`
-  läuft in `hibernate()` aus `@spearwolf/signalize`, wie bei den drei
-  Kern-Elementen; der Effekt aus `#setupViewComponentEffect()` gehört damit dem
-  Element, wer immer es anhängt · Regressionstest `keeps an element that was
-  appended from inside a foreign effect working when that effect runs again`
-  (`ShaeOffscreenCanvasElement.spec.js`), vor dem Fix rot mit
-  `expected "transferControlToOffscreen" to be called at least once`, vom
-  Reviewer unabhängig auf dem Vorzustand nachgestellt · Kommentar über
-  `#setupViewComponentEffect()` von der Vorbehalts- auf die Begründungsform
-  gebracht · `Backlog.md` §4.1: die drei undatierten Inventarzeilen (Kernpaket,
-  Canvas-Paket, Browser-Suite) auf die Zahlen des Verify-Laufs gebracht, die
-  §4.2-Prozentzahlen bleiben stehen, weil sie ein Messdatum tragen · Reviewer
-  ohne `kritisch`/`wichtig`; ein `klein`: der CHANGELOG-Eintrag erzählt mit
-  »used to« den Vorzustand — bewusst hingenommen nach demselben Maß wie in
-  Paket 1, weil der Satz auch ohne den Vorzustand trägt und die Nachbareinträge
-  derselben Datei durchgängig so geschrieben sind · die `batch()`-Aussage des
-  Eintrags gegen `hibernate.d.ts` von signalize 1.0.0-beta.0 belegt, von
-  Implementierer und Reviewer je einzeln · eigener Verify:
-  `pnpm lint:ci && pnpm typecheck && pnpm build && pnpm test:ci --force`, exit 0,
-  785 Fälle Kernpaket (unverändert), 123 Fälle Canvas-Paket (122 + 1), 379 Fälle
-  Browser-Suite (unverändert), Log `paket-6.verify.log`
-- Nebenbefunde: keine
-- Folgen: keine
-- Schnittstellen: `<shae-offscreen-canvas>` führt seinen `connectedCallback` außerhalb
-  des reaktiven Kontexts des Aufrufers. Beobachtbar ist die Folge für einen
-  offenen `batch()`: er wird vor dem Connect durchgeschoben, seine Effekte laufen
-  also vor dem `append()` statt beim Schließen des Batches.
-
-**MEM-010 · medium · packages/shae-offscreen-canvas/src/elements/ShaeOffscreenCanvasElement.js:113-120** — Der Effekt des Canvas-Elements kann einem fremden Effekt-Kontext zufallen
-
-connectedCallback legt seinen Effekt ohne Schutz vor einem umgebenden
-Effekt-Kontext an. Ein append() aus einem createEffect() des Anwenders heraus
-übereignet den Effekt diesem fremden Effekt, dessen nächster Lauf ihn abräumt —
-das Element verliert seine Bindung an die View-Komponente, ohne dass jemand etwas
-zerstört hätte. Der Kommentar über dem Feld beschreibt die Anfälligkeit wörtlich.
-Vorbestehend: der createEffect steht an derselben Stelle schon vor diesem
-Remediation-Lauf. Dieselbe Anfälligkeit ist für shae-ent, shae-prop und
-shae-worker inzwischen geschlossen; das Canvas-Element trägt sie weiter.
-
-Empfehlung: Den Effekt in denselben Rahmen setzen, den die drei Kern-Elemente
-jetzt benutzen: die Anmeldung läuft dort in einer Abschirmung, die keinen
-umgebenden Effekt-Kontext erben lässt. Ein Fall, der das Element aus einem
-createEffect() heraus anhängt und danach den Effekt des Anwenders laufen lässt,
-belegt die Wirkung.
-
-### [x] 7. Ein Modul ohne `shadowObjects`-Export scheitert in beiden Umgebungen gleich
-
-- Findings: CONS-010 (medium)
-- Ziel: `LocalShadowObjectEnv` lehnt den fehlenden Export mit derselben Botschaft
-  ab, die der `MessageRouter` auf die Leitung legt. Die Zusage »derselbe Code,
-  nur ein anderer Proxy« trägt auch hier.
-- Bereich: `packages/shadow-objects/src/view/LocalShadowObjectEnv.ts` gegen
-  `worker/MessageRouter.ts`
-- Hängt ab von: —
-- Hash: 780b75b
-- Modell: mittlere Stufe
-- Dateien: `packages/shadow-objects/src/in-the-dark/importModule.ts`,
-  `packages/shadow-objects/src/view/LocalShadowObjectEnv.ts`,
-  `packages/shadow-objects/src/worker/MessageRouter.ts`,
-  `packages/shadow-objects/src/view/LocalShadowObjectEnv.spec.ts`,
-  `packages/shadow-objects/docs/api-reference.md`,
-  `packages/shadow-objects/CHANGELOG.md`
-- Vorgehen:
-  1. Abgleich vom Runner (Zug 0, auf sauberem Baum nach `4622161`): der Befund
-     steht unverändert, die Zeilen sind gewandert.
-     `LocalShadowObjectEnv.importScript()` steht auf Zeile 69-74 und prüft
-     `module[ShadowObjectsExport]` mit einem `if` ohne `else`; fehlt der Export,
-     wird nichts registriert, nichts gemeldet, und die Promise erfüllt sich.
-     `MessageRouter.#configure()` (Zeile 112-121) hat für denselben Fall einen
-     `else`-Zweig und legt `{type: ImportedModule, url, error: 'module has no
-     "shadowObjects" export'}` auf die Leitung; `RemoteWorkerEnv.importScript()`
-     (Zeile 374-384) wirft dieses `error`-Feld aus seinem Guard heraus, die
-     Promise lehnt also ab.
-  2. Der Wortlaut bekommt eine einzige Quelle, damit die beiden Seiten nicht
-     erneut auseinanderlaufen — genau das ist die Krankheit dieses Befunds. In
-     `packages/shadow-objects/src/in-the-dark/importModule.ts` (beide Seiten
-     importieren aus dieser Datei bereits `importModule`, sie liegt in keinem
-     `export *` von `src/index.ts` und ist damit keine öffentliche Oberfläche)
-     kommt neben die Funktion:
+     Die statische Importzeile 2 der Spec um den Typ erweitern:
 
      ```ts
-     export const missingShadowObjectsExportMessage = `module has no "${ShadowObjectsExport}" export`;
+     import {CONSOLE_LOGGER, CONSOLE_LOGGER_STORAGE, type ConsoleLoggerConfig} from './ConsoleLogger.js';
      ```
 
-     Dazu ein JSDoc-Block, der sagt, wofür der Wert da ist: die Worker-Seite legt
-     ihn als `error`-Feld ihrer `ImportedModule`-Antwort auf die Leitung, die
-     lokale Seite lehnt `importScript()` mit einem `Error` ab, der ihn trägt —
-     ein Wortlaut an einer Stelle. Der Import von `ShadowObjectsExport` aus
-     `../constants.js` kommt in `importModule.ts` neu dazu; ein Zyklus entsteht
-     nicht, `constants.ts` importiert nur aus `types.ts`.
-  3. `MessageRouter.ts:119` benutzt die neue Konstante statt des eigenen
-     Template-Strings. Der ausgehende Text ändert sich dabei nicht — der Fall
-     `reports a module without the shadow-objects export` in
-     `MessageRouter.spec.ts:230` hält den Wortlaut wörtlich fest und bleibt grün.
-     Dieser Fall ist ab hier auch der Anker für den lokalen Zweig: eine Änderung
-     am Wortlaut färbt ihn rot.
-  4. `LocalShadowObjectEnv.importScript()` bekommt den Gegenzweig:
+     Zwei Fälle ans Ende des `describe`-Blocks. Der erste ist der
+     Regressionstest, der zweite hält die Reihenfolge fest, die ein Worker
+     tatsächlich fährt (Config zuerst, Logger danach) und ist schon heute grün:
 
      ```ts
-     async importScript(url: URL | string): Promise<void> {
-       const module = await import(/* @vite-ignore */ toUrlString(url));
-       if (!module[ShadowObjectsExport]) {
-         throw new Error(missingShadowObjectsExportMessage);
+     it('reaches the loggers of a thread that already built one', async () => {
+       const {ConsoleLogger, setConsoleLoggerStorage} = await importWithLocalStorage({value: {}});
+
+       new ConsoleLogger('early-namespace');
+
+       const forwarded: ConsoleLoggerConfig = {
+         enable: true,
+         debug: true,
+         info: true,
+         warn: true,
+         'styles.debug': ConsoleLogger.sharedStyles.debug,
+         'styles.info': ConsoleLogger.sharedStyles.info,
+         'styles.warn': ConsoleLogger.sharedStyles.warn,
+         'styles.error': ConsoleLogger.sharedStyles.error,
+         'late-namespace.enable': false,
+       };
+
+       setConsoleLoggerStorage(forwarded);
+
+       expect(ConsoleLogger.sharedConfig.debug, 'the shared config takes the installed value').toBe(true);
+       expect(ConsoleLogger.isDebug, 'and the loggers of the thread read it').toBe(true);
+       expect(new ConsoleLogger('late-namespace').enable, 'a per-namespace key stays readable').toBe(false);
+     });
+
+     it('takes a config installed before the first logger of the thread', async () => {
+       const {ConsoleLogger, setConsoleLoggerStorage} = await importWithLocalStorage({value: {}});
+
+       const forwarded: ConsoleLoggerConfig = {
+         enable: true,
+         debug: true,
+         info: true,
+         warn: true,
+         'styles.debug': ConsoleLogger.sharedStyles.debug,
+         'styles.info': ConsoleLogger.sharedStyles.info,
+         'styles.warn': ConsoleLogger.sharedStyles.warn,
+         'styles.error': ConsoleLogger.sharedStyles.error,
+         'early-namespace.enable': false,
+       };
+
+       setConsoleLoggerStorage(forwarded);
+
+       expect(new ConsoleLogger('early-namespace').enable, 'the per-namespace key is read on construction').toBe(false);
+       expect(ConsoleLogger.sharedConfig.debug, 'the installed value survives the merge').toBe(true);
+     });
+     ```
+
+     Das Objekt trägt bewusst keinen Symbol-Schlüssel: was über
+     `postMessage` kommt, hat den Structured Clone hinter sich, und der lässt
+     Symbole fallen.
+
+     Roten Lauf so erzeugen und die Ausgabe in den Report übernehmen — die
+     ersten beiden Erwartungen des ersten Falls müssen fehlschlagen
+     (`debug` ist `false`), die dritte und der zweite Fall sind grün:
+
+     ```
+     pnpm -F @spearwolf/shadow-objects exec vitest --run src/utils/ConsoleLogger.storage.spec.ts
+     ```
+
+  2. **`setConsoleLoggerStorage()` in `src/utils/ConsoleLogger.ts`** — der
+     ganze Block Zeile 130–137 (JSDoc und Funktion) wird durch diesen ersetzt:
+
+     ```ts
+     /**
+      * Installs a config object as the fallback store, bypassing the storage probe. `WorkerRuntime`
+      * calls this with the config a `RemoteWorkerEnv` forwards from the main thread, where there is no
+      * `localStorage` to probe in the first place.
+      *
+      * Once a logger exists in such a thread, `ConsoleLogger.sharedConfig` *is* that store, and the
+      * values are written into it rather than a fresh object taking its place in the slot: the shared
+      * switches reach every logger of the thread, the ones already built included. One flag stays
+      * behind -- a logger reads its own `<namespace>.enable` key when it is built, and a config that
+      * arrives afterwards no longer moves it.
+      */
+     export function setConsoleLoggerStorage(config: ConsoleLoggerConfig): void {
+       const store = gGlobalSlots.ConsoleLoggerStorage;
+       if (store != null && store === ConsoleLogger.sharedConfig) {
+         // the marker travels with the merge: it says this object is the live config, and a config
+         // that crossed a worker boundary carries no symbol key to say so for itself
+         Object.assign(store, config, {[ConsoleLogger$]: true});
+         return;
        }
-       await this.importModule(module[ShadowObjectsExport]);
+       gGlobalSlots.ConsoleLoggerStorage = config;
      }
      ```
 
-     Ein kurzer Kommentar daneben begründet, warum abgelehnt und nicht bloß
-     geschwiegen wird: ein Modul, dem der Export fehlt, ist in beiden Umgebungen
-     falsch, und wer lokal entwickelt, soll es dort erfahren und nicht erst beim
-     Umschalten auf einen Worker. Konvention beachten: Englisch, kein Rückblick
-     auf den Vorzustand, keine Finding-ID.
-  5. Der Träger des Wortlauts ist bewusst **nicht** derselbe wie auf der
-     Worker-Strecke, und das gehört benannt statt verschwiegen: der Router kann
-     nur eine Zeichenkette auf die Leitung legen, `RemoteWorkerEnv` reicht sie
-     unverändert durch (`RemoteWorkerEnv.spec.ts:670` hält fest, dass dort eine
-     nackte Zeichenkette ankommt), lokal wird ein `Error` mit demselben Text
-     abgelehnt. Gleich ist damit, **dass** und **womit begründet** abgelehnt
-     wird; unterschiedlich bleibt der Typ des Ablehnungsgrundes. Die Strecke
-     Worker → View auf eine Fehlerklasse umzustellen, wäre eine Änderung an der
-     öffentlichen Oberfläche der Remote-Umgebung und steht nicht in diesem Paket
-     — sie ist als Nebenbefund notiert, siehe »Offene Befunde«. Nicht selbst
-     mitnehmen.
-  6. Regressionstest zuerst, rot gesehen, **bevor** Schritt 2 bis 4 laufen. Ort:
-     `packages/shadow-objects/src/view/LocalShadowObjectEnv.spec.ts`, ein neues
-     `describe('importScript', …)` am Ende, vor dem schließenden
-     `describe('LocalShadowObjectEnv')`. Machart nach dem Vorbild von
-     `MessageRouter.spec.ts` (`describe('module import')`, Zeile 186-232): die
-     Modul-URLs sind `data:`-URLs, `toUrlString()` reicht sie unverändert durch,
-     und der Loader importiert sie — das läuft in derselben happy-dom-Umgebung,
-     `MessageRouter.spec.ts` trägt keine eigene `@vitest-environment`-Direktive.
-     Zwei Fälle:
-     - `refuses a module without the shadow-objects export`: eine Umgebung mit
-       eigener Registry (`new LocalShadowObjectEnv(new Registry())`), dann
-       `await expect(env.importScript('data:text/javascript,export const nothing = 1'))
-       .rejects.toThrow('module has no "shadowObjects" export')`. Am Ende
-       `env.destroy()`. Dieser Fall ist der rote: heute erfüllt sich die Promise.
-     - `imports a module that has the export`: dieselbe Machart mit
-       `'data:text/javascript,export const shadowObjects = {define: {"env-import-token": class {}}}'`,
-       danach `expect(env.registry.hasToken('env-import-token')).toBe(true)`, am
-       Ende `env.destroy()`. Er hält fest, dass der neue Zweig nur den fehlenden
-       Export ablehnt und nicht den gesunden Fall mit. Der rote Lauf des ersten
-       Falls (`pnpm -F @spearwolf/shadow-objects exec vitest src/view/LocalShadowObjectEnv.spec.ts --run`)
-       gehört mit seiner Ausgabe in den Report.
-  7. `packages/shadow-objects/docs/api-reference.md`, Abschnitt
-     `### LocalShadowObjectEnv`, Methodentabelle, Zeile `importScript(url)`
-     (steht heute bei Zeile 1467 und sagt nur »Import a shadow objects module
-     from a URL.«): ergänzen, dass ein Modul ohne den `shadowObjects`-Export
-     abgelehnt wird, mit dem Wortlaut, den auch die Worker-Seite meldet. Die
-     Zeile `importScript(url)` in der Methodentabelle von `### RemoteWorkerEnv`
-     (Zeile 1517) bekommt denselben Zusatz und dazu den Unterschied im Träger:
-     dort kommt der Wortlaut als die Zeichenkette an, die über die Leitung kam,
-     lokal als `Error`. Vorbild für die Machart einer benannten Restdifferenz ist
-     der Satz in derselben Datei bei Zeile 1549 (»A `LocalShadowObjectEnv`
-     delivers such a message, so this is the one point at which the two
-     environments do not end alike«). `README.md` des Pakets (Zeile 7) und
-     `docs/best-practices.md:177` sagen zu, dass nur der Proxy wechselt; beide
-     werden durch diese Änderung richtiger und bleiben unangetastet.
-  8. `packages/shadow-objects/CHANGELOG.md`, unter `## [Unreleased]` in den
-     Abschnitt `### Behavior`, als letzter Stichpunkt der Reihung (es gibt dort
-     bereits einen Eintrag `**Behavior (environments):**`, an dessen Machart sich
-     der neue hält): `LocalShadowObjectEnv.importScript()` lehnt ein Modul ohne
-     `shadowObjects`-Export ab, mit demselben Wortlaut, den die Worker-Seite
-     meldet. Zwei Folgen gehören dazu: eine Anwendung, die diese Promise
-     beobachtet, bekommt jetzt eine Ablehnung; und ein
-     `<shae-worker local src="…">` auf ein solches Modul meldet über
-     `logger.error` (`ShaeWorkerElement.#onUnobservedRejection`, dieselbe Zeile,
-     die die Worker-Variante schon schreibt), wo der deklarative Weg vorher still
-     blieb. Der Einleitungsabsatz über der Liste (»Fifty changes reach existing
-     consumers«) wird nicht angefasst — die Pakete davor haben ihn ebenfalls
-     stehen lassen.
-  9. Die vier angefassten Quelldateien sind überschaubar — jede ganz lesen, bevor
-     sie verlassen wird, und alles melden, was darin auffällt und nicht zu diesem
-     Paket gehört. Für `AGENTS.md` wurde vom Runner nachgesehen: keine Zeile dort
-     beschreibt das Verhalten der beiden Umgebungen beim Modulimport, es ist
-     nichts nachzuziehen. `docs/cheat-sheet.md` und `docs/guides.md` nennen
-     `importScript()` nur als Aufruf im Wiederaufbau-Rezept, ohne Aussage über
-     sein Scheitern.
-- Verify: `pnpm lint:ci && pnpm typecheck && pnpm build && pnpm test:ci --force`
-- Commit: `fix(view): the local environment refuses a module without the shadow-objects export`
-- Ergebnis: 1 Runde · CONS-010 behoben — `LocalShadowObjectEnv.importScript()`
-  lehnt ein Modul ohne den `shadowObjects`-Export mit einem `Error` ab, dessen
-  Wortlaut aus derselben Quelle stammt, die der `MessageRouter` auf die Leitung
-  legt (`missingShadowObjectsExportMessage` in `src/in-the-dark/importModule.ts`)
-  · Regressionstest `refuses a module without the shadow-objects export`
-  (`LocalShadowObjectEnv.spec.ts`), vor dem Fix rot mit `AssertionError: promise
-  resolved "undefined" instead of rejecting`, vom Reviewer unabhängig auf dem
-  Vorzustand nachgestellt; der zweite neue Fall `imports a module that has the
-  export` hält fest, dass der gesunde Weg unberührt bleibt · bewusst
-  unterschiedlich geblieben und in `docs/api-reference.md` in beiden
-  Methodentabellen benannt: der Träger des Ablehnungsgrundes — über die
-  Worker-Grenze die Zeichenkette, die die Leitung trägt, lokal ein `Error` mit
-  demselben Text · Reviewer ohne `kritisch`/`wichtig`; ein `klein`: der
-  CHANGELOG-Eintrag erzählt mit »before« den Vorzustand — bewusst hingenommen
-  nach demselben Maß wie in Paket 1 und 6, weil der Satz auch ohne den
-  Vorzustand trägt und die Nachbareinträge derselben Datei durchgängig so
-  geschrieben sind · eigener Verify:
-  `pnpm lint:ci && pnpm typecheck && pnpm build && pnpm test:ci --force`, exit 0,
-  787 Fälle Kernpaket (785 + 2), 123 Canvas-Paket (unverändert), 379
-  Browser-Suite (unverändert), Log `paket-7.verify.log`
-- Nebenbefunde: → Queue (der Ablehnungsgrund eines fehlgeschlagenen Imports
-  reist als nackte Zeichenkette über die Worker-Grenze · `#onDestroy(data: any)`
-  im `MessageRouter`)
-- Folgen: keine
-- Schnittstellen: `LocalShadowObjectEnv.importScript()` lehnt ab, wenn das
-  geladene Modul keinen `shadowObjects`-Export trägt — `Error` mit dem Text
-  `module has no "shadowObjects" export`; bis dahin erfüllte sich die Promise.
-  Der Wortlaut hat ab hier genau eine Quelle:
-  `missingShadowObjectsExportMessage`, exportiert aus
-  `packages/shadow-objects/src/in-the-dark/importModule.ts` und von beiden
-  Seiten benutzt (die Datei steht in keinem `export *` von `src/index.ts`, ist
-  also keine öffentliche Oberfläche). Wer `MessageRouter.#configure()` anfasst,
-  arbeitet ab jetzt gegen diese Konstante statt gegen ein Inline-Template.
+     Die Identitätsprüfung ist die Bedingung, auf die es ankommt, und sie hält
+     die Änderung auf den Zweig ohne `localStorage` fest: nur dort setzt
+     `loadConfig()` `sharedConfig` auf den Slot. Im Hauptthread mit echter
+     Storage ist sie nie wahr, dort bleibt es beim Zuweisen. Der Vorgriff auf
+     `ConsoleLogger` aus einer Funktion, die über der Klasse steht, ist geprüft
+     und compiliert unter `tsc --strict`.
 
-**CONS-010 · medium · packages/shadow-objects/src/view/LocalShadowObjectEnv.ts:69-74 gegenüber worker/MessageRouter.ts:111-120** — Ein Modul ohne shadowObjects-Export scheitert im Worker und bleibt lokal stumm
+  3. **`src/worker/WorkerRuntime.ts`** — der JSDoc-Block über `get logger()`
+     (Zeile 10–22) behauptet eine Folge, die es nach Schritt 2 nicht mehr gibt.
+     Der lazy Bau bleibt, seine Begründung schrumpft auf das, was trägt:
 
-Beide Umgebungen importieren ein Modul und suchen darin den benannten Export
-shadowObjects. Findet der MessageRouter ihn nicht, antwortet er der View mit
-ImportedModule samt error-Feld — importScript() lehnt ab, und das ist auf der
-View-Seite sichtbar. LocalShadowObjectEnv prüft dieselbe Bedingung mit einem if
-ohne else: kein Export, keine Registrierung, keine Meldung, und die
-zurückgegebene Promise erfüllt sich. Ein Tippfehler im Export-Namen oder ein
-Default-Export statt des benannten fällt lokal nicht auf und schlägt beim
-Umschalten auf <shae-worker> zu — in genau der Richtung, in der README und Doku
-Gleichheit zusagen: derselbe Shadow-Object-Code, nur ein anderer Proxy. Der
-Unterschied kostet keinen Test, er kostet die Zusage.
-
-Empfehlung: Den fehlenden Export lokal genauso behandeln: ablehnen mit derselben
-Botschaft, die der Router auf die Leitung legt. Wo das bewusst nachsichtig
-bleiben soll, gehört mindestens eine Logger-Warnung hin und ein Satz in die Doku,
-der die beiden Umgebungen an dieser Stelle auseinanderhält.
-
-### [x] 8. Ein Lebenszyklus-Hook unter falschem Namen meldet sich
-
-- Findings: API-002 (medium)
-- Ziel: Wer einen der vier Hooks als Zeichenkette schreibt, bekommt eine Zeile
-  über den `ConsoleLogger` statt eines stillen Fehlschlags; die verbliebenen
-  ausgelieferten Fundstellen zeigen das richtige Muster, das `sample`-Verzeichnis
-  zuerst.
-- Bereich: `packages/shadow-objects/src/in-the-dark/Kernel.ts`,
-  `packages/shae-offscreen-canvas/src/shadow-objects/sample/`
-- Hängt ab von: —
-- Hash: b32999b
-- Modell: mittlere Stufe (Implementierer), mittlere Stufe (Reviewer)
-- Dateien: `packages/shadow-objects/src/in-the-dark/Kernel.ts`,
-  `packages/shadow-objects/src/in-the-dark/Kernel.spec.ts`,
-  `packages/shadow-objects/docs/cheat-sheet.md`,
-  `packages/shadow-objects/CHANGELOG.md`,
-  `packages/shae-offscreen-canvas/src/shadow-objects/sample/CubeScene.js`,
-  `packages/shae-offscreen-canvas/src/shadow-objects/sample/TestImage2OnCanvas2D.js`,
-  `packages/shae-offscreen-canvas/CHANGELOG.md`
-- Vorgehen:
-  1. Zuerst der Regressionstest, rot gesehen, in
-     `packages/shadow-objects/src/in-the-dark/Kernel.spec.ts`. Ein neues
-     `describe('a lifecycle hook written under its string name')` mit drei
-     Fällen, alle nach dem Muster, das die Datei schon fährt
-     (`const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});`,
-     am Ende `consoleError.mockRestore()`):
-     - Ein Shadow Object, das `onDestroy() {}` als gewöhnliche Methode trägt und
-       das Symbol `onDestroy` nicht, wird über `Registry`/`ShadowObject` an einer
-       Entity angelegt; `console.error` ist danach genau einmal gerufen worden,
-       und die Argumente enthalten den Namen `onDestroy` und den `displayName`
-       des Konstruktors.
-     - Ein Shadow Object, das `[onDestroy](entity) {}` unter dem Symbol trägt,
-       erzeugt keinen Aufruf von `console.error`.
-     - Ein Shadow Object, das beides trägt — `[onDestroy]` als Symbol **und**
-       eine gewöhnliche Methode `onDestroy` —, erzeugt ebenfalls keinen Aufruf:
-       gemeldet wird nur die Zeichenkette ohne das zugehörige Symbol.
-     Der rote Lauf ist
-     `pnpm -F @spearwolf/shadow-objects exec vitest src/in-the-dark/Kernel.spec.ts --run`
-     und gehört mit seiner Ausgabe in den Report.
-  2. `Kernel.ts`: den Import in Zeile 16 um `onViewEvent` erweitern, sodass alle
-     vier Symbole zur Verfügung stehen (`onCreate`, `onDestroy`,
-     `onParentChanged`, `onViewEvent`).
-  3. `Kernel.ts`: auf Modulebene, neben `getDisplayName` (Zeile 48), eine
-     Konstantentabelle der vier Paare anlegen, z. B.
-     `const LIFECYCLE_HOOKS: [string, symbol][] = [['onCreate', onCreate], ['onDestroy', onDestroy], ['onParentChanged', onParentChanged], ['onViewEvent', onViewEvent]];`
-  4. `Kernel.ts`, `attachShadowObject(shadowObject, entity)` (Zeile 816): vor
-     `on(entity, shadowObject)` über die Tabelle laufen. Trägt die Instanz unter
-     dem Zeichenketten-Namen eine Funktion (`typeof (shadowObject as any)[name] === 'function'`)
-     und unter dem Symbol keine (`typeof (shadowObject as any)[symbol] !== 'function'`),
-     wird je Treffer eine Zeile ausgegeben. Der Anzeigename kommt aus derselben
-     Quelle wie in `#notifyShadowObjectDestroy()`:
-     `this.#shadowObjectScopes.get(shadowObject)?.displayName` — `attachShadowObject()`
-     läuft nach `#shadowObjectScopes.set(...)` in `constructShadowObject()`, der
-     Eintrag steht also.
-     Die Ausgabe geht über `this.logger.error(...)`, nicht `warn`: `logger.warn`
-     hängt an `ConsoleLogger.sharedConfig.enable`, das außerhalb von `localhost`
-     aus ist, und ein Hook, der genau deshalb still bleibt, ist der Fehler, um
-     den es hier geht. Dieselbe Begründung steht bereits ausgeschrieben an
-     `ShaeWorkerElement.ts:439-442`; ein Kommentar an der neuen Stelle nennt sie
-     in eigenen Worten, ohne die andere Datei nachzuerzählen.
-     Der Wortlaut nennt drei Dinge — den Hook-Namen, den Anzeigenamen des Shadow
-     Objects und den Weg heraus, etwa:
-     `` this.logger.error(`the "${name}" lifecycle hook is a plain method and is never called; use the [${name}] symbol from "@spearwolf/shadow-objects/shadow-objects.js":`, displayName); ``
-     Ein Inline-Kommentar erklärt, *warum* es die Prüfung gibt: die vier Hooks
-     sind Symbole, ein gleichnamiger Zeichenketten-Schlüssel wird von keinem
-     Emitter des Repositories bedient, und ohne diese Meldung sieht ein solcher
-     Hook richtig aus und läuft nie.
-  5. `packages/shae-offscreen-canvas/src/shadow-objects/sample/CubeScene.js`:
-     `import {onDestroy} from '@spearwolf/shadow-objects/shadow-objects.js';`
-     ergänzen und die Methode `onDestroy() {…}` (Zeile 37) zu `[onDestroy]() {…}`
-     machen. Rumpf unverändert.
-  6. `packages/shae-offscreen-canvas/src/shadow-objects/sample/TestImage2OnCanvas2D.js`:
-     dieselbe Umstellung an Zeile 30. Rumpf unverändert.
-  7. `packages/shadow-objects/docs/cheat-sheet.md`, Abschnitt »Lifecycle Hooks«
-     (Zeilen 120-128): unter die Tabelle einen Satz, dass die vier Hooks Symbole
-     sind, eine gleichnamige gewöhnliche Methode kein Hook ist und nie gerufen
-     wird, und dass der Kernel einen solchen Fall beim Anhängen des Shadow
-     Objects über den `ConsoleLogger` meldet. Kein Rückblick auf den Vorzustand.
-  8. `packages/shadow-objects/CHANGELOG.md` unter `## [Unreleased]`: ein Bullet,
-     dass der Kernel beim Anhängen eines Shadow Objects meldet, wenn eine der
-     vier Lebenszyklus-Methoden unter ihrem Zeichenketten-Namen statt unter ihrem
-     Symbol steht.
-  9. `packages/shae-offscreen-canvas/CHANGELOG.md` unter `## [Unreleased]`: ein
-     Bullet, dass die beiden Beispiel-Shadow-Objects `CubeScene` und
-     `TestImage2OnCanvas2D` ihren Aufräumschritt unter dem `onDestroy`-Symbol
-     führen und er damit läuft.
-  10. `AGENTS.md` auf Veralterung prüfen; nur anfassen, wenn dort etwas steht,
-      das durch diese Änderung falsch wird.
-- Verify: `pnpm lint:ci && pnpm typecheck && pnpm build && pnpm test:ci --force`
-- Commit: `fix(kernel): report a lifecycle hook that carries a string name instead of its symbol`
-- Ergebnis: 1 Runde · API-002 behoben — `attachShadowObject()` in
-  `Kernel.ts:827-842` hält die vier Lebenszyklus-Symbole gegen ihre
-  Zeichenketten-Namen und meldet jeden Treffer über `this.logger.error()` mit
-  Hook-Name, Anzeigename des Shadow Objects und dem Weg heraus; `logger.error`
-  und nicht `logger.warn`, weil `warn` außerhalb von `localhost` stumm bleibt und
-  genau das der Fehler ist, um den es geht (dieselbe Begründung trägt
-  `ShaeWorkerElement.ts:439-442`) · Regressionstest `reports a plain method that
-  shadows the onDestroy symbol` (`Kernel.spec.ts`, `describe('a lifecycle hook
-  written under its string name')`), vor dem Fix rot mit `expected "error" to be
-  called 1 times, but got 0 times`, vom Reviewer auf dem Vorzustand unabhängig
-  nachgestellt; zwei Begleitfälle halten fest, dass das Symbol allein und Symbol
-  plus gleichnamige Methode stumm bleiben · von den drei ausgelieferten
-  Fundstellen des Findings sind zwei umgestellt (`sample/CubeScene.js:38`,
-  `sample/TestImage2OnCanvas2D.js:31` tragen jetzt `[onDestroy]` mit Import aus
-  `@spearwolf/shadow-objects/shadow-objects.js`), die dritte
-  (`ThreeMultiViewRenderer.js:82`) war mit `7e9c807` aus dem Vorlauf bereits
-  entfallen · Reviewer ohne Befund auf allen drei Stufen · eigener Verify:
-  `pnpm lint:ci && pnpm typecheck && pnpm build && pnpm test:ci --force`, exit 0,
-  790 Fälle Kernpaket (787 + 3), 123 Canvas-Paket (unverändert), 379
-  Browser-Suite (unverändert), Log `paket-8.verify.log`
-- Nebenbefunde: keine
-- Folgen: keine
-- Schnittstellen: Der `Kernel` gibt beim Anhängen eines Shadow Objects eine
-  `logger.error`-Zeile aus, wenn die Instanz eine der vier Lebenszyklus-Methoden
-  (`onCreate`, `onDestroy`, `onParentChanged`, `onViewEvent`) unter ihrem
-  Zeichenketten-Namen trägt und nicht unter dem zugehörigen Symbol. Wer ein Spec
-  schreibt, das `console.error` zählt und dabei ein Shadow Object mit einer
-  gleichnamigen gewöhnlichen Methode anlegt, sieht diese Zeile mit. Kein Export
-  und keine Signatur ändern sich; die Paartabelle `LIFECYCLE_HOOKS` ist
-  modullokal in `Kernel.ts`.
-**API-002 · medium · packages/shadow-objects/src/in-the-dark/Kernel.ts:816-826 und in-the-dark/events.ts:5,21,41; Fundstellen in packages/shae-offscreen-canvas/src/shadow-objects/ThreeMultiViewRenderer.js:82, sample/CubeScene.js:37, sample/TestImage2OnCanvas2D.js:30** — Ein Lebenszyklus-Hook mit Zeichenketten-Namen läuft nie, und nichts sagt es
-
-onCreate, onDestroy, onViewEvent und onParentChanged sind Symbole. Ein Shadow
-Object, das die Hooks unter ihrem gewöhnlichen Namen schreibt, sieht richtig aus
-und wird nie gerufen, weil weder der Kernel noch eventize eine Zeichenkette
-finden, wo ein Symbol steht. Es gibt keine Warnung, keine Lint-Regel und keinen
-Fall, der das aufdeckt. Drei der ausgelieferten Shadow Objects sitzen in der
-Falle, zwei davon im mitpublizierten sample-Verzeichnis, das damit das falsche
-Muster vorführt. Die Dokumentation macht es richtig, cheat-sheet.md:32 importiert
-das Symbol ausdrücklich, was den Abstand zwischen Vorlage und Beispielcode nur
-größer macht.
-
-Empfehlung: Beim Anhängen eines Shadow Objects prüfen, ob die Instanz eine
-Funktion unter einem der vier Zeichenketten-Namen trägt, ohne das zugehörige
-Symbol zu tragen, und das über den ConsoleLogger melden. Ein Dutzend Zeilen in
-attachShadowObject(), und aus dem stillen Fehlschlag wird eine Zeile in der
-Konsole. Danach die drei Fundstellen umstellen, das sample-Verzeichnis zuerst.
-
-### [x] 9. `three` ist ein Peer des Canvas-Pakets
-
-- Findings: DEP-002 (medium)
-- Ziel: Ein Consumer, der selbst `three` benutzt, bekommt keine zweite Instanz
-  mehr in den Baum. Siehe Entscheidung vom 2026-08-23: Peer plus devDep, nicht
-  optional.
-- Bereich: `packages/shae-offscreen-canvas/package.json`, `pnpm-workspace.yaml`,
-  Doku und CHANGELOG des Canvas-Pakets
-- Hängt ab von: —
-- Hash: d41d610
-- Modell: mittlere Stufe (Implementierer), mittlere Stufe (Reviewer)
-- Dateien: `pnpm-workspace.yaml`, `scripts/makePackageJson.mjs`,
-  `packages/shae-offscreen-canvas/package.json`, `pnpm-lock.yaml`,
-  `packages/shae-offscreen-canvas/src/distContract.spec.js`,
-  `packages/shae-offscreen-canvas/src/distContract.package.json`,
-  `packages/shae-offscreen-canvas/README.md`,
-  `packages/shae-offscreen-canvas/docs/01-shadow-objects-api.md`,
-  `packages/shae-offscreen-canvas/CHANGELOG.md`, `CHANGELOG.md` (Wurzel),
-  `AGENTS.md`, `CLAUDE.md`, `Backlog.md`
-- Vorgehen:
-  1. Abgleich vom Runner (Zug 0, auf sauberem Baum nach `b32999b`): der Befund
-     steht unverändert. `packages/shae-offscreen-canvas/package.json` führt
-     `three` unter `dependencies` (letzter der vier Einträge, `"three":
-     "catalog:"`), `peerDependencies` gibt es in der Datei nicht.
-     `src/shadow-objects.js` importiert `ThreeMultiViewRenderer` statisch und
-     nennt ihn im `define`-Objekt; `src/shadow-objects/ThreeMultiViewRenderer.js:1`
-     und `src/shadow-objects/sample/CubeScene.js:2` sind die beiden einzigen
-     Stellen im Repository, die aus `'three'` importieren (`ThreeRenderView.js`
-     kommt ohne aus und arbeitet nur über Kontexte). Kein anderes
-     Workspace-Paket hängt an `@spearwolf/shae-offscreen-canvas`.
-  2. Der Peer-Bereich steht nicht im `package.json`. Zwei Vorgaben treffen hier
-     aufeinander: Dependency-Versionen leben ausschließlich in
-     `pnpm-workspace.yaml`, und ein Peer-Bereich muss weiter sein als der
-     Katalog-Pin — `^0.185.1` heißt bei einer 0.x-Version `>=0.185.1 <0.186.0`
-     und wäre als Peer eine Zwangsjacke. Beides zusammen geht über einen
-     **benannten Katalog**, den pnpm 11 kennt (`catalog:<name>`). In
-     `pnpm-workspace.yaml`, direkt **unter** dem bestehenden `catalog:`-Block
-     (die Reihenfolge ist für den Parser in Schritt 3 wichtig), kommt hinzu:
-
-     ```yaml
-     # Named catalogs for ranges that are not install pins. A peer range names
-     # the floor a consumer is held to, and it has to stay wider than the pin
-     # the workspace itself installs — the consumer resolves `three` on its own,
-     # and only one copy of it may stand in a dependency tree.
-     catalogs:
-       peer:
-         three: '>=0.180.0'
+     ```ts
+     /**
+      * Built on first use rather than in a field initializer: a `ConsoleLogger` reads its own
+      * `<namespace>.enable` key once, when it is built, and in a worker the config that key lives in
+      * arrives as a message. A logger built ahead of that message keeps the default for its own switch
+      * for the rest of the thread; the shared switches reach it either way.
+      *
+      * The window is narrow: the two guard branches of `onmessage` that discard a message it cannot
+      * read or a message that arrived after the teardown reach for this logger ahead of the
+      * `CONSOLE_LOGGER` branch below them. A `RemoteWorkerEnv` cannot trigger either guard before its
+      * configuration arrives -- it sends that message first -- but a foreign host driving this entry
+      * point on its own could send something unreadable ahead of it.
+      */
      ```
 
-     Der Wert `>=0.180.0` ist der Boden aus der Empfehlung des Findings. Der
-     Eintrag `three: ^0.185.1` im Haupt-`catalog:` bleibt unverändert stehen —
-     er ist weiterhin das, was dieser Workspace installiert.
-  3. `scripts/makePackageJson.mjs` löst heute nur `catalog:` gegen den einen
-     Haupt-Katalog auf; `catalog:peer` liefe in denselben Zweig und schriebe den
-     Pin `^0.185.1` als Peer-Bereich ins veröffentlichte `package.json` — ein
-     stiller Fehler, der genau das kaputt macht, worum es in diesem Paket geht.
-     Die Datei muss benannte Kataloge lernen:
-     - `loadPnpmCatalog()` liest zusätzlich einen `catalogs:`-Block auf oberster
-       Ebene und gibt beides zurück, z. B. `{default: {…}, named: {peer: {…}}}`.
-       Der vorhandene, zeilenweise Parser bleibt die Machart (keine YAML-Bibliothek
-       dazunehmen); der `catalogs:`-Block hat genau eine Verschachtelungsebene
-       mehr: Name des Katalogs, darunter die Paare. Kommentarzeilen und
-       Leerzeilen werden wie bisher übersprungen, ein Top-Level-Schlüssel beendet
-       den Block.
-     - `resolveDependencies()` trennt `catalog:` (Haupt-Katalog) von
-       `catalog:<name>` (benannter Katalog) und warnt mit derselben Machart wie
-       heute (`console.warn('Catalog entry not found for', …)`), wenn der Name
-       oder der Eintrag fehlt.
-     - Ein kurzer Kommentar an der Stelle sagt, *warum* es zwei Sorten gibt: der
-       Haupt-Katalog ist der Pin, den der Workspace installiert, ein benannter
-       Katalog trägt Bereiche, die etwas anderes bedeuten — ein Peer-Bereich ist
-       kein Installationswunsch, sondern eine Verträglichkeitszusage.
-     - `resolveDependencies(outPackageJson.peerDependencies)` wird bereits
-       gerufen (Zeile 34); daran ist nichts zu ändern.
-  4. `packages/shae-offscreen-canvas/package.json`:
-     - `"three": "catalog:"` aus `dependencies` entfernen. Die drei übrigen
-       Einträge bleiben unverändert.
-     - `"three": "catalog:"` in `devDependencies` aufnehmen, alphabetisch
-       einsortiert (nach `lit-html`, vor `vite`) — Build, Demo und Specs lösen
-       `three` weiterhin gegen den Katalog-Pin auf.
-     - Ein neuer Block `"peerDependencies": {"three": "catalog:peer"}`. Er steht
-       zwischen `devDependencies` und `dependencies` — die Schlüsselreihenfolge
-       der Quelldatei bestimmt die Reihenfolge in `.npm-pkg/package.json`
-       (`makePackageJson.mjs` spreizt das Eingabe-Objekt), und die Erwartung in
-       Schritt 6 vergleicht sortierte Schlüssel, ist gegen die Position also
-       unempfindlich.
-     - `package.override.json` bleibt unangetastet: es setzt `scripts` und
-       `devDependencies` auf `null`, `peerDependencies` überlebt damit in das
-       veröffentlichte `package.json`.
-  5. `pnpm install` laufen lassen, damit `pnpm-lock.yaml` die neue Aufteilung
-     trägt. Der Lockfile-Diff gehört in den Commit. Danach nachsehen und im
-     Report festhalten: (a) `pnpm-lock.yaml` führt `three` für dieses Paket unter
-     `devDependencies` statt `dependencies` und die aufgelöste Version ist
-     weiterhin eine 0.185.x, (b) `pnpm install --frozen-lockfile` läuft durch,
-     (c) `pnpm -F @spearwolf/shae-offscreen-canvas build` schreibt in
-     `.npm-pkg/package.json` ein `"peerDependencies": {"three": ">=0.180.0"}` —
-     nicht `^0.185.1`. Punkt (c) ist der Beweis, dass Schritt 3 greift; steht
-     dort der Pin, ist der Parser falsch.
-  6. Regressionsnachweis, **zuerst rot**, bevor Schritt 4 läuft. Dieses Paket
-     behebt keinen Rechenfehler, sondern die Form des veröffentlichten Pakets;
-     der Anker dafür steht seit `bb3d412` bereit. Reihenfolge:
-     - Zuerst `packages/shae-offscreen-canvas/src/distContract.package.json` auf
-       die Zielform bringen: `"peerDependencies"` in die (alphabetisch sortierte)
-       Liste `topLevelKeys` aufnehmen — zwischen `"name"` und `"publishConfig"`
-       —, `"three"` aus `dependencyNames` streichen, und ein neues Feld
-       `"peerDependencyNames": ["three"]` neben `dependencyNames` ergänzen.
-     - Dann `packages/shae-offscreen-canvas/src/distContract.spec.js`, im Fall
-       `the shape of .npm-pkg/package.json matches the recorded expectation`,
-       zwei Zusicherungen hinter der vorhandenen `dependencyNames`-Zeile:
-       ```js
-       expect(Object.keys(pkg.peerDependencies ?? {}).sort()).toEqual(expectedPackageJsonShape.peerDependencyNames);
-       expect(pkg.peerDependencies?.three).toMatch(/^>=/);
-       ```
-       Die zweite Zeile hält die *Form* des Bereichs, nicht seine Zahl: ein Peer
-       nennt einen Boden, keinen Pin, und ein `^`- oder `~`-Bereich an dieser
-       Stelle wäre genau der Rückfall, den dieses Paket beseitigt. Ein Kommentar
-       darüber sagt das in einem Satz und grenzt es gegen den vorhandenen
-       Kommentar ab, der erklärt, warum Versionszahlen nicht geprüft werden.
-     - Jetzt `pnpm -F @spearwolf/shae-offscreen-canvas build` und
-       `pnpm -F @spearwolf/shae-offscreen-canvas exec vitest src/distContract.spec.js --run`
-       laufen lassen: der Fall muss **rot** sein (die gebaute `package.json` hat
-       noch kein `peerDependencies` und `three` noch unter `dependencies`). Die
-       Ausgabe dieses roten Laufs gehört in den Report.
-     - Erst danach Schritt 4 und 5, dann derselbe Lauf grün.
-  7. `packages/shae-offscreen-canvas/README.md`, Abschnitt `## Installation`
-     (Zeile 8-12): die Codezeile wird `npm install @spearwolf/shae-offscreen-canvas three`,
-     darunter zwei bis drei Sätze: `three` ist eine Peer-Abhängigkeit dieses
-     Pakets und wird von der Anwendung installiert, damit im Abhängigkeitsbaum
-     genau eine Fassung davon steht — zwei Instanzen führen zwei Registries für
-     WebGL-Ressourcen und lassen `instanceof` über die Grenze hinweg falsch
-     antworten. Der Peer ist nicht optional: der Einstiegspunkt
-     `./shadow-objects.js` nennt `ThreeMultiViewRenderer` in seinem
-     `define`-Objekt und lädt ihn statisch, `three` gehört also auch dann in den
-     Baum, wenn eine Anwendung nur `Canvas2D` oder `CanvasBitmapRenderer`
-     benutzt. Der geforderte Bereich (`>=0.180.0`) wird genannt. Konvention
-     beachten: Englisch, kein Rückblick auf den Vorzustand, keine Finding-ID.
-  8. `packages/shae-offscreen-canvas/docs/01-shadow-objects-api.md`, Abschnitt
-     `### ThreeMultiViewRenderer` (ab Zeile 66): ein Satz direkt unter der
-     Überschrift, dass dieses Shadow Object gegen die `three`-Fassung der
-     Anwendung arbeitet, die das Paket als Peer verlangt. Ein zweiter Satz im
-     Abschnitt `### ThreeRenderView`, dass es selbst nicht aus `three`
-     importiert, aber über den `ThreeMultiViewRendererContext` an dessen
-     Renderer hängt und damit dieselbe Fassung sieht. Mehr nicht — die Datei ist
-     eine API-Referenz der Shadow Objects, die Installationsfrage steht im
-     README.
-  9. `packages/shae-offscreen-canvas/CHANGELOG.md` unter `## [Unreleased]`:
-     - Ein neuer Stichpunkt in der Reihung (nicht in einem neuen Abschnitt):
-       `three` ist eine Peer-Abhängigkeit des Pakets mit dem Bereich
-       `>=0.180.0`, die die Anwendung selbst installiert; damit steht genau eine
-       Fassung im Abhängigkeitsbaum. Dazu die beobachtbare Folge: ein
-       `npm install @spearwolf/shae-offscreen-canvas` ohne `three` daneben
-       endet mit einer unerfüllten Peer-Abhängigkeit, und der Einstiegspunkt
-       `./shadow-objects.js` lädt `ThreeMultiViewRenderer` statisch, `three`
-       wird also auch von einer reinen Canvas2D-Anwendung gebraucht.
-     - Der Merksatz über der Liste (»**Next release: minor.** … It reaches only
-       consumers that hand their own template to the constructor of
-       `ShaeOffscreenCanvasElement` …«) wird durch diesen Eintrag falsch: der
-       Peer-Wechsel erreicht jeden Consumer. Der Satz bekommt die zweite
-       breaking-Stelle dazu, die Einstufung »minor« bleibt (das Paket steht
-       unter `1.0.0`). Diese Korrektur ist Teil dieses Pakets, kein Nebenbefund
-       — sie wird erst durch die Änderung hier unwahr.
-  10. `CHANGELOG.md` der Wurzel: ein neuer datierter Abschnitt (heutiges
-      Commit-Datum, `2026-08-24`) über den vorhandenen, in der Machart der
-      beiden Abschnitte darüber. Er nennt zwei Dinge: den `catalogs:`-Block in
-      `pnpm-workspace.yaml` mit dem benannten Katalog `peer` und wofür er da ist,
-      und dass `scripts/makePackageJson.mjs` `catalog:<name>` auflöst. Die
-      Verlagerung von `three` selbst gehört **nicht** hierher, sondern in das
-      CHANGELOG des Canvas-Pakets (Schritt 9) — hier steht nur das Harness.
-  11. `AGENTS.md:112` und `CLAUDE.md:20` (dazu die Kurzfassung in
-      `CLAUDE.md:116`) sagen, Versionen stünden im `catalog:`-Block und würden
-      als `"<dep>": "catalog:"` referenziert. Das bleibt der Normalfall und wird
-      nicht umgeschrieben; jede der drei Stellen bekommt einen Satz dazu: Ein
-      Bereich, der kein Installations-Pin ist — heute nur der `three`-Peer des
-      Canvas-Pakets — steht in einem benannten Katalog unter `catalogs:` und
-      wird als `"<dep>": "catalog:<name>"` referenziert. `CLAUDE.md:83`
-      beschreibt, was `makePackageJson.mjs` auflöst (`workspace:*` und
-      `catalog:`); dort kommt `catalog:<name>` dazu.
-  12. `Backlog.md:408` — »`three@^0.179.1` als harte Demo-Dep zieht beim `pnpm
-      install` viel Volumen.« Die Version stimmt nicht mehr und die Einordnung
-      »harte Dep« auch nicht. Die Zeile auf den heutigen Stand bringen: `three`
-      ist Peer (`>=0.180.0`) plus devDependency des Canvas-Pakets, der Workspace
-      installiert den Katalog-Pin; das Volumen beim `pnpm install` des
-      Repositories bleibt davon unberührt, weil die devDependency es weiterhin
-      zieht. Zeile 289 (vitest-Inventar) und Abschnitt 4.2 bleiben unangetastet
-      — dieses Paket ändert keine Fallzahl.
-  13. Die angefassten Dateien sind überschaubar: `package.json`,
-      `pnpm-workspace.yaml`, `scripts/makePackageJson.mjs` und
-      `distContract.spec.js` jeweils ganz lesen, bevor sie verlassen werden, und
-      alles melden, was darin auffällt und nicht zu diesem Paket gehört.
-      `pnpm-lock.yaml` ist davon ausgenommen (generiert). Für `turbo.json` ist
-      nichts nachzuziehen: `globalDependencies` (Zeile 4) führt
-      `pnpm-workspace.yaml` und `scripts/**` bereits, die Cache-Invalidierung
-      für beide Dateien steht.
-- Verify: `pnpm install --frozen-lockfile && pnpm lint:ci && pnpm typecheck && pnpm build && pnpm test:ci --force`
-- Commit: `build(canvas): three is a peer dependency of the canvas package`
-- Ergebnis: 1 Runde · DEP-002 behoben — `three` steht im Canvas-Paket unter
-  `peerDependencies` (`catalog:peer` → `>=0.180.0`) und zusätzlich unter
-  `devDependencies` (`catalog:` → `^0.185.1`), nicht mehr unter `dependencies`;
-  der statische Import in `src/shadow-objects.js` bleibt, der Peer ist damit
-  Pflicht und kein optionaler, wie entschieden · der Bereich lebt in einem
-  benannten Katalog (`catalogs.peer` in `pnpm-workspace.yaml`), weil ein
-  Peer-Bereich weiter sein muss als der Installations-Pin und Versionen nur dort
-  stehen dürfen; `scripts/makePackageJson.mjs` löst dafür jetzt `catalog:<name>`
-  neben `catalog:` auf, `loadPnpmCatalog()` liefert `{default, named}` ·
-  Regressionsnachweis am vorhandenen Anker: der Fall `the shape of
-  .npm-pkg/package.json matches the recorded expectation`
-  (`packages/shae-offscreen-canvas/src/distContract.spec.js`) wurde zuerst auf
-  die Zielform gebracht und war rot (`expected [ 'author', 'dependencies',
-  …(12) ] to deeply equal …(13)`, fehlendes `peerDependencies`), danach grün;
-  zwei neue Zusicherungen halten `peerDependencyNames` und die Form des
-  Bereichs (`/^>=/`, ein Peer nennt einen Boden, keinen Pin), beide vom
-  Reviewer unabhängig scharf gemacht und wieder zurückgesetzt · vom Reviewer
-  unabhängig nachgebaut: `.npm-pkg/package.json` trägt nach dem Build
-  `"peerDependencies": {"three": ">=0.180.0"}` und nicht den Pin · Abweichung
-  vom Detailplan, tragfähig und vom Reviewer bestätigt: Schritt 8 verlangte
-  einen Satz im Abschnitt `### ThreeRenderView` von
-  `packages/shae-offscreen-canvas/docs/01-shadow-objects-api.md` — den Abschnitt
-  gibt es nicht, die Lücke ist vorbestehend und steht jetzt unter »Offene
-  Befunde«; erfunden wurde nichts · Reviewer ohne `kritisch`/`wichtig`; ein
-  `klein`: der Zeilenparser in `loadPnpmCatalog()` erkennt im neuen
-  `catalogs:`-Zweig eine Kommentarzeile mit Doppelpunkt (`# note: foo`) als
-  Eintrag — gegen die reale `pnpm-workspace.yaml` wirkungslos, und dieselbe
-  Schwäche trug der Haupt-Katalog-Zweig schon vorher; keine Runde ausgelöst ·
-  eigener Verify: `pnpm install --frozen-lockfile && pnpm lint:ci && pnpm
-  typecheck && pnpm build && pnpm test:ci --force`, exit 0, 790 Fälle Kernpaket,
-  123 Canvas-Paket, 379 Browser-Suite (alle drei unverändert), Lint 1 Info wie
-  in der Baseline (Log `paket-9.verify.log`)
-- Nebenbefunde: → Queue (fremde Rollenanweisung in `AGENTS.md` ·
-  `ThreeRenderView` fehlt in der API-Referenz des Canvas-Pakets)
-- Folgen: keine
-- Schnittstellen: `@spearwolf/shae-offscreen-canvas` führt `three` nicht mehr
-  unter `dependencies`, sondern als Peer mit `>=0.180.0`; ein Consumer
-  installiert `three` selbst, und ein Workspace-Paket, das den Canvas-Renderer
-  benutzt, braucht eine eigene Deklaration. `pnpm-workspace.yaml` hat neben
-  `catalog:` einen Block `catalogs:` mit dem benannten Katalog `peer`;
-  Bereiche, die kein Installations-Pin sind, werden als `"<dep>":
-  "catalog:<name>"` referenziert. `scripts/makePackageJson.mjs` löst
-  `catalog:<name>` auf — `loadPnpmCatalog()` gibt `{default, named}` zurück
-  statt einer flachen Tabelle, wer die Funktion anfasst, arbeitet gegen diese
-  Form. Die Erwartungsdatei
-  `packages/shae-offscreen-canvas/src/distContract.package.json` trägt ein
-  Feld `peerDependencyNames` neben `dependencyNames`.
+  4. **`docs/api-reference.md`, Abschnitt »Console Logger«.** Vier Stellen,
+     alle im Block Zeile 3015–3023:
 
-**DEP-002 · medium · packages/shae-offscreen-canvas/package.json:57-62** — three steht als harte Runtime-Abhängigkeit im Canvas-Paket
+     a. Direkt unter den Absatz »**The getters are the caller's job.** …«
+        (Zeile 3015) diese Tabelle setzen — sie ist die Stelle, auf die sich
+        alles Weitere beruft:
 
-@spearwolf/shae-offscreen-canvas führt three unter dependencies. Benutzt wird es
-von zwei der fünf ausgelieferten Shadow Objects (ThreeMultiViewRenderer,
-ThreeRenderView) und einem Beispiel; wer nur Canvas2D oder CanvasBitmapRenderer
-einsetzt, installiert es trotzdem mit. Schwerer wiegt der zweite Teil: three ist
-eine Bibliothek, von der in einem Abhängigkeitsbaum nur eine Fassung stehen darf.
-Ein Consumer, der selbst three benutzt und eine andere Nebenversion auflöst,
-bekommt zwei Instanzen — mit zwei Registries für WebGL-Ressourcen und
-instanceof-Prüfungen, die über die Grenze hinweg falsch antworten. Der Katalog
-pinnt ^0.185.1, und three erhöht bei jedem Minor die Breaking Changes; die
-Wahrscheinlichkeit, dass ein Consumer auf einer anderen Nebenversion steht, ist
-damit hoch. Nachgetragen in diesem Lauf: src/shadow-objects.js importiert
-ThreeMultiViewRenderer statisch und nennt alle fünf Konstruktoren in einem
-define-Objekt. Kein Bundler kann three deshalb herausschütteln, auch nicht bei
-einem Consumer, der ausschließlich Canvas2D benutzt.
+        ```markdown
+        | Call | Ask first | What that getter combines |
+        | :--- | :--- | :--- |
+        | `logger.debug(...)` | `isDebug` | instance `enable` · `sharedConfig.enable` · `sharedConfig.debug` |
+        | `logger.info(...)` | `isInfo` | instance `enable` · `sharedConfig.enable` · `sharedConfig.info` |
+        | `logger.warn(...)` | `isWarn` | instance `enable` · `sharedConfig.enable` · `sharedConfig.warn` |
+        | `logger.error(...)` | — | nothing: there is no getter for an error report, and this library gates none |
+        ```
 
-Empfehlung: three in peerDependencies verschieben (Bereich weit genug, z. B.
->=0.180) und zusätzlich unter devDependencies führen, damit Build und Tests es
-weiterhin auflösen. Falls die Three-Renderer auch ohne three benutzbar bleiben
-sollen, gehört der Peer als optional markiert und die Doku um den Satz ergänzt,
-welche Shadow Objects ihn brauchen.
+     b. Zeile 3019, der Satz über `setConsoleLoggerStorage()`: hinter »…where
+        there is no `localStorage` to probe in the first place« ergänzen, dass
+        die installierten Werte auch die Logger erreichen, die in diesem Thread
+        schon gebaut sind.
 
-### [x] 10. Der Worker-Zweig schreibt über den `ConsoleLogger`
+     c. Zeile 3021, erster Satz. »`ConsoleLogger.<namespace>.enable` turns a
+        single logger off on its own, independent of the four shared switches
+        above« gilt so nicht: die Klasse druckt jede Stufe ungefragt, gegated
+        wird beim Aufrufer über die Getter. Der Satz sagt künftig, dass der
+        Schlüssel das Instanz-Flag der Tabelle ist — er nimmt `isDebug`,
+        `isInfo` und `isWarn` eines einzelnen Loggers auf `false`, was die
+        geteilten Schalter auch sagen, und erreicht nichts, was ohne Frage
+        druckt, die Fehlermeldungen dieser Bibliothek eingeschlossen. Der Rest
+        des Absatzes (einmal gelesen, nie geschrieben, kein Handle dafür,
+        Worker-Thread ohne eigene Storage) bleibt wie er ist.
 
-- Findings: CONS-011 (medium)
-- Ziel: Eine Anwendung, die den Logger abschaltet, bekommt aus dem Worker keine
-  Zeilen mehr; die Konfiguration, die die View hinüberschickt, wirkt für ihre
-  Empfänger.
+     d. Zeile 3023, zwei Stellen im selben Absatz:
+        - »the key is named once through `remoteEnv.logger.warn`, which is not
+          gated behind `ConsoleLogger.sharedConfig.enable`« fasst zu eng:
+          `logger.warn()` fragt gar keinen Getter, hängt also an keinem
+          Schalter, auch nicht am Namensraum-Schalter. Entsprechend
+          umformulieren.
+        - »The worker builds neither logger before this configuration message
+          has been processed -- a logger built ahead of it would read the
+          defaults on construction and pin them for the whole thread, the
+          loggers built after it included.« Nach Schritt 2 friert nichts mehr
+          ein. Der Satz sagt künftig: die geteilten Schalter eines Threads
+          nehmen eine später eintreffende Config an, das eigene
+          `<namespace>.enable` eines Loggers wird einmal beim Bau gelesen — wer
+          vor der Nachricht gebaut wird, behält dort den Vorgabewert. Das ist
+          die dokumentierte Restlücke aus »Entscheidungen«, und dies ist die
+          einzige Stelle, an der sie steht.
+
+     Sonst nichts an dieser Datei. Die Aussagen in Zeile 1712, 2245, 2372 und
+     2403 beschreiben einzelne Aufrufstellen und stimmen weiterhin; ebenso
+     `docs/cheat-sheet.md:334`. `README.md` des Pakets nennt den Logger nicht.
+
+  5. **`packages/shadow-objects/CHANGELOG.md`, `## [Unreleased]`.** Zwei
+     Einträge, jeder als letzter Punkt seines Abschnitts:
+
+     - unter `### Bugfixes` (endet vor `### Types`): dass
+       `setConsoleLoggerStorage()` die Logger eines Threads erreicht, in dem
+       schon einer gebaut wurde. Nennen: dass `ConsoleLogger.sharedConfig` dort,
+       wo keine nutzbare Storage gefunden wurde, dasselbe Objekt ist wie
+       `globalThis.ConsoleLoggerStorage`, und dass ein Worker, dessen
+       `WorkerRuntime`-Logger von einer der beiden Guard-Verzweigungen vor der
+       Konfigurationsnachricht gebaut wurde, für den Rest des Threads auf den
+       Vorgabewerten stand. Dazu der Satz, dass das instanzeigene
+       `<namespace>.enable` weiterhin einmal beim Bau gelesen wird.
+     - unter `### Internal` im Genre der dortigen `**Docs (correctness):**`
+       -Einträge: die Tabelle Stufe gegen Schalter und die beiden Sätze, die
+       jetzt sagen, was gilt.
+
+     Die Zählung im Vorspann von `## [Unreleased]` (»Fifty-one changes reach
+     existing consumers«) bleibt unberührt: der Fix repariert einen Pfad, der
+     nicht trug, und bricht für niemanden etwas.
+
+  6. **`AGENTS.md`** auf Veralterung prüfen: der ConsoleLogger kommt dort nicht
+     vor, es ist also nichts nachzuziehen. Kein `TODO` berührt, keine Datei
+     unter `dist/` kommt hinzu oder fällt weg — die `distContract`-Erwartungen
+     bleiben, wie sie sind.
+
+- Verify: `pnpm run ci` (baut, typprüft, fährt alle Tests außer den
+  Playwright-E2E und schließt mit `pnpm lint:ci`). Erwartung gegen die Baseline:
+  1297 statt 1295 Fälle, `pnpm lint` weiterhin mit dem einen vorbestehenden
+  Info-Hinweis. Die E2E-Suite bleibt außen vor: das Paket ändert an keiner
+  Stelle etwas, das ein Browser-Test beobachtet — die Fallback-Config trägt nur
+  Diagnose-Schalter.
+- Commit: `fix(logging): a late console-logger config reaches the loggers already built`
+- Ergebnis: 1 Runde · BUG-027 behoben (`ConsoleLogger.ts:141-150`, die
+  Identitätsprüfung greift nur im Zweig ohne nutzbare Storage) · DX-017 behoben
+  (`docs/api-reference.md`, Tabelle Stufe gegen Schalter plus drei
+  eingeschränkte Sätze) · Regressionstest
+  `reaches the loggers of a thread that already built one` (vor dem Fix rot,
+  `expected false to be true` auf `sharedConfig.debug`) · Verify `pnpm run ci`
+  exit 0, 1297 Fälle (795 + 123 + 379), ein vorbestehender Info-Hinweis · kein
+  Befund des Reviewers in keiner Kategorie
+- Nebenbefunde: —
+- Folgen: —
+- Schnittstellen: `setConsoleLoggerStorage(config)` unverändert in Signatur und
+  Verhalten im Zweig mit `localStorage`; im Zweig ohne schreibt es die
+  vorhandene `ConsoleLogger.sharedConfig` mit, statt den Slot neu zu belegen ·
+  neu in `docs/api-reference.md` §Console Logger: die Tabelle Stufe gegen
+  Schalter (`logger.debug`/`isDebug`, `logger.info`/`isInfo`,
+  `logger.warn`/`isWarn`, `logger.error` ungegatet), auf die Paket 2 und 3
+  verweisen, statt die Regeln neu auszuformulieren
+
+**BUG-027 · low · packages/shadow-objects/src/utils/ConsoleLogger.ts:135 und :241-252** — Die Logger-Konfiguration eines Threads friert beim ersten Logger ein
+
+setConsoleLoggerStorage(config) setzt nur den Slot globalThis.ConsoleLoggerStorage.
+ConsoleLogger.loadConfig() läuft aber genau einmal je Thread, beim Bau der ersten
+Instanz, und friert sharedConfig dabei auf ein eigenes Objekt ein. Ein Aufruf danach
+erreicht keinen Logger mehr. Damit läuft der dokumentierte Weg, einen Worker über
+ConsoleLogger.RemoteWorkerEnv.workerConfig gesprächig zu machen, ins Leere, sobald im
+Worker vor der Konfigurationsnachricht irgendein Logger entstanden ist. Latent: die
+heutige Reihenfolge hält das ein und ist von einem Fall festgehalten, und im Hauptthread
+wird der Fallback-Store bei vorhandenem localStorage gar nicht gelesen.
+
+Empfehlung: Entweder setConsoleLoggerStorage() die vorhandene sharedConfig mitschreiben
+lassen, oder loadConfig() den Slot bei jedem Zugriff lesen. Der zweite Weg kostet einen
+Property-Zugriff je Logzeile und macht die Reihenfolge gleichgültig.
+
+**DX-017 · info · packages/shadow-objects/docs/api-reference.md:2992 und :2994** — Zwei Sätze der Logger-Dokumentation versprechen mehr Kontrolle, als der Code hält
+
+»ConsoleLogger.<namespace>.enable turns a single logger off on its own« gilt für Kernel,
+ShadowEnv und die Elemente nur für deren gegatete Zeilen: logger.error() druckt
+bedingungslos (src/utils/ConsoleLogger.ts:298-304). Und die Begründung, der Schlüssel
+werde einmal über remoteEnv.logger.warn genannt, das nicht hinter
+ConsoleLogger.sharedConfig.enable liege, trifft zu, fasst die Sache aber enger, als sie
+ist — logger.warn() hängt an gar keinem Schalter, auch nicht am Namensraum-Schalter.
+
+Empfehlung: Beide Sätze auf das einschränken, was gilt: welche Stufen der
+Namensraum-Schalter erreicht und welche bedingungslos drucken. Eine kleine Tabelle Stufe
+gegen Schalter ist hier kürzer als jede Prosa.
+
+### [x] 2. Ein Fehlergrund kommt als Error über die Worker-Grenze
+- Findings: CONS-018 (low), CONS-008 (low)
+- Ziel: Beide Strecken — der fehlgeschlagene `importScript()` und der
+  abgelehnte Change Trail — liefern dem Aufrufer in seinem `catch` einen
+  `Error`, so wie es die lokale Umgebung tut, und der Name, unter dem der Fehler
+  im Worker geworfen wurde, kommt mit.
 - Bereich: `packages/shadow-objects/src/worker/MessageRouter.ts`,
-  `worker/WorkerRuntime.ts`, `src/shadow-objects.worker.js`
+  `src/view/RemoteWorkerEnv.ts`, `src/types.ts`, die JSDoc-Blöcke von
+  `src/ChangeTrailRefusedError.ts` und `src/in-the-dark/importModule.ts`, die
+  zugehörigen Specs, `docs/` und `CHANGELOG.md` des Pakets, dazu die E2E-Seite
+  `sync-failure`
 - Hängt ab von: —
-- Hash: 2b121ac
-- Ergebnis: 2 Runden · CONS-011 behoben, alle elf Rohkonsolen-Stellen erfasst —
-  sieben Debug-Zeilen hinter `isDebug`, die Unbekannt-Nachricht hinter `isWarn`,
-  die drei Fehlerberichte bewusst ungegatet wie bei `RemoteWorkerEnv`; die
-  unbedingte Begrüßung des Worker-Einstiegspunkts ist entfallen und durch eine
-  gegatete Quittung ersetzt, die `WorkerRuntime` beim Installieren der
-  Konfiguration schreibt · Regressionstest `writes nothing to the console when
-  debug logging is off`, je einmal in `MessageRouter.spec.ts` und
-  `WorkerRuntime.spec.ts`, vor dem Fix rot gesehen · Runde 1 räumte einen
-  Doku-Satz aus, der einen worker-seitigen Namensraum-Schalter über den Storage
-  des Hosts versprach, den es dort nicht gibt; Runde 2 zog die dabei entstandenen
-  Ungenauigkeiten in denselben zwei Absätzen nach · klein und stehen geblieben:
-  `docs/api-reference.md:2994` schreibt beiden Klassen zu, was nur der
-  `MessageRouter` vollständig tut (`WorkerRuntime` hat weder eine `warn`- noch
-  eine `error`-Zeile); derselbe Absatz setzt »builds neither logger before this
-  configuration message has been processed« absolut, während der Kommentar in
-  `WorkerRuntime.ts:16-21` die Ausnahme sauber abgrenzt (die beiden
-  Wächter-Zweige greifen davor auf `this.logger` zu); die Sicherung von
-  `ConsoleLogger.sharedConfig` in beiden Spec-Dateien entfernt neu
-  hinzugekommene Schlüssel nicht und schriebe ins falsche Objekt, wenn
-  `loadConfig()` das Objekt ersetzte — in dieser Testumgebung unerreichbar, aber
-  eine Notiz für den nächsten, der dort Fälle ergänzt
-- Nebenbefunde: → Queue (3 Einträge: `ConsoleLogger.ts:135`, die drei
-  `console.warn` in `in-the-dark/`, zwei überzeichnete Sätze in
-  `docs/api-reference.md`)
-- Folgen: keine
-- Schnittstellen: Zwei neue `ConsoleLogger`-Namensräume, `WorkerRuntime` und
-  `MessageRouter`. Ihr Namensraum-Schalter erreicht den Worker ausschließlich als
-  Schlüssel innerhalb des JSON-Objekts unter
-  `ConsoleLogger.RemoteWorkerEnv.workerConfig` und steht dort präfixlos
-  (`MessageRouter.enable`), nicht über den Storage des Hosts — dasselbe gilt für
-  `Kernel.enable` im Worker-Thread. `MessageRouter.logger` ist ein
-  `readonly`-Feld, `WorkerRuntime.logger` ein Getter, der seinen Logger beim
-  ersten Zugriff baut; beide Klassen sind nicht aus `src/index.ts` exportiert.
-  **Bauregel für jedes spätere Paket:** im Worker entsteht kein `ConsoleLogger`,
-  bevor die `ConsoleLogger`-Nachricht der View verarbeitet ist — wer dort einen
-  Logger als Feld-Initialisierer anlegt, legt `ConsoleLogger.sharedConfig` auf
-  die Voreinstellungen fest, und zwar für jeden Logger des Threads, auch die
-  danach gebauten. `src/shadow-objects.worker.js` schreibt beim Laden nichts mehr
-  auf die Konsole.
-
-### [x] 11. Die Modul-URL des Workers ist als Vertrauensgrenze benannt
-
-- Findings: SEC-003 (medium)
-- Ziel: Die Doku sagt, dass der `src`-Wert ausführbarer Code ist, nicht aus
-  ungeprüfter Eingabe stammen darf und im Betrieb über eine CSP-Direktive
-  abgesichert wird. Siehe Entscheidung vom 2026-08-23: kein Prüfhaken im Code.
-- Bereich: `packages/shadow-objects/docs/api-reference.md`, beide `README.md`
-- Hängt ab von: —
-- Hash: 4e677d7
-- Modell: mittlere Stufe (Runde 2 auf der stärksten)
-- Dateien: `packages/shadow-objects/docs/api-reference.md`, `README.md`
-  (Repo-Wurzel), `packages/shadow-objects/README.md`,
-  `packages/shadow-objects/CHANGELOG.md`
-- Welche zwei READMEs: Repo-Wurzel und Paket-README von
-  `@spearwolf/shadow-objects`. Beide zeigen `<shae-worker src="./my-logic.js">`
-  in ihrem Einstiegsbeispiel (`README.md:45` und
-  `packages/shadow-objects/README.md:25`) und sind die beiden Eingangstüren des
-  Frameworks, dem der Mechanismus gehört. `packages/shae-offscreen-canvas/README.md`
-  bleibt außen vor: eigenes Paket, eigener Doku-Vertrag.
-  `packages/shae-offscreen-canvas/.npm-pkg/README.md` ist ein Build-Artefakt und
-  wird nicht angefasst.
-- Sachstand, gegen den geschrieben wird (am 2026-08-24 nachgesehen):
-  `ShaeWorkerElement.importScript(src)` (`src/elements/ShaeWorkerElement.ts:227`)
-  reicht den Wert an `envProxy.importScript(src)` weiter. Lokal landet er in
-  `LocalShadowObjectEnv.importScript()` (`src/view/LocalShadowObjectEnv.ts:69-70`)
-  als `await import(toUrlString(url))` im Realm des Dokuments; über die
-  Worker-Grenze reist er als Configure-Nachricht und landet in
-  `MessageRouter.#configure()` (`src/worker/MessageRouter.ts:117-119`) als
-  dasselbe dynamische `import()` im Worker-Thread. `toUrlString()` löst gegen die
-  Basis-URL des Realms auf und lässt jede Herkunft zu. Weder Element noch Proxy
-  filtern; das bleibt so.
+- Hash: f5bcc23
+- Modell: stärkste Stufe
+- Effort: high
+- Dateien:
+  - `packages/shadow-objects/src/view/RemoteWorkerEnv.spec.ts`
+  - `packages/shadow-objects/src/types.ts`
+  - `packages/shadow-objects/src/worker/MessageRouter.ts`
+  - `packages/shadow-objects/src/view/RemoteWorkerEnv.ts`
+  - `packages/shadow-objects/src/worker/MessageRouter.spec.ts`
+  - `packages/shadow-objects/src/ChangeTrailRefusedError.ts` (nur der
+    JSDoc-Block über der Klasse)
+  - `packages/shadow-objects/src/in-the-dark/importModule.ts` (nur der
+    JSDoc-Block über `missingShadowObjectsExportMessage`)
+  - `packages/shadow-objects/docs/api-reference.md`
+  - `packages/shadow-objects/CHANGELOG.md`
+  - `packages/shadow-objects-e2e/src/sync-failure.js`
+  - `packages/shadow-objects-e2e/TEST-PLAN.md`
 - Vorgehen:
-  1. `packages/shadow-objects/docs/api-reference.md`: einen neuen Abschnitt der
-     obersten Ebene `## Security` einziehen, zwischen dem Ende von
-     `## Kernel (ECS System Runner)` und `## Advanced` (der `---`-Trenner vor
-     `## Advanced` steht heute auf Zeile 2719). Die Trennerführung des Dokuments
-     beibehalten: `---` vor und nach dem neuen Abschnitt. Darunter genau eine
-     Unterüberschrift `### The Module URL is a Trust Boundary`. Sie sagt:
-     - Der `src`-Wert eines `<shae-worker>` — und ebenso das Argument von
-       `importScript()` auf dem Element und auf jedem Environment Proxy — ist
-       eine Modul-URL, die die Shadow Environment mit einem dynamischen
-       `import()` lädt und ausführt. Sie wird gegen die Basis-URL des Realms
-       aufgelöst, und jede Herkunft löst auf, auch eine fremde.
-     - Das geladene Modul läuft mit den vollen Rechten des Origins der
-       Anwendung: gleicher Origin-Zugriff, gleiche Cookies, gleicher Storage.
-       Bei `RemoteWorkerEnv` läuft es im Worker-Thread, bei
-       `LocalShadowObjectEnv` im Realm des Dokuments — die Rechte sind in beiden
-       Fällen die der Anwendung.
-     - Das ist der Zweck des Mechanismus und kein Mangel der Umsetzung: das
-       Framework lädt Anwendungslogik über eine URL, und welche URL das ist,
-       entscheidet die Anwendung.
-     - Daraus folgt die Regel für den Aufrufer: der Wert gehört nicht aus
-       ungeprüfter Eingabe gesetzt — nicht aus einem Query-Parameter, nicht aus
-       einem Feld, das ein Nutzer oder ein Fremdsystem füllt, nicht aus einer
-       Antwort, der die Anwendung nicht traut. Wer das Attribut aus
-       Anwendungsdaten schreibt, was bei einer Framework-Anbindung naheliegt,
-       wählt damit den Code, der läuft.
-     - Die Absicherung im Betrieb ist eine Content Security Policy, nicht ein
-       Haken in dieser Bibliothek: `script-src` begrenzt, woher das Modul
-       stammen darf — es gilt für den `import()` im Dokument ebenso wie für den
-       im Worker —, und `worker-src` begrenzt, woraus der Worker selbst gebaut
-       werden darf. Ein Beispiel als Codeblock, mit einem Satz dazu, warum
-       `blob:` darin steht: `Content-Security-Policy: script-src 'self';
-       worker-src 'self' blob:` — die gebündelte Auslieferung des Pakets baut
-       ihren Worker aus einem eingebetteten `blob:`-URL, die unbündelte aus
-       `./shadow-objects.worker.js` neben dem Modul.
-     - Ein Satz, der die API-Lage benennt: Element und Proxy prüfen die URL
-       nicht und bieten keinen Haken, an dem eine Anwendung zulässige Herkünfte
-       eintragen könnte; die Begrenzung gehört in die CSP und in den Code, der
-       den Wert setzt.
-  2. Dieselbe Datei, Sprungmarken: in der Liste »Quick navigation« am Kopf
-     `- [Security](#security)` zwischen `- [Kernel (ECS System Runner)](#kernel-ecs-system-runner)`
-     und `- [Advanced](#advanced)` einfügen, mit der eingerückten Unterzeile
-     `- [The Module URL is a Trust Boundary](#the-module-url-is-a-trust-boundary)`
-     in der Machart der übrigen Untereinträge.
-  3. Dieselbe Datei, drei Querverweise, je ein angehängter Satz, je in einer
-     Zeile (es sind Tabellenzellen):
-     - die `src`-Zeile der Attributtabelle von `<shae-worker>` (heute Zeile 1676),
-     - die `importScript(src)`-Zeile der JavaScript-API-Tabelle von
-       `<shae-worker>` (heute Zeile 1746),
-     - der `importScript(url)`-Eintrag in `## Environment Proxies` (Stelle im
-       Abschnitt ab Zeile 1397 suchen; er steht dort für
-       `IShadowObjectEnvProxy`, `LocalShadowObjectEnv` und `RemoteWorkerEnv` —
-       ein Verweis genügt, an der Stelle, die die Methode beschreibt).
-     Der Satz nennt die URL als ausführbaren Code und verweist mit
-     `[Security](#security)`. Nicht in allen dreien derselbe Wortlaut.
-  4. `README.md` (Repo-Wurzel): ein Abschnitt `## Security` zwischen
-     `## Invariants` und `## Documentation`, mit den `---`-Trennern der Datei.
-     Vier bis sechs Sätze mit derselben Substanz wie Schritt 1, plus den
-     CSP-Codeblock, plus einen Verweis auf
-     `packages/shadow-objects/docs/api-reference.md#security` in der Verlinkungsart
-     der Datei (relative Pfade, wie in der Dokumentationstabelle darunter).
-  5. `packages/shadow-objects/README.md`: ein Abschnitt `## Security` zwischen
-     `## The Five Domains` und `## Documentation`. Kürzer als der Wurzel-README —
-     drei bis vier Sätze, der CSP-Codeblock, und der Verweis auf
-     `./docs/api-reference.md#security` für die ausführliche Fassung.
-  6. `packages/shadow-objects/CHANGELOG.md`: genau ein Aufzählungspunkt unter
-     `## [Unreleased]` → `### Internal`, in der Reihe der `**Docs (…)**`-Punkte,
-     alphabetisch zwischen `**Docs (reference):**` und `**Docs (terminology):**`.
-     Form: `- **Docs (security):** …`. Er nennt den neuen Abschnitt der
-     API-Referenz, die beiden READMEs und die Regel in einem Satz. Kein Rückblick
-     auf den Vorzustand, keine Finding-Nummer.
-  7. Nichts im `CHANGELOG.md` der Repo-Wurzel: das ist für Build, Testrunner,
-     Lint, turbo/pnpm und devDeps reserviert, und hier ändert sich davon nichts.
-     Kein TODO-Kommentar angefasst, also kein `pnpm make:todo`. `AGENTS.md` auf
-     Veralterung prüfen und das Ergebnis melden — nur ändern, wenn eine Zeile
-     dort durch diese Änderung tatsächlich falsch wird.
-  8. Konventionen, die hier scharf sind: alles in Englisch; kein Rückblick auf
-     den Vorzustand (kein »previously«, »now«, »used to«, »as of this release«);
-     keine der verbotenen Analogien (»shadow theater«, »puppet«, »puppeteer«,
-     »light world«, »screen«) — ECS-Begriffe verwenden: Entity, Shadow Object,
-     Shadow Environment, Kernel, View, Token, `ComponentContext`; und keine
-     Vermischung von `ComponentContext` mit dem Entity Context. Kein Prüfhaken,
-     keine neue öffentliche API, keine Behauptung, das Framework validiere
-     irgendetwas — es tut es nicht und soll es nicht.
-- Verify: `pnpm lint:ci && pnpm typecheck && pnpm build && pnpm test:ci --force`
-- Commit: `docs: name the worker module url as a trust boundary` — `git log`
-  dieses Projekts vergibt Doku-Scopes nach Subsystem oder Dokument (`docs(api)`,
-  `docs(api-reference)`, `docs(view)`, `docs(elements)`, `docs(changelog)`), nie
-  nach Paketnamen; die Änderung fasst drei Dokumente an, also bleibt der Scope
-  weg
-- Ergebnis: 2 Runden · SEC-003 behoben — neuer Abschnitt `## Security` /
-  `### The Module URL is a Trust Boundary` in
-  `packages/shadow-objects/docs/api-reference.md`, Kurzfassungen in `README.md`
-  und `packages/shadow-objects/README.md`, drei Querverweise und ein
-  Inhaltsverzeichnis-Eintrag in derselben Referenz, ein `**Docs (security):**`-Punkt
-  im CHANGELOG des Kernpakets · kein Regressionstest, weil kein Verhalten im Code
-  geändert wurde: die Entscheidung vom 2026-08-23 verlangt Doku ohne Prüfhaken,
-  und der Diff fasst ausschließlich Markdown an · Runde 1 räumte eine CSP-Aussage
-  aus, die dem Leser Schutz versprach, den die gezeigte Konfiguration nur für den
-  eingebetteten `blob:`-Worker liefert; Runde 2 ersetzte die dabei eingeführten
-  Wörter »bundled/unbundled distribution«, die nirgends sonst in der Doku
-  vorkommen und den Leser in die schwächere Konfiguration gelenkt hätten, durch
-  die Einstiegspunkte des `exports`-Feldes · klein und stehen geblieben: »every
-  other entry point« (`api-reference.md:2738`, `README.md:239`,
-  `packages/shadow-objects/README.md:110`) fasst zehn `exports`-Einträge, von
-  denen nur vier überhaupt einen Worker bauen — »every entry point that creates a
-  worker« räumte es aus; »nothing the document declares reaches it«
-  (`api-reference.md:2738`) lässt sich statt auf das `import()` auch auf den
-  Worker lesen, dessen Ladbarkeit das `worker-src` des Dokuments sehr wohl
-  entscheidet; und derselbe Absatz beantwortet »welche Response trägt den Header«
-  allein über den Einstiegspunkt, obwohl im `local`-Modus gar kein Worker
-  entsteht und allein `script-src` des Dokuments trägt — unvollständig, nicht
-  falsch, und die Modus-Unterscheidung steht zwei Absätze darüber
-- Nebenbefunde: → Queue (2 Einträge, beide in `README.md`: falscher Paketpfad
-  `packages/shadow-offscreen-canvas/` in `:95`, veraltete Node/pnpm-Angabe in
-  `:289`)
-- Folgen: keine
-- Schnittstellen: Keine Code-Oberfläche berührt. Für die Doku gilt: die
-  Überschriften `## Security` und `### The Module URL is a Trust Boundary` in
-  `packages/shadow-objects/docs/api-reference.md` tragen die Anker `#security`
-  und `#the-module-url-is-a-trust-boundary`; darauf zeigen der
-  Inhaltsverzeichnis-Eintrag derselben Datei, drei Querverweise in ihr sowie je
-  ein Link aus `README.md` und `packages/shadow-objects/README.md`. Wer eine der
-  beiden Überschriften umbenennt, zieht sechs Verweise mit.
 
-**SEC-003 · medium · packages/shadow-objects/src/worker/MessageRouter.ts:103, view/LocalShadowObjectEnv.ts:70, elements/ShaeWorkerElement.ts:235-237** — Die Modul-URL des Workers ist unbeschränkt und nirgends als Vertrauensgrenze benannt
+  1. **Regressionstest zuerst, und rot sehen.** Drei neue Fälle, alle in
+     `src/view/RemoteWorkerEnv.spec.ts`. Die Importzeile 21 um die neue Klasse
+     erweitern:
 
-Der Wert des src-Attributs eines shae-worker wandert unverändert als
-Configure-Nachricht in den Worker und landet dort in einem dynamischen import().
-toUrlString() löst gegen die Basis-URL des Realms auf und lässt jede Herkunft zu,
-auch eine fremde. Wer das Attribut aus Anwendungsdaten schreibt, was bei jeder
-Framework-Anbindung naheliegt, führt fremden Code im Origin der Anwendung aus.
-Das ist der Zweck des Mechanismus und kein Fehler in der Implementierung. Es
-fehlt aber jede Stelle, die es sagt: die Dokumentation kennt keinen
-Sicherheitsabschnitt, api-reference.md erwähnt Vertrauen nur für den
-Logger-Konfigurationsschlüssel, und weder Element noch Proxy bieten einen Haken,
-an dem eine Anwendung die zulässigen Herkünfte einschränken könnte.
+     ```ts
+     import {RemoteWorkerEnv, type RemoteWorkerEnvOptions, WorkerReportedError} from './RemoteWorkerEnv.js';
+     ```
 
-Empfehlung: Ein kurzer Abschnitt in docs/api-reference.md und in beiden READMEs:
-der src-Wert ist ausführbarer Code, er gehört nicht aus ungeprüfter Eingabe
-gesetzt, und die Absicherung im Betrieb ist eine script-src- beziehungsweise
-worker-src-Direktive der Content Security Policy. Wer mehr will, bekommt eine
-optionale Prüffunktion an RemoteWorkerEnv, die eine URL vor dem Absenden
-ablehnen darf. — Der zweite Satz ist durch die Entscheidung vom 2026-08-23
-erledigt: kein Prüfhaken, nur Doku.
+     Die ersten beiden ans Ende des `describe('module imports', …)`-Blocks (er
+     endet heute nach dem Fall `settles only the import the confirmation belongs
+     to`):
+
+     ```ts
+     // What a caller sees in its `catch` is the same shape in both environments: a
+     // `LocalShadowObjectEnv` throws the `Error` the import produced, and this one rebuilds one
+     // from the two fields that survive structured cloning.
+     it('rejects a failed import with an error, not with the wording of one', async () => {
+       const {env, worker} = await startEnv();
+
+       const pending = env.importScript('./broken.js');
+       const url = worker.posted.at(-1).importModule;
+       worker.reply({type: ImportedModule, url, error: 'unexpected token', errorName: 'SyntaxError'});
+
+       const reason = await expectRejection(pending, 'SyntaxError');
+
+       expect(reason, 'a caller may check for an Error').toBeInstanceOf(Error);
+       expect(reason, 'and for the boundary it came across').toBeInstanceOf(WorkerReportedError);
+       expect(reason.message).toBe('unexpected token');
+     });
+
+     // A confirmation that names no class is not a broken one -- an implementation on the other
+     // side that only sends a reason keeps working, and its reason arrives as a plain `Error`.
+     it('names a reported failure without a class an error', async () => {
+       const {env, worker} = await startEnv();
+
+       const pending = env.importScript('./nothing.js');
+       const url = worker.posted.at(-1).importModule;
+       worker.reply({type: ImportedModule, url, error: 'module has no "shadowObjects" export'});
+
+       const reason = await expectRejection(pending, 'Error');
+
+       expect(reason).toBeInstanceOf(WorkerReportedError);
+       expect(reason.message).toBe('module has no "shadowObjects" export');
+     });
+     ```
+
+     Den dritten ans Ende des `describe`-Blocks, in dem
+     `rejects with the bare reason when the confirmation names no count` steht:
+
+     ```ts
+     // The refusal wraps the reason, so the shape of the reason is what a `cause` hands on: the
+     // error object itself in a local environment, and here the one rebuilt from the wire.
+     it('carries the reported failure into the cause of the refusal', async () => {
+       const {env, worker} = await startEnv();
+       const trail: ChangeTrailType = [
+         {type: ComponentChangeType.UpdateOrder, uuid: 'a', order: 1},
+         {type: ComponentChangeType.UpdateOrder, uuid: 'b', order: 2},
+       ];
+
+       const pending = env.applyChangeTrail(trail, true);
+       worker.reply({
+         type: AppliedChangeTrail,
+         serial: 1,
+         error: 'the kernel cannot create an entity because the uuid b is already held by another entity',
+         errorName: 'EntityUuidInUseError',
+         appliedCount: 1,
+       });
+
+       const reason = (await expectRejection(pending, 'ChangeTrailRefusedError')) as ChangeTrailRefusedError;
+       const cause = reason.cause as WorkerReportedError;
+
+       expect(cause, 'a caller may check for an Error').toBeInstanceOf(Error);
+       expect(cause).toBeInstanceOf(WorkerReportedError);
+       expect(cause.name, 'the name is read the same way it is read locally').toBe('EntityUuidInUseError');
+       expect(cause.message).toContain('already held by another entity');
+     });
+     ```
+
+     Roten Lauf so erzeugen und die Ausgabe in den Report übernehmen — alle drei
+     Fälle müssen scheitern, weil heute die nackte Zeichenkette geworfen wird
+     (`expectRejection` liest `reason.name` und findet an einer Zeichenkette
+     `undefined`):
+
+     ```
+     pnpm -F @spearwolf/shadow-objects exec vitest --run src/view/RemoteWorkerEnv.spec.ts
+     ```
+
+  2. **`src/types.ts`.** Beide Nachrichtentypen bekommen ein Feld daneben; das
+     vorhandene `error` behält seinen Typ und trägt künftig die Nachricht ohne
+     den Klassennamen davor. Der Block Zeile 82–98 lautet danach:
+
+     ```ts
+     export interface ImportedModuleEvent {
+       type: typeof ImportedModule;
+       url?: string;
+       error?: string;
+       /**
+        * The name the error called itself in the worker. Structured cloning does not carry an
+        * error class, so this and `error` are what the view side rebuilds one from. Absent means
+        * the sender named no class, and the view reads it as `Error`.
+        */
+       errorName?: string;
+     }
+
+     export interface AppliedChangeTrailEvent {
+       type: typeof AppliedChangeTrail;
+       serial?: number;
+       error?: string;
+       /** The name the error called itself in the worker; see {@link ImportedModuleEvent.errorName}. */
+       errorName?: string;
+       /**
+        * How many entries of the change trail the Kernel applied before it stopped. Stands only
+        * next to an `error`, and only where the Kernel itself could say so; an absent field means
+        * nothing is known about how far the trail got.
+        */
+       appliedCount?: number;
+     }
+     ```
+
+  3. **`src/worker/MessageRouter.ts`.** Eine Hilfsfunktion auf Modulebene,
+     direkt unter `isReadableMessageData` (also hinter Zeile 31), und zwei
+     Aufrufstellen.
+
+     ```ts
+     /**
+      * Reduces a throw to the two fields that survive the wire. `RemoteWorkerEnv` builds an error
+      * from them, and it decides between a confirmation and a refusal by whether `error` is there
+      * at all -- so the wording must never come out empty, not even for an `Error` carrying no
+      * message of its own.
+      */
+     const describeError = (error: unknown): {error: string; errorName?: string} =>
+       error instanceof Error
+         ? {error: error.message || String(error), errorName: error.name}
+         : {error: String(error) || 'unknown error'};
+     ```
+
+     a. Der `catch` von `#configure()` (heute Zeile 141–147): die letzte Zeile
+        wird zu
+
+        ```ts
+        this.postMessage({type: ImportedModule, url, ...describeError(error)} as ImportedModuleEvent);
+        ```
+
+        Der Kommentar über `this.logger.error(…)` bleibt unverändert stehen.
+
+     b. Der Zweig ohne `shadowObjects`-Export (heute Zeile 134–140) bleibt, wie
+        er ist. Er schickt kein `errorName`, und das ist die richtige Antwort:
+        `LocalShadowObjectEnv.importScript()` wirft dort ein blankes
+        `new Error(missingShadowObjectsExportMessage)`, dessen `name` `Error`
+        ist — genau der Vorgabewert, den die View für ein fehlendes
+        `errorName` einsetzt.
+
+     c. Der `catch` von `#onChangeTrail()` (heute Zeile 156–169): der
+        `postMessage`-Aufruf wird zu
+
+        ```ts
+        const refusal = error instanceof ChangeTrailRefusedError ? error : undefined;
+        this.postMessage({
+          type: AppliedChangeTrail,
+          serial: data.serial,
+          // what the entry threw, not the refusal wrapped around it: the number travels in a
+          // field of its own, so the reason stays the reason
+          ...describeError(refusal?.cause ?? error),
+          ...(refusal ? {appliedCount: refusal.appliedCount} : {}),
+        } as AppliedChangeTrailEvent);
+        ```
+
+  4. **`src/view/RemoteWorkerEnv.ts`.** Die neue Klasse hinter
+     `WorkerDestroyedError` (also hinter Zeile 90), damit die drei Fehlerklassen
+     dieser Datei beieinander stehen. Die Reihenfolge der Parameter ist die von
+     `WorkerFailedError` weiter oben in derselben Datei: was den Fehler benennt, steht vor
+     der Nachricht. Eine Hilfsfunktion daneben gibt es nicht — der Vorgabewert
+     für einen fehlenden Namen steht im Konstruktor, und beide Aufrufstellen
+     bauen die Klasse direkt.
+
+     `src/index.ts` wird dabei **nicht** angefasst: die Zeile
+     `export * from './view/RemoteWorkerEnv.js';` steht dort schon und nimmt die
+     neue Klasse von selbst mit. `src/shadow-objects.ts`, der Einstiegspunkt der
+     Worker-Seite, führt `RemoteWorkerEnv` nicht und bekommt sie auch nicht —
+     diese Klasse gehört der View.
+
+     ```ts
+     /**
+      * The reason a request is rejected with when the worker reported a failure of its own -- a
+      * module that would not import, a change trail its Kernel refused. An error does not survive
+      * structured cloning as the object it is, so the two fields that do are rebuilt here, and
+      * `name` is the name the error called itself inside the worker: a caller reads it the same
+      * way it reads the name of an error a `LocalShadowObjectEnv` hands it. A name that is missing
+      * or empty names no class, and `Error` is what such a reason is called -- the same name a
+      * plain `new Error(message)` carries on the local side.
+      *
+      * What does not come across is the class and everything it added. `instanceof EntityUuidInUseError`
+      * is `false` here and there is no `uuid` field, whatever `name` says; `instanceof WorkerReportedError`
+      * is what tells such a reason apart from one raised on this side.
+      */
+     export class WorkerReportedError extends Error {
+       constructor(name: string | undefined, message: string) {
+         super(message);
+         this.name = name || 'Error';
+       }
+     }
+     ```
+
+     a. Der Guard in `applyChangeTrail()` (heute Zeile 346–360): der
+        `if (data.error)`-Block wird zu
+
+        ```ts
+        if (data.error) {
+          const reason = new WorkerReportedError(data.errorName, data.error);
+          // Only a confirmation that names the count can move the line the view draws between
+          // applied and pending; one that does not carries no more than the reason itself, and
+          // is handed on as that reason.
+          if (typeof data.appliedCount === 'number') {
+            throw new ChangeTrailRefusedError(data.appliedCount, changeTrail.length, {cause: reason});
+          }
+          throw reason;
+        }
+        ```
+
+     b. Der Guard in `importScript()` (heute Zeile 378–382): Zeile 380 wird zu
+
+        ```ts
+        if (data.error) throw new WorkerReportedError(data.errorName, data.error);
+        ```
+
+  5. **`src/worker/MessageRouter.spec.ts`.** Vier Stellen, alle im Bestand:
+
+     a. Fall `reports a configure message that carries no url` (Zeile 258): die
+        Nachricht trägt jetzt Message und Name getrennt. Die eine Zeile wird zu
+        zweien:
+
+        ```ts
+        expect(posted[0].message.error).toBe('missing "importModule" url');
+        expect(posted[0].message.errorName).toBe('Error');
+        ```
+
+     b. Fall `reports a module that cannot be parsed` (Zeile 276): die Message
+        ist jetzt die des `SyntaxError`, ohne den Namen davor. Der Kommentar
+        darüber (»Only the prefix: the rest of the message is the engine's
+        wording, not ours.«) beschreibt danach nichts mehr und wird durch einen
+        ersetzt, der sagt, warum hier nur der Name geprüft wird: der Wortlaut
+        gehört der Engine. Die Zeile wird zu
+
+        ```ts
+        expect(posted[0].message.errorName).toBe('SyntaxError');
+        expect(posted[0].message.error, 'the wording belongs to the engine, that there is one belongs to us').toMatch(/.+/);
+        ```
+
+        Der Wortlaut der Meldung kommt bewusst ohne Apostroph aus: Biome ist auf
+        `quoteStyle: "single"` gestellt und stellt eine Zeichenkette, die ein
+        `'` enthält, auf doppelte Anführungszeichen um — `pnpm lint:ci` bricht
+        an so einer Zeile ab, weil `biome check` Formatabweichungen meldet.
+
+     c. Die beiden `toEqual` über die ganze Nachricht (Zeile 318–323 und
+        343–348) führen `errorName` jetzt mit und würden sonst brechen. In
+        beiden kommt hinter die `error`-Zeile:
+
+        ```ts
+        errorName: 'Error',
+        ```
+
+        Das ist kein beliebiger Wert: der Kernel wirft an
+        `src/in-the-dark/Kernel.ts:494` ein blankes
+        `new Error('entity with uuid "…" not found!')`.
+
+     d. Ein neuer Fall ans Ende des `describe('a change trail that fails', …)`,
+        der zeigt, dass ein Klassenname den Router unbeschädigt passiert. Er
+        braucht eine Entität, die schon steht, und eine zweite Erzeugung unter
+        derselben uuid — die Helfer `changeTrailMessage` und `createEntity`
+        stehen im Kopf der Datei:
+
+        ```ts
+        // The name is what a caller on the view side reads to tell one refusal from another, so
+        // it travels next to the wording rather than inside it.
+        it('names the class the kernel refused with', () => {
+          const {posted, router} = setup();
+          vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+          router.route(changeTrailMessage(1, createEntity('a')));
+          router.route(changeTrailMessage(2, createEntity('a')));
+
+          const message = posted.at(-1).message;
+
+          expect(message.errorName).toBe('EntityUuidInUseError');
+          expect(message.error).toContain('already held by another entity');
+          expect(message.appliedCount).toBe(0);
+        });
+        ```
+
+  6. **`src/view/RemoteWorkerEnv.spec.ts`, der Bestand.** Vier Erwartungen
+     behaupten die alte Form und werden umgeschrieben; die neuen Fälle aus
+     Schritt 1 stehen daneben:
+
+     a. Zeile 603, im Fall `settles only the request the confirmation belongs to`:
+        `await expect(first).rejects.toBe('the first trail failed');` wird zu
+
+        ```ts
+        await expect(first).rejects.toThrow('the first trail failed');
+        ```
+
+     b. Zeile 629, im Fall `rejects with a refusal that carries the count the worker named`:
+        `expect(reason.cause).toBe('entity with uuid "c" not found!');` wird zu
+
+        ```ts
+        expect((reason.cause as Error).message).toBe('entity with uuid "c" not found!');
+        ```
+
+        Der Fall bleibt sonst wie er ist — er prüft die Zahl, nicht die Form
+        des Grundes; die prüft der neue Fall aus Schritt 1.
+
+     c. Zeile 641, im Fall `rejects with the bare reason when the confirmation names no count`:
+        `await expect(withTimeout(pending)).rejects.toBe('something went wrong');`
+        wird zu
+
+        ```ts
+        await expect(withTimeout(pending)).rejects.toThrow('something went wrong');
+        ```
+
+     d. Zeile 670, im Fall `settles only the import the confirmation belongs to`:
+        `await expect(first).rejects.toBe('module has no "shadowObjects" export');`
+        wird zu
+
+        ```ts
+        await expect(first).rejects.toThrow('module has no "shadowObjects" export');
+        ```
+
+  7. **Die E2E-Seite.** In
+     `packages/shadow-objects-e2e/src/sync-failure.js`, Fall
+     `sync-failure-reason-names-the-refusal`: der Kommentar (Zeile 139–142)
+     behauptet die alte Form, die Prüfung dahinter (Zeile 143–145) auch.
+     Beides wird ersetzt durch:
+
+     ```js
+     // Across a worker boundary the error object itself does not survive: the worker puts its
+     // wording and its name on the wire (`MessageRouter.#onChangeTrail`) and the view builds a
+     // `WorkerReportedError` from the two (`RemoteWorkerEnv.applyChangeTrail`). `mod-refuse.js`
+     // throws a plain `Error`, so that is the name that arrives.
+     if (!(refusedReason.cause instanceof WorkerReportedError)) {
+       throw new Error(`expected the cause to be a WorkerReportedError, got: ${JSON.stringify(refusedReason.cause)}`);
+     }
+     if (refusedReason.cause.name !== 'Error' || !refusedReason.cause.message.includes(RefusalMessage)) {
+       throw new Error(`expected the cause to name the refusal, got: ${refusedReason.cause.name}: ${refusedReason.cause.message}`);
+     }
+     ```
+
+     Dazu `WorkerReportedError` in die Importzeile 2 aufnehmen:
+
+     ```js
+     import {ChangeTrailRefusedError, ComponentChangeType, ShadowEnv, WorkerReportedError} from '@spearwolf/shadow-objects';
+     ```
+
+     Der Import geht über den Einstiegspunkt des gebauten Pakets und ist damit
+     zugleich die Probe, dass die Klasse dort ankommt. Keine Zeile
+     `testBooleanAction`/`testAsyncAction` kommt hinzu und keine fällt weg: die
+     E2E-Suite bleibt bei 430 Fällen.
+
+     In `packages/shadow-objects-e2e/TEST-PLAN.md`, Zeile 291 (`| SYNC-1 |`):
+     der Halbsatz »across a worker the wording of the throw travels under
+     `cause` as a string, not as an `Error` instance« sagt künftig, dass unter
+     `cause` ein `WorkerReportedError` steht, der Wortlaut und Name des Wurfs
+     trägt, und dass die Klasse selbst die Grenze nicht überquert.
+
+  8. **`docs/api-reference.md`.** Sieben Stellen, alle im Bestand:
+
+     a. Zeile 1258, Absatz unter `#### syncWait()`: »`cause` carries what the
+        entry actually threw -- the error object itself locally, the wording the
+        worker put on the wire across a worker boundary« sagt künftig, dass es
+        lokal das Fehlerobjekt selbst ist und über die Worker-Grenze ein
+        `WorkerReportedError`, der Wortlaut und Name trägt.
+
+     b. Zeile 1315, `cause`-Zeile der Mitgliedertabelle von
+        `ChangeTrailRefusedError`: dieselbe Korrektur in Tabellenlänge, und mit
+        dem Zusatz, dass Klasse und Zusatzfelder des ursprünglichen Fehlers
+        nicht mitkommen.
+
+     c. Zeile 1522, `importScript(url)`-Zeile der Methodentabelle von
+        `RemoteWorkerEnv`: »A module with no `shadowObjects` export rejects with
+        the string … rather than the `Error` a `LocalShadowObjectEnv` rejects
+        the same case with« gilt nicht mehr. Die Zeile sagt künftig, dass eine
+        Ablehnung aus dem Worker als `WorkerReportedError` ankommt, dessen
+        `message` der Wortlaut aus dem Worker ist und dessen `name` der Name
+        ist, unter dem dort geworfen wurde — für das fehlende
+        `shadowObjects`-Export also `Error` mit demselben Wortlaut, den eine
+        lokale Umgebung wirft.
+
+     d. Zeile 1523, `applyChangeTrail(...)`-Zeile derselben Tabelle: ergänzen,
+        dass eine Bestätigung ohne `appliedCount` mit dem gemeldeten Grund
+        selbst ablehnt — einem `WorkerReportedError` — statt mit einem
+        `ChangeTrailRefusedError`.
+
+     e. Zeile 1548, der Absatz »The two ends are told apart by the error they
+        hand out …«: einen zweiten Absatz direkt dahinter, der die dritte Klasse
+        einführt. Er sagt: `WorkerReportedError` ist kein Ende dieser Umgebung,
+        sondern eine einzelne Anfrage, die der Worker abgelehnt hat; `message`
+        ist der Wortlaut aus dem Worker, `name` der Name, unter dem dort
+        geworfen wurde, und ein `instanceof` auf die ursprüngliche Klasse
+        schlägt hier fehl, weil Structured Clone keine Fehlerklasse überträgt.
+        Ebenfalls aus `@spearwolf/shadow-objects` exportiert.
+
+     f. Zeile 2656, Absatz »**A uuid names one Entity at a time.**«: der
+        Schlusshalbsatz »as the wording the Kernel put on the wire across a
+        worker boundary, where an `instanceof` check therefore finds a string«
+        sagt künftig, dass dort ein `WorkerReportedError` mit
+        `name === 'EntityUuidInUseError'` steht, ein `instanceof
+        EntityUuidInUseError` aber fehlschlägt und `uuid` fehlt.
+
+     g. Zeile 2674–2676, der Absatz am Ende von `#### EntityUuidInUseError`
+        (»Only a local environment hands the object itself to the view side. A
+        Worker puts the wording of the refusal on the wire, so the `cause` … is
+        a string and carries no `uuid` field«): künftig steht dort, dass ein
+        Worker Wortlaut und Namen überträgt, `cause` also ein
+        `WorkerReportedError` mit `name === 'EntityUuidInUseError'` ist — und
+        dass `uuid` weiterhin fehlt, weil nur diese beiden Felder die Grenze
+        überqueren.
+
+     Sonst nichts an dieser Datei. Zeile 1229 spricht von Gründen, die *keine*
+     Ablehnung des Kernels sind, und bleibt richtig; Zeile 1472
+     (`LocalShadowObjectEnv.importScript`) sagt »the same wording
+     `RemoteWorkerEnv` reports for the same case« und stimmt weiterhin. In
+     `docs/guides.md`, `docs/cheat-sheet.md`, `docs/best-practices.md`,
+     `docs/concepts.md` und `README.md` des Pakets steht keine Aussage über die
+     Form dieses Grundes — nachgesehen, nichts zu tun. Auch für `errorName` ist
+     in `docs/` nichts nachzuziehen: `ImportedModuleEvent` und
+     `AppliedChangeTrailEvent` kommen in keiner Doku-Datei vor, das
+     Nachrichtenprotokoll wird ausschließlich im `CHANGELOG.md` beschrieben
+     (Schritt 10c). Der Hinweis aus dem
+     Grobplan auf die Tabelle Stufe gegen Schalter aus Paket 1 greift nicht:
+     dieses Paket schreibt an keiner Stelle über Gating.
+
+  9. **Zwei JSDoc-Blöcke im Quelltext, die dieser Umbau umwirft.** Beide
+     stehen in Dateien, die das Paket sonst nicht anfasst, und beide werden
+     als Deklaration mit ausgeliefert.
+
+     a. `src/ChangeTrailRefusedError.ts`, Zeile 10–11 des Klassen-JSDoc: »`cause`
+        carries what the entry actually threw. Across a worker boundary that is
+        the wording the Kernel put on the wire rather than the error object
+        itself.« Der zweite Satz sagt künftig, dass über die Worker-Grenze ein
+        `WorkerReportedError` dort steht, der Wortlaut und Namen des Wurfs
+        trägt, und dass Klasse und Zusatzfelder des ursprünglichen Fehlers die
+        Grenze nicht überqueren. Der erste Satz bleibt, wie er ist.
+
+     b. `src/in-the-dark/importModule.ts`, Zeile 5–9, der JSDoc über
+        `missingShadowObjectsExportMessage`. Beide Halbsätze bleiben wahr, aber
+        der Kontrast, den sie aufmachen, ist die Asymmetrie, die dieses Paket
+        beseitigt. Der Halbsatz über den `MessageRouter` bekommt den Zusatz,
+        dass `RemoteWorkerEnv` aus dem Feld einen `Error` baut; der Halbsatz
+        über `LocalShadowObjectEnv` sagt, dass es dort direkt geschieht. Der
+        Grund für die Aufnahme steht in »Entscheidungen« (2026-08-25).
+
+ 10. **`packages/shadow-objects/CHANGELOG.md`, `## [Unreleased]`.** Fünf
+     Eingriffe, und die Aufteilung ist der Punkt, an dem dieses Paket leise
+     falsch werden kann: `ChangeTrailRefusedError` und `EntityUuidInUseError`
+     sind selbst noch unveröffentlicht, ihre `cause`-Form ist also **kein**
+     Bruch gegen `0.33.0`, sondern eine Korrektur ihrer eigenen, noch nicht
+     erschienenen Einträge. Ein Bruch gegen `0.33.0` sind allein die beiden
+     Strecken, die dort schon eine Zeichenkette warfen.
+
+     a. `### ⚠️ Breaking Changes`, als letzter Punkt des Abschnitts (hinter dem
+        Punkt `**Breaking (environments):** LocalShadowObjectEnv.importScript()
+        …`): dass `RemoteWorkerEnv` eine vom Worker gemeldete Ablehnung als
+        `WorkerReportedError` ablehnt statt als nackte Zeichenkette. Beide
+        Strecken nennen: ein `importScript()` auf ein Modul, das der Worker
+        nicht laden konnte, und ein `applyChangeTrail(trail, true)`, dessen
+        Bestätigung einen Grund ohne `appliedCount` trägt. Was einen Consumer
+        trifft: ein `catch`, das den Grund mit einer Zeichenkette verglichen
+        oder ihn direkt ausgegeben hat, sieht jetzt ein Objekt — `error.message`
+        trägt den Wortlaut, `error.name` den Namen aus dem Worker.
+
+     b. `### New`, bei den übrigen `**New (public API):**`-Einträgen:
+        `WorkerReportedError`. Nennen: wofür er steht, dass `name` der Name aus
+        dem Worker ist, dass Klasse und Zusatzfelder des ursprünglichen Fehlers
+        die Grenze nicht überqueren, und dass er aus
+        `@spearwolf/shadow-objects` exportiert wird. Kein Zuwachs an der
+        publizierten Dateiliste: die Klasse steht in
+        `dist/src/view/RemoteWorkerEnv.js`.
+
+     c. `### New`, im Genre des dortigen `**New (protocol):**`-Eintrags über
+        `AppliedChangeTrailEvent.appliedCount`: das Feld `errorName` auf
+        `ImportedModuleEvent` und `AppliedChangeTrailEvent`. Nennen, dass es
+        neben `error` steht, dass `error` künftig den Wortlaut ohne den
+        Klassennamen davor trägt, und dass eine Gegenstelle, die es nicht
+        schickt, weiterhin funktioniert — ein fehlendes `errorName` liest die
+        View als `Error`.
+
+        Der Wegfall des Präfixes ist hier vollständig angesagt und bekommt
+        **keinen** zweiten Eintrag unter `### ⚠️ Breaking Changes`. Die
+        Begründung steht in »Entscheidungen« (2026-08-25); wer der Meinung ist,
+        das gehöre lauter, meldet es, statt den Eintrag anzulegen.
+
+     d. Drei vorhandene Einträge sagen die alte Form und werden auf die neue
+        gezogen: ein `WorkerReportedError`, der Wortlaut und Namen trägt, ohne
+        Klasse und ohne `uuid`.
+
+        - `### New`, Zeile 215, `ChangeTrailRefusedError`: »the wording the
+          worker put on the wire across a worker boundary«.
+        - `### New`, Zeile 216, `EntityUuidInUseError`: »as the wording on the
+          wire across a worker boundary«.
+        - `### Behavior`, Zeile 242, der Eintrag
+          `**Behavior (kernel):** a uuid names one entity at a time.`: »`cause`
+          carries the `EntityUuidInUseError` — the object itself locally, its
+          wording across a worker boundary«. Derselbe Satz in derselben Sache,
+          eine Ebene tiefer im Dokument.
+
+     e. Der Vorspann von `## [Unreleased]`. Er zählt genau 51 mit Semikolons
+        getrennte Änderungen und beginnt mit »Fifty-one changes reach existing
+        consumers«. Der Bruch aus (a) ist die zweiundfünfzigste: eine Teilaussage
+        in derselben Machart in die Aufzählung einhängen — sinnvoll direkt hinter
+        der bereits vorhandenen über `WorkerDestroyedError` /
+        `WorkerFailedError` statt der Zeichenkette `'worker was destroyed'`, weil
+        sie dieselbe Sache an einer zweiten Strecke ist — und die Zahl im ersten
+        Satz auf »Fifty-two« setzen. Mehr Positionen kommen nicht hinzu: das
+        Wire-Format aus (c) bekommt keine, siehe »Entscheidungen« (2026-08-25).
+
+        Zwei weitere Stellen im selben Vorspann beschreiben die `cause`-Form und
+        werden wie (d) gezogen, ohne je eine eigene Aufzählungsposition zu
+        werden:
+
+        - Zeile 136–138, »so a `catch` that compared the bare string a worker
+          used to send, or that read the thrown error directly in a local
+          environment, now finds both of those under `cause`«. Was der Worker
+          schickt, steht danach nicht mehr als Zeichenkette unter `cause`,
+          sondern als `WorkerReportedError`, der den Wortlaut trägt. Der
+          Halbsatz über die lokale Umgebung bleibt, wie er ist.
+        - Zeile 142–143, »which across a worker boundary is the wording of it
+          rather than the object« (über den `cause` des
+          `EntityUuidInUseError`). Der Satzbau läuft über den Zeilenumbruch —
+          wer nur eine Zeile durchsucht, findet ihn nicht.
+
+ 11. **Nachlauf.** `AGENTS.md` auf Veralterung prüfen: es nennt weder die
+     Fehlerklassen noch das Nachrichtenprotokoll, es ist also nichts
+     nachzuziehen — die Prüfung gehört in den Report, nicht in die Datei. Kein
+     `TODO`-Kommentar wird berührt, `pnpm make:todo` entfällt. Unter `dist/`
+     kommt keine Datei hinzu und fällt keine weg, `dist/package.json` behält
+     seine Form: `src/distContract.files.txt` und
+     `src/distContract.package.json` bleiben unverändert.
+
+- Verify: `pnpm run ci && pnpm -F shadow-objects-e2e test`. Die E2E-Suite gehört
+  diesmal dazu — anders als in Paket 1 — weil `sync-failure.js` eine Zeile
+  dieses Pakets ist und `pnpm run ci` die Playwright-Läufe ausschließt. Erwartung
+  gegen die Baseline: exit 0, `pnpm lint` weiterhin mit dem einen vorbestehenden
+  Info-Hinweis, 430 E2E-Fälle unverändert, und die Fallzahl der Vitest-Suiten
+  steigt gegenüber 1297 um genau die vier Fälle aus Schritt 1 und 5d auf 1301.
+- Commit: `fix(view)!: a failure the worker reports arrives as an Error`
+- Ergebnis: 1 Runde · CONS-018 behoben (`RemoteWorkerEnv.ts:401` wirft einen
+  `WorkerReportedError` statt der nackten Zeichenkette) · CONS-008 behoben
+  (`MessageRouter.ts:176` überträgt Wortlaut und Namen getrennt,
+  `RemoteWorkerEnv.ts:371-378` baut daraus den `cause` der Ablehnung bzw. den
+  Grund selbst) · Regressionstest `rejects a failed import with an error, not
+  with the wording of one` samt zwei Geschwistern in `RemoteWorkerEnv.spec.ts`
+  (vor dem Fix rot: `expected undefined to be 'SyntaxError'`) · Verify
+  `pnpm run ci && pnpm -F shadow-objects-e2e test` exit 0, 1301 Vitest-Fälle
+  (799 + 123 + 379) und 430 E2E-Fälle, ein vorbestehender Info-Hinweis · kein
+  kritischer und kein wichtiger Befund des Reviewers · klein: der JSDoc über
+  `describeError()` (`MessageRouter.ts:36-42`) verspricht einen Wortlaut, der
+  nie leer wird, doch der `Error`-Zweig hat keinen Auffangwert — ein `Error`
+  mit leerem `name` und leerer `message` käme als Bestätigung an statt als
+  Ablehnung; das Verhalten ist das der Vorgängerzeile, neu ist allein das
+  Versprechen
+- Nebenbefunde: → Queue
+- Folgen: —
+- Schnittstellen: `WorkerReportedError` neu exportiert aus
+  `@spearwolf/shadow-objects` (steht in `src/view/RemoteWorkerEnv.ts`,
+  ausgeliefert als `dist/src/view/RemoteWorkerEnv.js`), Konstruktor
+  `(name: string | undefined, message: string)` in der Parameterfolge von
+  `WorkerFailedError`, `name` fällt ohne Angabe auf `Error` zurück ·
+  `ImportedModuleEvent` und `AppliedChangeTrailEvent` tragen je ein optionales
+  `errorName`, und ihr `error` trägt den Wortlaut ohne den Klassennamen davor ·
+  `RemoteWorkerEnv.importScript()` lehnt mit einem `WorkerReportedError` ab
+  statt mit einer Zeichenkette, ebenso `applyChangeTrail()` bei einer
+  Bestätigung ohne `appliedCount`; nennt die Bestätigung eine Zahl, steht der
+  `WorkerReportedError` unter dem `cause` des `ChangeTrailRefusedError` ·
+  `describeError(error)` auf Modulebene von `MessageRouter.ts` reduziert einen
+  Wurf auf die zwei Felder, die die Leitung überqueren
+
+**CONS-018 · low · packages/shadow-objects/src/worker/MessageRouter.ts:119 gegen packages/shadow-objects/src/view/RemoteWorkerEnv.ts:380** — Ein Fehlergrund reist als Zeichenkette über die Worker-Grenze und wird dort geworfen
+
+Schlägt ein importScript() im Worker fehl, legt der MessageRouter den Grund als nackte
+Zeichenkette auf die Leitung, und RemoteWorkerEnv wirft sie unverändert. Ein Aufrufer bekommt
+dort eine Zeichenkette in seinem catch, wo die lokale Umgebung einen Error liefert — dieselbe
+Asymmetrie, die CONS-008 für den Change Trail beschreibt, an der zweiten Strecke. Ein catch, das
+.message liest oder auf instanceof Error prüft, verhält sich je nach Umgebung anders.
+
+Empfehlung: Auf der View-Seite einen Error aus dem übertragenen Grund bauen, bevor er geworfen
+wird, so wie es für den Change Trail bereits vorgesehen ist. Die Botschaft bleibt, die Form wird
+die, die ein Aufrufer erwartet.
+
+**CONS-008 · low · packages/shadow-objects/src/worker/MessageRouter.ts:138** — Der Grund eines abgelehnten Change Trails geht als String über die Leitung
+
+Fängt der Router einen Kernel-Fehler, schickt er ihn als interpolierten String zurück. Auf der
+View-Seite kommt damit eine Zeichenkette an, wo ProxyFailed eine WorkerFailedError-Instanz trägt.
+Wer im catch eines syncWait() steht, hat für den einen Ausgang einen Typ und für den anderen eine
+Zeichenkette — und muss sich seine Fallunterscheidung aus Textvergleichen bauen.
+
+Empfehlung: Name und Nachricht strukturiert übertragen und auf der View-Seite in eine Fehlerklasse
+zurückverwandeln, wie es die Strecke für den Ausfall des Workers bereits tut. Was ein Konsument im
+catch sieht, ändert sich dabei — Changelog-Eintrag.
+
+### [x] 3. Der geteilte Kernel-Zweig schreibt über den Logger
+- Findings: CONS-019 (low), CONS-001 (info)
+- Ziel: Die drei rohen `console.warn` laufen über den vorhandenen
+  `ConsoleLogger` mit der in »Entscheidungen« festgelegten Stufe, und die
+  Merkliste der Deprecation-Warnung hängt am Kernel statt am Modul.
+- Bereich: `packages/shadow-objects/src/in-the-dark/importModule.ts`,
+  `ShadowObjectCreationScope.ts`, `Kernel.ts` samt der beiden betroffenen Specs,
+  `docs/api-reference.md` und `CHANGELOG.md` des Pakets
+- Hängt ab von: —
+- Hash: 9c3abb7
+- Modell: mittlere Stufe
+- Effort: medium
+- Dateien:
+  - `packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.spec.ts`
+  - `packages/shadow-objects/src/worker/MessageRouter.spec.ts`
+  - `packages/shadow-objects/src/in-the-dark/Kernel.ts`
+  - `packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts`
+  - `packages/shadow-objects/src/in-the-dark/importModule.ts`
+  - `packages/shadow-objects/docs/api-reference.md`
+  - `packages/shadow-objects/CHANGELOG.md`
+- Vorgehen:
+
+  Vorbemerkung zur Formatierung: Biome steht auf `lineWidth: 130`,
+  `quoteStyle: single`, `bracketSpacing: false`. Wo eine der Zeilen unten an
+  diese Grenze stößt, gilt die Ausgabe des Formatters und nicht die Umbruch-
+  entscheidung dieses Plans — `pnpm lint:ci` läuft im Verify mit und bricht bei
+  jeder Formatabweichung ab. Vor dem Verify-Lauf einmal `pnpm lint:fix` über die
+  angefassten Dateien.
+
+  Vorbemerkung zur Testumgebung, in diesem Zug nachgemessen und nicht
+  angenommen: unter happy-dom steht `location.host` auf `localhost:3000`, also
+  ist `ConsoleLogger.sharedConfig.enable` `true`, ebenso `warn` — ein frischer
+  `ConsoleLogger` meldet `isEnabled === true` und `isWarn === true`. Das trägt
+  an zwei Stellen weiter unten. Die gegatete Zeile in `importModule.ts` druckt
+  in der Suite weiterhin, der vorhandene Fall in `MessageRouter.spec.ts` behält
+  deshalb seine Erwartung `toHaveBeenCalledTimes(1)` (Schritt 6), und der neue
+  Fall muss den Logger eigens abschalten, um Schweigen zu prüfen (Schritt 1b).
+  `MessageRouter.spec.ts` sichert `ConsoleLogger.sharedConfig` ohnehin je Fall
+  (`beforeEach`/`afterEach`, Zeile 78–87) und stellt sie danach wieder her; der
+  Instanzschalter des neuen Falls braucht diese Sicherung nicht, weil jeder Fall
+  über `setup()` seinen eigenen Kernel und damit seinen eigenen Logger baut.
+
+  1. **Regressionstest zuerst, und rot sehen.** Zwei neue Fälle, einer je
+     Finding. Beide prüfen den Zustand nach dem Umbau und sind heute rot; die
+     fünf vorhandenen Deprecation-Fälle bleiben in diesem Lauf noch grün, weil
+     sie auf `console.warn` horchen. Der rote Lauf hat also genau zwei
+     Fehlschläge.
+
+     a. **Die Merkliste hängt am Kernel.** In
+        `src/in-the-dark/ShadowObjectCreationScope.spec.ts` als **erster** `it`
+        innerhalb von `describe('the deprecated isEqual argument', …)`:
+
+        ```ts
+        // The list of names already reported belongs to the kernel: an application running two shadow
+        // environments has two kernels, and the second of them has to hear about the deprecated call
+        // form just as the first did. A list living as long as the module reports to whichever kernel
+        // got there first and to no other.
+        it('useProperty: reports the deprecated call form to every kernel that meets it', () => {
+          const registry = new Registry();
+          const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+          const compare = vi.fn((a: unknown, b: unknown) => a === b);
+
+          @ShadowObject({registry, token: 'deprecatedUsePropertyPerKernel'})
+          class DeprecatedUsePropertyPerKernel {
+            constructor({useProperty}: ShadowObjectCreationAPI) {
+              useProperty('bareComparePerKernel', compare);
+            }
+          }
+          expect(DeprecatedUsePropertyPerKernel).toBeDefined();
+
+          const first = new Kernel(registry);
+          const second = new Kernel(registry);
+
+          first.createEntity(generateUUID(), 'deprecatedUsePropertyPerKernel', undefined, 0, [
+            ['bareComparePerKernel', 'first'],
+          ]);
+          second.createEntity(generateUUID(), 'deprecatedUsePropertyPerKernel', undefined, 0, [
+            ['bareComparePerKernel', 'first'],
+          ]);
+
+          expect(errorSpy).toHaveBeenCalledTimes(2);
+
+          first.destroy();
+          second.destroy();
+        });
+        ```
+
+        Der Token ist eigens für diesen Fall neu; er darf sich mit keinem der
+        fünf vorhandenen überschneiden. Dass der Fall `useProperty` benutzt und
+        der vorhandene `useProperty`-Fall weiter unten ebenfalls, ist nach dem
+        Umbau folgenlos: jeder Fall baut seinen eigenen Kernel und damit seine
+        eigene Merkliste.
+
+     b. **Die übersprungene Doppel-Einfuhr hängt am Schalter.** In
+        `src/worker/MessageRouter.spec.ts` direkt hinter den vorhandenen Fall
+        `confirms a module it has already imported without registering it twice`:
+
+        ```ts
+        // The skip line is the one report of this branch that asks a getter first, so a logger that is
+        // switched off silences it. The instance flag is enough for that -- `isWarn` combines it with
+        // the two shared switches -- and it stays inside this test, where a write to the shared config
+        // would reach every logger of the thread.
+        it('keeps the skip of an already imported module behind the logger switch', async () => {
+          const {kernel, posted, router} = setup();
+          const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+          const url = 'data:text/javascript,export const shadowObjects = {define: {}}';
+
+          kernel.logger.enable = false;
+
+          router.route(message({type: Configure, importModule: url}));
+          await waitForPosted(posted, 1);
+
+          router.route(message({type: Configure, importModule: url}));
+          await waitForPosted(posted, 2);
+
+          expect(posted).toHaveLength(2);
+          expect(posted.map((entry) => entry.message.error)).toEqual([undefined, undefined]);
+          expect(warn).not.toHaveBeenCalled();
+        });
+        ```
+
+     Roten Lauf so erzeugen und die Ausgabe in den Report übernehmen:
+
+     ```
+     pnpm -F @spearwolf/shadow-objects exec vitest --run src/in-the-dark/ShadowObjectCreationScope.spec.ts src/worker/MessageRouter.spec.ts
+     ```
+
+     Erwartete Fehlschläge: (a) `expected "error" to be called 2 times, but got
+     0 times` — heute geht die Meldung über `console.warn`, und sie fällt
+     ohnehin nur einmal je Modul; (b) `expected "warn" not to be called` — heute
+     druckt die Zeile ungefragt.
+
+  2. **`src/in-the-dark/Kernel.ts`** — die Merkliste bekommt ihren Besitzer.
+     Direkt hinter `readonly #shadowObjectScopes = …` (Zeile 94) und vor dem
+     Konstruktor:
+
+     ```ts
+     // The member names whose deprecation report this kernel has already made, one entry each. Handed
+     // to every creation scope this kernel builds, which is what gives the report the lifetime of the
+     // kernel rather than that of this module: an application running two shadow environments would
+     // otherwise report the deprecated call form to whichever of them got there first and to no other.
+     // One entry per name rather than a single flag, because a flag would swallow the reports of the
+     // four members that come after the first. `destroy()` leaves the set alone -- a kernel that has
+     // said it once has said it.
+     readonly #shownDeprecations = new Set<string>();
+     ```
+
+     Und die Konstruktion des Scopes in `constructShadowObject()` (Zeile 749)
+     reicht sie weiter:
+
+     ```ts
+     const scope = new ShadowObjectCreationScope(entry.entity, this.logger, getDisplayName(construct), this.#shownDeprecations);
+     ```
+
+     Das Feld bleibt privat, und der Kernel bekommt **keine** neue öffentliche
+     Methode: die Liste erreicht ihren einzigen Leser über den Konstruktor, den
+     `ShadowObjectCreationScope` schon für den Logger benutzt, und
+     `ShadowObjectCreationScope` wird weder aus `src/index.ts` noch aus
+     `src/shadow-objects.ts` exportiert. Eine öffentliche
+     Kernel-Methode für eine bibliotheksinterne Buchführung stünde dauerhaft im
+     Vertrag und zöge Doku und einen `### New`-Eintrag nach sich; eine
+     `WeakMap<Kernel, Set<string>>` auf Modulebene käme ohne Signaturänderung
+     aus, verstiege aber die Zugehörigkeit in eine Schlüsselwahl, die ein Leser
+     erst rekonstruieren muss. Der Konstruktorweg macht den Besitz sichtbar und
+     kostet nichts an der Oberfläche.
+
+  3. **`src/in-the-dark/ShadowObjectCreationScope.ts`** — fünf Eingriffe.
+
+     a. Der Block Zeile 19–35 (Kommentar, `isEqualDeprecationShown` und
+        `warnDeprecatedIsEqualOption`) fällt ersatzlos weg. Die Modulebene
+        dieser Datei trägt danach keinen Zustand mehr.
+
+     b. Hinter `readonly #displayName: string;` (Zeile 58) das neue Feld:
+
+        ```ts
+        // The kernel's list of member names whose deprecation report has already been made. Shared by
+        // every scope of one kernel, which is what makes the report fall once per kernel and name.
+        readonly #shownDeprecations: Set<string>;
+        ```
+
+     c. Der Konstruktor (Zeile 145–149) nimmt sie entgegen. Der Parameter ist
+        pflichtig und bekommt keinen Vorgabewert: ein Aufrufer, der ihn
+        vergisst, bekäme sonst still eine Liste je Shadow Object, also eine
+        Meldung je Shadow Object — schlechter als der Zustand, den dieses Paket
+        behebt.
+
+        ```ts
+        constructor(entity: Entity, logger: ConsoleLogger, displayName: string, shownDeprecations: Set<string>) {
+          this.#entity = entity;
+          this.#logger = logger;
+          this.#displayName = displayName;
+          this.#shownDeprecations = shownDeprecations;
+        }
+        ```
+
+     d. Die Meldung selbst wird eine private Methode der Klasse, und zwar an
+        genau einer Stelle: hinter dem Ende von `#cachedReader` (Zeile 378)
+        und vor `useProperty()` (Zeile 380) — beide Angaben meinen dieselbe
+        Lücke, dazwischen liegt heute nur die Leerzeile 379. Der Kommentar in
+        (e) verweist mit »below« auf genau diese Reihenfolge:
+
+        ```ts
+        /**
+         * Reports the deprecated call form in which a bare compare function stands where the options
+         * object belongs, at most once per kernel and member name.
+         *
+         * Through `error` rather than `warn`: this names a mistake in the calling code, and its author
+         * has to see it wherever the application runs. `logger.warn` is asked `isWarn` first, and the
+         * shared `enable` behind that getter is off anywhere but `localhost` -- a deprecation notice
+         * that goes silent everywhere the code actually ships is no notice at all. See the table of
+         * call against getter under "Console Logger" in `docs/api-reference.md`.
+         *
+         * One line per kernel and member name: a shadow-object calling a deprecated member inside a
+         * loop would otherwise fill the console.
+         */
+        #reportDeprecatedIsEqualOption(options: unknown, apiName: string): void {
+          if (typeof options !== 'function' || this.#shownDeprecations.has(apiName)) return;
+          this.#logger.error(
+            `[shadow-objects] Deprecation Warning: The "isEqual" option of "${apiName}()" is now passed as {compare} argument. Please update your code accordingly.`,
+          );
+          this.#shownDeprecations.add(apiName);
+        }
+        ```
+
+        Der Wortlaut der Meldung bleibt Zeichen für Zeichen der bisherige. Der
+        Logger stellt seinen Namensraum als eigenes Argument davor; das Präfix
+        `[shadow-objects]` bleibt trotzdem stehen, weil der Namensraum `Kernel`
+        heißt und nicht das Paket nennt.
+
+        Die fünf Aufrufstellen (heute Zeile 381, 468, 486, 500, 516) werden von
+        `warnDeprecatedIsEqualOption(options, '<name>')` zu
+        `this.#reportDeprecatedIsEqualOption(options, '<name>')`. Die Namen der
+        fünf Member bleiben unverändert: `useProperty`, `provideContext`,
+        `provideGlobalContext`, `useContext`, `useParentContext`.
+
+     e. Der `else if`-Zweig in `#cachedReader()` (Zeile 371–375):
+
+        ```ts
+        } else if (opts?.compare != null && compares.get(name) !== opts.compare) {
+          // Through `error` for the same reason as the deprecation report below: the options of this
+          // call are being dropped, and the caller has to hear that outside `localhost` too, where the
+          // shared `enable` behind `isWarn` is off.
+          this.#logger.error(
+            `[shadow-objects] ${apiName}("${String(name)}"): the cached signal already exists with a different (or no) {compare} function — the new options are ignored. Pass options only on the first call per ${subject}.`,
+          );
+        }
+        ```
+
+
+  4. **`src/in-the-dark/importModule.ts`** — der Block Zeile 19–24:
+
+     ```ts
+     if (importedModules.has(module)) {
+       // Gated behind `isWarn`, unlike the reports of the creation API: a module two `extends` chains
+       // have in common is a shape of the module graph and not a mistake, so this line only tells
+       // during development. See the table of call against getter under "Console Logger" in
+       // `docs/api-reference.md`.
+       if (kernel.logger.isWarn) {
+         kernel.logger.warn('importModule: skipping already imported module', module);
+       }
+       return;
+     } else {
+       importedModules.add(module);
+     }
+     ```
+
+     Die Signatur der Funktion bleibt, wie sie ist: `kernel` steht schon als
+     erster Parameter da, und beide Aufrufer — `MessageRouter.ts:143` und
+     `LocalShadowObjectEnv.ts:80` — reichen ihren eigenen Kernel hinein. Der
+     Import von `Kernel` bleibt ein `import type`; gelesen wird nur eine
+     Eigenschaft des übergebenen Werts.
+
+  5. **`src/in-the-dark/ShadowObjectCreationScope.spec.ts`, der Bestand.**
+
+     a. Der Kommentarblock Zeile 11–22 beschreibt die Reihenfolgeabhängigkeit,
+        die dieses Paket auflöst, und wird durch diesen ersetzt:
+
+        ```ts
+        // The deprecation report falls once per kernel and member name, and every case below builds a
+        // kernel of its own -- so a case's report is its own, whatever the cases before it did. Two
+        // cases sharing one kernel would share that list, and the second of them would see nothing.
+        ```
+
+     b. Der Helfer `makeUnboundScope` (Zeile 26–32, sein `return` steht in
+        Zeile 31) reicht die Liste mit. Der Scope wird dort von Hand gebaut,
+        also bekommt er eine eigene:
+
+        ```ts
+        return {
+          kernel,
+          uuid,
+          scope: new ShadowObjectCreationScope(kernel.getEntity(uuid), kernel.logger, 'TestScope', new Set<string>()),
+        };
+        ```
+
+     c. Der Kommentar im `afterEach` (Zeile 36–39) nennt `console.warn`; er
+        nennt künftig `console.error`. Der Rest des Satzes gilt unverändert.
+
+     d. Die fünf vorhandenen Fälle des Blocks
+        `describe('the deprecated isEqual argument', …)` horchen künftig auf
+        `console.error`. Je Fall vier Änderungen, sonst nichts:
+
+        - `const warnSpy = vi.spyOn(console, 'warn')…` wird zu
+          `const errorSpy = vi.spyOn(console, 'error')…`, und jede weitere
+          Nennung von `warnSpy` (die Erwartungen und `warnSpy.mockRestore()`)
+          zu `errorSpy`.
+        - `expect(warnSpy).toHaveBeenCalledTimes(1)` wird zu
+          `expect(errorSpy).toHaveBeenCalledTimes(1)`.
+        - `expect(warnSpy.mock.calls[0][0]).toBe(…)` wird zu
+          `expect(errorSpy.mock.calls[0][2]).toBe(…)` — der Index wandert von
+          0 auf 2, weil Badge und Styles davor stehen. Der erwartete Wortlaut
+          bleibt Zeichen für Zeichen der bisherige.
+        - Der Titel sagt statt »warns once per realm with the full deprecation
+          text« künftig »reports once per kernel with the full deprecation
+          text«. Der Rest des Titels bleibt.
+
+        Im **ersten** der fünf Fälle (`useProperty`) steht über der Erwartung
+        dieser Kommentar, und eine Zeile prüft den Namensraum-Badge — sie ist
+        der Beleg, dass die Meldung durch den Logger geht und nicht roh über
+        `console.error`:
+
+        ```ts
+        // `ConsoleLogger` prints its namespace as a styled badge, so the wording of a report starts at
+        // the third argument: `console.error('%c<namespace>', styles, ...args)`. The badge is what
+        // tells a report through the logger apart from a raw call on the console.
+        expect(errorSpy.mock.calls[0][0]).toBe('%cKernel');
+        expect(errorSpy.mock.calls[0][2]).toBe(
+          '[shadow-objects] Deprecation Warning: The "isEqual" option of "useProperty()" is now passed as {compare} argument. Please update your code accordingly.',
+        );
+        ```
+
+        In den übrigen vier Fällen genügt der Index; der Kommentar wird nicht
+        wiederholt.
+
+  6. **`src/worker/MessageRouter.spec.ts`, der Bestand.** Eine Stelle: der Fall
+     `confirms a module it has already imported without registering it twice`,
+     Zeile 299. Die Meldung steht jetzt hinter Badge und Styles:
+
+     ```ts
+     // `ConsoleLogger` prints its namespace as a styled badge: `console.warn('%c<namespace>', styles,
+     // ...args)`. The wording of the call starts at the third argument.
+     expect(warn.mock.calls[0][2]).toContain('importModule: skipping already imported module');
+     ```
+
+     `expect(warn).toHaveBeenCalledTimes(1)` darüber bleibt unverändert stehen.
+
+  7. **`docs/api-reference.md`.** Vier Stellen, alle im Bestand.
+
+     a. Zeile 69, letzter Halbsatz des Options-Punktes von `useProperty`. »A
+        bare comparison function in place of the options object still works and
+        logs a deprecation warning.« wird zu:
+
+        ```markdown
+        A bare comparison function in place of the options object still works; it is reported once per Kernel and member name through the Kernel's `ConsoleLogger` at **error** level, which no switch gates — see the table of call against getter under [Console Logger](#console-logger).
+        ```
+
+     b. Zeile 71, zweiter Halbsatz. »…and the `compare` of that second call is
+        ignored with a message on the console.« wird zu »…and the `compare` of
+        that second call is ignored and reported through the Kernel's
+        `ConsoleLogger` at **error** level.« Der Schlusssatz »Pass options on
+        the first call for a given name.« bleibt.
+
+     c. Zeile 117, Schlusshalbsatz. »…is ignored with a message on the
+        console.« wird zu »…is ignored and reported at **error** level, as it is
+        for `useProperty`.«
+
+     d. Zeile 582, erster Halbsatz. »the second attempt is skipped and reported
+        on the console« wird zu:
+
+        ```markdown
+        A module that two `extends` chains have in common is imported once; the second attempt is skipped and reported through the Kernel's `ConsoleLogger` at **warn** level, so the line shows where that logger's switches are on — see [Console Logger](#console-logger) — and stays off the console of an application in production.
+        ```
+
+     Sonst nichts an dieser Datei. Zeile 141 spricht davon, dass ein zweiter
+     `provideContext()` seine Optionen ohne jede Meldung verwirft — das ist der
+     Cache des Kontext-Signals, nicht der der Reader, und bleibt richtig. Der
+     Abschnitt »Console Logger« (Zeile 2993 ff.) beschreibt den Mechanismus und
+     nicht die einzelnen Aufrufstellen; die Tabelle aus Paket 1 (Zeile 3021–3026)
+     wird von den vier Stellen oben referenziert statt neu ausformuliert, und der
+     Satz in Zeile 3032 (»it changes nothing that prints unconditionally, this
+     library's own error reports included«) deckt die beiden neuen
+     Fehlermeldungen bereits ab. `docs/cheat-sheet.md`, `docs/guides.md`,
+     `docs/concepts.md`, `docs/best-practices.md` und `README.md` des Pakets
+     nennen weder die Deprecation noch die Doppel-Einfuhr — nachgesehen, nichts
+     zu tun.
+
+  8. **`packages/shadow-objects/CHANGELOG.md`, `## [Unreleased]`.** Zwei
+     Einträge, beide als letzte Punkte von `### Bugfixes` (der Abschnitt endet
+     vor `### Types`), in der Reihenfolge unten:
+
+     ```markdown
+     - **Bugfix (kernel):** the three console lines of the branch both environments share report through a `ConsoleLogger` instead of writing to `console` directly. The deprecated call form of `useProperty()`, `provideContext()`, `provideGlobalContext()`, `useContext()` and `useParentContext()` — a bare compare function where the options object belongs — and a `{compare}` passed to an already cached reader go out through `kernel.logger.error()`: both name a mistake in the calling code, and `error` is the one level this library leaves ungated, so the report arrives wherever the application runs rather than on `localhost` alone. The skipped second import of a module two `extends` chains have in common goes out through `kernel.logger.warn()` behind `isWarn`, because it describes the shape of a module graph and not a mistake. The affected entries in `docs/api-reference.md` name the level and point at the table of call against getter under Console Logger.
+     - **Bugfix (kernel):** the deprecation report of the bare-compare call form falls once per Kernel and member name. The list of names already reported belongs to the Kernel, which hands it to every creation scope it builds; it used to live as long as the module, so an application running two Shadow Environments heard about the deprecated form from whichever of them got there first and from no other.
+     ```
+
+     Die Zählung im Vorspann von `## [Unreleased]` (»Fifty-two changes reach
+     existing consumers«) bleibt unberührt, und unter
+     `### ⚠️ Breaking Changes` entsteht kein Eintrag. Der Vorlauf hat dieselbe
+     Sache an der Worker-Strecke (`2b121ac`) genauso behandelt: eine Zeile, die
+     roh auf die Konsole ging und künftig über den Logger geht, ändert kein
+     Programmverhalten, keinen Typ und keine Signatur. Wer das anders sieht,
+     meldet es, statt den Eintrag anzulegen.
+
+  9. **Nachlauf.** Nachgesehen und ohne Arbeit: außerhalb der beiden Specs
+     dieses Pakets beobachtet keine Suite die drei Meldungen — weder
+     `shadow-objects-testing` noch `shadow-objects-e2e` nennt eine von ihnen.
+     `AGENTS.md` auf Veralterung prüfen: es nennt weder den
+     `ConsoleLogger` noch die Deprecation der `isEqual`-Option, es ist also
+     nichts nachzuziehen — die Prüfung gehört in den Report, nicht in die Datei.
+     Kein `TODO`-Kommentar wird berührt (nachgesehen in allen sieben Dateien),
+     `pnpm make:todo` entfällt. Unter `dist/` kommt keine Datei hinzu und fällt
+     keine weg, `dist/package.json` behält seine Form:
+     `src/distContract.files.txt` und `src/distContract.package.json` bleiben
+     unverändert.
+
+- Nachwirkung im Audit (für den Abschluss, kein offener Punkt dieses Pakets):
+  TEST-007 und TEST-008 stehen beide auf `info`, liegen außerhalb der
+  Scope-Regel und bleiben offene Findings — ihre Begründung überlebt dieses
+  Paket aber nicht. Beide berufen sich auf die Modulflagge, die Schritt 3a
+  entfernt: TEST-007 sagt, das Aufteilen der fünf Fälle sei versperrt, »solange
+  die Deprecation-Warnung pro Realm und Methodenname nur einmal fällt«, und
+  TEST-008 nennt die vorzeitig kippende Modulflagge als Grund der beiden
+  Hilfskonstruktionen. Nach diesem Paket baut jeder Fall seinen eigenen Kernel
+  und damit seine eigene Merkliste; die Sperre, auf die sich beide berufen, gibt
+  es nicht mehr. Wer die Findings später anfasst, prüft sie gegen den neuen
+  Stand, statt ihre Beschreibung zu glauben.
+- Verify: `pnpm run ci` (baut, typprüft, fährt alle Tests außer den
+  Playwright-E2E und schließt mit `pnpm lint:ci`). Erwartung gegen die Baseline:
+  exit 0, `pnpm lint` weiterhin mit dem einen vorbestehenden Info-Hinweis, und
+  die Fallzahl der Vitest-Suiten steigt gegenüber 1301 um genau die zwei Fälle
+  aus Schritt 1 auf 1303 (801 + 123 + 379). Die E2E-Suite bleibt außen vor:
+  dieses Paket fasst keine ihrer Dateien an, und keiner ihrer Fälle beobachtet
+  Konsolenausgabe — `pnpm run ci` typprüft sie trotzdem mit.
+- Commit: `fix(kernel): the creation API and the module import report through the console logger`
+- Ergebnis: 2 Runden · CONS-019 behoben (alle drei rohen `console.warn` sind
+  weg: `ShadowObjectCreationScope.ts:385` und `:362` über `this.#logger.error`,
+  `importModule.ts:24-25` über `kernel.logger.warn` hinter `isWarn`; die
+  Stufenwahl steht als Kommentar daneben) · CONS-001 behoben (die Merkliste
+  hängt an `Kernel.ts:103` und wird über `Kernel.ts:758` in jeden Scope
+  gereicht, `ShadowObjectCreationScope.ts` trägt keinen Modulzustand mehr) ·
+  Regressionstests `useProperty: reports the deprecated call form to every
+  kernel that meets it` und `keeps the skip of an already imported module
+  behind the logger switch`, beide vor dem Fix rot (der rote Lauf zeigte drei
+  statt zwei Fehlschläge: der neue Fall verbrauchte die Modul-Merkliste vor dem
+  vorhandenen `useProperty`-Fall — genau die Reihenfolgeabhängigkeit, die dieses
+  Paket auflöst) · `Kernel.spec.ts` kam als Nachzug der eigenen Änderung dazu,
+  fünf Fälle des Blocks `cache-hit on creation-API helpers` horchten auf
+  `console.warn` · Runde 2 richtete den einen `wichtig`
+  (`Backlog.md:213` behauptete für die Cache-Hit-Meldung weiter `console.warn`) ·
+  Verify `pnpm run ci` exit 0, 1303 Fälle (801 + 123 + 379), ein vorbestehender
+  Info-Hinweis · drei `klein` bleiben stehen, alle drei plan-verbatim und
+  deshalb nicht in die Fehlerkette gegeben: `CHANGELOG.md:361` erzählt im
+  Nebensatz den Vorzustand (die Nachbareinträge der Datei tun es genauso),
+  `Kernel.ts:99` sagt »rather than that of this module«, wobei »this module« in
+  dieser Datei keinen Bezug hat, und der `afterEach`-Kommentar in
+  `ShadowObjectCreationScope.spec.ts:31` spricht von »warning count«, während
+  der Spy auf `console.error` sitzt
+- Nebenbefunde: → Queue (2, beide an `Backlog.md`)
+- Folgen: —
+- Schnittstellen: `ShadowObjectCreationScope` nimmt einen vierten, pflichtigen
+  Konstruktorparameter `shownDeprecations: Set<string>` — die Klasse wird weder
+  aus `src/index.ts` noch aus `src/shadow-objects.ts` exportiert, der Vertrag
+  nach außen bewegt sich also nicht; die beiden Aufrufstellen sind
+  `Kernel.ts:758` und der Spec-Helfer `makeUnboundScope` · die Deprecation-
+  Meldung der Creation-API und der abgelehnte zweite `compare` gehen über
+  `kernel.logger.error()` und damit ungegatet, die übersprungene Doppel-Einfuhr
+  über `kernel.logger.warn()` hinter `isWarn` — wer eine dieser drei Zeilen in
+  einem Test beobachtet, horcht auf den Kanal des Loggers und liest den Wortlaut
+  ab Argument 2, weil Badge und Styles davorstehen
+
+**CONS-019 · low · packages/shadow-objects/src/in-the-dark/importModule.ts:19; src/in-the-dark/ShadowObjectCreationScope.ts:31 und :372** — Drei unabschaltbare console.warn im geteilten Kernel-Zweig
+
+Die übersprungene Doppel-Einfuhr eines Moduls, die Deprecation-Warnung zur isEqual-Option und der
+abgelehnte zweite compare an einem gecachten Signal schreiben roh auf console.warn. Der Zweig läuft in
+beiden Umgebungen, und ShadowObjectCreationScope hält selbst einen ConsoleLogger (:57). Eine Anwendung,
+die den Logger für die Produktion abschaltet, bekommt diese drei Zeilen trotzdem. Der Umbau trägt eine
+Entscheidung in sich: ConsoleLogger.sharedConfig.enable ist außerhalb von localhost ausgeschaltet, und
+eine Deprecation-Warnung, die genau dort schweigt, wo ein Consumer sie sehen müsste, ist keine Warnung
+mehr.
+
+Empfehlung: Die drei Zeilen über den vorhandenen ConsoleLogger führen und dabei die Stufe bewusst
+wählen: logger.error für das, was ein Consumer sehen muss, weil es ungegatet druckt, logger.warn für
+das, was nur in der Entwicklung zählt. Die Wahl gehört als Kommentar daneben.
+
+**CONS-001 · info · packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts:19-34** — Die Merkliste der Deprecation-Warnungen lebt am Modul, nicht am Kernel
+
+Beim Re-Check dieses Laufs trug die im Vorgänger genannte Stelle (Kernel.ts:62-66) den Befund nicht:
+dort stehen die Buchführungsfelder der Entities. Die Sache selbst steht in
+ShadowObjectCreationScope.ts, und sie ist kleiner als beschrieben: eine einzige Modul-Menge
+isEqualDeprecationShown merkt sich je Methodenname, ob die Warnung schon fiel. Sie lebt so lange wie
+das Modul, nicht wie der Kernel, also sieht in einer Testsuite oder in einer Anwendung mit mehreren
+Umgebungen nur der erste Aufrufer die Warnung. Der Kommentar darüber begründet die Feinheit der
+Entdopplung, nicht die Lebensdauer, und die Spec-Datei hängt bereits an ihr: TEST-007 und TEST-008
+beschreiben, wie ihre Fälle um die Modulflagge herumgebaut sind.
+
+Empfehlung: Den Zustand an den Kernel oder die Registry hängen, dann verschwindet die
+Reihenfolgeabhängigkeit der Fälle mit. Ist die realmweite Einmaligkeit gewollt, gehört genau dieser
+Satz neben die Menge, damit der nächste Leser nicht wieder bei den Fällen anfängt.
+
+### [x] 4. Das Canvas-Paket grüßt seine Consumer nicht mehr
+- Findings: DX-002 (low)
+- Ziel: Der publizierte Einstiegspunkt schreibt beim Import nichts mehr
+  ungefiltert in die Konsole einer fremden Anwendung.
+- Bereich: `packages/shae-offscreen-canvas/src/bundle.js` und `CHANGELOG.md`
+  desselben Pakets, dazu die Zeilen in `Backlog.md`, die dieser Fix falsch
+  macht; die `.npm-pkg`-Erwartung wird geprüft
+- Hängt ab von: —
+- Hash: b96ff80
+- Modell: mittlere Stufe
+- Effort: low
+- Hinweis (aus Zug 0 von Paket 3): die Tabelle Stufe gegen Schalter aus Paket 1
+  steht in `packages/shadow-objects/docs/api-reference.md`, also im anderen
+  Paket — die Doku dieses Pakets (`docs/01-shadow-objects-api.md`) kann sie
+  nicht als lokalen Anker verlinken. Die betroffene Zeile ist ein
+  `console.debug`; einen `ConsoleLogger` führt das Paket anderswo bereits
+  (`src/shadow-objects/ShaeOffscreenCanvas.js:33`).
+- Hinweis (aus Zug 0 von Paket 3, nachgesehen): `.npm-pkg` publiziert neben
+  `src/bundle.js` auch `src/worker-sample.js` und die drei Beispiel-Shadow-
+  Objects unter `src/shadow-objects/sample/`, und die schreiben ebenfalls roh
+  auf `console.debug`. Sie gehören trotzdem nicht in dieses Paket und sind kein
+  Befund: `bundle.js:6` druckt beim bloßen Import des Einstiegspunkts, also
+  ungefragt, während die vier anderen Zeilen erst laufen, wenn ein Consumer die
+  Beispielmodule selbst importiert und benutzt — `bundle.js` zieht keines von
+  ihnen herein. Beispielcode, der beim Ausführen redet, tut, was Beispielcode
+  tut.
+- Dateien:
+  - `packages/shae-offscreen-canvas/src/bundle.js`
+  - `packages/shae-offscreen-canvas/CHANGELOG.md`
+  - `Backlog.md`
+- Vorgehen:
+
+  Vorbemerkung zur Wegwahl, damit sie nicht noch einmal aufgemacht wird. Die
+  Empfehlung nennt zwei Ausgänge — streichen oder durch den `ConsoleLogger`
+  führen —, und es gilt der erste. Ein gegateter Gruß bräuchte in einem Modul,
+  das aus drei Seiteneffekt-Importen besteht, eine eigene Logger-Instanz und
+  eine `isDebug`-Abfrage davor; sichtbar wäre er nur, wo
+  `ConsoleLogger.sharedConfig.enable` und `.debug` beide anstehen, also auf
+  localhost bei der Entwicklung dieses Pakets. Der Gegenwert ist eine Zeile
+  ohne Auskunft. Dazu der Hausstand nebenan:
+  `packages/shadow-objects/src/bundle.ts`, der Einstiegspunkt des Kernpakets,
+  druckt nichts. Er setzt stattdessen `globalThis.SHADOW_ENTS_BUNDLE_LOADED`;
+  eine solche Marke bekommt dieses Paket **nicht** — sie steht in keinem
+  Befund, in keiner Doku und in keinem Vertrag.
+
+  Vorbemerkung zum Regressionstest: es gibt keinen. Der Befund ist kein
+  Korrektheitsfehler, sondern eine Zeile, die es nicht geben soll. Ein Test auf
+  Schweigen beim Import müsste das Modul selbst importieren, damit das Custom
+  Element im Testrealm registrieren, und er zöge `bundle.js` in die Coverage —
+  gegen die Messung, die Schritt 5 braucht. Rot würde er außerdem, sobald
+  irgendein Modul unterhalb der drei Importe aus eigenem Anlass einmal etwas
+  druckt. Dass die Zeile weg ist, belegt der Diff.
+
+  Vorbemerkung zur Sprache: `Backlog.md` ist durchgehend deutsch und bleibt es,
+  `CHANGELOG.md` ist englisch und bleibt es. Die Konvention »Doku auf Englisch«
+  meint die Projektdokumentation unter `docs/`, nicht dieses eine deutsche
+  Arbeitsdokument; Paket 3 hat in `9c3abb7` dort ebenfalls deutsch geschrieben.
+
+  1. **`packages/shae-offscreen-canvas/src/bundle.js`**: Zeile 6 und die leere
+     Zeile 5 davor entfernen. Danach steht in der Datei genau das:
+
+     ```js
+     import '@spearwolf/shadow-objects/shae-ent.js';
+     import '@spearwolf/shadow-objects/shae-worker.js';
+
+     import './shae-offscreen-canvas.js';
+     ```
+
+     Die Datei endet **ohne** abschließenden Zeilenumbruch — `biome.json` führt
+     `"trailingNewline": false` (`:40`), und heute endet sie bereits so. Wer
+     einen anhängt, macht `pnpm lint:ci` rot.
+
+  2. **`packages/shae-offscreen-canvas/CHANGELOG.md`**: einen Aufzählungspunkt
+     ans Ende der Liste unter `## [Unreleased]` hängen, also hinter den Eintrag
+     zu `three` als Peer-Dependency, der heute die letzte Zeile der Datei ist:
+
+     ```markdown
+     - Importing `@spearwolf/shae-offscreen-canvas` writes nothing to the console. `src/bundle.js` — the module `main`, `module` and the default condition of the `exports` map all point at — carries its three side-effect imports and nothing else.
+     ```
+
+     Der Vorspann von `## [Unreleased]` bleibt unangetastet: an der Einstufung
+     »Next release: minor« ändert dieser Eintrag nichts, und ein
+     Breaking-Change ist er nicht. Kein eigener `###`-Abschnitt — die Liste
+     dieses Pakets ist flach.
+
+  3. **`Backlog.md:407`**, der Aufzählungspunkt unter »Ergonomie-Feedback an die
+     Kern-Lib« in §6. Er wird durchgestrichen und bekommt seine Auflösung, in
+     der Form der beiden Nachbarzeilen:
+
+     ```markdown
+     - ~~`console.debug('hello … 🦄')` in `src/bundle.js` ist eine Log-Rauschen-Falle für Konsumenten.~~ ✅ Der Einstiegspunkt trägt nur noch seine drei Seiteneffekt-Importe; wer das Paket importiert, bekommt keine Zeile in seiner Konsole.
+     ```
+
+  4. **`Backlog.md:450`**, Punkt 26 in §7.4 — der Eintrag derselben Sache in der
+     Prioritätenliste. Ebenso durchstreichen, und die Auflösung sagt zugleich,
+     was mit Absicht bleibt, damit die Frage nicht wiederkommt:
+
+     ```markdown
+     26. ~~**Demo-`console.debug`-Statement** entfernen.~~ ✅ Erledigt — der Einstiegspunkt `src/bundle.js` druckt beim Import nichts mehr. Die vier `console.debug`-Zeilen in `src/worker-sample.js` und unter `src/shadow-objects/sample/` bleiben: sie laufen erst, wenn ein Konsument die Beispielmodule selbst importiert und benutzt.
+     ```
+
+  5. **`Backlog.md:320`**, die Zeile der Coverage-Tabelle in §4.2 zum Canvas-
+     Paket. Sie nennt heute `bundle.js` unter den Modulen »bei 0 %«, und das
+     ist eine gemessene Zahl, die dieser Fix bewegt: die Datei hatte genau eine
+     Anweisung, nämlich die gestrichene (gemessen `0 % · 0/1`), und hat danach
+     keine mehr. Also **nachmessen statt raten**:
+
+     ```bash
+     pnpm exec turbo run test --filter=@spearwolf/shae-offscreen-canvas
+     ```
+
+     In der v8-Zusammenfassung die Zeile zu `bundle.js` ablesen (dieselben
+     Zahlen stehen danach in
+     `packages/shae-offscreen-canvas/coverage/src/index.html`). Steht dort
+     nicht mehr `0 %`, wird der Satzteil »`bundle.js`,
+     `shae-offscreen-canvas.js` und `worker-sample.js` bei 0 %« so
+     umgeschrieben, dass er die neue Zahl sagt und dabei stehen lässt, was
+     weiter stimmt: keine Spec fasst `bundle.js` an. Steht dort weiterhin
+     `0 %`, bleibt die Zeile unberührt.
+
+     Für alle drei Backlog-Schritte gilt dabei dieselbe Auflage: **ersetzen,
+     nicht einfügen** — eine Zeile bleibt eine Zeile, so wie jeder
+     Aufzählungspunkt dieser Datei. »Offene Befunde« im Kopf dieses Plans
+     verweist auf `Backlog.md:213` und `Backlog.md:314`, und beide Nummern
+     halten nur, solange keine Zeile dazukommt oder wegfällt.
+
+  6. **Was nicht angefasst wird**, jeweils nachgesehen und nicht vermutet:
+
+     - Die vier rohen `console.debug` in `src/worker-sample.js:22` und unter
+       `src/shadow-objects/sample/` — Beispielcode, der erst läuft, wenn ein
+       Konsument ihn selbst importiert. Der Hinweis oben hat das entschieden.
+     - `Backlog.md:213` und `Backlog.md:314`. Beide stehen in »Offene Befunde«
+       mit dem Urteil `→ Audit` und gehören dem Abschluss, nicht diesem Paket.
+       Sie liegen in derselben Datei, in der Schritt 3 bis 5 arbeiten — das ist
+       der Grund, warum sie hier ausdrücklich stehen.
+     - `src/distContract.files.txt` und `src/distContract.package.json`.
+       `src/distContract.spec.js` vergleicht die Dateiliste unter `.npm-pkg`,
+       die Form der `package.json` und die Auflösbarkeit der Einstiegspunkte —
+       keine Dateiinhalte und keine Größen. Weder Liste noch Form bewegen sich.
+     - `README.md` des Pakets und `docs/01-shadow-objects-api.md`. Keine der
+       beiden Dateien erwähnt die Konsolenausgabe des Einstiegspunkts; `grep`
+       auf `console` und `bundle` liefert in der Doku null Treffer.
+     - `packages/shadow-objects/src/bundle.ts`. Die tote ESLint-Direktive
+       darin gehört Paket 5.
+
+  7. Vor dem Verify einmal den Formatter über die angefassten Dateien laufen
+     lassen — `CHANGELOG.md` ist in `biome.json` von `files.includes`
+     ausgenommen und bleibt außen vor:
+
+     ```bash
+     pnpm exec biome check --write packages/shae-offscreen-canvas/src/bundle.js Backlog.md
+     ```
+
+  8. Keine Finding-ID in irgendeiner geschriebenen Zeile — nicht im CHANGELOG,
+     nicht im Backlog, nicht in der Commit-Message. Es gilt der Abschnitt
+     »Konventionen« im Kopf dieses Plans.
+- Verify: `pnpm run ci` (baut, typprüft, fährt alle Tests außer den
+  Playwright-E2E und schließt mit `pnpm lint:ci` ab). Die E2E-Suite bleibt
+  draußen: das Paket ändert eine Konsolenzeile und zwei Markdown-Dateien, kein
+  Verhalten, gegen das ein Browser-Test läuft.
+- Commit: `fix(canvas): the published entry point prints nothing when it is imported`
+- Ergebnis: 1 Runde · DX-002 behoben — `packages/shae-offscreen-canvas/src/bundle.js`
+  trägt nur noch seine drei Seiteneffekt-Importe, der Gruß beim Import ist weg ·
+  kein Regressionstest, und das mit Absicht: der Befund ist kein
+  Korrektheitsfehler, sondern eine Zeile, die es nicht geben soll (Begründung im
+  Vorgehen oben) · `Backlog.md:320` nachgemessen statt geraten — `bundle.js`
+  steht in der v8-Zusammenfassung weiterhin bei 0 %, die Zeile blieb unberührt ·
+  `Backlog.md:407` und `:450` durchgestrichen samt Auflösung, je eine Zeile
+  ersetzt · Verify `pnpm run ci` exit 0, 1303 Fälle (801 + 123 + 379), ein
+  vorbestehender Info-Hinweis von Biome · kein Befund des Reviewers in keiner
+  Kategorie
+- Nebenbefunde: —
+- Folgen: —
+
+**DX-002 · low · packages/shae-offscreen-canvas/src/bundle.js:6** — Der publizierte Einstiegspunkt von
+shae-offscreen-canvas schreibt beim Import in die Konsole
+
+Ein console.debug mit einem Gruß steht ungefiltert in der Datei, auf die main, module und der
+Default-Export der exports-Map zeigen. Jeder Consumer, der das Paket importiert, bekommt die Zeile in
+seiner Konsole — auch in Produktion, auch ohne jede Logger-Konfiguration. Das Paket bringt mit
+ConsoleLogger einen Mechanismus mit, der genau diese Frage beantwortet, und benutzt ihn an seiner
+sichtbarsten Stelle nicht.
+
+Empfehlung: Streichen, oder durch einen ConsoleLogger führen, der die geltende Gate-Logik anwendet. Ein
+Gruß gehört nicht in die Konsole einer fremden Anwendung.
+
+### [x] 5. Vier tote ESLint-Direktiven und vier tote ESLint-Konfigurationen verschwinden
+- Findings: CONS-017 (info)
+- Ziel: In einem Repository, das ausschließlich mit Biome lintet, steht weder
+  eine Direktive noch eine Konfigurationsdatei für einen Linter, den es nicht
+  gibt.
+- Bereich: die vier `eslint-disable-next-line`-Zeilen unter
+  `packages/shadow-objects/src/`, die vier verwaisten `.eslintrc.json` der
+  Workspace-Pakete, das `CHANGELOG.md` der Wurzel und das des Kernpakets
+- Hängt ab von: —
+- Hash: 4d145b4
+- Modell: mittlere Stufe
+- Effort: low
+- Dateien:
+  - `packages/shadow-objects/src/bundle.ts`
+  - `packages/shadow-objects/src/view/ShadowEnv.ts`
+  - `packages/shadow-objects/src/view/ComponentContext.ts`
+  - `packages/shadow-objects/src/utils/waitForMessageOfType.ts`
+  - `packages/shadow-objects/.eslintrc.json` (wird gelöscht)
+  - `packages/shadow-objects-testing/.eslintrc.json` (wird gelöscht)
+  - `packages/shadow-objects-e2e/.eslintrc.json` (wird gelöscht)
+  - `packages/shae-offscreen-canvas/.eslintrc.json` (wird gelöscht)
+  - `CHANGELOG.md` (Wurzel)
+  - `packages/shadow-objects/CHANGELOG.md`
+- Vorgehen:
+
+  1. **Kein Regressionstest, und das ist Absicht.** Dieses Paket behebt keinen
+     Korrektheitsfehler: es entfernt Kommentarzeilen, die kein Werkzeug liest,
+     und Konfigurationsdateien, die kein Werkzeug lädt. Es gibt kein Verhalten,
+     das vorher anders war, also auch keinen roten Lauf zu zeigen. Der Beleg
+     dieses Pakets ist der Verify-Lauf am Ende.
+
+  2. **Die vier Direktiven entfernen.** Genau die Kommentarzeile, sonst nichts
+     an diesen Dateien:
+
+     | Datei | Zeile | Wortlaut |
+     | :--- | :--- | :--- |
+     | `packages/shadow-objects/src/bundle.ts` | 6 | `  // eslint-disable-next-line no-var` |
+     | `packages/shadow-objects/src/view/ComponentContext.ts` | 18 | `  // eslint-disable-next-line no-var` |
+     | `packages/shadow-objects/src/view/ShadowEnv.ts` | 19 | `  // eslint-disable-next-line no-var` |
+     | `packages/shadow-objects/src/utils/waitForMessageOfType.ts` | 24 | `    // eslint-disable-next-line prefer-const` |
+
+     **Die Deklaration darunter bleibt in jedem der vier Fälle unverändert.**
+     Die drei `var` stehen in einem `declare global`-Block, und `var` ist die
+     einzige Schreibweise, mit der TypeScript eine ambiente globale Variable
+     deklariert — `let` oder `const` erzeugen dort keine Eigenschaft an
+     `globalThis`. Das `let listener` in `waitForMessageOfType.ts` wird ohne
+     Initialisierung deklariert, von `cleanup()` in Zeile 27–31 geschlossen und
+     erst in Zeile 47 zugewiesen; `const` ist dort nicht möglich.
+
+     **Es tritt keine `biome-ignore`-Direktive an ihre Stelle.** Die Empfehlung
+     des Audits stellt das unter den Vorbehalt »wo Biome dieselbe Regel führt«,
+     und das ist an keiner der vier Stellen der Fall: am 2026-08-26 gegen
+     `biome 2.5.9` gemessen, mit
+     `pnpm exec biome lint --error-on-warnings` auf genau diese vier Dateien —
+     `Checked 4 files. No fixes applied.`, keine Diagnose. `style/useConst`
+     steht in `biome.json` auf `warn` und meldet das `let listener` nicht,
+     `style/noVar` meldet die drei ambienten Deklarationen nicht. Wer hier
+     vorsorglich eine Unterdrückung einsetzt, tauscht eine tote Direktive gegen
+     die nächste.
+
+  3. **Die vier verwaisten `.eslintrc.json` löschen**, mit `git rm`, damit die
+     Löschung im Index steht:
+
+     ```
+     git rm packages/shadow-objects/.eslintrc.json \
+            packages/shadow-objects-testing/.eslintrc.json \
+            packages/shadow-objects-e2e/.eslintrc.json \
+            packages/shae-offscreen-canvas/.eslintrc.json
+     ```
+
+     Warum sie zu diesem Paket gehören, obwohl sie im Audit nicht stehen: sie
+     haben dieselbe Ursache wie die vier Direktiven. Die Umstellung auf Biome
+     hat die Wurzel-Konfiguration entfernt (nachzulesen im `CHANGELOG.md` der
+     Wurzel, Zeile 404) und die vier Paket-Konfigurationen stehengelassen; jede
+     von ihnen besteht im Kern aus `"extends": ["../../.eslintrc.json"]` und
+     zeigt damit auf eine Datei, die es nicht mehr gibt. Ein `eslint`-Lauf in
+     einem dieser Pakete bräche am fehlenden `extends`-Ziel ab, statt irgendetwas
+     zu prüfen. Das Audit hat sie nicht gesehen und schreibt in der Beschreibung
+     von CONS-017 sogar das Gegenteil — »Eine ESLint-Konfiguration gibt es im
+     Repository nirgends«. Ein Paket, das die Kommentare entfernt und die
+     Konfigurationen stehenlässt, behebt dieselbe Ursache halb und liefert dem
+     nächsten Audit vier Fundstellen, die dann wie ein vorbestehender Defekt
+     ohne Vorgeschichte aussehen.
+
+     Am Repository hängt an ihnen nichts. Am 2026-08-26 nachgesehen: kein
+     `eslint` in irgendeiner `package.json` oder in `pnpm-workspace.yaml`, keine
+     Nennung in `.github/`, keine in `.vscode/` oder `.editorconfig`, kein
+     `files`-Feld, das sie in ein Paket-Tarball zöge, und keine Zeile in den
+     vier `distContract`-Erwartungsdateien. Die einzigen verbleibenden
+     Nennungen des Wortes sind historische und bleiben unangetastet: `CHANGELOG.md`
+     der Wurzel Zeile 404 und 414, `docs/superpowers/specs/2026-05-09-build-system-renewal-design.md`
+     Zeile 7, 23 und 57, dazu die Werkzeugtabellen in `AGENTS.md` Zeile 109 und
+     `CLAUDE.md` Zeile 17 (»biome 2.5 (replaces eslint + prettier)«), die
+     danach eher mehr stimmen als vorher.
+
+  4. **`CHANGELOG.md` der Wurzel.** Ein neuer datierter Abschnitt, eingefügt
+     zwischen Zeile 5 (»The format is loosely based on …«) und dem heutigen
+     obersten Abschnitt `## 2026-08-24 — the two unpublished packages …`. Er
+     trägt ausschließlich die vier Konfigurationsdateien — die vier Direktiven
+     stehen im `CHANGELOG.md` des Kernpakets und werden hier nicht wiederholt:
+
+     ```markdown
+     ## 2026-08-26 — the repository carries no configuration for a linter it does not run
+     ```
+
+     Darunter ein Punkt, der die vier Pfade nennt und sagt: alle vier bestanden
+     im Wesentlichen aus `extends` auf eine Wurzel-`.eslintrc.json`, die es im
+     Repository nicht gibt, weshalb ein `eslint`-Aufruf in einem dieser Pakete
+     am fehlenden Ziel gescheitert wäre statt zu prüfen; Lint und Format laufen
+     über Biome, das einmal an `biome.json` konfiguriert ist und keine der vier
+     Dateien liest; keine `package.json` und keine Workflow-Datei nennt `eslint`.
+
+  5. **`packages/shadow-objects/CHANGELOG.md`, `## [Unreleased]`.** Ein Punkt
+     unter `### Internal`, eingefügt direkt hinter dem vorhandenen Eintrag
+     `- **Internal (kernel):** the Shadow Object Creation API is built by a unit
+     of its own …` und vor `- **Packaging:**` — dort steht der alphabetisch
+     sortierte Lauf des Abschnitts, und `Internal (lint)` gehört zwischen
+     `Internal (kernel)` und `Packaging`. Der Eintrag beginnt mit
+     `- **Internal (lint):**` und sagt: die vier
+     `eslint-disable-next-line`-Kommentare in `src/bundle.ts`, `src/view/ShadowEnv.ts`,
+     `src/view/ComponentContext.ts` und `src/utils/waitForMessageOfType.ts`
+     sind entfernt; sie benannten Regeln (`no-var` dreimal, `prefer-const`
+     einmal) eines Linters, den das Repository nicht führt; die Deklarationen
+     darunter sind unverändert, weil ein `declare global`-Block `var` verlangt
+     und `listener` erst nach der Closure zugewiesen wird; und es tritt keine
+     `biome-ignore`-Direktive an ihre Stelle, weil Biome an keiner der vier
+     Stellen etwas meldet. Kein Consumer sieht davon etwas.
+
+     Der Vorspann von `## [Unreleased]` bleibt unangetastet, die Zählung dort
+     steht weiter auf »Fifty-two«: dieses Paket erreicht keinen Consumer.
+
+  6. **Was ausdrücklich nicht angefasst wird.**
+     - `Backlog.md`. §5.3 »Lint / TS« nennt in Zeile 381 »209 geprüfte Dateien«,
+       und Biome prüft nach diesem Paket 218 statt heute 222. Die Zeile ist
+       trotzdem richtig: sie trägt »Gemessen 2026-08-21« und ist damit eine
+       datierte Messung, keine laufende Behauptung — sie wird von einer späteren
+       Änderung nicht falsch. Zeile 379 begründet abgeschaltete Biome-Regeln mit
+       einem Verweis auf die alte ESLint-Konfiguration und bleibt als
+       historische Begründung ebenfalls stehen. Kein Eintrag in `Backlog.md`
+       wird von diesem Paket erledigt.
+     - `AGENTS.md`. Auf Veralterung geprüft: die Werkzeugtabelle in Zeile 109
+       nennt Biome als Ersatz für eslint und prettier und stimmt weiter. Nichts
+       nachzuziehen.
+     - `pnpm make:todo`. Keine der entfernten Zeilen ist ein `TODO`.
+     - Die `distContract`-Erwartungsdateien. Unter `dist/` und `.npm-pkg/` kommt
+       keine Datei hinzu und fällt keine weg; die vier gelöschten Dateien liegen
+       in den Paketwurzeln, nicht in einem Build-Ausgabeverzeichnis.
+     - `docs/` und `README.md` beider Pakete. Es ändert sich nichts an der
+       öffentlichen API; der Logger, die Elemente und die Wire-Typen bleiben,
+       wie sie sind.
+
+- Verify: `pnpm run ci` (baut, typprüft, fährt alle Tests außer den
+  Playwright-E2E und schließt mit `pnpm lint:ci`). Erwartung gegen den Stand
+  nach Paket 4: exit 0, unverändert 1303 Fälle (801 shadow-objects, 123
+  shae-offscreen-canvas, 379 shadow-objects-testing) — das Paket legt keinen
+  Test an und nimmt keinen weg —, und weiterhin genau der eine vorbestehende
+  Info-Hinweis von Biome zur anstehenden Konfigurationsmigration. Biome prüft
+  dabei 218 statt 222 Dateien. Die E2E-Suite bleibt außen vor: entfernt werden
+  Kommentare, die kein Werkzeug liest, und Konfigurationsdateien, die kein
+  Werkzeug lädt; ein Browser-Test kann davon nichts beobachten.
+- Commit: `chore(lint): nothing in the repository configures or silences a linter it does not run`
+- Ergebnis: 1 Runde · CONS-017 behoben — die vier `eslint-disable-next-line`
+  sind fort (`bundle.ts:6`, `ComponentContext.ts:18`, `ShadowEnv.ts:19`,
+  `waitForMessageOfType.ts:24`), die Deklarationen darunter unverändert, keine
+  `biome-ignore` an ihrer Stelle · dazu die vier verwaisten `.eslintrc.json`
+  derselben Ursache gelöscht · kein Regressionstest, weil kein Verhalten
+  betroffen ist (Schritt 1 des Vorgehens) · Verify `pnpm run ci` exit 0, 1303
+  Fälle (801 + 123 + 379), Biome prüft 218 statt 222 Dateien, ein
+  vorbestehender Info-Hinweis · kein Befund des Reviewers in keiner Kategorie;
+  er hat die Vollständigkeit nachgemessen und findet außerhalb gitignorter
+  Coverage-Artefakte keine Nennung von `eslint` mehr
+- Nebenbefunde: —
+- Folgen: —
+
+**CONS-017 · info · packages/shadow-objects/src/view/ShadowEnv.ts:19; src/bundle.ts:6; src/view/ComponentContext.ts:18; src/utils/waitForMessageOfType.ts:24** — Vier tote ESLint-Direktiven in einem Repository, das nur mit Biome lintet
+
+An vier Stellen steht ein eslint-disable-next-line, dreimal für no-var, einmal für prefer-const.
+Eine ESLint-Konfiguration gibt es im Repository nirgends; Lint und Format sind ausschließlich Biome.
+Die Zeilen unterdrücken nichts und lesen sich für den nächsten Leser wie eine bewusste Ausnahme von
+einer Regel, die niemand stellt.
+
+Empfehlung: Die vier Zeilen entfernen. Wo Biome dieselbe Regel führt und die Ausnahme gewollt ist,
+tritt eine biome-ignore-Direktive mit Begründung an ihre Stelle.
