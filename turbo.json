@@ -31,6 +31,7 @@
         "vitest.globalSetup.ts",
         "../shadow-objects/vitest.setup.ts",
         "playwright.config.ts",
+        "scripts/**",
         "pages/**",
         "public/**",
         "index.html",

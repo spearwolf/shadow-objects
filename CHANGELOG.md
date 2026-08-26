@@ -4,6 +4,36 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — the e2e suite runs against WebKit
+
+- **`packages/shadow-objects-e2e/playwright.config.ts`:** the `webkit` project is no longer a
+  comment. It was disabled with no reason recorded, which left open whether WebKit failed, was
+  not needed, or had simply never been switched on. It was the last one: all 215 cases pass on
+  `Desktop Safari` unchanged, across three consecutive runs, so nothing in Custom Elements,
+  Shadow DOM, slot projection or `transferControlToOffscreen` needed a WebKit branch. The suite
+  is now 645 tests over three projects.
+- **`.github/workflows/ci.yml`:** the `e2e` job installs `webkit` alongside `chromium` and
+  `firefox`. Without it the enabled project would fail the job on a missing browser.
+- **`packages/shadow-objects-e2e/scripts/webkit-host-libs.mjs`:** new, plus a `setup:webkit`
+  script. Playwright ships one Linux WebKit build and links it against Ubuntu 24.04 sonames, so
+  on Arch, Fedora or openSUSE the download succeeds and the browser then refuses to start behind
+  a banner naming apt packages that do not exist there. Only `libicu` 74 and `libflite` 1 are
+  actually absent — `libjxl` and `libbacktrace` travel inside the bundle. The script reads the
+  missing sonames out of `ldd`, takes them from `mcr.microsoft.com/playwright:v<version>-noble`
+  and writes them to the bundle's own `sys/lib`, which its launcher already has on
+  `LD_LIBRARY_PATH`: no root, nothing touched outside the Playwright browser cache, and
+  Playwright's host validation passes on its own afterwards. Without `--install` it only reports,
+  which is what the `test` script runs first so a missing library is named with the command that
+  fixes it rather than with apt packages. A no-op on Ubuntu, macOS and in CI.
+- **`turbo.json`:** `scripts/**` joins the `inputs` of the `test` task. The e2e package's test
+  now runs a script from there, and the core package's `distContract.spec.ts` asserts what
+  `scripts/makePackageJson.mjs` writes — neither invalidated the test cache before.
+- **`packages/shadow-objects-e2e/README.md`:** the install command gains `webkit`, and a section
+  on what to do when WebKit will not start on a non-Debian Linux.
+- **`packages/shadow-objects-e2e/TEST-PLAN.md`, `README.md`, `Backlog.md`, `CLAUDE.md`:** test
+  counts, browser lists and the setup instructions follow; the plan's harness-weakness section is
+  now empty.
+
 ## 2026-08-26 — the repository carries no configuration for a linter it does not run
 
 - **`packages/shadow-objects/.eslintrc.json`, `packages/shadow-objects-testing/.eslintrc.json`, `packages/shadow-objects-e2e/.eslintrc.json`, `packages/shae-offscreen-canvas/.eslintrc.json`:** removed. All four consisted essentially of `extends` pointing at a root `.eslintrc.json` that does not exist in this repository, so an `eslint` run in any of these packages would have failed on the missing target instead of checking anything. Lint and format run through Biome, configured once in `biome.json`, which reads none of the four files. No `package.json` and no workflow file names `eslint`.

@@ -1,18 +1,18 @@
 # E2E Test Plan — coverage analysis and proposed test cases
 
-Status: 2026-08-23. Analysis of the Playwright suite in this package, the gaps it leaves, and a
+Status: 2026-08-26. Analysis of the Playwright suite in this package, the gaps it leaves, and a
 ticket-ready list of test cases to close them.
 
-> **Where the suite stands.** 430 tests across Chromium and Firefox — 215 per project, eleven spec
-> files over eleven pages. The harness fixes and the P1 blocks of every group below are in place. No
-> framework defect is open — [`KNOWN-DEFECTS.md`](KNOWN-DEFECTS.md) describes the `knownFailures`
-> mechanism that carries the next one.
+> **Where the suite stands.** 645 tests across Chromium, Firefox and WebKit — 215 per project,
+> eleven spec files over eleven pages. The harness fixes and the P1 blocks of every group below
+> are in place. No framework defect is open — [`KNOWN-DEFECTS.md`](KNOWN-DEFECTS.md) describes
+> the `knownFailures` mechanism that carries the next one.
 >
 > Still open, all P2/P3: MULTI-9 … MULTI-14, DOM-9 … DOM-12, UPG-6, ASYNC-8 (`src` change after
 > `start()`), ASYNC-10 … ASYNC-12 (worker termination, failing `importScript`, transferables),
-> SYNC-5 (`reCreateChanges()` after a refused trail), and H-FIX-8 (enable the webkit project).
-> DOM-5 is not implementable from the DOM — see the note at the end of `KNOWN-DEFECTS.md`. UPG-3
-> and UPG-8 are answered rather than open — see §3.3.
+> SYNC-5 (`reCreateChanges()` after a refused trail). DOM-5 is not implementable from the DOM —
+> see the note at the end of `KNOWN-DEFECTS.md`. UPG-3 and UPG-8 are answered rather than open —
+> see §3.3.
 
 Companion documents: `Backlog.md` §4 (repo root) holds the coverage heuristic across *all* test
 layers. This file is E2E-only and goes one level deeper: it names pages, fixtures and assertions.
@@ -21,7 +21,7 @@ layers. This file is E2E-only and goes one level deeper: it names pages, fixture
 
 ## 1. What exists today
 
-Eleven spec files, 215 registered test cases per project — 430 across Chromium and Firefox. The specs
+Eleven spec files, 215 registered test cases per project — 645 across Chromium, Firefox and WebKit. The specs
 themselves contain almost no logic: they name a page and a list of ids, and `runPageTests` turns
 each id into one Playwright test that asserts `data-testresult="ok"` on the node the page wrote.
 All real assertions live in `src/*.js`.
@@ -61,9 +61,7 @@ on a surviving entity and waits for the echo (`sync-failure-environment-still-sy
 
 ### 1.2 Harness weaknesses
 
-| # | Issue | Consequence |
-|---|---|---|
-| H-7 | `webkit` is commented out in `playwright.config.ts:49-52`. | Safari-specific custom-element and worker semantics are unverified. |
+None open. The last one was the disabled `webkit` project; it is enabled and green — see §3.7.
 
 ---
 
@@ -306,7 +304,7 @@ itself carries no serial and would end the cycle as a success.
 | H-FIX-5 | P2 | **Implemented** — a `no uncaught or logged errors` case per page, with `allowConsoleErrors` for the three pages that provoke one (`runPageTests.ts:113-118`). |
 | H-FIX-6 | P2 | **Implemented** — every result in `src/shae-worker.js` is awaited, and `watchCustomEvent` arms the listener separately from the wait so a cold worker start cannot eat the budget. |
 | H-FIX-7 | P3 | **Implemented** — both `contextCreated` ids are registered (`tests/shae-worker.spec.ts:9`, `:13`). |
-| H-FIX-8 | P3 | Enable the `webkit` project, or record why it stays off (H-7). |
+| H-FIX-8 | P3 | **Implemented** — the `webkit` project is enabled. All 215 cases pass on it, so nothing about Custom Elements, Shadow DOM, slot projection or `transferControlToOffscreen` needed a WebKit branch. CI installs the browser alongside Chromium and Firefox. |
 
 ---
 
@@ -321,8 +319,7 @@ itself carries no serial and would end the cycle as a success.
 4. **ASYNC-8 and ASYNC-10 … ASYNC-12.** The re-import path, and the three failure and transfer
    cases that need a real worker to mean anything.
 5. **MULTI-9, MULTI-12 … MULTI-14, DOM-11, DOM-12, SYNC-5.** The remaining P2/P3 breadth.
-6. **H-FIX-8.** Decide the `webkit` project either way and record it.
 
-The suite runs in CI as its own job (`.github/workflows/ci.yml`, `e2e`) against Chromium and
-Firefox, and the npm publish is gated on it. The root `test:ci` script still filters this package
+The suite runs in CI as its own job (`.github/workflows/ci.yml`, `e2e`) against Chromium, Firefox
+and WebKit, and the npm publish is gated on it. The root `test:ci` script still filters this package
 out on purpose — it is the fast local loop, not the gate.

@@ -294,6 +294,7 @@ Run these commands from the root directory:
 3. **Install Playwright Browsers (for E2E Tests):**
     ```sh
     cd packages/shadow-objects-e2e
-    pnpm exec playwright install chromium firefox
+    pnpm exec playwright install chromium firefox webkit
+    pnpm setup:webkit  # only on a non-Debian Linux, see the package README
     cd ../..
     ```

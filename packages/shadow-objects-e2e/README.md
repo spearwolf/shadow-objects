@@ -38,8 +38,29 @@ change trail went out, not that the answers came back.
 Playwright browsers must be installed before running the tests:
 
 ```bash
-pnpm exec playwright install chromium firefox
+pnpm exec playwright install chromium firefox webkit
 ```
+
+### WebKit on a non-Debian Linux
+
+Playwright ships one Linux WebKit build and it is linked against Ubuntu 24.04 sonames — `libicu`
+74 and `libflite` 1. On Arch, Fedora or openSUSE the download succeeds and the browser then
+refuses to start, behind a host-dependency banner naming apt packages that do not exist there.
+
+One command settles it:
+
+```bash
+pnpm setup:webkit
+```
+
+It takes the missing libraries out of `mcr.microsoft.com/playwright:v<version>-noble` — the same
+image CI's Ubuntu runner effectively is — and puts them in the browser bundle's own `sys/lib`,
+which its launcher already has on `LD_LIBRARY_PATH`. Nothing outside the Playwright browser cache
+is touched and no root is needed. Re-run it after `playwright install` replaces the bundle, and
+after a `@playwright/test` bump: a new WebKit build may ask for a different ICU major.
+
+`pnpm test` checks the same thing before it starts and names this command instead of letting
+Playwright report apt packages. On Ubuntu, macOS and in CI both are a no-op.
 
 ## How to run
 

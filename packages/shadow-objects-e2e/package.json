@@ -9,8 +9,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "preview": "pnpm build && vite preview --host",
     "clean": "rimraf build dist playwright-report test-results",
-    "test": "rimraf test-results && playwright test",
-    "test:ui": "rimraf test-results && playwright test --ui",
+    "setup:webkit": "node scripts/webkit-host-libs.mjs --install",
+    "test": "node scripts/webkit-host-libs.mjs && rimraf test-results && playwright test",
+    "test:ui": "node scripts/webkit-host-libs.mjs && rimraf test-results && playwright test --ui",
     "show-report": "playwright show-report",
     "update": "pnpm dlx npm-check --update"
   },

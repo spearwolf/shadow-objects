@@ -39,7 +39,7 @@
 2. ~~**Neues Feature „auto destruction on parent removal" (Commit 89c59c2) ist im Datenpfad nicht erreichbar** und behandelt Re-Parenting nicht.~~ **Behoben (KERN-1, KERN-2)** — Flag fließt jetzt durch `ICreateEntitiesChange` → `ComponentChanges.create()` → `parse()`; Subscription wird bei Re-Parent neu verdrahtet.
 3. ~~**`destroyEntity` rekursiert nicht über Kinder** — bei Eltern-Destruktion bleiben Nicht-Auto-Kinder als verwaiste Einträge im Kernel.~~ **Behoben (KERN-3)** — Variante C: Flagged-Kinder kaskadieren, ungeflaggte werden zu Roots befördert.
 4. **DOM-In-Place-Re-Parenting wird nur teilweise beobachtet** — bei `<shae-ent>` folgt die Beobachtung dem Element an seine neue Position, sieht aber einen zwischengeschobenen Container nicht (`subtree: false`, VIEW-6).
-5. ~~**CI lässt das gesamte E2E-Paket aus** — der Worker-Roundtrip wird damit faktisch nicht von CI verifiziert.~~ **Behoben** — eigener Job `e2e` in `.github/workflows/ci.yml`, Chromium und Firefox bei jedem Push; der Deployment-Workflow hängt über `workflow_run` daran.
+5. ~~**CI lässt das gesamte E2E-Paket aus** — der Worker-Roundtrip wird damit faktisch nicht von CI verifiziert.~~ **Behoben** — eigener Job `e2e` in `.github/workflows/ci.yml`, Chromium, Firefox und WebKit bei jedem Push; der Deployment-Workflow hängt über `workflow_run` daran.
 6. ~~**`MessageRouter` schluckt Fehler** durch doppeltes `AppliedChangeTrail` im Catch-Pfad — Konsumenten sehen Erfolg trotz interner Exception.~~ **Behoben (VIEW-3)** — ein Change Trail erzeugt genau eine Bestätigung, und nur dort, wo eine Seriennummer danach gefragt hat.
 
 Keiner dieser Punkte ist katastrophal; jeder einzelne sollte aber vor einem 1.0-Release adressiert werden.
@@ -290,7 +290,7 @@ Reproduktion der Zeile oben — der Aufbau kommt ohne eine Datei im Repository a
 
 **`shadow-objects-testing/`** (vitest browser-mode + Playwright-Provider, echtes Chromium): 27 Dateien, 379 Fälle — `build-change-trail`, `change-props`, `change-tokens`, `ComponentContext`, `create-element`, `ent-element-attributes`, `ent-element-context-clear`, `ent-element-events`, `ent-element-namespace`, `ent-element-peer-round`, `ent-element-refused-context`, `ent-element-shadow-root-host`, `ent-element-slot-move`, `ent-element-teardown`, `ent-element-upgrade`, `forward-custom-events`, `local-env-entities`, `prop-element-host`, `prop-element-lifecycle`, `prop-element-registration-order`, `prop-element-types`, `remove-and-append-e`, `send-events`, `view-component-context-switch`, `worker-element-attributes`, `worker-element-teardown`, `emit-helper/emit-helper`.
 
-**`shadow-objects-e2e/`** (Playwright, Chromium + Firefox): 11 Dateien, 215 Fälle je Projekt und damit 430 insgesamt — `async-events`, `auto-destruct`, `bundle`, `create-element`, `dynamic-dom`, `multi-env`, `remote-worker-env`, `shae-worker`, `sync-failure`, `upgrade-timing`, `worker-failure`. Assertions liegen in den Test-Pages, der gemeinsame `runPageTests`-Helper macht daraus je einen Playwright-Test pro `data-testresult`.
+**`shadow-objects-e2e/`** (Playwright, Chromium + Firefox + WebKit): 11 Dateien, 215 Fälle je Projekt und damit 645 insgesamt — `async-events`, `auto-destruct`, `bundle`, `create-element`, `dynamic-dom`, `multi-env`, `remote-worker-env`, `shae-worker`, `sync-failure`, `upgrade-timing`, `worker-failure`. Assertions liegen in den Test-Pages, der gemeinsame `runPageTests`-Helper macht daraus je einen Playwright-Test pro `data-testresult`.
 
 ### 4.2 Testabdeckung
 
@@ -329,7 +329,7 @@ Reproduktion der Zeile oben — der Aufbau kommt ohne eine Datei im Repository a
 
 ### 4.4 Konkrete Test-Lücken (ticket-fertig)
 
-> **E2E im Detail:** [`packages/shadow-objects-e2e/TEST-PLAN.md`](packages/shadow-objects-e2e/TEST-PLAN.md) analysiert die Playwright-Suite einzeln, listet je Spec-Datei was sie prüft und führt die benannten Testfälle mit Seiten, Fixtures und Priorität — samt der Kennungen, die noch offen sind. Stand: 430 Tests, 215 je Projekt. Kein Framework-Defekt steht offen; [`KNOWN-DEFECTS.md`](packages/shadow-objects-e2e/KNOWN-DEFECTS.md) beschreibt den Mechanismus für den nächsten. Die folgende Liste bleibt der ebenen-übergreifende Überblick.
+> **E2E im Detail:** [`packages/shadow-objects-e2e/TEST-PLAN.md`](packages/shadow-objects-e2e/TEST-PLAN.md) analysiert die Playwright-Suite einzeln, listet je Spec-Datei was sie prüft und führt die benannten Testfälle mit Seiten, Fixtures und Priorität — samt der Kennungen, die noch offen sind. Stand: 645 Tests, 215 je Projekt über Chromium, Firefox und WebKit. Kein Framework-Defekt steht offen; [`KNOWN-DEFECTS.md`](packages/shadow-objects-e2e/KNOWN-DEFECTS.md) beschreibt den Mechanismus für den nächsten. Die folgende Liste bleibt der ebenen-übergreifende Überblick.
 
 **[ELEM-3] `autoDestructionOnParentRemoval` ist über `<shae-ent>` nicht erreichbar.** Kein Attribut, und `ShaeEntElement` erzeugt seine `ViewComponent` ohne die Option — das Feature ist nur über die programmatische API nutzbar. Ein DOM-seitiger Test der Kaskade ist deshalb derzeit nicht möglich.
 
@@ -382,7 +382,7 @@ Veröffentlicht wird `dist/` mit ESM-only, mehreren Subpath-Exports (`./elements
 
 ### 5.4 Sonstige Stolperfallen auf frischer Maschine
 
-- `pnpm install` installiert keine Playwright-Browser — manuelles `pnpm exec playwright install chromium firefox` nötig (wird in CLAUDE.md erwähnt).
+- `pnpm install` installiert keine Playwright-Browser — manuelles `pnpm exec playwright install chromium firefox webkit` nötig (wird in CLAUDE.md erwähnt). Der WebKit-Build für Linux ist gegen Ubuntu 24.04 gelinkt und startet auf Arch oder Fedora nicht von allein; `pnpm -F shadow-objects-e2e setup:webkit` holt die fehlenden Bibliotheken aus dem passenden `mcr.microsoft.com/playwright`-Image ins Browser-Bundle. Danach läuft die Suite dort nativ.
 - `engines.node: ">=24.13.0"` blockiert Mitwirkende auf Node 22.x. Hinweis: Node 24+ stellt eine inerte `localStorage`-Stub auf `globalThis`. Der `ConsoleLogger` verträgt sie seit der Fähigkeitsprüfung in `ConsoleLogger.ts` selbst. `packages/shadow-objects/vitest.setup.ts` ersetzt sie trotzdem weiter: Specs, die `localStorage` direkt benutzen, brauchen eine funktionierende Storage — ohne die Ersetzung fallen 8 Tests in 3 Dateien: `ConsoleLogger.spec.ts` (Fall `reads a style from storage as-is`), `ConsoleLogger.storage.spec.ts` (Fall `keeps using a localStorage that works without writing to it`) und `RemoteWorkerEnv.spec.ts` (6 Fälle im Block `console-logger config for the worker`).
 - **`biome.json` führt `"trailingNewline": false`** (`:40`) — Dateien enden ohne abschließenden Zeilenumbruch, sonst ist `pnpm lint` rot. Steht weder in `CLAUDE.md` noch in `AGENTS.md`; wer eine Datei mit einem üblichen Editor-Default schreibt, läuft hinein. `*audit*.html` ist von `files.includes` ausgenommen (`:30`) und behält seinen Zeilenumbruch.
 - `make:todo` ist Honor-System (kein Pre-Commit-Hook, kein CI-Check).
@@ -417,7 +417,7 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 2. ~~**`destroyEntity` rekursiv über Kinder** — Politik definieren (kaskadieren oder zu Root befördern). *(KERN-3)*~~ ✅ Erledigt (Variante C).
 3. ~~**`MessageRouter`-Doppel-Confirm im Catch-Pfad fixen.** *(VIEW-3)*~~ ✅ Erledigt — eine Bestätigung je Change Trail, und nur dort, wo eine Seriennummer danach gefragt hat. Im selben Zug: geordneter Teardown auf `Destroy` und geprüfter Nachrichteneingang an beiden Einstiegspunkten.
 4. ~~**Worker-Fehlerpfade härten:** `error`/`messageerror`-Handler, ausstehende Promises bei `destroy()` rejecten, expliziter `terminated`-Status.~~ *(VIEW-1, VIEW-2)* — ✅ Handler, `WorkerFailedError`/`WorkerDestroyedError`, `isDestroyed`, `RemoteWorkerEnv.WorkerFailed` und `ShadowEnv.ProxyFailed` stehen, und `destroy()` bricht das Ausstehende ab.
-5. ~~**CI lässt E2E nicht aus** — Playwright-Browser im CI-Image installieren, `test:ci` umstellen oder zweiten Job ergänzen.~~ ✅ Erledigt — eigener Job `e2e`, Chromium und Firefox, vor dem npm-Publish.
+5. ~~**CI lässt E2E nicht aus** — Playwright-Browser im CI-Image installieren, `test:ci` umstellen oder zweiten Job ergänzen.~~ ✅ Erledigt — eigener Job `e2e`, Chromium, Firefox und WebKit, vor dem npm-Publish.
 6. ~~**Cache-Invalidierung von `traverseLevelOrderBFS` bei programmatischer Destruktion.** *(KERN-4)*~~ ✅ Erledigt.
 
 ### 7.2 Sollte zeitnah
