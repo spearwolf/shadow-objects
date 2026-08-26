@@ -4,6 +4,21 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — index access is checked
+
+- **`tsconfig.json`:** turns on `noUncheckedIndexedAccess`. An index into an array or an
+  index signature now carries `undefined` alongside the element type, so a bound that only
+  held by the shape of a loop or a fixed-length tuple has to say so in the type. The switch
+  sits in the workspace root and reaches `packages/shadow-objects` and
+  `packages/shadow-objects-e2e`, the two projects that inherit that configuration.
+- **`packages/shadow-objects/src`:** the assertions this switch calls for are in place —
+  the fixture arrays of the specs that index a fixed number of generated uuids carry a
+  tuple type, the byte lookup table in `generateUUID.ts` goes through one named accessor
+  instead of sixteen bare indexings, and the remaining production and spec call sites
+  assert the index only where a loop bound, a length, or a literal tuple position already
+  holds it. The declarations this package ships are unaffected: an emitted-`.d.ts` diff
+  against the pre-switch build comes back empty.
+
 ## 2026-08-26 — one coverage number for the whole workspace
 
 - **`scripts/mergeCoverage.mjs`:** merges the raw v8 coverage of all three vitest suites

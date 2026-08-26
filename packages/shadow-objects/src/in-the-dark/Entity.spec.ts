@@ -529,7 +529,7 @@ describe('Entity', () => {
 
       kernel.createEntity(parentUuid, 'parent');
 
-      const uuids = [generateUUID(), generateUUID(), generateUUID()];
+      const uuids: [string, string, string] = [generateUUID(), generateUUID(), generateUUID()];
       for (const [i, uuid] of uuids.entries()) {
         kernel.createEntity(uuid, 'child', parentUuid, i);
       }
@@ -547,7 +547,7 @@ describe('Entity', () => {
 
       kernel.createEntity(parentUuid, 'parent');
 
-      const uuids = [generateUUID(), generateUUID(), generateUUID()];
+      const uuids: [string, string, string] = [generateUUID(), generateUUID(), generateUUID()];
       for (const [i, uuid] of uuids.slice(0, 2).entries()) {
         kernel.createEntity(uuid, 'child', parentUuid, i);
       }
@@ -568,7 +568,7 @@ describe('Entity', () => {
 
       kernel.createEntity(parentUuid, 'parent');
 
-      const uuids = [generateUUID(), generateUUID(), generateUUID()];
+      const uuids: [string, string, string] = [generateUUID(), generateUUID(), generateUUID()];
       const orders = [1, 2, 3];
       for (const [i, uuid] of uuids.entries()) {
         kernel.createEntity(uuid, 'child', parentUuid, orders[i]);

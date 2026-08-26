@@ -192,8 +192,8 @@ describe('FrameLoop', () => {
       runFrame(1000);
 
       expect(frames.length).toBe(1);
-      expect(frames[0].now).toBe(1);
-      expect(frames[0].frameNo).toBe(1);
+      expect(frames[0]!.now).toBe(1);
+      expect(frames[0]!.frameNo).toBe(1);
     });
 
     it('reports no delta on the first frame and the elapsed seconds afterwards', () => {
@@ -206,10 +206,10 @@ describe('FrameLoop', () => {
       expect(frames.length).toBe(2);
       // Nobody can compute a span from a single point in time, so the first frame reports none —
       // a subtraction against an empty predecessor would hand every listener a NaN.
-      expect(frames[0].deltaTime).toBe(0);
-      expect(frames[0].lastNow).toBe(frames[0].now);
-      expect(frames[1].deltaTime).toBeCloseTo(0.016, 10);
-      expect(frames[1].lastNow).toBe(1);
+      expect(frames[0]!.deltaTime).toBe(0);
+      expect(frames[0]!.lastNow).toBe(frames[0]!.now);
+      expect(frames[1]!.deltaTime).toBeCloseTo(0.016, 10);
+      expect(frames[1]!.lastNow).toBe(1);
     });
 
     it('starts over with no delta after it has been idle', () => {
@@ -224,8 +224,8 @@ describe('FrameLoop', () => {
 
       // Without the reset the whole pause would arrive as the delta of a single frame.
       expect(second.frames.length).toBe(1);
-      expect(second.frames[0].deltaTime).toBe(0);
-      expect(second.frames[0].lastNow).toBe(second.frames[0].now);
+      expect(second.frames[0]!.deltaTime).toBe(0);
+      expect(second.frames[0]!.lastNow).toBe(second.frames[0]!.now);
     });
 
     it('counts from one again after it has been idle', () => {
@@ -242,8 +242,8 @@ describe('FrameLoop', () => {
       // A run begins at frame one with no delta, or at neither: the two say the same thing about
       // where the series starts, and a reader that trusts one of them may trust the other.
       expect(first.frames.map((frame) => frame.frameNo)).toEqual([1, 2]);
-      expect(second.frames[0].frameNo).toBe(1);
-      expect(second.frames[0].deltaTime).toBe(0);
+      expect(second.frames[0]!.frameNo).toBe(1);
+      expect(second.frames[0]!.deltaTime).toBe(0);
     });
   });
 
@@ -323,7 +323,7 @@ describe('FrameLoop', () => {
 
       // The lower bound on the threshold: the cap has to hold back the frame in between, however
       // late it arrives.
-      expect(frames.map((frame) => frame.now)).toEqual([0, 2, 4, 6, 8].map((i) => timestamps[i] / 1000));
+      expect(frames.map((frame) => frame.now)).toEqual([0, 2, 4, 6, 8].map((i) => timestamps[i]! / 1000));
     });
   });
 

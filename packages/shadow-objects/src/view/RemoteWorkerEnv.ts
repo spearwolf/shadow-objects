@@ -37,7 +37,7 @@ const splitTransferables = (changeTrail: ChangeTrailType): {changeTrail: ChangeT
 
   for (let i = 0; i < changeTrail.length; i++) {
     const changeItem = changeTrail[i];
-    if (changeItem.transferables) {
+    if (changeItem?.transferables) {
       transferables = transferables ? [...transferables, ...changeItem.transferables] : [...changeItem.transferables];
 
       outbound ??= [...changeTrail];

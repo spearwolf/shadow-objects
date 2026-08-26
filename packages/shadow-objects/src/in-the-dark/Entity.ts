@@ -315,7 +315,7 @@ export class Entity {
    */
   #insertChildInOrder(child: Entity) {
     let i = this.#children.length;
-    while (i > 0 && child.order < this.#children[i - 1].order) i--;
+    while (i > 0 && child.order < this.#children[i - 1]!.order) i--;
     this.#children.splice(i, 0, child);
   }
 

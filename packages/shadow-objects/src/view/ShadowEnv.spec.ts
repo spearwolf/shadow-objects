@@ -162,7 +162,7 @@ describe('ShadowEnv', () => {
       await withTimeout(new Promise<void>((resolve) => once(env, ShadowEnv.AfterSync, () => resolve())));
 
       expect(applySpy).toHaveBeenCalledTimes(1);
-      expect(applySpy.mock.calls[0][1]).toBe(false);
+      expect(applySpy.mock.calls[0]![1]).toBe(false);
 
       env.destroy();
     });
@@ -176,7 +176,7 @@ describe('ShadowEnv', () => {
       const trail = await withTimeout(env.syncWait());
 
       expect(trail).toHaveLength(1);
-      expect((trail as ChangeTrailType)[0].uuid).toBe(vc.uuid);
+      expect((trail as ChangeTrailType)[0]!.uuid).toBe(vc.uuid);
 
       env.destroy();
     });
@@ -266,11 +266,11 @@ describe('ShadowEnv', () => {
 
       expect(syncFailedSpy).toHaveBeenCalledTimes(1);
 
-      const [gotReason, changeTrail, gotEnv] = syncFailedSpy.mock.calls[0];
+      const [gotReason, changeTrail, gotEnv] = syncFailedSpy.mock.calls[0]!;
 
       expect(gotReason).toBe(reason);
       expect(changeTrail).toHaveLength(1);
-      expect((changeTrail as ChangeTrailType)[0].uuid).toBe(vc.uuid);
+      expect((changeTrail as ChangeTrailType)[0]!.uuid).toBe(vc.uuid);
       expect(gotEnv).toBe(env);
 
       env.destroy();
@@ -398,7 +398,7 @@ describe('ShadowEnv', () => {
 
       await expect(withTimeout(env.syncWait())).rejects.toBeInstanceOf(ChangeTrailRefusedError);
 
-      const refused = proxy.trails[0];
+      const refused = proxy.trails[0]!;
       expect(refused.map((entry) => entry.uuid)).toEqual(['a', 'b', 'c']);
 
       proxy.refuseAfter = undefined;

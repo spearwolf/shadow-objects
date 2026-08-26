@@ -25,7 +25,7 @@ import {ShadowObject, shadowObjects} from './ShadowObject.js';
 // A chain r -> a -> b under one kernel. The breadth-first order over it is exactly the order the
 // three entities are created in, which makes a reversed result easy to tell apart from a fresh one.
 const makeEntityChain = (kernel: Kernel) => {
-  const uuids = [generateUUID(), generateUUID(), generateUUID()];
+  const uuids: [string, string, string] = [generateUUID(), generateUUID(), generateUUID()];
 
   kernel.createEntity(uuids[0], 'node');
   kernel.createEntity(uuids[1], 'node', uuids[0]);
@@ -220,7 +220,7 @@ describe('Kernel', () => {
 
       expect(messageToViewSpy).toHaveBeenCalledTimes(1);
 
-      const message: MessageToViewEvent = messageToViewSpy.mock.calls[0][0];
+      const message: MessageToViewEvent = messageToViewSpy.mock.calls[0]![0];
       expect(message.uuid).toBe(uuid);
       expect(message.type).toBe('testType');
       expect(message.data).toEqual({payload: 'data'});
@@ -246,7 +246,7 @@ describe('Kernel', () => {
 
       expect(messageToViewSpy).toHaveBeenCalledTimes(1);
 
-      const message: MessageToViewEvent = messageToViewSpy.mock.calls[0][0];
+      const message: MessageToViewEvent = messageToViewSpy.mock.calls[0]![0];
       expect(message.uuid).toBe(uuid);
       expect(message.type).toBe('broadcastEvent');
       expect(message.data).toEqual({message: 'hello'});
@@ -273,7 +273,7 @@ describe('Kernel', () => {
 
       expect(messageToViewSpy).toHaveBeenCalledTimes(1);
 
-      const message: MessageToViewEvent = messageToViewSpy.mock.calls[0][0];
+      const message: MessageToViewEvent = messageToViewSpy.mock.calls[0]![0];
       expect(message.uuid).toBe(uuid);
       expect(message.type).toBe('dataEvent');
       expect(message.transferables).toContain(buffer);
@@ -1163,7 +1163,7 @@ describe('Kernel', () => {
           expect(() => kernel.changeToken(parentUuid, 'themeWithThrower')).toThrow('no theme for you');
 
           expect(kernel.hasEntity(parentUuid)).toBe(true);
-          expect(kernel.getEntityGraph()[0].token).toBe('themeBoth');
+          expect(kernel.getEntityGraph()[0]!.token).toBe('themeBoth');
 
           await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
           expect(value(childContext), 'the context the failed token change would have taken away is back').toBe('overlay');
@@ -3786,8 +3786,9 @@ describe('Kernel', () => {
       kernel.createEntity(generateUUID(), 'kern7Property');
 
       expect(errorSpy).toHaveBeenCalledTimes(1);
-      expect(errorSpy.mock.calls[0][2]).toMatch(/useProperty/);
-      expect(errorSpy.mock.calls[0][2]).toMatch(/foo/);
+      const call = errorSpy.mock.calls[0]!;
+      expect(call[2]).toMatch(/useProperty/);
+      expect(call[2]).toMatch(/foo/);
 
       errorSpy.mockRestore();
     });
@@ -3856,8 +3857,9 @@ describe('Kernel', () => {
       kernel.createEntity(generateUUID(), 'kern7Context');
 
       expect(errorSpy).toHaveBeenCalledTimes(1);
-      expect(errorSpy.mock.calls[0][2]).toMatch(/useContext/);
-      expect(errorSpy.mock.calls[0][2]).toMatch(/ctx/);
+      const call = errorSpy.mock.calls[0]!;
+      expect(call[2]).toMatch(/useContext/);
+      expect(call[2]).toMatch(/ctx/);
 
       errorSpy.mockRestore();
     });
@@ -3882,8 +3884,9 @@ describe('Kernel', () => {
       kernel.createEntity(generateUUID(), 'kern7ParentContext');
 
       expect(errorSpy).toHaveBeenCalledTimes(1);
-      expect(errorSpy.mock.calls[0][2]).toMatch(/useParentContext/);
-      expect(errorSpy.mock.calls[0][2]).toMatch(/pctx/);
+      const call = errorSpy.mock.calls[0]!;
+      expect(call[2]).toMatch(/useParentContext/);
+      expect(call[2]).toMatch(/pctx/);
 
       errorSpy.mockRestore();
     });
@@ -4127,11 +4130,12 @@ describe('Kernel', () => {
       const graph = kernel.getEntityGraph();
 
       expect(graph.map((node) => node.entity.uuid)).toEqual([rUuid]);
-      expect(graph[0].children.map((node) => node.entity.uuid)).toEqual([aUuid]);
-      expect(graph[0].children[0].children.map((node) => node.entity.uuid)).toEqual([bUuid]);
-      expect(graph[0].children[0].children[0].children, 'the entity that is already in the graph is not written twice').toEqual(
-        [],
-      );
+      expect(graph[0]!.children.map((node) => node.entity.uuid)).toEqual([aUuid]);
+      expect(graph[0]!.children[0]!.children.map((node) => node.entity.uuid)).toEqual([bUuid]);
+      expect(
+        graph[0]!.children[0]!.children[0]!.children,
+        'the entity that is already in the graph is not written twice',
+      ).toEqual([]);
 
       kernel.destroy();
     });
@@ -4141,7 +4145,7 @@ describe('Kernel', () => {
     // Three roots in creation order; the teardown walks them the other way round, so `c` goes first
     // and `a` is the one that sits behind the callback that throws.
     const makeRoots = (kernel: Kernel) => {
-      const uuids = [generateUUID(), generateUUID(), generateUUID()];
+      const uuids: [string, string, string] = [generateUUID(), generateUUID(), generateUUID()];
       for (const uuid of uuids) {
         kernel.createEntity(uuid, 'node');
       }
@@ -4422,7 +4426,7 @@ describe('Kernel', () => {
       expect(destroyed, 'nothing of it was torn down').toEqual([]);
       expect(before.getProperty('x'), 'the properties of the refused creation land nowhere').toBe(7);
       expect(value(before.useContext('probe')), 'its contexts keep their value').toBe(42);
-      expect(kernel.getEntityGraph()[0].token, 'its token is the one it was created with').toBe('keeper');
+      expect(kernel.getEntityGraph()[0]!.token, 'its token is the one it was created with').toBe('keeper');
 
       kernel.destroy();
     });
@@ -4446,7 +4450,7 @@ describe('Kernel', () => {
 
     it('refuses the change trail at that entry and says how far it got', () => {
       const kernel = new Kernel(new Registry());
-      const uuids = [generateUUID(), generateUUID()];
+      const uuids: [string, string] = [generateUUID(), generateUUID()];
 
       const changeTrail: IComponentChangeType[] = [
         {type: ComponentChangeType.CreateEntities, uuid: uuids[0], token: 'node'},
@@ -5247,7 +5251,7 @@ describe('Kernel', () => {
       expect(() => kernel.changeToken(uuid, 'newToken')).toThrow('this constructor fails');
 
       expect(kernel.hasEntity(uuid), 'the entity lives on').toBe(true);
-      expect(kernel.getEntityGraph()[0].token, 'an entity carries the token whose shadow-objects it has').toBe('oldToken');
+      expect(kernel.getEntityGraph()[0]!.token, 'an entity carries the token whose shadow-objects it has').toBe('oldToken');
 
       kernel.destroy();
     });
@@ -5422,7 +5426,7 @@ describe('Kernel', () => {
       // as at any other.
       expect(() => kernel.upgradeEntities()).toThrow('this constructor fails');
 
-      expect(kernel.getEntityGraph()[0].token, 'no token was written here, so none is put back').toBe('baseToken');
+      expect(kernel.getEntityGraph()[0]!.token, 'no token was written here, so none is put back').toBe('baseToken');
       expect(destroyed, 'the first pass took the routed shadow-object down').toEqual(['routed']);
       expect(kernel.findShadowObjects(uuid), 'and the entity is left standing without it').toEqual([]);
 
@@ -5477,7 +5481,7 @@ describe('Kernel', () => {
 
       const graph = kernel.getEntityGraph();
       expect(graph.map((node) => node.entity.uuid)).toEqual([aUuid]);
-      expect(graph[0].children.map((node) => node.entity.uuid)).toEqual([bUuid]);
+      expect(graph[0]!.children.map((node) => node.entity.uuid)).toEqual([bUuid]);
 
       kernel.destroy();
     });
@@ -5586,7 +5590,7 @@ describe('Kernel', () => {
 
       const graph = kernel.getEntityGraph();
       expect(graph.map((node) => node.entity.uuid)).toEqual([aUuid]);
-      expect(graph[0].children.map((node) => node.entity.uuid)).toEqual([bUuid]);
+      expect(graph[0]!.children.map((node) => node.entity.uuid)).toEqual([bUuid]);
 
       const traversed = kernel.traverseLevelOrderBFS().map((e) => e.uuid);
       expect(traversed).toEqual([aUuid, bUuid]);
@@ -5605,7 +5609,7 @@ describe('Kernel', () => {
 
       const graph = kernel.getEntityGraph();
       expect(graph.map((node) => node.entity.uuid)).toEqual([aUuid]);
-      expect(graph[0].children.map((node) => node.entity.uuid)).toEqual([bUuid]);
+      expect(graph[0]!.children.map((node) => node.entity.uuid)).toEqual([bUuid]);
 
       expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([aUuid, bUuid]);
 
@@ -5617,7 +5621,7 @@ describe('Kernel', () => {
     // Five entries, and the third one names a parent no entity stands behind. The two ahead of it
     // are plain creations, the two behind it as well -- so the kernel state alone says where the
     // trail stopped.
-    const makeTrail = (uuids: string[]): IComponentChangeType[] => [
+    const makeTrail = (uuids: [string, string, string, string]): IComponentChangeType[] => [
       {type: ComponentChangeType.CreateEntities, uuid: uuids[0], token: 'node'},
       {type: ComponentChangeType.CreateEntities, uuid: uuids[1], token: 'node'},
       {type: ComponentChangeType.SetParent, uuid: uuids[0], parentUuid: 'nobody'},
@@ -5627,7 +5631,7 @@ describe('Kernel', () => {
 
     it('refuses the trail with the number of entries it applied and the reason underneath', () => {
       const kernel = new Kernel(new Registry());
-      const uuids = [generateUUID(), generateUUID(), generateUUID(), generateUUID()];
+      const uuids: [string, string, string, string] = [generateUUID(), generateUUID(), generateUUID(), generateUUID()];
 
       let refusal: unknown;
       try {
@@ -5651,7 +5655,7 @@ describe('Kernel', () => {
     // ends at the entry that threw, so everything behind it was never attempted.
     it('holds the entries ahead of the one that threw and none of the ones behind it', () => {
       const kernel = new Kernel(new Registry());
-      const uuids = [generateUUID(), generateUUID(), generateUUID(), generateUUID()];
+      const uuids: [string, string, string, string] = [generateUUID(), generateUUID(), generateUUID(), generateUUID()];
 
       expect(() => kernel.run({changeTrail: makeTrail(uuids)})).toThrow();
 
@@ -5782,7 +5786,7 @@ describe('Kernel', () => {
       kernel.createEntity(uuid, 'onDestroyAsPlainMethod');
 
       expect(consoleError).toHaveBeenCalledTimes(1);
-      const args = consoleError.mock.calls[0];
+      const args = consoleError.mock.calls[0]!;
       expect(args.some((arg) => typeof arg === 'string' && arg.includes('onDestroy'))).toBe(true);
       expect(args).toContain('OnDestroyAsPlainMethod');
 

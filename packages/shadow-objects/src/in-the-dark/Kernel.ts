@@ -728,7 +728,7 @@ export class Kernel {
 
     for (let i = created.length - 1; i >= 0; i--) {
       try {
-        this.destroyShadowObject(created[i], entry.entity);
+        this.destroyShadowObject(created[i]!, entry.entity);
       } catch (error) {
         this.logger.error(
           'rollback of a failed shadow-object update could not remove a new shadow-object:',

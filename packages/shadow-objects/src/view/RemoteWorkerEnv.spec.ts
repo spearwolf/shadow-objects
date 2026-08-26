@@ -181,7 +181,7 @@ describe('RemoteWorkerEnv', () => {
 
       expect(failedSpy).toHaveBeenCalledTimes(1);
 
-      const event = failedSpy.mock.calls[0][0];
+      const event = failedSpy.mock.calls[0]![0];
       expect(event.env).toBe(env);
       expect(event.type).toBe('error');
       expect(event.message).toContain('kaboom');
@@ -234,7 +234,7 @@ describe('RemoteWorkerEnv', () => {
       expect(() => worker.fail('kaboom')).not.toThrow();
 
       expect(failedSpy).toHaveBeenCalledTimes(1);
-      expect(failedSpy.mock.calls[0][0].reason.name).toBe('WorkerFailedError');
+      expect(failedSpy.mock.calls[0]![0].reason.name).toBe('WorkerFailedError');
       expect(env.isDestroyed).toBe(true);
       expect(worker.terminateCount).toBe(1);
     });
@@ -255,7 +255,7 @@ describe('RemoteWorkerEnv', () => {
       on(env, 'workerFailed', late);
 
       expect(late, 'the retained failure is still there for whoever comes after').toHaveBeenCalledTimes(1);
-      expect(late.mock.calls[0][0].reason.name).toBe('WorkerFailedError');
+      expect(late.mock.calls[0]![0].reason.name).toBe('WorkerFailedError');
     });
 
     it('rejects calls issued after the failure right away', async () => {
@@ -309,7 +309,7 @@ describe('RemoteWorkerEnv', () => {
       on(env, RemoteWorkerEnv.WorkerLoaded, late);
 
       expect(late, 'the retained handshake is still there for whoever comes after').toHaveBeenCalledTimes(1);
-      expect(late.mock.calls[0][0]).toBe(env);
+      expect(late.mock.calls[0]![0]).toBe(env);
 
       // the promise is built on that same replay
       await expect(withTimeout(env.workerLoaded)).resolves.toBe(env);
@@ -1072,7 +1072,7 @@ describe('RemoteWorkerEnv', () => {
 
         expect(env.timeouts.destroyTimeout).toBe(WorkerDestroyTimeout);
         expect(error, 'a value that quietly disappears is the one nobody goes looking for').toHaveBeenCalledTimes(1);
-        expect(error.mock.calls[0].join(' '), 'the report names the option').toContain('destroyTimeout');
+        expect(error.mock.calls[0]!.join(' '), 'the report names the option').toContain('destroyTimeout');
       } finally {
         vi.restoreAllMocks();
       }
@@ -1093,7 +1093,7 @@ describe('RemoteWorkerEnv', () => {
 
         expect(env.timeouts.loadTimeout, 'a value that would fire at once is not a longer wait').toBe(WorkerLoadTimeout);
         expect(error).toHaveBeenCalledTimes(1);
-        expect(error.mock.calls[0].join(' '), 'the report names the option').toContain('loadTimeout');
+        expect(error.mock.calls[0]!.join(' '), 'the report names the option').toContain('loadTimeout');
       } finally {
         vi.restoreAllMocks();
       }

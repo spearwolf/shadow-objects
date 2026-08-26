@@ -748,7 +748,9 @@ export class ComponentContext {
     const stillPending = new Set(owners.slice(count));
 
     for (let i = 0; i < count; i++) {
-      owners[i].commitChange(entries[i]);
+      // `count` is clamped to `entries.length`, and `build()` above assigns an owner for every
+      // index `entries` gains, so both arrays hold an entry at `i`.
+      owners[i]!.commitChange(entries[i]!);
     }
 
     this.#componentMemory.write(count === entries.length ? entries : entries.slice(0, count));
@@ -918,7 +920,7 @@ export class ComponentContext {
     const {order} = component;
 
     for (let i = 0; i < childUuids.length; i++) {
-      const other = this.#components.get(childUuids[i])?.component;
+      const other = this.#components.get(childUuids[i]!)?.component;
       if (other !== undefined && order < other.order) {
         childUuids.splice(i, 0, component.uuid);
         return;

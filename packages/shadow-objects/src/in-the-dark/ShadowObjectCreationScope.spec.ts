@@ -89,8 +89,9 @@ describe('ShadowObjectCreationScope', () => {
       // `ConsoleLogger` prints its namespace as a styled badge, so the wording of a report starts at
       // the third argument: `console.error('%c<namespace>', styles, ...args)`. The badge is what
       // tells a report through the logger apart from a raw call on the console.
-      expect(errorSpy.mock.calls[0][0]).toBe('%cKernel');
-      expect(errorSpy.mock.calls[0][2]).toBe(
+      const call = errorSpy.mock.calls[0]!;
+      expect(call[0]).toBe('%cKernel');
+      expect(call[2]).toBe(
         '[shadow-objects] Deprecation Warning: The "isEqual" option of "useProperty()" is now passed as {compare} argument. Please update your code accordingly.',
       );
 
@@ -122,7 +123,7 @@ describe('ShadowObjectCreationScope', () => {
       kernel.createEntity(uuid, 'deprecatedProvideContext');
 
       expect(errorSpy).toHaveBeenCalledTimes(1);
-      expect(errorSpy.mock.calls[0][2]).toBe(
+      expect(errorSpy.mock.calls[0]![2]).toBe(
         '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideContext()" is now passed as {compare} argument. Please update your code accordingly.',
       );
       expect(value(provider!)).toBe('first');
@@ -162,7 +163,7 @@ describe('ShadowObjectCreationScope', () => {
       kernel.createEntity(uuid, 'deprecatedProvideGlobalContext');
 
       expect(errorSpy).toHaveBeenCalledTimes(1);
-      expect(errorSpy.mock.calls[0][2]).toBe(
+      expect(errorSpy.mock.calls[0]![2]).toBe(
         '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideGlobalContext()" is now passed as {compare} argument. Please update your code accordingly.',
       );
       expect(value(provider!)).toBe('first');
@@ -208,7 +209,7 @@ describe('ShadowObjectCreationScope', () => {
       kernel.createEntity(childUuid, 'deprecatedUseContext', parentUuid);
 
       expect(errorSpy).toHaveBeenCalledTimes(1);
-      expect(errorSpy.mock.calls[0][2]).toBe(
+      expect(errorSpy.mock.calls[0]![2]).toBe(
         '[shadow-objects] Deprecation Warning: The "isEqual" option of "useContext()" is now passed as {compare} argument. Please update your code accordingly.',
       );
 
@@ -257,7 +258,7 @@ describe('ShadowObjectCreationScope', () => {
       kernel.createEntity(childUuid, 'deprecatedUseParentContext', parentUuid);
 
       expect(errorSpy).toHaveBeenCalledTimes(1);
-      expect(errorSpy.mock.calls[0][2]).toBe(
+      expect(errorSpy.mock.calls[0]![2]).toBe(
         '[shadow-objects] Deprecation Warning: The "isEqual" option of "useParentContext()" is now passed as {compare} argument. Please update your code accordingly.',
       );
 

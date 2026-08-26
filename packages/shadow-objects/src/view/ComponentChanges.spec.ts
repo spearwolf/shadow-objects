@@ -614,7 +614,7 @@ describe('ComponentChanges', () => {
       const changes = created();
       changes.createEvent('first', 1, [carried]);
 
-      const [entry] = buildTrail(changes);
+      const entry = buildTrail(changes)[0]!;
       changes.createEvent('second', 2, [later]);
       changes.commitChange(entry);
 
@@ -647,7 +647,7 @@ describe('ComponentChanges', () => {
       changes.changeProperty('a', 1);
       changes.changeProperty('b', 2);
 
-      const [entry] = buildTrail(changes);
+      const entry = buildTrail(changes)[0]!;
       changes.changeProperty('c', 3);
       changes.commitChange(entry);
 
@@ -668,7 +668,7 @@ describe('ComponentChanges', () => {
       const changes = created();
       changes.changeProperty('a', 1);
 
-      const [entry] = buildTrail(changes);
+      const entry = buildTrail(changes)[0]!;
       changes.changeProperty('a', 2);
       changes.commitChange(entry);
 
@@ -679,7 +679,7 @@ describe('ComponentChanges', () => {
       const changes = created();
       changes.changeToken('b');
 
-      const [entry] = buildTrail(changes);
+      const entry = buildTrail(changes)[0]!;
       changes.changeToken('c');
       changes.commitChange(entry);
 
@@ -699,7 +699,7 @@ describe('ComponentChanges', () => {
       flushTrail(changes);
 
       changes.changeProperty('a', 1);
-      const [entry] = buildTrail(changes);
+      const entry = buildTrail(changes)[0]!;
 
       changes.changeProperty('a', 0);
       changes.commitChange(entry);
@@ -712,7 +712,7 @@ describe('ComponentChanges', () => {
       const changes = created('a');
 
       changes.changeToken('b');
-      const [entry] = buildTrail(changes);
+      const entry = buildTrail(changes)[0]!;
 
       changes.changeToken('a');
       changes.commitChange(entry);
@@ -724,7 +724,7 @@ describe('ComponentChanges', () => {
       const changes = created();
 
       changes.changeOrder(5);
-      const [entry] = buildTrail(changes);
+      const entry = buildTrail(changes)[0]!;
 
       changes.changeOrder(0);
       changes.commitChange(entry);
@@ -736,7 +736,7 @@ describe('ComponentChanges', () => {
       const changes = created('a', 'p1');
 
       changes.setParent('p2');
-      const [entry] = buildTrail(changes);
+      const entry = buildTrail(changes)[0]!;
 
       changes.setParent('p1');
       changes.commitChange(entry);

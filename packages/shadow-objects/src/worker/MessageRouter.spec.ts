@@ -138,9 +138,10 @@ describe('MessageRouter', () => {
       router.route(message({}));
 
       expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn.mock.calls[0][0]).toBe('%cMessageRouter');
-      expect(warn.mock.calls[0][2]).toBe('unknown message');
-      expect(warn.mock.calls[0][3]).toEqual({});
+      const call = warn.mock.calls[0]!;
+      expect(call[0]).toBe('%cMessageRouter');
+      expect(call[2]).toBe('unknown message');
+      expect(call[3]).toEqual({});
       expect(posted).toHaveLength(0);
     });
   });
@@ -153,11 +154,11 @@ describe('MessageRouter', () => {
       await flushMicrotasks();
 
       expect(posted).toHaveLength(1);
-      expect(posted[0].message).toEqual({type: MessageToView, data: {uuid: 'a', type: 'hello', data: {n: 1}}});
+      expect(posted[0]!.message).toEqual({type: MessageToView, data: {uuid: 'a', type: 'hello', data: {n: 1}}});
       // The options object goes along either way; without transferables its `transfer` is simply
       // undefined, which `postMessage` reads as an empty list. Asserted strictly, because the key
       // being there with no value is the point -- `toEqual` would hold for a bare `{}` as well.
-      expect(posted[0].options).toStrictEqual({transfer: undefined});
+      expect(posted[0]!.options).toStrictEqual({transfer: undefined});
     });
 
     // Transferables belong to the structured-clone call, not to the payload: sending them along
@@ -170,8 +171,8 @@ describe('MessageRouter', () => {
       await flushMicrotasks();
 
       expect(posted).toHaveLength(1);
-      expect(posted[0].options?.transfer?.[0]).toBe(buffer);
-      expect('transferables' in posted[0].message.data).toBe(false);
+      expect(posted[0]!.options?.transfer?.[0]).toBe(buffer);
+      expect('transferables' in posted[0]!.message.data).toBe(false);
     });
 
     it('stops forwarding kernel messages after a destroy', async () => {
@@ -205,7 +206,7 @@ describe('MessageRouter', () => {
       await waitForPosted(posted, 1);
 
       expect(posted).toHaveLength(1);
-      expect(posted[0].message).toEqual({type: ImportedModule, url});
+      expect(posted[0]!.message).toEqual({type: ImportedModule, url});
     });
 
     it('upgrades the entities that already exist when the module arrives', async () => {
@@ -240,7 +241,7 @@ describe('MessageRouter', () => {
       await waitForPosted(posted, 1);
 
       expect(posted).toHaveLength(1);
-      expect(posted[0].message).toEqual({type: ImportedModule, url, error: 'module has no "shadowObjects" export'});
+      expect(posted[0]!.message).toEqual({type: ImportedModule, url, error: 'module has no "shadowObjects" export'});
       expect(error).not.toHaveBeenCalled();
     });
 
@@ -254,12 +255,13 @@ describe('MessageRouter', () => {
       // Asserted field by field, not with `toEqual` on the whole message: the message carries
       // `url: undefined`, and `toEqual` would wave that key through instead of naming it.
       expect(posted).toHaveLength(1);
-      expect(posted[0].message.type).toBe(ImportedModule);
-      expect(posted[0].message.error).toBe('missing "importModule" url');
-      expect(posted[0].message.errorName).toBe('Error');
+      expect(posted[0]!.message.type).toBe(ImportedModule);
+      expect(posted[0]!.message.error).toBe('missing "importModule" url');
+      expect(posted[0]!.message.errorName).toBe('Error');
       expect(error).toHaveBeenCalledTimes(1);
-      expect(error.mock.calls[0][0]).toBe('%cMessageRouter');
-      expect(error.mock.calls[0][2]).toBe('failed to import module');
+      const call = error.mock.calls[0]!;
+      expect(call[0]).toBe('%cMessageRouter');
+      expect(call[2]).toBe('failed to import module');
     });
 
     it('reports a module that cannot be parsed', async () => {
@@ -271,11 +273,11 @@ describe('MessageRouter', () => {
       await waitForPosted(posted, 1);
 
       expect(posted).toHaveLength(1);
-      expect(posted[0].message.type).toBe(ImportedModule);
-      expect(posted[0].message.url).toBe(url);
+      expect(posted[0]!.message.type).toBe(ImportedModule);
+      expect(posted[0]!.message.url).toBe(url);
       // Only the name is ours to assert: the wording of the failure comes from the engine.
-      expect(posted[0].message.errorName).toBe('SyntaxError');
-      expect(posted[0].message.error, 'the wording belongs to the engine, that there is one belongs to us').toMatch(/.+/);
+      expect(posted[0]!.message.errorName).toBe('SyntaxError');
+      expect(posted[0]!.message.error, 'the wording belongs to the engine, that there is one belongs to us').toMatch(/.+/);
       expect(error).toHaveBeenCalledTimes(1);
     });
 
@@ -298,7 +300,7 @@ describe('MessageRouter', () => {
       expect(warn).toHaveBeenCalledTimes(1);
       // `ConsoleLogger` prints its namespace as a styled badge: `console.warn('%c<namespace>', styles,
       // ...args)`. The wording of the call starts at the third argument.
-      expect(warn.mock.calls[0][2]).toContain('importModule: skipping already imported module');
+      expect(warn.mock.calls[0]![2]).toContain('importModule: skipping already imported module');
     });
 
     // The skip line is the one report of this branch that asks a getter first, so a logger that is
@@ -349,8 +351,9 @@ describe('MessageRouter', () => {
         appliedCount: 0,
       });
       expect(error).toHaveBeenCalledTimes(1);
-      expect(error.mock.calls[0][0]).toBe('%cMessageRouter');
-      expect(error.mock.calls[0][2]).toBe('failed to apply change trail');
+      const call = error.mock.calls[0]!;
+      expect(call[0]).toBe('%cMessageRouter');
+      expect(call[2]).toBe('failed to apply change trail');
       expect(kernel.hasEntity('a')).toBe(true);
     });
 
@@ -385,7 +388,7 @@ describe('MessageRouter', () => {
 
       router.route(changeTrailMessage(3, setParent('a', 'ghost')));
 
-      const message = posted[0].message;
+      const message = posted[0]!.message;
 
       expect(message.error).toContain('not found');
       expect(message.error).not.toMatch(/change trail entries/);
@@ -403,8 +406,9 @@ describe('MessageRouter', () => {
 
       expect(posted).toHaveLength(0);
       expect(error).toHaveBeenCalledTimes(1);
-      expect(error.mock.calls[0][0]).toBe('%cMessageRouter');
-      expect(error.mock.calls[0][2]).toBe('failed to apply change trail');
+      const call = error.mock.calls[0]!;
+      expect(call[0]).toBe('%cMessageRouter');
+      expect(call[2]).toBe('failed to apply change trail');
     });
 
     // The name is what a caller on the view side reads to tell one refusal from another, so
@@ -523,8 +527,9 @@ describe('MessageRouter', () => {
 
       expect(posted.map((entry) => entry.message)).toEqual([{type: Destroyed}]);
       expect(error).toHaveBeenCalledTimes(1);
-      expect(error.mock.calls[0][0]).toBe('%cMessageRouter');
-      expect(error.mock.calls[0][2]).toBe('failed to tear the kernel down');
+      const call = error.mock.calls[0]!;
+      expect(call[0]).toBe('%cMessageRouter');
+      expect(call[2]).toBe('failed to tear the kernel down');
       expect(router.isDestroyed).toBe(true);
     });
 
