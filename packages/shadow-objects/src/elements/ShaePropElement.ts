@@ -104,16 +104,16 @@ export class ShaePropElement extends HTMLElement {
   readonly #teardown = new DeferredTeardown(() => this.destroy());
 
   /** Binds this element to the entity above it, and carries that entity's component through. */
-  #hostBinding?: () => void;
+  #hostBinding?: (() => void) | undefined;
 
   /** Holds the property on the entity for as long as this element declares it. */
-  #declareProperty?: Effect;
+  #declareProperty?: Effect | undefined;
 
   /** Writes the value through to the entity. */
-  #writePropertyValue?: Effect;
+  #writePropertyValue?: Effect | undefined;
 
   /** Turns what the attribute spells into the value the property carries. */
-  #convertValue?: Effect;
+  #convertValue?: Effect | undefined;
 
   /** Whether this element has been torn down. */
   get isDestroyed(): boolean {
@@ -432,7 +432,7 @@ export class ShaePropElement extends HTMLElement {
   }
 
   #reportedMissingHost = false;
-  #reRequestHostTarget?: EventTarget;
+  #reRequestHostTarget?: EventTarget | undefined;
   #hostLookupPending = false;
 
   // Determines the host from where the element stands right now. The request runs *without* a

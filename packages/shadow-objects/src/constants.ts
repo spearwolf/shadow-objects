@@ -1,4 +1,4 @@
-import type {NamespaceType} from './types.ts';
+import type {NamespaceType} from './types.js';
 
 export enum ChangeTrailPhase {
   StructuralChanges = 1,

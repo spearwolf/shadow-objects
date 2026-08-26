@@ -103,4 +103,18 @@ describe('the dist layout of @spearwolf/shadow-objects', () => {
       expect(existsSync(path.join(distDir, entryPoint)), `${entryPoint} does not exist under dist`).toBe(true);
     }
   });
+
+  it('no emitted declaration imports through a source extension', () => {
+    // The declarations are what a consumer resolves against, and a `.ts` specifier in them
+    // does not resolve under `moduleResolution: NodeNext` or `Node16`. The source extension
+    // survives declaration emit verbatim, so the only place it can be caught is here.
+    const offenders = collectFilesUnderDist()
+      .filter((file) => file.endsWith('.d.ts'))
+      .flatMap((file) => {
+        const text = readFileSync(path.join(distDir, file), 'utf8');
+        return [...text.matchAll(/from '([^']*\.ts)'/g)].map((match) => `${file}: ${match[1]!}`);
+      });
+
+    expect(offenders).toEqual([]);
+  });
 });

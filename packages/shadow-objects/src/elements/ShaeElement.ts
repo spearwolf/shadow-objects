@@ -1,6 +1,6 @@
 import {createSignal, hibernate, Signal} from '@spearwolf/signalize';
 import {GlobalNS} from '../constants.js';
-import type {NamespaceType} from '../types.ts';
+import type {NamespaceType} from '../types.js';
 import {readNamespaceAttribute} from '../utils/attr-utils.js';
 import {toNamespace} from '../utils/toNamespace.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
@@ -77,7 +77,7 @@ export class ShaeElement extends HTMLElement {
   #wasConnected = false;
 
   /** Attribute writes that came in before the first connect, the latest one per attribute. */
-  #pendingReflections?: Map<string, () => void>;
+  #pendingReflections?: Map<string, () => void> | undefined;
 
   #destroyed = false;
 
@@ -95,7 +95,7 @@ export class ShaeElement extends HTMLElement {
   readonly #teardown = new DeferredTeardown(() => this.destroy());
 
   /** Takes the namespace reflection off again. */
-  #nsReflection?: () => void;
+  #nsReflection?: (() => void) | undefined;
 
   /** Whether this element has been torn down. */
   get isDestroyed(): boolean {

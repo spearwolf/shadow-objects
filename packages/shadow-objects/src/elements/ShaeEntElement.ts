@@ -105,7 +105,7 @@ const askEveryoneToReRequest = (event: Event): void => {
 };
 
 interface ReRequestParentData {
-  newAncestor?: ShaeEntElement;
+  newAncestor?: ShaeEntElement | undefined;
 }
 
 /** An allow-list without entries forwards nothing — the same thing `false` says. */
@@ -162,7 +162,7 @@ export class ShaeEntElement extends ShaeElement {
     this.token$.set(token);
   }
 
-  entParentNode?: ShaeEntElement;
+  entParentNode?: ShaeEntElement | undefined;
 
   /**
    * Whether this element already sat in a live tree while its constructor ran.
@@ -176,7 +176,7 @@ export class ShaeEntElement extends ShaeElement {
    */
   readonly #wasUpgradedInPlace = this.isConnected;
 
-  #parentObserver?: MutationObserver;
+  #parentObserver?: MutationObserver | undefined;
 
   /**
    * Bumped whenever the subscriptions this element holds on its component have to be set up again.
@@ -190,22 +190,22 @@ export class ShaeEntElement extends ShaeElement {
   #reSubscribePending = false;
 
   /** Moves this element's entity into the context of whichever namespace it names. */
-  #namespaceBinding?: () => void;
+  #namespaceBinding?: (() => void) | undefined;
 
   /** Writes the token back onto the attribute. */
-  #tokenReflection?: () => void;
+  #tokenReflection?: (() => void) | undefined;
 
   /** Writes the event filter back onto the attribute. */
-  #forwardCustomEventsReflection?: () => void;
+  #forwardCustomEventsReflection?: (() => void) | undefined;
 
   /** The eventize subscriptions this element holds on its component. */
-  #viewComponentListeners?: Effect;
+  #viewComponentListeners?: Effect | undefined;
 
   /** The patch that carries the component's own events out as DOM events. */
-  #forwardCustomEventsPatch?: Effect;
+  #forwardCustomEventsPatch?: Effect | undefined;
 
   /** Carries a new token through to the entity. */
-  #tokenToViewComponent?: () => void;
+  #tokenToViewComponent?: (() => void) | undefined;
 
   /**
    * The wait for the next microtask is the point, not a detail: the subscriptions come off right
@@ -430,7 +430,7 @@ export class ShaeEntElement extends ShaeElement {
     this.#writeTokenToViewComponent(this.token$.value);
   }
 
-  #unsubscribeViewComponentEffect?: () => void;
+  #unsubscribeViewComponentEffect?: (() => void) | undefined;
 
   #applyComponentContext = (context: ComponentContext | undefined) => {
     const token = this.token$.value;
@@ -490,7 +490,7 @@ export class ShaeEntElement extends ShaeElement {
     return (this.getRootNode() as ShadowRoot)?.host as HTMLElement | undefined;
   }
 
-  #shadowRootHost?: HTMLElement;
+  #shadowRootHost?: HTMLElement | undefined;
   #shadowRootHostNeedsUpdate = true;
 
   findShadowRootHost(): HTMLElement | undefined {
@@ -817,7 +817,7 @@ export class ShaeEntElement extends ShaeElement {
     this.#setParent(entParent);
   }
 
-  #unsubscribeFromParent?: () => void;
+  #unsubscribeFromParent?: (() => void) | undefined;
 
   #setParent(parent?: ShaeEntElement) {
     if (this.entParentNode === parent) return;

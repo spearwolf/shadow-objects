@@ -63,7 +63,7 @@ export class ShaeWorkerElement extends ShaeElement {
    * the handle is kept and released by hand — a listener left on a living signal is a listener the
    * global signal queue goes on holding, and with it this element.
    */
-  #envViewBinding?: () => void;
+  #envViewBinding?: (() => void) | undefined;
 
   /**
    * Take the subscriptions up. Runs exactly once for this element, on the first connect.
