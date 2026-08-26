@@ -463,7 +463,7 @@ entity.traverse((e) => {
 
 ## Registry (Component Manifest)
 
-The Registry is the routing table of the Shadow Objects framework. It tells the Kernel (ECS System Runner) which code to run for a given Entity Token (Component Tag). This configuration is organized into Modules.
+The Registry is the routing table of the Shadow Objects framework. It tells the Kernel (ECS System Runner) which code to run for a given Entity Token. This configuration is organized into Modules.
 
 Think of the Registry as the component manifest for your ECS: it declares what behavior attaches to what game object type.
 
@@ -491,7 +491,7 @@ export const shadowObjects = {
 
 ### `define`
 
-Maps Token (Component Tag) strings to Shadow Object constructors.
+Maps Token strings to Shadow Object constructors.
 
 - **Key:** The token string (e.g., `'my-button'`). This matches the `token` attribute on `<shae-ent>`.
 - **Value:** A Shadow Object definition (function or class).
@@ -1845,7 +1845,7 @@ Represents an Entity (game object) in the Shadow Environment. Corresponds to a `
 
 | Attribute | Description |
 | :--- | :--- |
-| `token` | The Token (Component Tag) matching a registered Shadow Object constructor. Optional: an entity without one carries the void token `#void` and matches no Shadow Object. Removing the attribute takes the entity back to it. |
+| `token` | The Token matching a registered Shadow Object constructor. Optional: an entity without one carries the void token `#void` and matches no Shadow Object. Removing the attribute takes the entity back to it. |
 | `ns` | The context this entity belongs to. Must match the `ns` on `<shae-worker>` when using named contexts. Can be changed at runtime, see [Entity Hierarchy](#entity-hierarchy). |
 | `forward-custom-events` | Re-dispatches events from the Shadow Object as DOM `CustomEvent`s on this element. Present with an empty or whitespace-only value: every event. A comma-separated list: only the types it names — `forward-custom-events="true"` forwards the type named `true` and nothing else. Absent, or a list that names no type: nothing is forwarded. |
 

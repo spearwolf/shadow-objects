@@ -47,7 +47,7 @@ In your HTML file, use the Shadow Objects web components to bootstrap the enviro
 
     <!--
       2. Declare an Entity (Game Object)
-      token: Matches a definition in your logic module (Component Tag)
+      token: Matches a definition in your logic module
     -->
     <shae-ent token="counter-component">
         <!-- Declares the 'count' property for as long as this element stands here,
@@ -113,7 +113,7 @@ function CounterLogic({ useProperty, createEffect, createSignal, onViewEvent }) 
 }
 
 /**
- * The named export `shadowObjects` maps Token (Component Tags) to Shadow Objects
+ * The named export `shadowObjects` maps Tokens to Shadow Objects
  * (ECS components). This is the Registry (Component Manifest) for this module, and
  * `shadowObjects` is the one name the loader looks for.
  */

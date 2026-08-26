@@ -40,7 +40,7 @@ Shadow Objects solves both cleanly:
 |---|---|
 | **Entity (Game Object)** | A node in the entity tree. Holds properties and participates in the context system. |
 | **Shadow Object (ECS Component)** | A functional unit of logic attached to an entity. Defines behavior. |
-| **Token (Component Tag)** | A string identifier that links a View declaration to a Shadow Object in the Registry. |
+| **Token** | A string identifier that links a View declaration to a Shadow Object in the Registry. |
 | **Registry (Component Manifest)** | The lookup table that maps Tokens to Shadow Object constructors. |
 
 **Token vs. ID:** A Token describes *what kind* of thing this entity is -- like a class name. The framework assigns unique IDs internally to distinguish specific instances.

@@ -140,7 +140,7 @@ onDestroy(() => {
 
 ### Registering with the Registry (Component Manifest)
 
-Map your logic to a Token (Component Tag) in a module file:
+Map your logic to a Token in a module file:
 
 ```javascript
 // my-module.js
@@ -329,7 +329,7 @@ Each `<shae-ent>` element maps to an entity (game object) in the Shadow Environm
 
 | Attribute | Description |
 |---|---|
-| `token` | The Token (Component Tag) mapping to a Shadow Object in the Registry |
+| `token` | The Token mapping to a Shadow Object in the Registry |
 | `ns` | Connect this entity to a named Component Context |
 | `forward-custom-events` | Re-dispatch Shadow Object events as DOM `CustomEvent`s (empty = all, or comma-separated list) |
 

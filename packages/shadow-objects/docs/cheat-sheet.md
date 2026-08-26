@@ -243,7 +243,7 @@ and it stays torn down. The other two elements use the same two names for someth
 
 | Attribute | Values | Description |
 |---|---|---|
-| `token` | string | Token (Component Tag) matching a Registry entry. Optional; without it the entity carries `#void`. |
+| `token` | string | Token matching a Registry entry. Optional; without it the entity carries `#void`. |
 | `ns` | string | Connect to a named Component Context. A change at runtime takes the entity **and its properties** into the other environment — see `docs/api-reference.md`, "Entity Hierarchy" |
 | `forward-custom-events` | absent, empty/whitespace, or comma-list | Re-dispatch Shadow Object events as DOM CustomEvents. Empty or whitespace-only: every event. A list: only the types it names. Absent, or a list with no entries: nothing. |
 

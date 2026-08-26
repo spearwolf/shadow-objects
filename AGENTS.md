@@ -15,7 +15,7 @@ Shadow Objects is an Entity-Component System (ECS) applied to web app state mana
 - **View / Renderer:** The visible UI (DOM, Canvas). Minimal state, pure rendering.
 - **Entities (Game Objects):** Lightweight containers in the shadow environment — no logic of their own.
 - **Shadow Objects (ECS Components):** Functional units of logic attached to Entities. This is where behavior lives.
-- **Token (Component Tag):** String identifier linking View nodes to their shadow logic.
+- **Token:** String identifier linking View nodes to their shadow logic.
 
 ### Key Components
 
@@ -84,7 +84,7 @@ Documentation that invents plausible-sounding names is the most dangerous kind. 
 | Entity | Shadow Entity | ECS term, and "Shadow" is already in "Shadow Environment". |
 | Entity Tree | Shadow Entity Graph | It is a tree, every node has exactly one parent. `getEntityGraph()` stays as a method name. |
 | Namespace / `ComponentContext` | Shadow Context | See the context note below. |
-| Token | Component Tag | "Component Tag" appears in the docs as a gloss, nowhere in the code. |
+| Token | Component Tag | The code knows only `token`, and no gloss renames it. |
 
 **The word "context" means two unrelated things.** `ComponentContext` is the View-side registry of a namespace, i.e. the connection to an environment. `provideContext` / `useContext` are dependency injection along the entity tree. They never interact. Keep them apart at every occurrence: write `ComponentContext` in full, and say "Entity Context" for the other one.
 

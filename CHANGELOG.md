@@ -4,6 +4,15 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — the agent guide follows its own binding-terms table
+
+- **`AGENTS.md`:** the mental-model list in §2 names the Token with no gloss beside it. The
+  binding-terms table in §4 lists "Component Tag" among the names not to use, and the bullet
+  sixty-nine lines above it used exactly that name. The table keeps the rule and states it as
+  one — the code knows only `token`, and no gloss renames it. The same gloss in the package
+  documentation, and the two illustrations that leave the source tree with it, are recorded in
+  [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md).
+
 ## 2026-08-26 — the readme and the agent guide describe this repository
 
 - **`README.md`:** the "What's in the Box?" section now names paths that resolve from the
