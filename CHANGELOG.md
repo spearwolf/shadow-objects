@@ -4,6 +4,22 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — the readme and the agent guide describe this repository
+
+- **`README.md`:** the "What's in the Box?" section now names paths that resolve from the
+  repository root — the canvas package lives under `packages/shae-offscreen-canvas/`, and the
+  core package's four directories carry their package in front. The "Project Structure" table
+  in the same file already named the canvas path correctly.
+- **`README.md`:** the Development Setup prerequisites quote `engines` from the root
+  `package.json` (Node.js `>=24.13.0`, pnpm `>=11.0.0`) and name the field as their source, so
+  the two numbers stop drifting apart. `packageManager` (`pnpm@11.21.0`) sits next to it and
+  decides which pnpm actually runs.
+- **`AGENTS.md`:** the third section of the file is gone. It assigned every reader a role and a
+  tone from outside the project, contradicting §4 of the same file — which asks for precise
+  English technical documentation and bans a list of analogies. The two rules under it that no
+  other section carried now live in §4 — docs follow a changed or new concept, and the guide
+  gets read again after a change to source or docs.
+
 ## 2026-08-26 — the manifests declare only what has a user
 
 - **`package.json`:** `sinon`, `@types/sinon` and `tslib` leave the root devDependencies.

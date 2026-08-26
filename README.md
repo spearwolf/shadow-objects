@@ -84,15 +84,15 @@ Full walkthrough: [getting-started.md](packages/shadow-objects/docs/getting-star
 The framework is strictly modularized into functional domains.
 
 ### Core Runtimes
-*   **`src/in-the-dark/` (The Shadow Runtime):** The ECS heart. Contains the Kernel, Entity tree, Registry, Token-Routing, and SignalsPath. This is where your logic executes.
-*   **`src/worker/` (Worker Runtime):** The mirror of the View side. Contains the `MessageRouter` and WorkerRuntime to enable Web Worker execution.
-*   **`src/view/` (The View Bridge):** The Facade (`ShadowEnv`) and `ComponentContext`. It translates DOM state into serialized Change Trails.
+*   **`packages/shadow-objects/src/in-the-dark/` (The Shadow Runtime):** The ECS heart. Contains the Kernel, Entity tree, Registry, Token-Routing, and SignalsPath. This is where your logic executes.
+*   **`packages/shadow-objects/src/worker/` (Worker Runtime):** The mirror of the View side. Contains the `MessageRouter` and WorkerRuntime to enable Web Worker execution.
+*   **`packages/shadow-objects/src/view/` (The View Bridge):** The Facade (`ShadowEnv`) and `ComponentContext`. It translates DOM state into serialized Change Trails.
 
 ### Integrations & Elements
-*   **`src/elements/` (Custom Elements):** The HTML bindings (`ShaeElement` base plus `<shae-ent>`, `<shae-prop>`, `<shae-worker>`). Over 1,100 lines of robust lifecycle logic.
+*   **`packages/shadow-objects/src/elements/` (Custom Elements):** The HTML bindings (`ShaeElement` base plus `<shae-ent>`, `<shae-prop>`, `<shae-worker>`). Over 1,100 lines of robust lifecycle logic.
 
 ### Examples & Testing
-*   **`packages/shadow-offscreen-canvas/`:** A reference implementation demonstrating heavy lifting! Runs `three.js` in a Worker, proving the power of Transferables and Namespaces.
+*   **`packages/shae-offscreen-canvas/`:** A reference implementation demonstrating heavy lifting! Runs `three.js` in a Worker, proving the power of Transferables and Namespaces.
 *   **`packages/shadow-objects-testing/` & `e2e`:** Massive test suite spanning unit tests (vitest), real DOM integration in Chromium, and E2E specs via Playwright.
 
 ---
@@ -286,7 +286,7 @@ Run these commands from the root directory:
 
 ## Development Setup
 
-1. **Prerequisites:** Node.js >=20.12.2, pnpm >=9.1.2
+1. **Prerequisites:** Node.js `>=24.13.0` and pnpm `>=11.0.0`, quoted from `engines` in the root `package.json` — that field is the source of truth, and `packageManager` next to it (`pnpm@11.21.0`) decides which pnpm actually runs.
 2. **Install Dependencies:**
     ```sh
     pnpm install

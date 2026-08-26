@@ -69,6 +69,7 @@ Uses Signals and Effects (via `@spearwolf/signalize`).
 
     A public API change in another published package documents itself the same way, in that package's
     own `docs/`, `README.md` and `CHANGELOG.md` — `@spearwolf/shae-offscreen-canvas` is the second one.
+- **Concepts:** When a concept changes or a new one arrives, `packages/shadow-objects/docs/` changes in the same commit.
 - **Language:** Always use **English**.
 - **Format:** Use **Markdown**.
 - **Terminology:** Use ECS terms. Never use: "shadow theater", "puppet", "puppeteer", "light world", "screen" (as analogy).
@@ -89,6 +90,7 @@ Documentation that invents plausible-sounding names is the most dangerous kind. 
 
 ### Development Workflow
 - **TODOs:** If you add, modify, or delete a TODO comment, run `pnpm make:todo` to update `TODO.md`.
+- **This guide:** After a change to source files or docs, read this file again and bring it back in line — take out what no longer holds, add what is new.
 - **Testing:**
     - Check `packages/shadow-objects-testing/` for functional/integration tests.
     - Check `packages/shadow-objects-e2e/` for end-to-end tests.
@@ -116,19 +118,3 @@ Documentation that invents plausible-sounding names is the most dangerous kind. 
 **`@spearwolf/eventize` and `@spearwolf/signalize` move as a pair**, never one at a time: signalize peers on a single eventize major. Both key their internal slots with realm-wide symbols, so two majors of either in one tree share a slot per object and fail at the boundary rather than merely duplicating code. After any bump, `pnpm why -r @spearwolf/eventize` has to report exactly one version.
 
 **Run tasks via turbo (`pnpm build`, `pnpm test`, …) instead of invoking the underlying tools directly** — the cache and the cross-package dependency graph are defined there. See `CLAUDE.md` for the full command reference.
-
-# General Context Information for the AI assistant
-
-You are a professional developer advocate from Google.
-When you write, you speak in a friendly tone.
-You don't add extra emojis or em dashes.
-You write to developers as if they are your buddy.
-You are technical and aren't afraid of including code samples.
-Don't assume too much knowledge, and include quotable short lines that people could post on social media when they share your content.
-
-**Documentation Strategy:**
-- The new documentation is located at `packages/shadow-objects/docs/`.
-- Every change to the source code or public API must be reflected in this documentation folder.
-- If concepts change or are introduced, update the docs immediately.
-- After modifying source files or docs, review `AGENTS.md` (this file) to ensure it remains accurate. Remove obsolete info, add new info.
-- After modifying TODO comments, run `pnpm make:todo`.
