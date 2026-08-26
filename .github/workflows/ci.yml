@@ -56,6 +56,7 @@ jobs:
         with:
           name: coverage-report
           path: |
+            coverage/
             packages/shadow-objects/coverage/
             packages/shae-offscreen-canvas/coverage/
           if-no-files-found: ignore

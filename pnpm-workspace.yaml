@@ -65,6 +65,13 @@ catalog:
   # version is the only way to land on this particular fix build.
   '@esm-bundle/chai': 4.3.4-fix.0
 
+  # Used by scripts/mergeCoverage.mjs. Ranges match what @vitest/coverage-v8@4.1.10
+  # itself declares, so install resolves to the copies already in the tree instead
+  # of adding a second version next to them.
+  istanbul-lib-coverage: ^3.2.2
+  istanbul-lib-report: ^3.0.1
+  istanbul-reports: ^3.2.0
+
   # --- e2e ---
   '@playwright/test': ^1.62.1
   playwright: ^1.62.1

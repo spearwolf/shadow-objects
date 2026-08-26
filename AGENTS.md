@@ -93,7 +93,7 @@ Documentation that invents plausible-sounding names is the most dangerous kind. 
     - Check `packages/shadow-objects-testing/` for functional/integration tests.
     - Check `packages/shadow-objects-e2e/` for end-to-end tests.
     - Public API changes must be tested in E2E if possible.
-    - Coverage: `pnpm test` writes a v8 report to `coverage/` in `packages/shadow-objects` and `packages/shae-offscreen-canvas`. No thresholds — `packages/shadow-objects-testing`'s `test` script doesn't run `--coverage`, so it stays out of the number; it also runs as its own vitest project and would get its own `reportsDirectory`, so a second report over the same `src/` files wouldn't add to the first without a merge step this package doesn't do.
+    - Coverage: all three vitest suites (`packages/shadow-objects`, `packages/shadow-objects-testing`, `packages/shae-offscreen-canvas`) run with `--coverage`; `pnpm coverage` merges their raw reports into one under `coverage/` at the repo root, and `pnpm test` runs that merge automatically. No thresholds. `packages/shadow-objects-e2e` is Playwright, not vitest, and stays out of the merge.
     - Each package's own `test` task holds its published-package layout against a recorded expectation: `packages/shadow-objects` checks `dist/` — file list and `dist/package.json` shape (`src/distContract.spec.ts`) — and `packages/shae-offscreen-canvas` checks `.npm-pkg/` the same way (`src/distContract.spec.js`).
 
 # Toolchain (post-2026-renewal)

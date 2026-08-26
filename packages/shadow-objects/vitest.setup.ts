@@ -12,6 +12,22 @@ import {afterAll, beforeAll} from 'vitest';
 // every spec file its own). happy-dom or a real browser installs Storage as a
 // plain data property instead, so the descriptor shape tells the two apart
 // without ever invoking the getter.
+//
+// This file is `setupFiles` for three vitest configs: packages/shadow-objects
+// (happy-dom), packages/shadow-objects-testing (browser mode) and
+// packages/shae-offscreen-canvas (happy-dom). The replacement is a global patch on
+// an object the library under test reads itself: utils/ConsoleLogger.ts looks for a
+// usable Storage once, in a module-level IIFE, and keeps the result in a module
+// constant. Whether it sees the replacement depends on this file running before
+// that module's first import — which is what `setupFiles` guarantees.
+//
+// `isNode && storageIsAccessor` is where a Node upgrade lands. If Node ever ships
+// its `localStorage` as a data property instead of a getter, `storageIsAccessor`
+// turns false, the replacement is skipped without a word, and every spec that
+// needs a working `localStorage` fails at once. What to do then depends on what
+// Node put there: a usable `Storage` needs no replacement and this block can go;
+// a still-inert one in a different shape needs a condition that checks usability
+// instead of the descriptor's shape.
 const isNode = typeof process !== 'undefined' && Boolean(process.versions?.node);
 const storageIsAccessor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')?.get != null;
 

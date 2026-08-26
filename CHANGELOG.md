@@ -4,6 +4,23 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — one coverage number for the whole workspace
+
+- **`scripts/mergeCoverage.mjs`:** merges the raw v8 coverage of all three vitest suites
+  (`packages/shadow-objects`, `packages/shadow-objects-testing`, `packages/shae-offscreen-canvas`)
+  into a single report under `coverage/` in the repository root. `pnpm test`, `pnpm test:ci`,
+  `pnpm cbt` and `pnpm ci` run it right after the suites finish.
+- **`packages/shadow-objects-testing/vitest.config.ts`:** the suite now runs with `--coverage`.
+  `@spearwolf/shadow-objects` is excluded from `optimizeDeps` so coverage attributes to
+  individual modules instead of a pre-bundled dependency chunk, and `coverage.allowExternal`
+  lets the v8 provider reach the neighbouring package. The numbers land on `src/**/*.ts` of
+  the core library — the provider follows the build's source maps back to their origin.
+- **`package.json`:** a new `coverage` script runs the merge on its own, and three istanbul
+  packages (`istanbul-lib-coverage`, `istanbul-lib-report`, `istanbul-reports`) move from
+  transitive to declared `devDependencies`, since `scripts/mergeCoverage.mjs` imports them
+  directly. `packages/shadow-objects-testing/turbo.json` is gone with it — it existed only to
+  zero out `test.outputs` for a package that wrote no coverage, and the package now does.
+
 ## 2026-08-26 — the lint configuration names only what exists
 
 - **`biome.json`:** `linter.rules.recommended` is now `linter.rules.preset: "recommended"`.

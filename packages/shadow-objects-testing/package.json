@@ -11,7 +11,7 @@
   },
   "license": "Apache-2.0",
   "scripts": {
-    "test": "vitest --run",
+    "test": "vitest --run --coverage",
     "watch": "vitest",
     "update": "pnpm dlx npm-check --update"
   },
@@ -24,6 +24,7 @@
     "@playwright/test": "catalog:",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
     "lit-html": "catalog:",
     "rimraf": "catalog:",
     "sinon": "catalog:",

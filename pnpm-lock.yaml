@@ -45,6 +45,15 @@ catalogs:
     happy-dom:
       specifier: ^20.11.2
       version: 20.11.2
+    istanbul-lib-coverage:
+      specifier: ^3.2.2
+      version: 3.2.2
+    istanbul-lib-report:
+      specifier: ^3.0.1
+      version: 3.0.1
+    istanbul-reports:
+      specifier: ^3.2.0
+      version: 3.2.0
     leasot:
       specifier: ^14.4.0
       version: 14.4.0
@@ -104,6 +113,15 @@ importers:
       happy-dom:
         specifier: 'catalog:'
         version: 20.11.2
+      istanbul-lib-coverage:
+        specifier: 'catalog:'
+        version: 3.2.2
+      istanbul-lib-report:
+        specifier: 'catalog:'
+        version: 3.0.1
+      istanbul-reports:
+        specifier: 'catalog:'
+        version: 3.2.0
       leasot:
         specifier: 'catalog:'
         version: 14.4.0
@@ -188,6 +206,9 @@ importers:
       '@vitest/browser-playwright':
         specifier: 'catalog:'
         version: 4.1.10(playwright@1.62.1)(vite@7.3.6(@types/node@24.13.3)(lightningcss@1.33.0))(vitest@4.1.10)
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10)
       lit-html:
         specifier: 'catalog:'
         version: 3.3.3

@@ -14,7 +14,7 @@ export default defineConfig({
     execArgv: ['--expose-gc'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html'],
+      reporter: ['text', 'html', 'json'],
       // turbo's `test.outputs`, the CI artifact upload, `.gitignore` and
       // this path all name the same directory — change one, change all four.
       reportsDirectory: './coverage',
