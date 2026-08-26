@@ -113,7 +113,7 @@ Documentation that invents plausible-sounding names is the most dangerous kind. 
 
 **Dependency versions:** never write a plain version range in a per-package `package.json`. Add the version to the `catalog:` block of `pnpm-workspace.yaml` and reference it from each package as `"<dep>": "catalog:"`. A range that is not an install pin — today only the `three` peer of `shae-offscreen-canvas` — lives in a named catalog under `catalogs:` and is referenced as `"<dep>": "catalog:<name>"`.
 
-**Deliberate holdbacks.** `vite` (override at 7.x — Oxc does not lower the `@signal … accessor` decorators) and `turbo` (2.10.9 — pnpm's one-day `minimumReleaseAge`) are pinned below latest on purpose. Each carries its reason as a comment in `pnpm-workspace.yaml`; `CLAUDE.md` has the long form. Bumping one without reading the comment breaks the test suite or the install.
+**Deliberate holdbacks.** `vite` (override at 7.x — Oxc does not lower the `@signal … accessor` decorators) and `turbo` (catalog entry — pnpm's one-day `minimumReleaseAge`) are pinned below latest on purpose. Each carries its reason as a comment in `pnpm-workspace.yaml`; `CLAUDE.md` has the long form. Bumping one without reading the comment breaks the test suite or the install.
 
 **`@spearwolf/eventize` and `@spearwolf/signalize` move as a pair**, never one at a time: signalize peers on a single eventize major. Both key their internal slots with realm-wide symbols, so two majors of either in one tree share a slot per object and fail at the boundary rather than merely duplicating code. After any bump, `pnpm why -r @spearwolf/eventize` has to report exactly one version.
 

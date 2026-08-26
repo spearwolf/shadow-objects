@@ -4,6 +4,16 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — the holdback notes name the mechanism, not a version
+
+- **`CLAUDE.md`, `AGENTS.md`:** the note on the deliberate `turbo` holdback names where the
+  entry lives and why it is held — a `catalog:` entry kept off the newest patch, because pnpm's
+  one-day `minimumReleaseAge` fails `--frozen-lockfile` on a clean runner for anything younger
+  than the cutoff — instead of repeating the pinned range. `pnpm-workspace.yaml` is the single
+  source of truth for dependency versions, and a second copy of a range in a contributor guide
+  turns false at the next bump with nothing to prompt a correction. The `vite` half of the same
+  sentence in `AGENTS.md` names the release line rather than a pin, and it has stayed true.
+
 ## 2026-08-26 — no package is exempt from the release-age cooling-off
 
 - **`pnpm-workspace.yaml`:** `minimumReleaseAgeExclude` is gone, and with it the last package
