@@ -16,7 +16,7 @@ export enum ComponentChangeType {
   SendEvents,
 }
 
-export const GlobalNS: NamespaceType = Symbol.for('ShadowEntsGlobalNS');
+export const GlobalNS: NamespaceType = Symbol.for('ShadowObjectsGlobalNS');
 
 export const VoidToken = '#void';
 

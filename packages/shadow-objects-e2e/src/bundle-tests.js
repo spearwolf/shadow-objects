@@ -11,7 +11,7 @@ runTestSuite(main);
 async function main() {
   // --- BUNDLE-3: the single-file build loaded and defined everything ----------------
 
-  testBooleanAction('bundle-flag-is-set', () => globalThis.SHADOW_ENTS_BUNDLE_LOADED === true);
+  testBooleanAction('bundle-flag-is-set', () => globalThis.SHADOW_OBJECTS_BUNDLE_LOADED === true);
 
   await testAsyncAction('bundle-elements-defined', () =>
     Promise.all([

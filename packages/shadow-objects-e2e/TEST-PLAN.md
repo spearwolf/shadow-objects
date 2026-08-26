@@ -272,7 +272,7 @@ The tree is already there. It only needs assertions.
 |---|---|---|
 | BUNDLE-1 | P1 | The five-entity tree is delivered with the correct parent-child structure. |
 | BUNDLE-2 | P1 | `<shae-prop type="boolean" value="no">` arrives as `false`, `type="number[]" value="1 2 3"` as `[1, 2, 3]`. |
-| BUNDLE-3 | P2 | `globalThis.SHADOW_ENTS_BUNDLE_LOADED` is `true`, and the inlined worker starts without a separate network request for the worker file. |
+| BUNDLE-3 | P2 | `globalThis.SHADOW_OBJECTS_BUNDLE_LOADED` is `true`, and the inlined worker starts without a separate network request for the worker file. |
 | BUNDLE-4 | P2 | A functional round-trip through the *bundled* build, not just element definition — the bundle is a distinct artifact and currently only smoke-tested. |
 
 ### 3.6 Page `pages/sync-failure.html` — a change trail the environment refuses

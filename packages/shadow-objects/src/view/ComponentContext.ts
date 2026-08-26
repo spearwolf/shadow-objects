@@ -15,7 +15,7 @@ interface ViewInstance {
 }
 
 declare global {
-  var __shadowEntsContexts: Map<string | symbol, ComponentContext> | undefined;
+  var __shadowObjectsContexts: Map<string | symbol, ComponentContext> | undefined;
 }
 
 /**
@@ -80,10 +80,10 @@ export class ComponentContext {
   static readonly ReRequestEntHost = 're-request-ent-host';
 
   static getContextsMap(): Map<NamespaceType, ComponentContext> {
-    if (globalThis.__shadowEntsContexts == null) {
-      globalThis.__shadowEntsContexts = new Map<NamespaceType, ComponentContext>();
+    if (globalThis.__shadowObjectsContexts == null) {
+      globalThis.__shadowObjectsContexts = new Map<NamespaceType, ComponentContext>();
     }
-    return globalThis.__shadowEntsContexts;
+    return globalThis.__shadowObjectsContexts;
   }
 
   static get(namespace?: NamespaceType): ComponentContext {
