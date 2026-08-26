@@ -3765,11 +3765,11 @@ describe('Kernel', () => {
     });
   });
 
-  describe('cache-hit on creation-API helpers warns when options would be dropped', () => {
-    it('useProperty warns on a second call with a different compare function', () => {
+  describe('cache-hit on creation-API helpers reports when options would be dropped', () => {
+    it('useProperty reports a second call with a different compare function', () => {
       const registry = new Registry();
       const kernel = new Kernel(registry);
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const compareA = (a: unknown, b: unknown) => a === b;
       const compareB = (a: unknown, b: unknown) => Object.is(a, b);
@@ -3785,17 +3785,17 @@ describe('Kernel', () => {
 
       kernel.createEntity(generateUUID(), 'kern7Property');
 
-      expect(warnSpy).toHaveBeenCalledTimes(1);
-      expect(warnSpy.mock.calls[0][0]).toMatch(/useProperty/);
-      expect(warnSpy.mock.calls[0][0]).toMatch(/foo/);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0][2]).toMatch(/useProperty/);
+      expect(errorSpy.mock.calls[0][2]).toMatch(/foo/);
 
-      warnSpy.mockRestore();
+      errorSpy.mockRestore();
     });
 
-    it('useProperty does not warn when the second call passes the same compare function', () => {
+    it('useProperty does not report when the second call passes the same compare function', () => {
       const registry = new Registry();
       const kernel = new Kernel(registry);
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const compareA = (a: unknown, b: unknown) => a === b;
 
@@ -3810,14 +3810,14 @@ describe('Kernel', () => {
 
       kernel.createEntity(generateUUID(), 'kern7PropertySame');
 
-      expect(warnSpy).not.toHaveBeenCalled();
-      warnSpy.mockRestore();
+      expect(errorSpy).not.toHaveBeenCalled();
+      errorSpy.mockRestore();
     });
 
-    it('useProperty does not warn when the second call omits options', () => {
+    it('useProperty does not report when the second call omits options', () => {
       const registry = new Registry();
       const kernel = new Kernel(registry);
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const compareA = (a: unknown, b: unknown) => a === b;
 
@@ -3832,14 +3832,14 @@ describe('Kernel', () => {
 
       kernel.createEntity(generateUUID(), 'kern7PropertyOmit');
 
-      expect(warnSpy).not.toHaveBeenCalled();
-      warnSpy.mockRestore();
+      expect(errorSpy).not.toHaveBeenCalled();
+      errorSpy.mockRestore();
     });
 
-    it('useContext warns on a second call with a different compare function', () => {
+    it('useContext reports a second call with a different compare function', () => {
       const registry = new Registry();
       const kernel = new Kernel(registry);
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const compareA = (a: unknown, b: unknown) => a === b;
       const compareB = (a: unknown, b: unknown) => Object.is(a, b);
@@ -3855,17 +3855,17 @@ describe('Kernel', () => {
 
       kernel.createEntity(generateUUID(), 'kern7Context');
 
-      expect(warnSpy).toHaveBeenCalledTimes(1);
-      expect(warnSpy.mock.calls[0][0]).toMatch(/useContext/);
-      expect(warnSpy.mock.calls[0][0]).toMatch(/ctx/);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0][2]).toMatch(/useContext/);
+      expect(errorSpy.mock.calls[0][2]).toMatch(/ctx/);
 
-      warnSpy.mockRestore();
+      errorSpy.mockRestore();
     });
 
-    it('useParentContext warns on a second call with a different compare function', () => {
+    it('useParentContext reports a second call with a different compare function', () => {
       const registry = new Registry();
       const kernel = new Kernel(registry);
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const compareA = (a: unknown, b: unknown) => a === b;
       const compareB = (a: unknown, b: unknown) => Object.is(a, b);
@@ -3881,11 +3881,11 @@ describe('Kernel', () => {
 
       kernel.createEntity(generateUUID(), 'kern7ParentContext');
 
-      expect(warnSpy).toHaveBeenCalledTimes(1);
-      expect(warnSpy.mock.calls[0][0]).toMatch(/useParentContext/);
-      expect(warnSpy.mock.calls[0][0]).toMatch(/pctx/);
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0][2]).toMatch(/useParentContext/);
+      expect(errorSpy.mock.calls[0][2]).toMatch(/pctx/);
 
-      warnSpy.mockRestore();
+      errorSpy.mockRestore();
     });
   });
 

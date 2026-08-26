@@ -8,18 +8,6 @@ import {Registry} from './Registry.js';
 import {ShadowObject} from './ShadowObject.js';
 import {ShadowObjectCreationScope} from './ShadowObjectCreationScope.js';
 
-// The one-warning-per-realm flags in ShadowObjectCreationScope.ts live at module scope: within one
-// file, only the first bare-compare-function call for a given member name warns, no matter which
-// `it` block makes that call. Each case below is therefore the ONLY caller of its member's
-// deprecated form in this whole file -- warning and effect live together in a single `it`, so there
-// is exactly one call site per member and no ordering between cases to depend on. Do not add a
-// second bare-compare-function call for any of these five members anywhere else in this file, and
-// do not split a case's warning half from its effect half into another `it`.
-//
-// The isolation this relies on is per test *file*: vitest runs each spec file in its own module
-// instance unless `--no-isolate` is passed (`vitest.config.ts` does not lower `isolate`). A future
-// case added to `Kernel.spec.ts` that also passes a bare compare function would, under
-// `--no-isolate`, share these same flags and could flip one before this file's own case runs.
 describe('ShadowObjectCreationScope', () => {
   // The scope is built by hand rather than through an entity creation, because the kernel binds
   // every scope it makes exactly once: a second, refused binding has no way in through it.
@@ -28,23 +16,60 @@ describe('ShadowObjectCreationScope', () => {
     const uuid = generateUUID();
     kernel.createEntity(uuid, 'node');
 
-    return {kernel, uuid, scope: new ShadowObjectCreationScope(kernel.getEntity(uuid), kernel.logger, 'TestScope')};
+    return {
+      kernel,
+      uuid,
+      scope: new ShadowObjectCreationScope(kernel.getEntity(uuid), kernel.logger, 'TestScope', new Set<string>()),
+    };
   };
 
   afterEach(() => {
     Registry.get().clear();
-    // A `console.warn` spy that a failing assertion leaves un-restored would otherwise carry its
+    // A `console.error` spy that a failing assertion leaves un-restored would otherwise carry its
     // call count into the next test -- `vi.spyOn` returns the very same spy instance on a target
     // that is already spied. Restoring here, independent of how the test body ends, keeps every
     // case's warning count its own.
     vi.restoreAllMocks();
   });
 
+  // The deprecation report falls once per kernel and member name, and every case below builds a
+  // kernel of its own -- so a case's report is its own, whatever the cases before it did. Two
+  // cases sharing one kernel would share that list, and the second of them would see nothing.
   describe('the deprecated isEqual argument', () => {
-    it('useProperty: warns once per realm with the full deprecation text, and the function then reaches the signal as {compare}', () => {
+    // The list of names already reported belongs to the kernel: an application running two shadow
+    // environments has two kernels, and the second of them has to hear about the deprecated call
+    // form just as the first did. A list living as long as the module reports to whichever kernel
+    // got there first and to no other.
+    it('useProperty: reports the deprecated call form to every kernel that meets it', () => {
+      const registry = new Registry();
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const compare = vi.fn((a: unknown, b: unknown) => a === b);
+
+      @ShadowObject({registry, token: 'deprecatedUsePropertyPerKernel'})
+      class DeprecatedUsePropertyPerKernel {
+        constructor({useProperty}: ShadowObjectCreationAPI) {
+          useProperty('bareComparePerKernel', compare);
+        }
+      }
+      expect(DeprecatedUsePropertyPerKernel).toBeDefined();
+
+      const first = new Kernel(registry);
+      const second = new Kernel(registry);
+
+      first.createEntity(generateUUID(), 'deprecatedUsePropertyPerKernel', undefined, 0, [['bareComparePerKernel', 'first']]);
+      second.createEntity(generateUUID(), 'deprecatedUsePropertyPerKernel', undefined, 0, [['bareComparePerKernel', 'first']]);
+
+      expect(errorSpy).toHaveBeenCalledTimes(2);
+
+      first.destroy();
+      second.destroy();
+    });
+
+    it('useProperty: reports once per kernel with the full deprecation text, and the function then reaches the signal as {compare}', () => {
       const registry = new Registry();
       const kernel = new Kernel(registry);
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const compare = vi.fn((a: unknown, b: unknown) => a === b);
 
@@ -60,22 +85,26 @@ describe('ShadowObjectCreationScope', () => {
       const uuid = generateUUID();
       kernel.createEntity(uuid, 'deprecatedUseProperty', undefined, 0, [['bareCompareProp', 'first']]);
 
-      expect(warnSpy).toHaveBeenCalledTimes(1);
-      expect(warnSpy.mock.calls[0][0]).toBe(
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      // `ConsoleLogger` prints its namespace as a styled badge, so the wording of a report starts at
+      // the third argument: `console.error('%c<namespace>', styles, ...args)`. The badge is what
+      // tells a report through the logger apart from a raw call on the console.
+      expect(errorSpy.mock.calls[0][0]).toBe('%cKernel');
+      expect(errorSpy.mock.calls[0][2]).toBe(
         '[shadow-objects] Deprecation Warning: The "isEqual" option of "useProperty()" is now passed as {compare} argument. Please update your code accordingly.',
       );
 
       kernel.changeProperties(uuid, [['bareCompareProp', 'second']]);
       expect(compare).toHaveBeenCalled();
 
-      warnSpy.mockRestore();
+      errorSpy.mockRestore();
       kernel.destroy();
     });
 
-    it('provideContext: warns once per realm with the full deprecation text, the function then reaches the signal as {compare}, and clearOnDestroy still defaults to true', () => {
+    it('provideContext: reports once per kernel with the full deprecation text, the function then reaches the signal as {compare}, and clearOnDestroy still defaults to true', () => {
       const registry = new Registry();
       const kernel = new Kernel(registry);
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const compare = vi.fn((a: unknown, b: unknown) => a === b);
       let provider: Signal<string | undefined> | undefined;
@@ -92,8 +121,8 @@ describe('ShadowObjectCreationScope', () => {
       const uuid = generateUUID();
       kernel.createEntity(uuid, 'deprecatedProvideContext');
 
-      expect(warnSpy).toHaveBeenCalledTimes(1);
-      expect(warnSpy.mock.calls[0][0]).toBe(
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0][2]).toBe(
         '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideContext()" is now passed as {compare} argument. Please update your code accordingly.',
       );
       expect(value(provider!)).toBe('first');
@@ -108,14 +137,14 @@ describe('ShadowObjectCreationScope', () => {
       expect(compare).toHaveBeenCalled();
       expect(value(provider!)).toBeUndefined();
 
-      warnSpy.mockRestore();
+      errorSpy.mockRestore();
       kernel.destroy();
     });
 
-    it('provideGlobalContext: warns once per realm with the full deprecation text, the function then reaches the signal as {compare}, and clearOnDestroy still defaults to true', () => {
+    it('provideGlobalContext: reports once per kernel with the full deprecation text, the function then reaches the signal as {compare}, and clearOnDestroy still defaults to true', () => {
       const registry = new Registry();
       const kernel = new Kernel(registry);
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const compare = vi.fn((a: unknown, b: unknown) => a === b);
       let provider: Signal<string | undefined> | undefined;
@@ -132,8 +161,8 @@ describe('ShadowObjectCreationScope', () => {
       const uuid = generateUUID();
       kernel.createEntity(uuid, 'deprecatedProvideGlobalContext');
 
-      expect(warnSpy).toHaveBeenCalledTimes(1);
-      expect(warnSpy.mock.calls[0][0]).toBe(
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0][2]).toBe(
         '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideGlobalContext()" is now passed as {compare} argument. Please update your code accordingly.',
       );
       expect(value(provider!)).toBe('first');
@@ -143,14 +172,14 @@ describe('ShadowObjectCreationScope', () => {
       expect(compare).toHaveBeenCalled();
       expect(value(provider!)).toBeUndefined();
 
-      warnSpy.mockRestore();
+      errorSpy.mockRestore();
       kernel.destroy();
     });
 
-    it('useContext: warns once per realm with the full deprecation text, and the function then reaches the reader as {compare}', async () => {
+    it('useContext: reports once per kernel with the full deprecation text, and the function then reaches the reader as {compare}', async () => {
       const registry = new Registry();
       const kernel = new Kernel(registry);
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const sourceSignal = createSignal('first');
       const compare = vi.fn((a: unknown, b: unknown) => a === b);
@@ -178,8 +207,8 @@ describe('ShadowObjectCreationScope', () => {
       kernel.createEntity(parentUuid, 'deprecatedUseContextProvider');
       kernel.createEntity(childUuid, 'deprecatedUseContext', parentUuid);
 
-      expect(warnSpy).toHaveBeenCalledTimes(1);
-      expect(warnSpy.mock.calls[0][0]).toBe(
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0][2]).toBe(
         '[shadow-objects] Deprecation Warning: The "isEqual" option of "useContext()" is now passed as {compare} argument. Please update your code accordingly.',
       );
 
@@ -192,14 +221,14 @@ describe('ShadowObjectCreationScope', () => {
       expect(compare).toHaveBeenCalled();
       expect(value(capturedContext!)).toBe('second');
 
-      warnSpy.mockRestore();
+      errorSpy.mockRestore();
       kernel.destroy();
     });
 
-    it('useParentContext: warns once per realm with the full deprecation text, and the function then reaches the reader as {compare}', async () => {
+    it('useParentContext: reports once per kernel with the full deprecation text, and the function then reaches the reader as {compare}', async () => {
       const registry = new Registry();
       const kernel = new Kernel(registry);
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const sourceSignal = createSignal('first');
       const compare = vi.fn((a: unknown, b: unknown) => a === b);
@@ -227,8 +256,8 @@ describe('ShadowObjectCreationScope', () => {
       kernel.createEntity(parentUuid, 'deprecatedUseParentContextProvider');
       kernel.createEntity(childUuid, 'deprecatedUseParentContext', parentUuid);
 
-      expect(warnSpy).toHaveBeenCalledTimes(1);
-      expect(warnSpy.mock.calls[0][0]).toBe(
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0][2]).toBe(
         '[shadow-objects] Deprecation Warning: The "isEqual" option of "useParentContext()" is now passed as {compare} argument. Please update your code accordingly.',
       );
 
@@ -241,7 +270,7 @@ describe('ShadowObjectCreationScope', () => {
       expect(compare).toHaveBeenCalled();
       expect(value(capturedParentContext!)).toBe('second');
 
-      warnSpy.mockRestore();
+      errorSpy.mockRestore();
       kernel.destroy();
     });
   });

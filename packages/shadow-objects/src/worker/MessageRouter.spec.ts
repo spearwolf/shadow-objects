@@ -296,7 +296,31 @@ describe('MessageRouter', () => {
       expect(posted).toHaveLength(2);
       expect(posted.map((entry) => entry.message.error)).toEqual([undefined, undefined]);
       expect(warn).toHaveBeenCalledTimes(1);
-      expect(warn.mock.calls[0][0]).toContain('importModule: skipping already imported module');
+      // `ConsoleLogger` prints its namespace as a styled badge: `console.warn('%c<namespace>', styles,
+      // ...args)`. The wording of the call starts at the third argument.
+      expect(warn.mock.calls[0][2]).toContain('importModule: skipping already imported module');
+    });
+
+    // The skip line is the one report of this branch that asks a getter first, so a logger that is
+    // switched off silences it. The instance flag is enough for that -- `isWarn` combines it with
+    // the two shared switches -- and it stays inside this test, where a write to the shared config
+    // would reach every logger of the thread.
+    it('keeps the skip of an already imported module behind the logger switch', async () => {
+      const {kernel, posted, router} = setup();
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const url = 'data:text/javascript,export const shadowObjects = {define: {}}';
+
+      kernel.logger.enable = false;
+
+      router.route(message({type: Configure, importModule: url}));
+      await waitForPosted(posted, 1);
+
+      router.route(message({type: Configure, importModule: url}));
+      await waitForPosted(posted, 2);
+
+      expect(posted).toHaveLength(2);
+      expect(posted.map((entry) => entry.message.error)).toEqual([undefined, undefined]);
+      expect(warn).not.toHaveBeenCalled();
     });
   });
 

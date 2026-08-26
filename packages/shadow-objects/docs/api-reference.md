@@ -66,9 +66,9 @@ Creates a reactive signal that tracks the value of a specific property on the En
 - **Signature:** `useProperty<T>(name: string, options?: SignalValueOptions<T> | CompareFunc<T | undefined>): SignalReader<Maybe<T>>`
 - **Returns:** A signal reader function (getter). Calling it returns the current value, or `undefined` while the View has not set the property.
 - **Reactivity:** When the property changes in the View, any effect or computed value reading this signal will re-run.
-- **Options:** `SignalValueOptions<T>` is `{compare?: CompareFunc<T | undefined>}` — the equality check that decides whether a write counts as a change. A bare comparison function in place of the options object still works and logs a deprecation warning.
+- **Options:** `SignalValueOptions<T>` is `{compare?: CompareFunc<T | undefined>}` — the equality check that decides whether a write counts as a change. A bare comparison function in place of the options object still works; it is reported once per Kernel and member name through the Kernel's `ConsoleLogger` at **error** level, which no switch gates — see the table of call against getter under [Console Logger](#console-logger).
 
-The reader is cached per name and per Shadow Object: a second `useProperty('title')` hands back the very same reader, and the `compare` of that second call is ignored with a message on the console. Pass options on the first call for a given name.
+The reader is cached per name and per Shadow Object: a second `useProperty('title')` hands back the very same reader, and the `compare` of that second call is ignored and reported through the Kernel's `ConsoleLogger` at **error** level. Pass options on the first call for a given name.
 
 ```typescript
 const title = useProperty('title');
@@ -114,7 +114,7 @@ Consumes a context value provided by the nearest ancestor Entity that has it.
 - **Returns:** A signal reader. Call it to get the current value: `const scene = useContext<Scene>('three-scene'); scene();`
 - **Reactivity:** Reading it inside an effect or memo tracks the dependency automatically. The value is `undefined` until some ancestor provides it.
 
-Like `useProperty`, the reader is cached per name and per Shadow Object, and a `compare` passed on a later call for the same name is ignored with a message on the console.
+Like `useProperty`, the reader is cached per name and per Shadow Object, and a `compare` passed on a later call for the same name is ignored and reported at **error** level, as it is for `useProperty`.
 
 The binding follows the entity tree at any point in time. An Entity that already holds a context and is then attached to a parent reads from that parent onwards, and one that loses its parent falls back to the root context.
 
@@ -579,7 +579,7 @@ The starting token is part of its own resolution, and the walk is breadth-first:
 
 Includes other modules. Essential for modular architecture -- split configuration across files, share common configs, or import third-party module libraries.
 
-A module that two `extends` chains have in common is imported once; the second attempt is skipped and reported on the console. Sub-modules are imported first and do not upgrade any Entities on their own — the outer module triggers the upgrade once everything is registered.
+A module that two `extends` chains have in common is imported once; the second attempt is skipped and reported through the Kernel's `ConsoleLogger` at **warn** level, so the line shows where that logger's switches are on — see [Console Logger](#console-logger) — and stays off the console of an application in production. Sub-modules are imported first and do not upgrade any Entities on their own — the outer module triggers the upgrade once everything is registered.
 
 ```javascript
 import { CoreModule } from './core-module.js';

@@ -16,24 +16,6 @@ import {toMaybe} from '../utils/toMaybe.js';
 import type {Entity} from './Entity.js';
 import {onDestroy, onViewEvent} from './events.js';
 
-// The deprecated call form is worth exactly one console line per realm and member name: a
-// shadow-object that calls a member inside a loop would otherwise flood the console. The set holds
-// the member names that have already warned, one entry each -- a single shared flag would swallow
-// the warnings of the four members that come after the first one.
-const isEqualDeprecationShown = new Set<string>();
-
-/**
- * Warns about the deprecated call form in which a bare compare function stands where the options
- * object belongs, at most once per realm and member name.
- */
-function warnDeprecatedIsEqualOption(options: unknown, apiName: string): void {
-  if (typeof options !== 'function' || isEqualDeprecationShown.has(apiName)) return;
-  console.warn(
-    `[shadow-objects] Deprecation Warning: The "isEqual" option of "${apiName}()" is now passed as {compare} argument. Please update your code accordingly.`,
-  );
-  isEqualDeprecationShown.add(apiName);
-}
-
 /**
  * Everything a single shadow-object was given at construction time, and the end of all of it.
  *
@@ -56,6 +38,10 @@ export class ShadowObjectCreationScope {
   readonly #entity: Entity;
   readonly #logger: ConsoleLogger;
   readonly #displayName: string;
+
+  // The kernel's list of member names whose deprecation report has already been made. Shared by
+  // every scope of one kernel, which is what makes the report fall once per kernel and name.
+  readonly #shownDeprecations: Set<string>;
 
   // The cleanup callbacks of the shadow-object itself, registered through `onDestroy()`.
   readonly #unsubscribePrimary = new Set<() => any>();
@@ -142,10 +128,11 @@ export class ShadowObjectCreationScope {
     };
   }
 
-  constructor(entity: Entity, logger: ConsoleLogger, displayName: string) {
+  constructor(entity: Entity, logger: ConsoleLogger, displayName: string, shownDeprecations: Set<string>) {
     this.#entity = entity;
     this.#logger = logger;
     this.#displayName = displayName;
+    this.#shownDeprecations = shownDeprecations;
   }
 
   /**
@@ -369,7 +356,10 @@ export class ShadowObjectCreationScope {
       const ln = link(linkSource(), reader);
       this.#unsubscribeSecondary.add(ln.destroy.bind(ln));
     } else if (opts?.compare != null && compares.get(name) !== opts.compare) {
-      console.warn(
+      // Through `error` for the same reason as the deprecation report below: the options of this
+      // call are being dropped, and the caller has to hear that outside `localhost` too, where the
+      // shared `enable` behind `isWarn` is off.
+      this.#logger.error(
         `[shadow-objects] ${apiName}("${String(name)}"): the cached signal already exists with a different (or no) {compare} function — the new options are ignored. Pass options only on the first call per ${subject}.`,
       );
     }
@@ -377,8 +367,29 @@ export class ShadowObjectCreationScope {
     return reader;
   }
 
+  /**
+   * Reports the deprecated call form in which a bare compare function stands where the options
+   * object belongs, at most once per kernel and member name.
+   *
+   * Through `error` rather than `warn`: this names a mistake in the calling code, and its author
+   * has to see it wherever the application runs. `logger.warn` is asked `isWarn` first, and the
+   * shared `enable` behind that getter is off anywhere but `localhost` -- a deprecation notice
+   * that goes silent everywhere the code actually ships is no notice at all. See the table of
+   * call against getter under "Console Logger" in `docs/api-reference.md`.
+   *
+   * One line per kernel and member name: a shadow-object calling a deprecated member inside a
+   * loop would otherwise fill the console.
+   */
+  #reportDeprecatedIsEqualOption(options: unknown, apiName: string): void {
+    if (typeof options !== 'function' || this.#shownDeprecations.has(apiName)) return;
+    this.#logger.error(
+      `[shadow-objects] Deprecation Warning: The "isEqual" option of "${apiName}()" is now passed as {compare} argument. Please update your code accordingly.`,
+    );
+    this.#shownDeprecations.add(apiName);
+  }
+
   useProperty<T = any>(name: string, options?: SignalValueOptions<T> | CompareFunc<T | undefined>): SignalReader<Maybe<T>> {
-    warnDeprecatedIsEqualOption(options, 'useProperty');
+    this.#reportDeprecatedIsEqualOption(options, 'useProperty');
 
     const opts = typeof options === 'function' ? {compare: options} : options;
 
@@ -465,7 +476,7 @@ export class ShadowObjectCreationScope {
     sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>,
     options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
   ) {
-    warnDeprecatedIsEqualOption(options, 'provideContext');
+    this.#reportDeprecatedIsEqualOption(options, 'provideContext');
 
     const opts = typeof options === 'function' ? {compare: options} : options;
 
@@ -483,7 +494,7 @@ export class ShadowObjectCreationScope {
     sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>,
     options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
   ) {
-    warnDeprecatedIsEqualOption(options, 'provideGlobalContext');
+    this.#reportDeprecatedIsEqualOption(options, 'provideGlobalContext');
 
     const opts = typeof options === 'function' ? {compare: options} : options;
 
@@ -497,7 +508,7 @@ export class ShadowObjectCreationScope {
   }
 
   useContext<T = unknown>(name: string | symbol, options?: SignalValueOptions<T> | CompareFunc<T | undefined>) {
-    warnDeprecatedIsEqualOption(options, 'useContext');
+    this.#reportDeprecatedIsEqualOption(options, 'useContext');
 
     const opts = typeof options === 'function' ? {compare: options} : options;
 
@@ -513,7 +524,7 @@ export class ShadowObjectCreationScope {
   }
 
   useParentContext<T = unknown>(name: string | symbol, options?: SignalValueOptions<T> | CompareFunc<T | undefined>) {
-    warnDeprecatedIsEqualOption(options, 'useParentContext');
+    this.#reportDeprecatedIsEqualOption(options, 'useParentContext');
 
     const opts = typeof options === 'function' ? {compare: options} : options;
 

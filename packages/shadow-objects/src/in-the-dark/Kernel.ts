@@ -93,6 +93,15 @@ export class Kernel {
    */
   readonly #shadowObjectScopes = new WeakMap<object, ShadowObjectCreationScope>();
 
+  // The member names whose deprecation report this kernel has already made, one entry each. Handed
+  // to every creation scope this kernel builds, which is what gives the report the lifetime of the
+  // kernel rather than that of this module: an application running two shadow environments would
+  // otherwise report the deprecated call form to whichever of them got there first and to no other.
+  // One entry per name rather than a single flag, because a flag would swallow the reports of the
+  // four members that come after the first. `destroy()` leaves the set alone -- a kernel that has
+  // said it once has said it.
+  readonly #shownDeprecations = new Set<string>();
+
   constructor(registry?: Registry) {
     eventize(this);
     this.registry = Registry.get(registry);
@@ -746,7 +755,7 @@ export class Kernel {
   }
 
   private constructShadowObject(construct: ShadowObjectConstructor, entry: EntityEntry): ShadowObjectType {
-    const scope = new ShadowObjectCreationScope(entry.entity, this.logger, getDisplayName(construct));
+    const scope = new ShadowObjectCreationScope(entry.entity, this.logger, getDisplayName(construct), this.#shownDeprecations);
 
     let shadowObject: ShadowObjectType;
 
