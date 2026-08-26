@@ -633,7 +633,13 @@ import { ViewComponent } from '@spearwolf/shadow-objects';
 ### Constructor
 
 ```typescript
-new ViewComponent(token: string, options?: ViewComponentOptions)
+new ViewComponent(token: string, options?: {
+    parent?: ViewComponent | undefined;
+    order?: number | undefined;
+    context?: ComponentContext | undefined;
+    uuid?: string | undefined;
+    autoDestructionOnParentRemoval?: boolean | undefined;
+})
 ```
 
 `token` is the first positional parameter, not a member of `options`: the identifier string matching a Registry entry. It falls back to `VoidToken` (`'#void'`) when omitted.

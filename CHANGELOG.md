@@ -4,6 +4,15 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — the readme says what the custom elements do
+
+- **`README.md`:** the entry for `packages/shadow-objects/src/elements/` under "What's in the Box?"
+  names what the lifecycle logic handles — re-parenting inside a single task, a namespace change
+  that re-binds the entity, a teardown that can be called off — where it used to count the
+  directory's lines. A line count in a structure list never turns false as the code grows, it
+  only turns uninformative, so nothing ever prompts anyone to correct it; the four neighbouring
+  entries describe what their domain contains, and this one now does too.
+
 ## 2026-08-26 — the configuration and the agent guide name only what exists
 
 - **`biome.json`:** `files.includes` no longer names the extensions `.glsl`, `.vert` and `.frag`.

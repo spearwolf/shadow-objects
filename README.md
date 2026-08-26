@@ -89,7 +89,7 @@ The framework is strictly modularized into functional domains.
 *   **`packages/shadow-objects/src/view/` (The View Bridge):** The Facade (`ShadowEnv`) and `ComponentContext`. It translates DOM state into serialized Change Trails.
 
 ### Integrations & Elements
-*   **`packages/shadow-objects/src/elements/` (Custom Elements):** The HTML bindings (`ShaeElement` base plus `<shae-ent>`, `<shae-prop>`, `<shae-worker>`). Over 1,100 lines of robust lifecycle logic.
+*   **`packages/shadow-objects/src/elements/` (Custom Elements):** The HTML bindings (`ShaeElement` base plus `<shae-ent>`, `<shae-prop>`, `<shae-worker>`). Lifecycle logic for the hard parts: re-parenting inside a single task, a namespace change that re-binds the entity, and a teardown that can be called off.
 
 ### Examples & Testing
 *   **`packages/shae-offscreen-canvas/`:** A reference implementation demonstrating heavy lifting! Runs `three.js` in a Worker, proving the power of Transferables and Namespaces.
