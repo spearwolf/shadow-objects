@@ -4,6 +4,17 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — every text file ends with a newline
+
+- **`biome.json`:** the `formatter.trailingNewline` key is gone. Set to `false`, it made
+  Biome strip the final newline from every file it formats, an exception no file in this
+  repository ever needed. The formatter now falls back to its default of `true`.
+- **`.editorconfig`:** `insert_final_newline` under `[*]` is now `true`, matching the
+  comment on the line above it. Biome does not read this file (`useEditorconfig` is unset
+  in `biome.json`), but editors do, and `.vscode/settings.json` turns on
+  `editor.formatOnSave` — left at `false`, the next save would have taken the newline back
+  out on every file Biome does not format.
+
 ## 2026-08-26 — the e2e suite runs against WebKit
 
 - **`packages/shadow-objects-e2e/playwright.config.ts`:** the `webkit` project is no longer a
