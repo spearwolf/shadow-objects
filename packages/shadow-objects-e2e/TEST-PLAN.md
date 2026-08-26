@@ -14,8 +14,7 @@ ticket-ready list of test cases to close them.
 > see the note at the end of `KNOWN-DEFECTS.md`. UPG-3 and UPG-8 are answered rather than open —
 > see §3.3.
 
-Companion documents: `Backlog.md` §4 (repo root) holds the coverage heuristic across *all* test
-layers. This file is E2E-only and goes one level deeper: it names pages, fixtures and assertions.
+Scope: E2E only. This file names the pages, fixtures and assertions of the Playwright suite.
 
 ---
 
@@ -53,7 +52,7 @@ back to the view, which the page then asserts in three separate checks. `dynamic
 
 One page still sets up more than it checks:
 
-- **`src/remote-worker-env.js:36-37`** creates a child `ViewComponent` `bar` with property `plah`.
+- **`src/remote-worker-env.js`** creates a child `ViewComponent` `bar` with property `plah`.
   Nothing asserts it arrived.
 
 The `fooEcho` reaction in **`public/mod-hello.js`** is driven by `sync-failure`, which changes `xyz`
@@ -73,21 +72,21 @@ None open. The last one was the disabled `webkit` project; it is enabled and gre
 removal after `ready()`, and reads the result out of the worker's own kernel rather than off the
 change trail. The paths this axis was written for are exercised there:
 `ShaeEntElement.connectedCallback` → `#dispatchRequestParent` with a live parent,
-`#createParentObserver` / `onParentChanged` (`ShaeEntElement.ts:371-405`),
-`ShaePropElement.#disconnectFromEntNode` (`ShaePropElement.ts:381`) with its one-microtask defer
+`#createParentObserver` / `onParentChanged` (`ShaeEntElement.ts`),
+`ShaePropElement.#disconnectFromEntNode` with its one-microtask defer
 that keeps a move within the same tick from reading as a disconnect, and the remove-and-re-append
 flicker (DOM-8).
 
 What is left on this axis:
 
-- `ShaeEntElement.#setParent` and its re-request microtask (`ShaeEntElement.ts:527-536`) — reached
+- `ShaeEntElement.#setParent` and its re-request microtask — reached
   when a child is inserted before its parent is ready. DOM-9.
 - The deferred teardown that every `ShaeElement` subclass runs through
   (`elements/deferredTeardown.ts`, driven from `ShaeElement`'s
   `connectedCallback`/`disconnectedCallback`) — a reconnect within the deferral microtask calls the
   pending teardown off. On `<shae-worker>`, whose teardown is final, a reconnect after that
   microtask has already run leaves the environment destroyed for good
-  (`ShaeWorkerElement.ts:204` refuses the return in `connectedCallback`). The integration suite
+  (`ShaeWorkerElement.connectedCallback` refuses the return). The integration suite
   pins the delay, both sides of the reconnect, and the kernel and its entities on either side
   (`shadow-objects-testing/test/worker-element-attributes.test.js`, `shae-worker lifecycle`).
   What is left is the equivalent against a real worker.
@@ -102,10 +101,10 @@ elements added after them, and a definition that arrives after the first sync ha
 
 The host lookup of a `<shae-prop>` is not a `parentElement` walk and does not read a marker flag:
 the element sends one bubbling, composed `shaeRequestEntParent` request
-(`elements/requestEntAncestor.ts`, from `ShaePropElement.ts:305`), and the only listener that
-answers it is `ShaeEntElement.#onRequestParent` (`ShaeEntElement.ts:582-598`), which checks
+(`elements/requestEntAncestor.ts`, from `ShaePropElement.#findEntNode`), and the only listener that
+answers it is `ShaeEntElement.#onRequestParent`, which checks
 `requester`, `answer` and `ns`. A host that starts or stops answering sends
-`shaeReRequestEntHost`, and the property asks again (`ShaePropElement.ts:372`). Both channels cross
+`shaeReRequestEntHost`, and the property asks again (`ShaePropElement.#onReRequestHost`). Both channels cross
 closed shadow boundaries, because the event path is the flattened tree.
 
 The three registration modules are independent — importing
@@ -130,7 +129,7 @@ into the final value (ASYNC-9), and `contextCreated` / `contextLost` as DOM Cust
 Not covered:
 
 - `<shae-worker src="…">` changed after `start()` — the re-import path
-  (`ShaeWorkerElement.ts:97-107`). ASYNC-8.
+  (`ShaeWorkerElement.#importScript`). ASYNC-8.
 - Worker termination mid-sync; pending `applyChangeTrail` promises must reject. `worker-failure`
   covers a worker that dies through an uncaught error, not one terminated while a sync is in
   flight. ASYNC-10. A worker shot down mid-sync and a change trail its kernel refuses are two
@@ -153,25 +152,25 @@ in one tick stay apart, and two entities under the same token in two namespaces 
 different kernels (MULTI-2 … MULTI-6).
 
 **Cross-namespace nesting.** `ShaeEntElement.#onRequestParent` and `#onReRequestParent` both bail
-out on a namespace mismatch (`ShaeEntElement.ts:594`, `:573`), and `#setParent` additionally drops a
-parent whose context differs (`ShaeEntElement.ts:531`). A `<shae-ent ns="beta">` nested inside an
+out on a namespace mismatch, and `#setParent` additionally drops a
+parent whose context differs. A `<shae-ent ns="beta">` nested inside an
 `alpha` entity therefore becomes a *root* in `beta` — asserted on `multi-env` (MULTI-7) and on
 `bundle.html` for the `seBase4`-inside-`seBase1` shape it builds.
 
 **Namespace switching at runtime.** Changing the `ns` attribute moves the view component to a
 different context, and the element it leaves syncs the *old* environment
-(`ShaeEntElement.ts:140-142`). Six `multi-env-ns-switch-*` ids follow an entity out of one
+(`ShaeEntElement.syncShadowObjectsOf`, from the `ns$.onChange` body in `#subscribe`). Six `multi-env-ns-switch-*` ids follow an entity out of one
 environment and back, properties included (MULTI-8).
 
 What is still never verified:
 
 **Shared sync scheduling.** `ShaeElement` keeps one module-global `SyncNamespaces` set and a single
 `nextSyncIsScheduled` flag for *all* namespaces, draining them in one microtask
-(`ShaeElement.ts:13-26`). Whether two environments both get their sync in the same drain is
+(`syncShadowObjects` in `ShaeElement.ts`). Whether two environments both get their sync in the same drain is
 untested — MULTI-9 comes closest.
 
 **Namespace collisions.** `ShadowEnv`'s view setter warns on "overwrite a namespace already in use"
-(`ShadowEnv.ts:94-102`) when a second environment claims a namespace. The resulting behaviour —
+(the `view` setter in `ShadowEnv.ts`) when a second environment claims a namespace. The resulting behaviour —
 which environment wins, what happens to the entities of the first — is unspecified by any test
 (MULTI-13).
 
@@ -287,7 +286,7 @@ itself carries no serial and would end the cycle as a success.
 | ID | Prio | Case |
 |---|---|---|
 | SYNC-1 | P1 | **Implemented** — `sync-failure-syncwait-rejects`, `sync-failure-dom-event`, `sync-failure-reason-names-the-refusal`, `sync-failure-aftersync-did-not-fire`. A refused trail rejects `syncWait()`, fires `syncfailed` on `<shae-worker>` with the same reason, and produces no `AfterSync`. The reason is a `ChangeTrailRefusedError`; across a worker `cause` holds a `WorkerReportedError` carrying the wording and the name of the throw, the class itself does not cross the boundary, and `appliedCount` names how many entries of that trail the kernel applied. |
-| SYNC-2 | P1 | **Implemented** — `sync-failure-detail-carries-the-lost-change-trail`. The event carries the trail that was lost, and the create-entities entry for the refused entity is in it, matched by change type and the element's `uuid`. |
+| SYNC-2 | P1 | **Implemented** — `sync-failure-detail-carries-the-refused-change-trail`. The event carries the trail the kernel refused, and the create-entities entry for the refused entity is in it, matched by change type and the element's `uuid`. |
 | SYNC-3 | P1 | **Implemented** — `sync-failure-is-not-a-proxy-failure`. No `proxyfailed`, no `contextlost`, `isReady` still true, the proxy not destroyed. The line between a refused trail and a dead worker. |
 | SYNC-4 | P2 | **Implemented** — `sync-failure-healthy-cycle-first`, `sync-failure-environment-still-syncs`. A round-trip before the refusal and another one after it, with the refused element removed first: neither the proxy nor the worker's kernel is left behind. |
 | SYNC-6 | P1 | **Implemented** — `sync-failure-refused-entry-is-sent-again`. The entries the kernel did not apply stay pending and go out again with the next cycle: with the refuser still in the DOM the second `syncWait()` is refused in the same way, and the `syncfailed` event of that second cycle carries the create-entities entry for the same uuid. This is also the cost of the promise — a cause that stays put refuses every following cycle instead of failing once. |
@@ -298,12 +297,12 @@ itself carries no serial and would end the cycle as a success.
 | ID | Prio | Case |
 |---|---|---|
 | H-FIX-1 | P1 | **Implemented** — one `runPageTests` helper (`tests/runPageTests.ts`) for every spec. |
-| H-FIX-2 | P1 | **Implemented** — `data-testoutput` is the failure message (`runPageTests.ts:107-109`). |
-| H-FIX-3 | P1 | **Implemented** — `runTestSuite` writes the `data-testsuite` marker, and every spec waits for it first, so a setup crash fails as one clear case instead of a locator timeout per id (`runPageTests.ts:62-81`). |
-| H-FIX-4 | P2 | **Implemented** — `testAsyncAction` rejects with an `Error` carrying the test name and the deadline (`src/test-helpers/testAsyncAction.js:5`). |
-| H-FIX-5 | P2 | **Implemented** — a `no uncaught or logged errors` case per page, with `allowConsoleErrors` for the three pages that provoke one (`runPageTests.ts:113-118`). |
+| H-FIX-2 | P1 | **Implemented** — `data-testoutput` is the failure message (`tests/runPageTests.ts`). |
+| H-FIX-3 | P1 | **Implemented** — `runTestSuite` writes the `data-testsuite` marker, and every spec waits for it first, so a setup crash fails as one clear case instead of a locator timeout per id (`tests/runPageTests.ts`, `loadPage`). |
+| H-FIX-4 | P2 | **Implemented** — `testAsyncAction` rejects with an `Error` carrying the test name and the deadline (`src/test-helpers/testAsyncAction.js`). |
+| H-FIX-5 | P2 | **Implemented** — a `no uncaught or logged errors` case per page, with `allowConsoleErrors` for the three pages that provoke one (`tests/runPageTests.ts`). |
 | H-FIX-6 | P2 | **Implemented** — every result in `src/shae-worker.js` is awaited, and `watchCustomEvent` arms the listener separately from the wait so a cold worker start cannot eat the budget. |
-| H-FIX-7 | P3 | **Implemented** — both `contextCreated` ids are registered (`tests/shae-worker.spec.ts:9`, `:13`). |
+| H-FIX-7 | P3 | **Implemented** — both `contextCreated` ids are registered (`tests/shae-worker.spec.ts`: `worker0-env-contextCreated`, `worker1-env-contextCreated`). |
 | H-FIX-8 | P3 | **Implemented** — the `webkit` project is enabled. All 215 cases pass on it, so nothing about Custom Elements, Shadow DOM, slot projection or `transferControlToOffscreen` needed a WebKit branch. CI installs the browser alongside Chromium and Firefox. |
 
 ---

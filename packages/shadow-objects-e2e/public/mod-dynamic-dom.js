@@ -11,7 +11,7 @@ const log = [];
 
 let sequence = 0;
 
-function trackedEntity({entity, useProperty, onDestroy}) {
+function trackedEntity({entity, useProperty, createEffect, onDestroy}) {
   const label = useProperty('label');
   const extra = useProperty('extra');
 
@@ -20,15 +20,17 @@ function trackedEntity({entity, useProperty, onDestroy}) {
 
   log.push({event: 'created', uuid: entity.uuid, label: label(), parentUuid: entity.parentUuid});
 
-  label((value) => {
+  createEffect(() => {
+    const value = label();
     record.label = value;
     log.push({event: 'label', uuid: entity.uuid, label: value});
-  });
+  }, [label]);
 
-  extra((value) => {
+  createEffect(() => {
+    const value = extra();
     record.extra = value;
     log.push({event: 'extra', uuid: entity.uuid, extra: value});
-  });
+  }, [extra]);
 
   onDestroy(() => {
     log.push({event: 'destroyed', uuid: entity.uuid, label: record.label});

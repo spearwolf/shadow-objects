@@ -153,7 +153,7 @@ async function main() {
     return failureDetail.shadowEnv === shadowEnv;
   });
 
-  testBooleanAction('sync-failure-detail-carries-the-lost-change-trail', () => {
+  testBooleanAction('sync-failure-detail-carries-the-refused-change-trail', () => {
     // this is what the event is for: whoever holds the trail knows what went missing
     const changeTrail = failureDetail?.changeTrail;
     if (!Array.isArray(changeTrail) || changeTrail.length === 0) {

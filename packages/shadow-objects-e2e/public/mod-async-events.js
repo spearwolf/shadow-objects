@@ -1,14 +1,15 @@
 // Fixture for the async-events page: message round-trips, subtree delivery and sync coalescing.
 
-function counter({entity, useProperty, dispatchMessageToView}) {
+function counter({entity, useProperty, createEffect, dispatchMessageToView}) {
   const n = useProperty('n');
 
   let updates = 0;
 
-  n((value) => {
+  createEffect(() => {
+    const value = n();
     updates += 1;
     dispatchMessageToView('counted', {uuid: entity.uuid, value, updates});
-  });
+  }, [n]);
 }
 
 function broadcaster({dispatchMessageToView, onViewEvent}) {

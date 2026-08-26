@@ -11,7 +11,7 @@ test.describe('sync-failure', () => {
       'sync-failure-syncwait-rejects',
       'sync-failure-dom-event',
       'sync-failure-reason-names-the-refusal',
-      'sync-failure-detail-carries-the-lost-change-trail',
+      'sync-failure-detail-carries-the-refused-change-trail',
       'sync-failure-aftersync-did-not-fire',
       'sync-failure-is-not-a-proxy-failure',
       'sync-failure-refused-entry-is-sent-again',

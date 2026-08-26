@@ -8,7 +8,7 @@
 // never learns its own namespace (the worker knows nothing about namespaces), it only echoes
 // what it was given — which is exactly what makes a leak visible.
 
-function probe({entity, useProperty, dispatchMessageToView, onViewEvent}) {
+function probe({entity, useProperty, createEffect, dispatchMessageToView, onViewEvent}) {
   const envName = useProperty('envName');
   const value = useProperty('value');
 
@@ -22,11 +22,11 @@ function probe({entity, useProperty, dispatchMessageToView, onViewEvent}) {
 
   dispatchMessageToView('probeCreated', report());
 
-  // Note: a signal reader with a callback runs immediately, so the first `probeValueChanged`
-  // carries the initial value. The page collects every event and asserts on the sequence.
-  value((val) => {
-    dispatchMessageToView('probeValueChanged', {envName: envName(), value: val});
-  });
+  // Note: an effect runs once on creation, so the first `probeValueChanged` carries the initial
+  // value. The page collects every event and asserts on the sequence.
+  createEffect(() => {
+    dispatchMessageToView('probeValueChanged', {envName: envName(), value: value()});
+  }, [value]);
 
   onViewEvent((type, data) => {
     if (type === 'requestReport') {

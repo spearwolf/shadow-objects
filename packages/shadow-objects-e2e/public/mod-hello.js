@@ -1,12 +1,13 @@
-function foo({useProperty, dispatchMessageToView}) {
+function foo({useProperty, createEffect, dispatchMessageToView}) {
   const xyz = useProperty('xyz');
 
   console.log('ShadowObject "foo" created: xyz=', xyz());
 
-  xyz((val) => {
+  createEffect(() => {
+    const val = xyz();
     console.log('foo.xyz changed to', val);
-    dispatchMessageToView('fooEcho', xyz());
-  });
+    dispatchMessageToView('fooEcho', val);
+  }, [xyz]);
 
   dispatchMessageToView('helloFromFoo', {xyz: xyz()});
 }

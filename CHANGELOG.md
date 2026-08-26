@@ -4,6 +4,21 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — the e2e fixtures and the test plan say what holds today
+
+- **`packages/shadow-objects-e2e/public/`:** the four fixture modules take their property
+  reactions through `createEffect(callback, [reader])` at five call sites; the signal reader's
+  callback form is deprecated in signalize, an effect is torn down with the shadow object, and
+  the explicit dependency list keeps the trigger at exactly the signal that had it before.
+- **`packages/shadow-objects-e2e/src/sync-failure.js`, `tests/sync-failure.spec.ts`,
+  `TEST-PLAN.md`, `README.md`:** the test case is named
+  `sync-failure-detail-carries-the-refused-change-trail`, because the trail is refused and sent
+  again with the next cycle.
+- **`packages/shadow-objects-e2e/README.md`:** the introductory sentence names both error-path
+  pages.
+- **`packages/shadow-objects-e2e/TEST-PLAN.md`:** the file points at symbol names instead of
+  line numbers, and the paragraph about companion documents names only the scope of this file.
+
 ## 2026-08-26 — the agent guide follows its own binding-terms table
 
 - **`AGENTS.md`:** the mental-model list in §2 names the Token with no gloss beside it. The

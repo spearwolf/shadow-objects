@@ -2,7 +2,7 @@
 
 Playwright end-to-end test suite for the shadow-objects ecosystem.
 
-This package is not published to npm. It runs full browser tests against a Vite-served app, covering scenarios that require a real page load -- remote worker environments, bundle integrity, and multi-entity interactions.
+This package is not published to npm. It runs full browser tests against a Vite-served app, covering scenarios that require a real page load -- remote worker environments, bundle integrity, multi-entity interactions, and the two error paths: a worker that dies mid-run and a change trail the worker's kernel refuses.
 
 ## What lives here
 
@@ -23,7 +23,7 @@ for the mechanism to track framework defects as expected failures.
 | `bundle` | the single-file build: entity tree, property type parsing, round-trip through the inlined worker |
 | `create-element` | both construction paths: parsed markup and `document.createElement` |
 | `worker-failure` | a worker that dies mid-run: proxy failure, lost context, recovery through a new proxy |
-| `sync-failure` | a change trail the worker's kernel refuses: `syncfailed`, the lost trail, an environment that keeps running |
+| `sync-failure` | a change trail the worker's kernel refuses: `syncfailed`, the refused trail, an environment that keeps running |
 
 ### Writing a new page
 
