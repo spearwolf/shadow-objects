@@ -1,8 +1,14 @@
-[TOC]
+The entry point `@spearwolf/shae-offscreen-canvas/shadow-objects.js` defines five Shadow Objects:
+
+- [ShaeOffscreenCanvas](#shaeoffscreencanvas)
+- [Canvas2D](#canvas2d)
+- [CanvasBitmapRenderer](#canvasbitmaprenderer)
+- [ThreeMultiViewRenderer](#threemultiviewrenderer)
+- [ThreeRenderView](#threerenderview)
 
 ### ShaeOffscreenCanvas
 
-Represents an offscreen canvas. However, a _canvas rendering context_ is not created. The [Canvas2D](#canvas2d) and [CanvasBitmapRenderer]() shadow objects should be used for this purpose.
+Represents an offscreen canvas. However, a _canvas rendering context_ is not created. The [Canvas2D](#canvas2d) and [CanvasBitmapRenderer](#canvasbitmaprenderer) shadow objects should be used for this purpose.
 
 #### provide context
 
@@ -10,7 +16,7 @@ Represents an offscreen canvas. However, a _canvas rendering context_ is not cre
 |------|------|-------------|
 | `canvas` | [OffscreenCanvas](https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas) | the offscreen canvas connected to the canvas element in the main document |
 | `canvasSize` | [**width**: _number_, **height**: _number_, **pixelRatio**: _number_] | the size of the canvas element in _device pixels_. i.e. the pixelRatio is already included in the width and height specification. if you want the _css pixels_, divide the width and height by the pixelRatio |
-| `ShaeOffscreenCanvas` | [ShaeOffscreenCanvas](./ShaeOffscreenCanvas.js) | the shadow object itself |
+| `ShaeOffscreenCanvas` | [ShaeOffscreenCanvas](../src/shadow-objects/ShaeOffscreenCanvas.js) | the shadow object itself |
 
 The shadow object handed out through the `ShaeOffscreenCanvas` context requests no canvas any more once its entity is destroyed.
 
@@ -97,4 +103,33 @@ When the entity ends, the renderer releases its WebGL context. `renderView()` an
 
 | context name | type | description |
 |------|------|-------------|
-| `ThreeMultiViewRenderer` | [ThreeMultiViewRenderer](./ThreeMultiViewRenderer.js) | the shadow object itself, offers the **RenderView API** |
+| `ThreeMultiViewRenderer` | [ThreeMultiViewRenderer](../src/shadow-objects/ThreeMultiViewRenderer.js) | the shadow object itself, offers the **RenderView API** |
+
+[ThreeRenderView](#threerenderview) is what drives this API for a single entity: it takes one view, keeps it at the size of the canvas and renders it on every frame.
+
+
+### ThreeRenderView
+
+The _ThreeRenderView_ shadow object owns one _RenderView_ of a [ThreeMultiViewRenderer](#threemultiviewrenderer) and transfers what that renderer draws into the [ImageBitmapRenderingContext](https://developer.mozilla.org/en-US/docs/Web/API/ImageBitmapRenderingContext) a [CanvasBitmapRenderer](#canvasbitmaprenderer) provides. It publishes the view as a context, so that other shadow objects on the same entity or below it set its `scene` and `camera`.
+
+The renderer is not part of the entity: it has to be in reach through the context, on the same entity or above it, and one renderer serves any number of render views. The rendering context comes with the token: the package routes `ThreeRenderView` to `CanvasBitmapRenderer` and `ThreeRenderView` together, so an entity carrying that token has both.
+
+#### provide context
+
+| context name | type | description |
+|------|------|-------------|
+| `ThreeRenderView` | [RenderView](#renderview-structure) | the render view of this entity. `undefined` for as long as no renderer or no canvas size is in reach |
+
+#### use context
+
+| context name | type | description |
+|------|------|-------------|
+| `ThreeMultiViewRenderer` | [ThreeMultiViewRenderer](#threemultiviewrenderer) | the renderer that creates, draws and destroys the view |
+| `ImageBitmapRenderingContext` | [ImageBitmapRenderingContext](https://developer.mozilla.org/en-US/docs/Web/API/ImageBitmapRenderingContext) | the rendering context the drawn frame is transferred into |
+| `canvasSize` | [**width**: _number_, **height**: _number_, **pixelRatio**: _number_] | the view takes its width and height from here, in _device pixels_, and follows every change |
+
+#### local entity events
+
+The shadow object listens to the `onFrame` event of its entity at `Priority.Low`, so that a shadow object setting `scene` and `camera` for this frame has run before it. It renders the view, transfers the resulting [ImageBitmap](https://developer.mozilla.org/en-US/docs/Web/API/ImageBitmap) into the `ImageBitmapRenderingContext` and closes it. A frame the renderer answers with no image transfers nothing.
+
+The view goes back to the renderer through `destroyView()` exactly once — when the shadow object is torn down, and when the renderer leaves the context.
