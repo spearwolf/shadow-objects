@@ -16,7 +16,6 @@ import {ComponentContext} from './ComponentContext.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
 declare global {
-  // eslint-disable-next-line no-var
   var __shadowEnvs: Map<NamespaceType, ShadowEnv> | undefined;
 }
 

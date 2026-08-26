@@ -4,6 +4,10 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — the repository carries no configuration for a linter it does not run
+
+- **`packages/shadow-objects/.eslintrc.json`, `packages/shadow-objects-testing/.eslintrc.json`, `packages/shadow-objects-e2e/.eslintrc.json`, `packages/shae-offscreen-canvas/.eslintrc.json`:** removed. All four consisted essentially of `extends` pointing at a root `.eslintrc.json` that does not exist in this repository, so an `eslint` run in any of these packages would have failed on the missing target instead of checking anything. Lint and format run through Biome, configured once in `biome.json`, which reads none of the four files. No `package.json` and no workflow file names `eslint`.
+
 ## 2026-08-24 — the two unpublished packages declare what their test task actually writes
 
 - **`packages/shadow-objects-testing/turbo.json`, `packages/shadow-objects-e2e/turbo.json`:** two new

@@ -3,7 +3,6 @@ import './shae-prop.js';
 import './shae-worker.js';
 
 declare global {
-  // eslint-disable-next-line no-var
   var SHADOW_ENTS_BUNDLE_LOADED: boolean;
 }
 

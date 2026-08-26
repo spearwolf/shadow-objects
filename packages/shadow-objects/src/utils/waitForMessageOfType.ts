@@ -21,7 +21,6 @@ export const waitForMessageOfType = (
     }
 
     let timeoutId: number;
-    // eslint-disable-next-line prefer-const
     let listener: (event: MessageEvent) => void;
 
     const cleanup = () => {
