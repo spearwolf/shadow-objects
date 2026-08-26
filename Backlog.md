@@ -404,7 +404,7 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 **Ergonomie-Feedback an die Kern-Lib:**
 - ~~Das Beispiel zeigt, dass `vc.syncShadowObjects()` nach Property-Batches **explizit** aufgerufen werden muss. Im README/Getting-Started ist das nicht ausreichend hervorgehoben — ein Naiv-Konsument bekommt Latenz, ohne zu verstehen, warum.~~ ✅ Der Sync-Takt ist jetzt in README, `getting-started.md`, `concepts.md`, `cheat-sheet.md` und `best-practices.md` als eigener Punkt inklusive Race-Condition-Warnung erklärt.
 - Der Transferable-Parameter (`[offscreen]`) bei `dispatchShadowObjectsEvent` ist ein **mächtiges, aber kaum dokumentiertes** Feature.
-- `console.debug('hello … 🦄')` in `src/bundle.js` ist eine Log-Rauschen-Falle für Konsumenten.
+- ~~`console.debug('hello … 🦄')` in `src/bundle.js` ist eine Log-Rauschen-Falle für Konsumenten.~~ ✅ Der Einstiegspunkt trägt nur noch seine drei Seiteneffekt-Importe; wer das Paket importiert, bekommt keine Zeile in seiner Konsole.
 - ~~`three@^0.179.1` als harte Demo-Dep zieht beim `pnpm install` viel Volumen.~~ ✅ `three` ist Peer-Dependency (`>=0.180.0`) plus devDependency des Canvas-Pakets; der Workspace installiert weiterhin den Katalog-Pin, das Volumen beim `pnpm install` des Repositories bleibt unverändert.
 
 ---
@@ -447,7 +447,7 @@ Ein reines JS-Paket (kein TS), `src/` wird ohne Bundle-Schritt veröffentlicht. 
 ### 7.4 Beispiel-App / Dokumentation
 
 25. **Transferable-API** (`dispatchShadowObjectsEvent(type, payload, [transferable])`) in `guides.md` an einem echten Beispiel zeigen — `OffscreenCanvas` aus der Demo. Der Sync-Takt-Teil dieses Punktes ist erledigt (2026-08-02).
-26. **Demo-`console.debug`-Statement** entfernen.
+26. ~~**Demo-`console.debug`-Statement** entfernen.~~ ✅ Erledigt — der Einstiegspunkt `src/bundle.js` druckt beim Import nichts mehr. Die vier `console.debug`-Zeilen in `src/worker-sample.js` und unter `src/shadow-objects/sample/` bleiben: sie laufen erst, wenn ein Konsument die Beispielmodule selbst importiert und benutzt.
 27. **Die fünfzehn Element-Konstanten stehen in keiner Referenz.** `SHAE_ENT`, `SHAE_PROP`, `SHAE_WORKER` und die zwölf `ATTR_*` aus `elements/constants.ts` sind über `index.ts:3` öffentlich; `grep` über `docs/api-reference.md` und `docs/cheat-sheet.md` liefert für alle fünfzehn null Treffer. Die drei Ereignisnamen aus derselben Datei sind dokumentiert (`api-reference.md:1963-1965`) — entweder folgen die Tag- und Attributnamen dorthin, oder sie verlassen `index.ts`.
 28. **Neun Wertexporte aus `constants.ts` ohne jede Doku-Zeile:** `ChangeTrailPhase`, `Configure`, `ChangeTrail`, `Destroy`, `Loaded`, `AppliedChangeTrail`, `ImportedModule`, `Destroyed`, `ShadowObjectsExport` (`src/constants.ts:3`, `:29-36`, `:48`, über `index.ts:2` öffentlich). Es sind Worker-Protokoll-Symbole; die Frage ist nicht, wie sie dokumentiert werden, sondern ob sie öffentlich sein sollen.
 29. **Der Gloss »(Component Tag)« steht an neun Stellen**, während die Begriffstabelle in `AGENTS.md:83` »Token« bindet und »Component Tag« nur noch als Doku-Gloss vermerkt: `docs/getting-started.md:50`, `docs/cheat-sheet.md:242`, `docs/guides.md:143`, `:332`, `docs/concepts.md:43`, `docs/api-reference.md:464`, `:492`, `:1770` — und `AGENTS.md:18` selbst, fünfundsechzig Zeilen über der Tabelle. Entweder fällt der Gloss an allen neun Stellen, oder die Tabelle sagt, dass er bleiben darf; die Hälfte ist schlimmer als keine.
