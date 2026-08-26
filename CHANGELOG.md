@@ -4,6 +4,16 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — the lint configuration names only what exists
+
+- **`biome.json`:** `linter.rules.recommended` is now `linter.rules.preset: "recommended"`.
+  Biome 2.5.9 marks the old key deprecated and names `preset` as its replacement, with removal
+  announced for the next major; `biome migrate` wrote the change.
+- **`biome.json`:** the exclusion for `packages/shadow-objects/tests` is gone. That path has
+  never existed in this repository — the core package keeps its specs next to their source
+  under `src/` — and a stale exclusion of this shape silently drops any directory of the same
+  name out of lint the day someone creates it, with no warning.
+
 ## 2026-08-26 — every text file ends with a newline
 
 - **`biome.json`:** the `formatter.trailingNewline` key is gone. Set to `false`, it made
