@@ -83,12 +83,20 @@ export interface ImportedModuleEvent {
   type: typeof ImportedModule;
   url?: string;
   error?: string;
+  /**
+   * The name the error called itself in the worker. Structured cloning does not carry an
+   * error class, so this and `error` are what the view side rebuilds one from. Absent means
+   * the sender named no class, and the view reads it as `Error`.
+   */
+  errorName?: string;
 }
 
 export interface AppliedChangeTrailEvent {
   type: typeof AppliedChangeTrail;
   serial?: number;
   error?: string;
+  /** The name the error called itself in the worker; see {@link ImportedModuleEvent.errorName}. */
+  errorName?: string;
   /**
    * How many entries of the change trail the Kernel applied before it stopped. Stands only
    * next to an `error`, and only where the Kernel itself could say so; an absent field means

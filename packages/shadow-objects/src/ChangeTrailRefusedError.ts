@@ -7,8 +7,9 @@
  * attempted. That single number is therefore the whole answer to "how far did it get" — the view
  * side folds the prefix into its bookkeeping and sends the rest again with the next trail.
  *
- * `cause` carries what the entry actually threw. Across a worker boundary that is the wording the
- * Kernel put on the wire rather than the error object itself.
+ * `cause` carries what the entry actually threw. Across a worker boundary that is a
+ * `WorkerReportedError` carrying the wording and the name of the throw; the class of the original
+ * error and the fields it added do not cross the boundary.
  *
  * A refusal for a reason that says nothing about how far the Kernel got — a confirmation window
  * that ran out, a worker that died, a proxy of someone else's making — is not one of these. The

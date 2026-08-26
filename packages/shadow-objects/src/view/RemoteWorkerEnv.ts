@@ -90,6 +90,26 @@ export class WorkerDestroyedError extends Error {
 }
 
 /**
+ * The reason a request is rejected with when the worker reported a failure of its own -- a
+ * module that would not import, a change trail its Kernel refused. An error does not survive
+ * structured cloning as the object it is, so the two fields that do are rebuilt here, and
+ * `name` is the name the error called itself inside the worker: a caller reads it the same
+ * way it reads the name of an error a `LocalShadowObjectEnv` hands it. A name that is missing
+ * or empty names no class, and `Error` is what such a reason is called -- the same name a
+ * plain `new Error(message)` carries on the local side.
+ *
+ * What does not come across is the class and everything it added. `instanceof EntityUuidInUseError`
+ * is `false` here and there is no `uuid` field, whatever `name` says; `instanceof WorkerReportedError`
+ * is what tells such a reason apart from one raised on this side.
+ */
+export class WorkerReportedError extends Error {
+  constructor(name: string | undefined, message: string) {
+    super(message);
+    this.name = name || 'Error';
+  }
+}
+
+/**
  * How long a {@link RemoteWorkerEnv} waits for each of the four replies a worker owes it,
  * in milliseconds.
  */
@@ -348,13 +368,14 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
         // trail would otherwise reject the request that happens to be waiting here
         if (data.serial !== serial) return false;
         if (data.error) {
+          const reason = new WorkerReportedError(data.errorName, data.error);
           // Only a confirmation that names the count can move the line the view draws between
           // applied and pending; one that does not carries no more than the reason itself, and
           // is handed on as that reason.
           if (typeof data.appliedCount === 'number') {
-            throw new ChangeTrailRefusedError(data.appliedCount, changeTrail.length, {cause: data.error});
+            throw new ChangeTrailRefusedError(data.appliedCount, changeTrail.length, {cause: reason});
           }
-          throw data.error;
+          throw reason;
         }
         return true;
       },
@@ -377,7 +398,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
       this.timeouts.configureTimeout,
       (data: ImportedModuleEvent) => {
         if (data.url !== url) return false;
-        if (data.error) throw data.error;
+        if (data.error) throw new WorkerReportedError(data.errorName, data.error);
         return true;
       },
       signal,

@@ -255,7 +255,8 @@ describe('MessageRouter', () => {
       // `url: undefined`, and `toEqual` would wave that key through instead of naming it.
       expect(posted).toHaveLength(1);
       expect(posted[0].message.type).toBe(ImportedModule);
-      expect(posted[0].message.error).toBe('Error: missing "importModule" url');
+      expect(posted[0].message.error).toBe('missing "importModule" url');
+      expect(posted[0].message.errorName).toBe('Error');
       expect(error).toHaveBeenCalledTimes(1);
       expect(error.mock.calls[0][0]).toBe('%cMessageRouter');
       expect(error.mock.calls[0][2]).toBe('failed to import module');
@@ -272,8 +273,9 @@ describe('MessageRouter', () => {
       expect(posted).toHaveLength(1);
       expect(posted[0].message.type).toBe(ImportedModule);
       expect(posted[0].message.url).toBe(url);
-      // Only the prefix: the rest of the message is the engine's wording, not ours.
-      expect(posted[0].message.error).toMatch(/^SyntaxError/);
+      // Only the name is ours to assert: the wording of the failure comes from the engine.
+      expect(posted[0].message.errorName).toBe('SyntaxError');
+      expect(posted[0].message.error, 'the wording belongs to the engine, that there is one belongs to us').toMatch(/.+/);
       expect(error).toHaveBeenCalledTimes(1);
     });
 
@@ -319,6 +321,7 @@ describe('MessageRouter', () => {
         type: AppliedChangeTrail,
         serial: 2,
         error: expect.stringMatching(/.+/),
+        errorName: 'Error',
         appliedCount: 0,
       });
       expect(error).toHaveBeenCalledTimes(1);
@@ -344,6 +347,7 @@ describe('MessageRouter', () => {
         type: AppliedChangeTrail,
         serial: 7,
         error: expect.stringMatching(/.+/),
+        errorName: 'Error',
         appliedCount: 1,
       });
       expect(error).toHaveBeenCalledTimes(1);
@@ -377,6 +381,22 @@ describe('MessageRouter', () => {
       expect(error).toHaveBeenCalledTimes(1);
       expect(error.mock.calls[0][0]).toBe('%cMessageRouter');
       expect(error.mock.calls[0][2]).toBe('failed to apply change trail');
+    });
+
+    // The name is what a caller on the view side reads to tell one refusal from another, so
+    // it travels next to the wording rather than inside it.
+    it('names the class the kernel refused with', () => {
+      const {posted, router} = setup();
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      router.route(changeTrailMessage(1, createEntity('a')));
+      router.route(changeTrailMessage(2, createEntity('a')));
+
+      const message = posted.at(-1)!.message;
+
+      expect(message.errorName).toBe('EntityUuidInUseError');
+      expect(message.error).toContain('already held by another entity');
+      expect(message.appliedCount).toBe(0);
     });
   });
 

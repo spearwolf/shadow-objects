@@ -18,7 +18,7 @@ import {
 import type {ChangeTrailType, ISendEvents, IUpdateOrderChange} from '../types.js';
 import {CONSOLE_LOGGER, CONSOLE_LOGGER_STORAGE} from '../utils/ConsoleLogger.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
-import {RemoteWorkerEnv, type RemoteWorkerEnvOptions} from './RemoteWorkerEnv.js';
+import {RemoteWorkerEnv, type RemoteWorkerEnvOptions, WorkerReportedError} from './RemoteWorkerEnv.js';
 
 const {FakeWorker, workers} = vi.hoisted(() => {
   class FakeWorker {
@@ -600,7 +600,7 @@ describe('RemoteWorkerEnv', () => {
 
       worker.reply({type: AppliedChangeTrail, serial: 1, error: 'the first trail failed'});
 
-      await expect(first).rejects.toBe('the first trail failed');
+      await expect(first).rejects.toThrow('the first trail failed');
       await flushMicrotasks();
       expect(secondSettled, 'a failure of another trail decides nothing here').toBe(false);
 
@@ -626,7 +626,7 @@ describe('RemoteWorkerEnv', () => {
       expect(reason).toBeInstanceOf(ChangeTrailRefusedError);
       expect(reason.appliedCount).toBe(2);
       expect(reason.entryCount).toBe(3);
-      expect(reason.cause).toBe('entity with uuid "c" not found!');
+      expect((reason.cause as Error).message).toBe('entity with uuid "c" not found!');
     });
 
     // Without the count there is nothing to draw a line with, so the reason is handed on as it is
@@ -638,7 +638,34 @@ describe('RemoteWorkerEnv', () => {
       const pending = env.applyChangeTrail([{type: ComponentChangeType.UpdateOrder, uuid: 'a', order: 1}], true);
       worker.reply({type: AppliedChangeTrail, serial: 1, error: 'something went wrong'});
 
-      await expect(withTimeout(pending)).rejects.toBe('something went wrong');
+      await expect(withTimeout(pending)).rejects.toThrow('something went wrong');
+    });
+
+    // The refusal wraps the reason, so the shape of the reason is what a `cause` hands on: the
+    // error object itself in a local environment, and here the one rebuilt from the wire.
+    it('carries the reported failure into the cause of the refusal', async () => {
+      const {env, worker} = await startEnv();
+      const trail: ChangeTrailType = [
+        {type: ComponentChangeType.UpdateOrder, uuid: 'a', order: 1},
+        {type: ComponentChangeType.UpdateOrder, uuid: 'b', order: 2},
+      ];
+
+      const pending = env.applyChangeTrail(trail, true);
+      worker.reply({
+        type: AppliedChangeTrail,
+        serial: 1,
+        error: 'the kernel cannot create an entity because the uuid b is already held by another entity',
+        errorName: 'EntityUuidInUseError',
+        appliedCount: 1,
+      });
+
+      const reason = (await expectRejection(pending, 'ChangeTrailRefusedError')) as ChangeTrailRefusedError;
+      const cause = reason.cause as WorkerReportedError;
+
+      expect(cause, 'a caller may check for an Error').toBeInstanceOf(Error);
+      expect(cause).toBeInstanceOf(WorkerReportedError);
+      expect(cause.name, 'the name is read the same way it is read locally').toBe('EntityUuidInUseError');
+      expect(cause.message).toContain('already held by another entity');
     });
   });
 
@@ -667,12 +694,44 @@ describe('RemoteWorkerEnv', () => {
 
       worker.reply({type: ImportedModule, url: firstUrl, error: 'module has no "shadowObjects" export'});
 
-      await expect(first).rejects.toBe('module has no "shadowObjects" export');
+      await expect(first).rejects.toThrow('module has no "shadowObjects" export');
       await flushMicrotasks();
       expect(secondSettled, 'a module that failed to import says nothing about another one').toBe(false);
 
       worker.reply({type: ImportedModule, url: secondUrl});
       await second;
+    });
+
+    // What a caller sees in its `catch` is the same shape in both environments: a
+    // `LocalShadowObjectEnv` throws the `Error` the import produced, and this one rebuilds one
+    // from the two fields that survive structured cloning.
+    it('rejects a failed import with an error, not with the wording of one', async () => {
+      const {env, worker} = await startEnv();
+
+      const pending = env.importScript('./broken.js');
+      const url = worker.posted.at(-1).importModule;
+      worker.reply({type: ImportedModule, url, error: 'unexpected token', errorName: 'SyntaxError'});
+
+      const reason = await expectRejection(pending, 'SyntaxError');
+
+      expect(reason, 'a caller may check for an Error').toBeInstanceOf(Error);
+      expect(reason, 'and for the boundary it came across').toBeInstanceOf(WorkerReportedError);
+      expect(reason.message).toBe('unexpected token');
+    });
+
+    // A confirmation that names no class is not a broken one -- an implementation on the other
+    // side that only sends a reason keeps working, and its reason arrives as a plain `Error`.
+    it('names a reported failure without a class an error', async () => {
+      const {env, worker} = await startEnv();
+
+      const pending = env.importScript('./nothing.js');
+      const url = worker.posted.at(-1).importModule;
+      worker.reply({type: ImportedModule, url, error: 'module has no "shadowObjects" export'});
+
+      const reason = await expectRejection(pending, 'Error');
+
+      expect(reason).toBeInstanceOf(WorkerReportedError);
+      expect(reason.message).toBe('module has no "shadowObjects" export');
     });
   });
 

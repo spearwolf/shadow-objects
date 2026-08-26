@@ -5,7 +5,8 @@ import type {Kernel} from './Kernel.js';
 /**
  * The wording both environments use when a module they import carries no `shadowObjects` export.
  * `worker/MessageRouter.ts` puts it in the `error` field of the `ImportedModule` message it posts
- * to the view, `view/LocalShadowObjectEnv.ts` rejects `importScript()` with an `Error` carrying it.
+ * to the view, where `view/RemoteWorkerEnv.ts` builds an `Error` from it;
+ * `view/LocalShadowObjectEnv.ts` rejects `importScript()` with such an `Error` directly.
  */
 export const missingShadowObjectsExportMessage = `module has no "${ShadowObjectsExport}" export`;
 

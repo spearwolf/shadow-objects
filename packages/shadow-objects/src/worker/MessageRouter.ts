@@ -30,6 +30,17 @@ interface ConfigurePayloadData {
  */
 export const isReadableMessageData = (data: unknown): boolean => typeof data === 'object' && data !== null;
 
+/**
+ * Reduces a throw to the two fields that survive the wire. `RemoteWorkerEnv` builds an error
+ * from them, and it decides between a confirmation and a refusal by whether `error` is there
+ * at all -- so the wording must never come out empty, not even for an `Error` carrying no
+ * message of its own.
+ */
+const describeError = (error: unknown): {error: string; errorName?: string} =>
+  error instanceof Error
+    ? {error: error.message || String(error), errorName: error.name}
+    : {error: String(error) || 'unknown error'};
+
 export interface MessageRouterOptions {
   kernel?: Kernel;
   postMessage?: typeof self.postMessage;
@@ -143,7 +154,7 @@ export class MessageRouter {
       // own error reports ungated: a failure is worth printing regardless of what debug logging
       // is set to
       this.logger.error('failed to import module', error);
-      this.postMessage({type: ImportedModule, url, error: `${error}`} as ImportedModuleEvent);
+      this.postMessage({type: ImportedModule, url, ...describeError(error)} as ImportedModuleEvent);
     }
   }
 
@@ -160,9 +171,9 @@ export class MessageRouter {
         this.postMessage({
           type: AppliedChangeTrail,
           serial: data.serial,
-          // the wording of what the entry threw, not the wording of the refusal wrapped around
-          // it: the number travels in a field of its own, so the string stays the reason
-          error: `${refusal?.cause ?? error}`,
+          // what the entry threw, not the refusal wrapped around it: the number travels in a
+          // field of its own, so the reason stays the reason
+          ...describeError(refusal?.cause ?? error),
           ...(refusal ? {appliedCount: refusal.appliedCount} : {}),
         } as AppliedChangeTrailEvent);
       }
