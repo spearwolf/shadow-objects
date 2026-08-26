@@ -4,6 +4,24 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — optional properties say whether they may be undefined
+
+- **`tsconfig.json`:** turns on `exactOptionalPropertyTypes`. An optional field now accepts
+  an explicit `undefined` only where its type says so, which makes "the key is missing" and
+  "the key is there and holds nothing" two different statements — the distinction the change
+  trail data model of this project runs on. The switch sits in the workspace root and reaches
+  `packages/shadow-objects` and `packages/shadow-objects-e2e`, the two projects that inherit
+  that configuration; the other two workspace packages carry no TypeScript file.
+- **`packages/shadow-objects/src`:** what the switch called for: `WorkerRuntime.router` and
+  the field `options` of the spec-local `PostedMessage` in `worker/MessageRouter.spec.ts`
+  carry `| undefined`, and `MessageRouter.onMessageToView()` hands `structuredClone` an empty
+  transfer list instead of a missing one, which WebIDL defines as the same call. A shipped
+  declaration line moves along with it, noted in the package's own `CHANGELOG.md`.
+- **`packages/shadow-objects-e2e/playwright.config.ts`:** the worker count is set only on CI;
+  everywhere else the key stays out of the configuration object, which is how Playwright is
+  left to its own default of half the logical cores. `workers` is declared `number | string`
+  and takes no `undefined`.
+
 ## 2026-08-26 — index access is checked
 
 - **`tsconfig.json`:** turns on `noUncheckedIndexedAccess`. An index into an array or an

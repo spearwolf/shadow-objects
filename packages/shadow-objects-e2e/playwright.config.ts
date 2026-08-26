@@ -19,9 +19,11 @@ export default defineConfig({
   /* Retry on CI only */
   // biome-ignore lint/complexity/useLiteralKeys: process.env is typed via an index signature; noPropertyAccessFromIndexSignature (TS4111) requires the bracket form.
   retries: process.env['CI'] ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
+  // One worker on CI. Everywhere else the key stays out of the object: `workers` is declared
+  // `number | string`, and its absence is what hands the count to Playwright's own default of
+  // half the logical cores.
   // biome-ignore lint/complexity/useLiteralKeys: process.env is typed via an index signature; noPropertyAccessFromIndexSignature (TS4111) requires the bracket form.
-  workers: process.env['CI'] ? 1 : undefined,
+  ...(process.env['CI'] ? {workers: 1} : {}),
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   // Only keep test artifacts for failures. Stale artifacts from a passing run

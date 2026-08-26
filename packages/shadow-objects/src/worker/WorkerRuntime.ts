@@ -3,7 +3,7 @@ import {CONSOLE_LOGGER, ConsoleLogger, setConsoleLoggerStorage} from '../utils/C
 import {isReadableMessageData, MessageRouter} from './MessageRouter.js';
 
 export class WorkerRuntime {
-  router?: MessageRouter;
+  router?: MessageRouter | undefined;
 
   #loggerInstance?: ConsoleLogger;
 

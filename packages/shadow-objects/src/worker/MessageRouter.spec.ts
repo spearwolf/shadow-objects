@@ -17,7 +17,7 @@ import {MessageRouter} from './MessageRouter.js';
 
 interface PostedMessage {
   message: any;
-  options?: StructuredSerializeOptions;
+  options?: StructuredSerializeOptions | undefined;
 }
 
 /**
@@ -155,10 +155,9 @@ describe('MessageRouter', () => {
 
       expect(posted).toHaveLength(1);
       expect(posted[0]!.message).toEqual({type: MessageToView, data: {uuid: 'a', type: 'hello', data: {n: 1}}});
-      // The options object goes along either way; without transferables its `transfer` is simply
-      // undefined, which `postMessage` reads as an empty list. Asserted strictly, because the key
-      // being there with no value is the point -- `toEqual` would hold for a bare `{}` as well.
-      expect(posted[0]!.options).toStrictEqual({transfer: undefined});
+      // WebIDL defaults `transfer` to `[]`; without transferables the router hands it an empty
+      // list itself rather than leaving the key out, which is the same call either way.
+      expect(posted[0]!.options).toStrictEqual({transfer: []});
     });
 
     // Transferables belong to the structured-clone call, not to the payload: sending them along

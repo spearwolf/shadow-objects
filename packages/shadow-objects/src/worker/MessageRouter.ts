@@ -121,7 +121,8 @@ export class MessageRouter {
 
   onMessageToView(event: MessageToViewEvent) {
     const {transferables: transfer, ...data} = event;
-    this.postMessage({type: MessageToView, data}, {transfer});
+    // WebIDL defaults `transfer` to `[]`, so a missing key and an empty list are the same call.
+    this.postMessage({type: MessageToView, data}, {transfer: transfer ?? []});
   }
 
   async #configure(data: ConfigurePayloadData) {
