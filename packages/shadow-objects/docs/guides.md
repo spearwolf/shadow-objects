@@ -499,6 +499,23 @@ You can run multiple independent Shadow Environments on the same page using name
 
 Each namespace is a completely isolated Shadow Environment with its own Kernel (ECS System Runner) and entity tree.
 
+### How Many Entities Fit in One Namespace
+
+Every entity joining a namespace asks it for the closest ancestor above it, and everything that joins within the same task is answered by a single round instead of one round each. What a build costs in parent resolution is therefore the number of entities coming up together, and it stays that way as the namespace grows.
+
+Measured in Chromium via Playwright 1.62.1 on 2026-08-22, over the sizes 100, 125, 150, 300 and 600 entities coming up in one task. At the top of that range:
+
+| What comes up | Entities | Messages | Build | Same build, parent resolution off |
+| :--- | ---: | ---: | ---: | ---: |
+| Roots of one namespace | 600 | 600 | 44.0 ms | 41.8 ms |
+| Children of one parent | 600 | 600 | 49.3 ms | 46.7 ms |
+
+Six hundred entities arriving at once cost two to three milliseconds of parent resolution, and the curve is flat over the whole range measured. At these sizes, splitting a namespace buys nothing in parent resolution.
+
+Read the numbers for their order of magnitude, not as a promise: one browser, one day, one machine. And they bound the parent resolution the View Layer runs and nothing else — what your Shadow Objects cost per entity is yours, and so is what the change trail carries across a worker boundary.
+
+Split a namespace for isolation instead: a part of the application that runs in a worker while another runs on the main thread, a feature that has to be torn down on its own, a tenant that must not meet another. Each namespace is a Kernel, a Registry and an entity tree of its own.
+
 ### Waiting for the Environment to be Ready
 
 ```javascript

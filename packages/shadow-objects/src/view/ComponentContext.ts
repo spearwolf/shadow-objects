@@ -585,7 +585,8 @@ export class ComponentContext {
    * namespace; one round per task stays clear of it over the whole measured range, up to 600.
    *
    * Numbers measured 2026-08-22 in Chromium via Playwright 1.62.1 — a snapshot, not a guarantee;
-   * `Backlog.md`'s Performance section carries the size series and how to reproduce it.
+   * the size series is in `packages/shadow-objects/docs/guides.md`, under "How Many Entities Fit
+   * in One Namespace".
    *
    * @param data travels with the round as long as `sender` is the only one in it — see
    *   {@link ComponentContext.dispatchReRequestParentSiblings} for what a receiver does with it.

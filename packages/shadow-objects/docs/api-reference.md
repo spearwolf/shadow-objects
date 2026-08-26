@@ -2096,6 +2096,10 @@ passes a quarter of a second at six hundred. One round per task costs n messages
 stays clear of a frame over the whole measured range, up to six hundred entities coming up
 together.
 
+The measurement behind those figures — Chromium via Playwright 1.62.1, 2026-08-22, over the sizes
+100 to 600 — is in [guides.md → How Many Entities Fit in One
+Namespace](./guides.md#how-many-entities-fit-in-one-namespace).
+
 The move is followed wherever the slot goes: into another entity, into a part of the same shadow
 root with no entity above it, and `slot.remove()` along with the window until the slot is put back.
 `slotchange` is not `composed` and reaches only the shadow root the slot has landed in, so the
