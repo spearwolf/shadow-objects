@@ -4,6 +4,16 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — the creation-scope spec carries its own conditions
+
+- **`packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.spec.ts`:** the two
+  provider helpers of the deprecation cases name why the signal reader stands in the source
+  argument and not in the options slot one place to its right, and the four microtask waits
+  name what they wait for -- a provider's write reaches the context signal of the entity below
+  one microtask later. Three further waits in the `provideContext` cases are gone: they stood
+  before a read of the provider signal the scope created itself, which is there without a turn
+  of the queue. The file keeps its 13 cases and the core suite its 802.
+
 ## 2026-08-26 — the e2e fixtures and the test plan say what holds today
 
 - **`packages/shadow-objects-e2e/public/`:** the four fixture modules take their property

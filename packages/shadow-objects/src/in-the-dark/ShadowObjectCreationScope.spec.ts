@@ -189,6 +189,9 @@ describe('ShadowObjectCreationScope', () => {
       @ShadowObject({registry, token: 'deprecatedUseContextProvider'})
       class DeprecatedUseContextProvider {
         constructor({provideContext}: ShadowObjectCreationAPI) {
+          // The reader stands in the second argument, the source slot. One place further right is
+          // the options slot, where a bare function is the deprecated form itself -- this provider
+          // would report as well, and the case counts on exactly one report.
           provideContext('bareCompareReadContext', sourceSignal.get);
         }
       }
@@ -213,6 +216,9 @@ describe('ShadowObjectCreationScope', () => {
         '[shadow-objects] Deprecation Warning: The "isEqual" option of "useContext()" is now passed as {compare} argument. Please update your code accordingly.',
       );
 
+      // A provider's write reaches the context signal of the entity below one microtask later, so
+      // both reads here wait a turn: without the first wait the context is still `undefined`,
+      // without the second it still holds 'first'.
       await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
       expect(value(capturedContext!)).toBe('first');
 
@@ -238,6 +244,9 @@ describe('ShadowObjectCreationScope', () => {
       @ShadowObject({registry, token: 'deprecatedUseParentContextProvider'})
       class DeprecatedUseParentContextProvider {
         constructor({provideContext}: ShadowObjectCreationAPI) {
+          // The reader stands in the second argument, the source slot. One place further right is
+          // the options slot, where a bare function is the deprecated form itself -- this provider
+          // would report as well, and the case counts on exactly one report.
           provideContext('bareCompareParentContext', sourceSignal.get);
         }
       }
@@ -262,6 +271,9 @@ describe('ShadowObjectCreationScope', () => {
         '[shadow-objects] Deprecation Warning: The "isEqual" option of "useParentContext()" is now passed as {compare} argument. Please update your code accordingly.',
       );
 
+      // A provider's write reaches the context signal of the entity below one microtask later, so
+      // both reads here wait a turn: without the first wait the context is still `undefined`,
+      // without the second it still holds 'first'.
       await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
       expect(value(capturedParentContext!)).toBe('first');
 
@@ -277,7 +289,7 @@ describe('ShadowObjectCreationScope', () => {
   });
 
   describe('provideContext', () => {
-    it('registers the clearOnDestroy write once per provider, however often it is asked for', async () => {
+    it('registers the clearOnDestroy write once per provider, however often it is asked for', () => {
       const registry = new Registry();
       const kernel = new Kernel(registry);
 
@@ -298,7 +310,9 @@ describe('ShadowObjectCreationScope', () => {
       const uuid = generateUUID();
       kernel.createEntity(uuid, 'repeatedProvideContext');
 
-      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+      // The provider signal is the one this scope created, so its value is there without a turn
+      // of the microtask queue. Only the hand-over to the entities below is deferred, and no
+      // case in this block reads that far.
       expect(value(provider!)).toBe('first');
 
       // `Signal.prototype.set` has only a getter -- `provider.set = fn` throws a `TypeError`. The
@@ -322,7 +336,7 @@ describe('ShadowObjectCreationScope', () => {
       kernel.destroy();
     });
 
-    it('does not let a later call take back an earlier clearOnDestroy opt-out', async () => {
+    it('does not let a later call take back an earlier clearOnDestroy opt-out', () => {
       const registry = new Registry();
       const kernel = new Kernel(registry);
 
@@ -341,7 +355,6 @@ describe('ShadowObjectCreationScope', () => {
       const uuid = generateUUID();
       kernel.createEntity(uuid, 'stickyClearOnDestroy');
 
-      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
       expect(value(provider!)).toBe('first');
 
       const writes: unknown[] = [];
@@ -362,7 +375,7 @@ describe('ShadowObjectCreationScope', () => {
       kernel.destroy();
     });
 
-    it('keys the clearOnDestroy registration by provider signal, not by name, so a provideContext and a provideGlobalContext of the same name each still clear', async () => {
+    it('keys the clearOnDestroy registration by provider signal, not by name, so a provideContext and a provideGlobalContext of the same name each still clear', () => {
       const registry = new Registry();
       const kernel = new Kernel(registry);
 
@@ -381,7 +394,6 @@ describe('ShadowObjectCreationScope', () => {
       const uuid = generateUUID();
       kernel.createEntity(uuid, 'sharedNameProviders');
 
-      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
       expect(value(contextProvider!)).toBe('ctxFirst');
       expect(value(globalProvider!)).toBe('globalFirst');
 
