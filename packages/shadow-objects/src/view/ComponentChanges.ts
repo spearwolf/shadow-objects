@@ -79,13 +79,13 @@ export class ComponentChanges {
   }
 
   #token: string = VoidToken;
-  #parentUuid?: string;
+  #parentUuid?: string | undefined;
   #order: number = 0;
   #autoDestructionOnParentRemoval = false;
 
-  #nextToken?: string;
-  #nextParentUuid?: string;
-  #nextOrder?: number;
+  #nextToken?: string | undefined;
+  #nextParentUuid?: string | undefined;
+  #nextOrder?: number | undefined;
 
   create(token: string = VoidToken, parentUuid?: string, order: number = 0, autoDestructionOnParentRemoval = false) {
     this.#createCount++;
@@ -175,7 +175,7 @@ export class ComponentChanges {
    * The keys an entry on its way out carries, until that entry is settled. For those keys the
    * written half is behind, and {@link ComponentChanges.changeProperty} must not cancel against it.
    */
-  #travellingProperties?: Map<string, unknown>;
+  #travellingProperties?: Map<string, unknown> | undefined;
 
   /**
    * @returns `true` if the value differs from the last value this component asked for

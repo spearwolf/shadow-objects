@@ -23,7 +23,7 @@ export interface MessageToViewEvent {
   type: string;
   data?: unknown;
   transferables?: Transferable[] | undefined;
-  traverseChildren?: boolean;
+  traverseChildren?: boolean | undefined;
 }
 
 interface EntityEntry {

@@ -42,13 +42,13 @@ export class ShadowEnv {
     return globalThis.__shadowEnvs?.get(ns);
   }
 
-  #comCtx?: ComponentContext;
-  #shaObjEnvProxy?: IShadowObjectEnvProxy;
+  #comCtx?: ComponentContext | undefined;
+  #shaObjEnvProxy?: IShadowObjectEnvProxy | undefined;
   #syncScheduled = false;
   #syncAfterContextCreated = false;
   #syncWaitForConfirmation = false;
-  #afterNextSync?: Promise<ChangeTrailType>;
-  #settleAfterNextSync?: {resolve: (changeTrail: ChangeTrailType) => void; reject: (reason: unknown) => void};
+  #afterNextSync?: Promise<ChangeTrailType> | undefined;
+  #settleAfterNextSync?: {resolve: (changeTrail: ChangeTrailType) => void; reject: (reason: unknown) => void} | undefined;
 
   readonly logger = new ConsoleLogger('ShadowEnv');
 
@@ -76,7 +76,7 @@ export class ShadowEnv {
     // environment that never receives either half must stay collectable
   }
 
-  #contextEffect?: Effect;
+  #contextEffect?: Effect | undefined;
 
   /**
    * Builds the effect that reports {@link ShadowEnv.ContextCreated} and {@link ShadowEnv.ContextLost}

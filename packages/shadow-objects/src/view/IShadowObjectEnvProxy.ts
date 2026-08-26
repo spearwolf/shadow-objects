@@ -35,7 +35,7 @@ export interface IShadowObjectEnvProxy {
    * it lets go -- one microtask after that proxy's `destroy()` has returned, so that what an
    * `onDestroy` hands to the view during the teardown still arrives.
    */
-  onMessageToView?: (event: Omit<MessageToViewEvent, 'transferables'>) => any;
+  onMessageToView?: ((event: Omit<MessageToViewEvent, 'transferables'>) => any) | undefined;
 
   /**
    * Called when the proxy has irrecoverably lost the environment it stands for.
@@ -43,5 +43,5 @@ export interface IShadowObjectEnvProxy {
    * it lets go, the moment that proxy's `destroy()` has returned; an implementation
    * that cannot fail simply never calls it.
    */
-  onProxyFailed?: (reason: unknown) => any;
+  onProxyFailed?: ((reason: unknown) => any) | undefined;
 }

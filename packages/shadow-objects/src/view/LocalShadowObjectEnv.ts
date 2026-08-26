@@ -37,7 +37,8 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
       if (onMessageToView == null) return;
 
       const {type, uuid, traverseChildren} = message;
-      const data = structuredClone(message.data, {transfer: message.transferables});
+      // WebIDL defaults `transfer` to `[]`, so a missing key and an empty list are the same call.
+      const data = structuredClone(message.data, {transfer: message.transferables ?? []});
       // call() keeps the binding a plain method call would have given it: an outside
       // implementation of the proxy interface need not hand over a bound callback
       onMessageToView.call(this, {type, uuid, data, traverseChildren});

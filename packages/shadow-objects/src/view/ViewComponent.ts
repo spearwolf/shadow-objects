@@ -43,9 +43,9 @@ export class ViewComponent {
 
   #token: string;
 
-  #context?: ComponentContext;
+  #context?: ComponentContext | undefined;
 
-  #parent?: ViewComponent;
+  #parent?: ViewComponent | undefined;
   #order = 0;
   readonly #autoDestructionOnParentRemoval: boolean;
 
@@ -182,11 +182,11 @@ export class ViewComponent {
   constructor(
     token: string,
     options?: {
-      parent?: ViewComponent;
-      order?: number;
-      context?: ComponentContext;
-      uuid?: string;
-      autoDestructionOnParentRemoval?: boolean;
+      parent?: ViewComponent | undefined;
+      order?: number | undefined;
+      context?: ComponentContext | undefined;
+      uuid?: string | undefined;
+      autoDestructionOnParentRemoval?: boolean | undefined;
     },
   ) {
     eventize(this);

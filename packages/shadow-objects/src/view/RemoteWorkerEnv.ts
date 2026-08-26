@@ -29,7 +29,9 @@ import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
  * entry is passed through as it is. A trail that carries none is handed back object for
  * object.
  */
-const splitTransferables = (changeTrail: ChangeTrailType): {changeTrail: ChangeTrailType; transferables?: TransferablesType} => {
+const splitTransferables = (
+  changeTrail: ChangeTrailType,
+): {changeTrail: ChangeTrailType; transferables?: TransferablesType | undefined} => {
   if (!Array.isArray(changeTrail)) return {changeTrail};
 
   let outbound: ChangeTrailType | undefined;
@@ -200,7 +202,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   static WorkerLoaded = 'workerLoaded';
   static WorkerFailed = 'workerFailed';
 
-  #worker?: Worker;
+  #worker?: Worker | undefined;
   #isDestroyed = false;
   #changeTrailSerial = 0;
 

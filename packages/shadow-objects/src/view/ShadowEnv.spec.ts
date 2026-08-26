@@ -199,7 +199,7 @@ describe('ShadowEnv', () => {
       trails: ChangeTrailType[] = [];
 
       /** How many entries the kernel behind it applied before it stopped. */
-      refuseAfter?: number;
+      refuseAfter?: number | undefined;
 
       async start(): Promise<void> {}
 

@@ -11,7 +11,7 @@ interface ViewInstance {
   component: ViewComponent;
   children: string[]; // we use an Array here and not a Set, because we want to keep the insertion order
   changes: ComponentChanges;
-  propIsEqual?: Map<string, (a: any, b: any) => boolean>;
+  propIsEqual?: Map<string, (a: any, b: any) => boolean> | undefined;
 }
 
 declare global {
@@ -117,7 +117,7 @@ export class ComponentContext {
    * destroyed while the trail travels owes its destruction to the *next* trail, and dropping its
    * entry here would leave the entity standing with nothing left to take it down.
    */
-  #uncommittedTrail?: {entries: IComponentChangeType[]; owners: ComponentChanges[]; retiring: ComponentChanges[]};
+  #uncommittedTrail?: {entries: IComponentChangeType[]; owners: ComponentChanges[]; retiring: ComponentChanges[]} | undefined;
 
   /** The components a build reads as spent: destroyed, or created and dropped without ever going out. */
   #retiringComponents(participants: ComponentChanges[]): ComponentChanges[] {
@@ -930,7 +930,7 @@ export class ComponentContext {
     childUuids.push(component.uuid);
   }
 
-  #viewInstances?: ViewInstance[];
+  #viewInstances?: ViewInstance[] | undefined;
 
   #traverseLevelOrderBFS(): ViewInstance[] {
     if (this.#viewInstances) return this.#viewInstances;
