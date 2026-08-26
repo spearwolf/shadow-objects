@@ -34,7 +34,7 @@ interface IContextValue {
   providerFeeds: Set<SignalLink<any>>;
 
   unsubscribePathValue: () => void;
-  unsubscribeFromParent?: () => void;
+  unsubscribeFromParent?: (() => void) | undefined;
 }
 
 interface IRootContextValue {
@@ -84,7 +84,7 @@ export class Entity {
   // There is one place the parent is kept: `parentUuid` answers from `#parent.uuid`, so a half-set
   // link -- a uuid with no matching entity, or an entity with no uuid to show for it -- has no field
   // left to hold it in.
-  #parent?: Entity;
+  #parent?: Entity | undefined;
 
   #childrenUuids: Set<string> = new Set();
   #children: Entity[] = [];
@@ -370,7 +370,7 @@ export class Entity {
   }
 
   #autoDestructionEnabled = false;
-  #autoDestructionSubscription?: () => void;
+  #autoDestructionSubscription?: (() => void) | undefined;
 
   get autoDestructionOnParentRemoval(): boolean {
     return this.#autoDestructionEnabled;

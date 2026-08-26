@@ -22,7 +22,7 @@ export interface MessageToViewEvent {
   uuid: string;
   type: string;
   data?: unknown;
-  transferables?: Transferable[];
+  transferables?: Transferable[] | undefined;
   traverseChildren?: boolean;
 }
 

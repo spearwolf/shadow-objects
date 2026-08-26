@@ -16,7 +16,7 @@ export class SignalsPath {
   static readonly Value = VALUE;
 
   #signals: SignalLike<any>[] = [];
-  #effect?: Effect;
+  #effect?: Effect | undefined;
 
   @signal({name: VALUE}) accessor value: any = undefined;
 

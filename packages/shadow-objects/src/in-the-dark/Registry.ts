@@ -38,7 +38,7 @@ export class Registry {
 
   readonly #registry = new Map<string, RegistryEntry>();
   readonly #routes = new Map<string, Set<string>>();
-  readonly #truthyPropRoutes = new Map<string, {routes: Set<string>; token?: string}>();
+  readonly #truthyPropRoutes = new Map<string, {routes: Set<string>; token?: string | undefined}>();
 
   define(token: string, constructa: ShadowObjectConstructor) {
     const entry = this.#registry.get(token);

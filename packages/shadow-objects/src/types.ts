@@ -107,7 +107,7 @@ export interface AppliedChangeTrailEvent {
 
 export type EntityApi = Readonly<
   Pick<Entity, 'uuid' | 'order' | 'hasParent' | 'propKeys' | 'propEntries' | 'kernel'> & {
-    parent?: EntityApi;
+    parent?: EntityApi | undefined;
     children: readonly EntityApi[];
     traverse(callback: (entity: EntityApi) => unknown): void;
   }
