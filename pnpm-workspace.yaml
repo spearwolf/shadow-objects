@@ -33,7 +33,6 @@ catalog:
 
   # --- typescript ---
   typescript: ^7.0.2
-  tslib: ^2.8.1
 
   # --- build ---
   esbuild: ^0.28.2
@@ -59,7 +58,6 @@ catalog:
   happy-dom: ^20.11.2
   sinon: ^22.1.0
   '@types/sinon': ^22.0.0
-  lit-html: ^3.3.3
   # Pinned exact: 4.3.4-fix.0 is a prerelease tag above 4.3.4, and a caret range
   # against 4.3.4 would not resolve to a prerelease on its own — the exact
   # version is the only way to land on this particular fix build.

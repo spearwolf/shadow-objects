@@ -22,10 +22,10 @@
   "devDependencies": {
     "@esm-bundle/chai": "catalog:",
     "@playwright/test": "catalog:",
+    "@types/sinon": "catalog:",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "lit-html": "catalog:",
     "rimraf": "catalog:",
     "sinon": "catalog:",
     "vitest": "catalog:"

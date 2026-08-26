@@ -10,7 +10,6 @@
     "declaration": true,
     "declarationMap": true,
     "removeComments": false,
-    "importHelpers": false,
     "noEmit": false,
     "incremental": false,
     "composite": false,

@@ -10,7 +10,6 @@
     "experimentalDecorators": false,
     "emitDecoratorMetadata": false,
     "useDefineForClassFields": false,
-    "importHelpers": true,
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
     "alwaysStrict": true,

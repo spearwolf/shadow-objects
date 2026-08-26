@@ -33,7 +33,6 @@
     "@biomejs/biome": "catalog:",
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
-    "@types/sinon": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "esbuild": "catalog:",
     "happy-dom": "catalog:",
@@ -42,8 +41,6 @@
     "istanbul-reports": "catalog:",
     "leasot": "catalog:",
     "rimraf": "catalog:",
-    "sinon": "catalog:",
-    "tslib": "catalog:",
     "turbo": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

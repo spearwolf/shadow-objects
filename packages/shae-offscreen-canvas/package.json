@@ -51,7 +51,6 @@
     "esbuild-plugin-inline-worker": "catalog:",
     "happy-dom": "catalog:",
     "lil-gui": "catalog:",
-    "lit-html": "catalog:",
     "three": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

@@ -4,6 +4,25 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — the manifests declare only what has a user
+
+- **`package.json`:** `sinon`, `@types/sinon` and `tslib` leave the root devDependencies.
+  `sinon` had its three users in `packages/shadow-objects-testing/test/build-change-trail.test.js`,
+  `test/prop-element-host.test.js` and `test/prop-element-types.test.js`, and that package
+  already declares the dependency itself — the root entry was a duplicate. `@types/sinon`
+  moves to `packages/shadow-objects-testing` instead of disappearing, next to those same three
+  specs, which is where its only possible use lives. `tslib` goes together with `importHelpers`.
+- **`packages/shadow-objects-testing/package.json`:** `@types/sinon` now sits next to `sinon`,
+  where the specs use it. `lit-html` leaves — no file in the package imports it.
+- **`packages/shae-offscreen-canvas/package.json`:** `lit-html` leaves for the same reason.
+- **`tsconfig.json`:** `importHelpers` leaves, and the counter-line in
+  `packages/shadow-objects/tsconfig.lib.json` leaves with it. The only `tsc` invocation that
+  emits JavaScript writes declarations only (`emitDeclarationOnly`), the other two run with
+  `noEmit`, and the transpile step is esbuild, which does not know the option — there is no
+  emit path in this pipeline for a helper import to land on.
+- **`pnpm-workspace.yaml`:** `tslib` and `lit-html` leave the catalog; after the manifest
+  changes above, neither has a referent left. `sinon` and `@types/sinon` stay.
+
 ## 2026-08-26 — optional properties say whether they may be undefined
 
 - **`tsconfig.json`:** turns on `exactOptionalPropertyTypes`. An optional field now accepts

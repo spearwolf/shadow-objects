@@ -60,9 +60,6 @@ catalogs:
     lil-gui:
       specifier: ^0.21.0
       version: 0.21.0
-    lit-html:
-      specifier: ^3.3.3
-      version: 3.3.3
     rimraf:
       specifier: ^6.1.3
       version: 6.1.3
@@ -72,9 +69,6 @@ catalogs:
     three:
       specifier: ^0.185.1
       version: 0.185.1
-    tslib:
-      specifier: ^2.8.1
-      version: 2.8.1
     turbo:
       specifier: ^2.10.11
       version: 2.10.11
@@ -101,9 +95,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
-      '@types/sinon':
-        specifier: 'catalog:'
-        version: 22.0.0
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10)
@@ -128,12 +119,6 @@ importers:
       rimraf:
         specifier: 'catalog:'
         version: 6.1.3
-      sinon:
-        specifier: 'catalog:'
-        version: 22.1.0
-      tslib:
-        specifier: 'catalog:'
-        version: 2.8.1
       turbo:
         specifier: 'catalog:'
         version: 2.10.11
@@ -200,6 +185,9 @@ importers:
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.62.1
+      '@types/sinon':
+        specifier: 'catalog:'
+        version: 22.0.0
       '@vitest/browser':
         specifier: 'catalog:'
         version: 4.1.10(vite@7.3.6(@types/node@24.13.3)(lightningcss@1.33.0))(vitest@4.1.10)
@@ -209,9 +197,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10)
-      lit-html:
-        specifier: 'catalog:'
-        version: 3.3.3
       rimraf:
         specifier: 'catalog:'
         version: 6.1.3
@@ -246,9 +231,6 @@ importers:
       lil-gui:
         specifier: 'catalog:'
         version: 0.21.0
-      lit-html:
-        specifier: 'catalog:'
-        version: 3.3.3
       three:
         specifier: 'catalog:'
         version: 0.185.1
@@ -749,9 +731,6 @@ packages:
   '@types/sinonjs__fake-timers@15.0.1':
     resolution: {integrity: sha512-Ko2tjWJq8oozHzHV+reuvS5KYIRAokHnGbDwGh/J64LntgpbuylF74ipEL24HCyRjf9FOlBiBHWBR1RlVKsI1w==}
 
-  '@types/trusted-types@2.0.7':
-    resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
-
   '@types/whatwg-mimetype@3.0.2':
     resolution: {integrity: sha512-c2AKvDT8ToxLIOUlN51gTiHXflsfIFisS4pO7pDPoKouJCESkhZnEy623gwP9laCy5lnLDAw1vAzu2vM2YLOrA==}
 
@@ -1198,9 +1177,6 @@ packages:
   lil-gui@0.21.0:
     resolution: {integrity: sha512-tpvxN7v1GvE/Tv+GRopfOp0W7fVEjF4PltkuX8vOCIfim22rD1ztvfkoEMcv9lzQeuNUSeIrUmUjBwmlW/oUew==}
 
-  lit-html@3.3.3:
-    resolution: {integrity: sha512-el8M6jK2o3RXBnrSHX3ZKrsN8zEV63pSExTO1wYJz7QndGYZ8353e2a5PPX+qHe2aGayfnchQmkAojaWAREOIA==}
-
   locate-path@5.0.0:
     resolution: {integrity: sha512-t7hw9pI+WvuwNJXwk5zVHpyhIqzg2qTlklJOf0mVxGSbe3Fp2VieZcduNYjaLDoy6p9uGpQEGWG87WpMKlNq8g==}
     engines: {node: '>=8'}
@@ -1411,9 +1387,6 @@ packages:
   totalist@3.0.1:
     resolution: {integrity: sha512-sf4i37nQ2LBx4m3wB74y+ubopq6W/dIzXg0FDGjsYnZHVa1Da8FH853wlL2gtUhg+xJXjfk3kUZS3BRoQeoQBQ==}
     engines: {node: '>=6'}
-
-  tslib@2.8.1:
-    resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
   turbo@2.10.11:
     resolution: {integrity: sha512-yQfwQVoRXwOuyX1LxiJFBFNg6VfuYh+/RyZLd82+isgyLkBXw3S5XRRzvcck1FAjSCG5sVyLd+O1eDMvYa3J7g==}
@@ -1838,8 +1811,6 @@ snapshots:
 
   '@types/sinonjs__fake-timers@15.0.1': {}
 
-  '@types/trusted-types@2.0.7': {}
-
   '@types/whatwg-mimetype@3.0.2': {}
 
   '@types/ws@8.18.1':
@@ -2253,10 +2224,6 @@ snapshots:
 
   lil-gui@0.21.0: {}
 
-  lit-html@3.3.3:
-    dependencies:
-      '@types/trusted-types': 2.0.7
-
   locate-path@5.0.0:
     dependencies:
       p-locate: 4.1.0
@@ -2456,8 +2423,6 @@ snapshots:
       is-number: 7.0.0
 
   totalist@3.0.1: {}
-
-  tslib@2.8.1: {}
 
   turbo@2.10.11:
     optionalDependencies:
