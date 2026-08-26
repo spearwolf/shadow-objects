@@ -4,6 +4,20 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-26 — the configuration and the agent guide name only what exists
+
+- **`biome.json`:** `files.includes` no longer names the extensions `.glsl`, `.vert` and `.frag`.
+  No file of that kind lives in the repository or ever did, and Biome 2.5.9 does not read them:
+  the same run checks the same file count with and without the patterns. The neighboring
+  `**/*.svg` stays and is the counter-proof -- without it, five files join the count.
+- **`packages/shae-offscreen-canvas/package.json`, `pnpm-lock.yaml`:** the canvas package no
+  longer lists `esbuild-plugin-inline-worker` among its devDependencies. Its build is a source
+  distribution: `build.mjs` copies `README.md` and `src/` into `.npm-pkg`, and neither
+  `vite.config.js` nor `vitest.config.ts` load a plugin. The catalog entry stays --
+  `packages/shadow-objects/build.mjs` uses the plugin for the inline base64 worker in the bundle.
+- **`CLAUDE.md`:** the section about the changelogs names the three changelogs and no other
+  document.
+
 ## 2026-08-26 — the creation-scope spec carries its own conditions
 
 - **`packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.spec.ts`:** the two

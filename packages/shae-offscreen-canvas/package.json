@@ -48,7 +48,6 @@
   },
   "devDependencies": {
     "@vitest/coverage-v8": "catalog:",
-    "esbuild-plugin-inline-worker": "catalog:",
     "happy-dom": "catalog:",
     "lil-gui": "catalog:",
     "three": "catalog:",

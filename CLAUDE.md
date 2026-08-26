@@ -85,7 +85,7 @@ Three stages, all in one Node script:
 
 The published `dist/` layout is part of the public API contract — its file list and `dist/package.json` shape must stay stable. `src/distContract.spec.ts` holds both against a recorded expectation, `src/distContract.files.txt` (the sorted file list) and `src/distContract.package.json` (top-level keys, entry points, `exports`, `sideEffects`, dependency names); a change that adds, removes or renames a file under `dist/`, or reshapes `dist/package.json`, has to update both expectation files and a `CHANGELOG.md` entry in the same change. To see what a change does to the output, diff `find packages/shadow-objects/dist -type f | sort` and `packages/shadow-objects/dist/package.json` against a build of the previous commit.
 
-## Changelogs and Backlog — keep them in sync
+## Changelogs — keep them in sync
 
 Three changelogs live in this repo and must be kept current as part of every change that touches them:
 
@@ -105,8 +105,6 @@ When you make a change, decide where it belongs:
 The remaining workspace packages (`shadow-objects-testing`, `shadow-objects-e2e`) are `private` and keep no changelog. A package that starts to be published gets one and follows the same split.
 
 **Keep entries short and precise.** One bullet per change, name the symbol/file/feature, link to a commit if non-obvious. Don't restate the diff.
-
-After updating the changelogs, **sync `Backlog.md`**: cross off or remove items the change resolved, update sections that became stale (e.g. dependency-version snapshots, tooling lists). The Backlog is a living working document, not an audit log — outdated items should leave, not just be marked "done".
 
 ## Conventions that bite
 
