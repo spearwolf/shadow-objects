@@ -3266,10 +3266,6 @@ describe('Kernel', () => {
 
         const failure = new Error('teardown fails');
 
-        // Defined through `shadowObjects.define()` rather than `@ShadowObject`, so `construct.name`
-        // stays the class's own name -- the decorator wraps its target in a subclass of its own,
-        // `class __ShadowObject extends target { … }`, and the displayName below would read that
-        // wrapper's name instead.
         class ThrowsOnDestroyReported {
           constructor({onDestroy: registerDestroy}: ShadowObjectCreationAPI) {
             registerDestroy(() => {

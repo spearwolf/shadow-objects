@@ -19,6 +19,11 @@ export function ShadowObject(options: ShadowObjectDecoratorOptions) {
       }
     };
 
+    // The wrapper is a class expression, so it owns a `name` that shadows the inherited one.
+    // `getDisplayName()` in the Kernel reads that name for every diagnostic about this
+    // shadow-object, so the wrapper carries the name of the class it wraps.
+    Object.defineProperty(__ShadowObject, 'name', {value: target.name, configurable: true});
+
     Registry.get(options.registry).define(options.token, __ShadowObject);
 
     return __ShadowObject;

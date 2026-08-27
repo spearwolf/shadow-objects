@@ -1,5 +1,5 @@
 import {isEventized} from '@spearwolf/eventize';
-import {afterEach, describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 import {generateUUID} from '../utils/generateUUID.js';
 import {Kernel} from './Kernel.js';
 import {Registry} from './Registry.js';
@@ -44,6 +44,43 @@ describe('@ShadowObject decorator', () => {
 
     expect(so.foo).toBe(23);
     expect(so.bar).toBe(666);
+  });
+
+  it('keeps the name of the decorated class', () => {
+    @ShadowObject({token: 'keepsItsName'})
+    class KeepsItsName {}
+
+    expect(KeepsItsName.name).toBe('KeepsItsName');
+  });
+
+  it('names the decorated class in a kernel diagnostic', () => {
+    const registry = new Registry();
+    const kernel = new Kernel(registry);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    @ShadowObject({registry, token: 'plainOnCreateHook'})
+    class PlainOnCreateHook {
+      onCreate() {}
+    }
+
+    expect(PlainOnCreateHook).toBeDefined();
+
+    kernel.createEntity(generateUUID(), 'plainOnCreateHook');
+
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    expect(consoleError.mock.calls[0]).toContain('PlainOnCreateHook');
+
+    consoleError.mockRestore();
+    kernel.destroy();
+  });
+
+  it('lets a static displayName through', () => {
+    @ShadowObject({token: 'carriesADisplayName'})
+    class CarriesADisplayName {
+      static displayName = 'a name of its own';
+    }
+
+    expect(CarriesADisplayName.displayName).toBe('a name of its own');
   });
 });
 

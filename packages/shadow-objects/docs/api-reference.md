@@ -2890,7 +2890,7 @@ export class PlayerController implements OnCreate, OnDestroy {
 
 The decorator automatically calls `eventize(this)` on the instance, making it compatible with the event system. You do not need to call `eventize` manually.
 
-What the decorator returns is a subclass of the decorated class, and that subclass is what goes into the Registry. Instances still pass `instanceof` against your class, but `constructor.name` reads `__ShadowObject` -- worth knowing when a log line or a stack trace is what you are reading.
+What the decorator returns is a subclass of the decorated class, and that subclass is what goes into the Registry. Instances still pass `instanceof` against your class, and the subclass carries your class's name: `constructor.name` reads it, a Kernel log line about that Shadow Object names it, and a stack frame through the constructor shows it.
 
 ---
 
