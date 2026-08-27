@@ -148,6 +148,10 @@ Makes a value available to all Entities in the entire Shadow Environment, regard
 - **Options:** the same as `provideContext`, `clearOnDestroy` included — and the same caching, one signal per name and Shadow Object, with a second call dropping its value and `compare` just as silently.
 - **Departure:** on one Entity exactly as `provideContext` above — every Shadow Object of that Entity feeds the one signal the Entity contributes under this name, and a departure hands the name over to a provider that stays. Across Entities a second level decides: the global value is the first non-empty contribution in the chain, so an Entity whose contribution falls empty lets the next Entity through on its own.
 
+#### A `useContext` consumer that throws costs its own context value and no other
+
+Context values reach their readers a microtask after they are written, and they are handed over one at a time. Reading a context inside an effect means that effect runs during the hand-over, and a throw from it is reported through the Kernel's `ConsoleLogger` at **error** level, naming the context and the uuid of the Entity. The hand-over then moves on: every other Entity waiting for a context value in the same round still gets it, in this Shadow Environment as much as in any other one running beside it. The throw reaches neither the Shadow Object that wrote the value nor the change trail it may have arrived on -- both are long finished by the time the value goes out.
+
 ---
 
 ### 3. Reactivity Primitives

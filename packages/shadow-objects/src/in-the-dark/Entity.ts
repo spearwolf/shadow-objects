@@ -47,22 +47,72 @@ interface IRootContextValue {
   cleanup: () => void;
 }
 
-const updateContextValues: Map<Signal<unknown>, unknown> = new Map();
-let requestedContextValueBatchUpdate = false;
+/** One context value an entity has waiting for its readers in the current round. */
+interface IDeferredContextValue {
+  value: unknown;
+  name: ContextNameType;
+  uuid: string;
+}
 
-const deferContextValueUpdate = (sig: Signal<unknown>, val: unknown) => {
-  updateContextValues.set(sig, val);
-  if (!requestedContextValueBatchUpdate) {
-    requestedContextValueBatchUpdate = true;
-    queueMicrotask(() => {
-      requestedContextValueBatchUpdate = false;
-      const contextValues = Array.from(updateContextValues.entries());
-      updateContextValues.clear();
-      for (const [sig, val] of contextValues) {
-        sig.set(val);
-      }
-    });
+interface IContextValueCollector {
+  values: Map<Signal<unknown>, IDeferredContextValue>;
+  flushRequested: boolean;
+}
+
+/**
+ * The context values waiting to reach their readers, one collector per kernel.
+ *
+ * Per kernel rather than per module for two reasons that are the same one: a write below can fail,
+ * and what it is reported to is a logger, of which there is one per kernel; and an application
+ * running two shadow environments in one realm would otherwise hand the values of one to a round
+ * the other started. The kernel is the key, so a collector reaches no further than the kernel it
+ * belongs to and needs no teardown of its own -- every round empties it, and the last one is
+ * emptied by the kernel going out of reach.
+ */
+const contextValueCollectors = new WeakMap<Kernel, IContextValueCollector>();
+
+const collectorOf = (kernel: Kernel): IContextValueCollector => {
+  let collector = contextValueCollectors.get(kernel);
+  if (collector == null) {
+    collector = {values: new Map(), flushRequested: false};
+    contextValueCollectors.set(kernel, collector);
   }
+  return collector;
+};
+
+/**
+ * Collects the context values written in one task and hands them to their readers a microtask
+ * later, one at a time. A second value for the same signal replaces the one waiting, so a name
+ * written twice in a task reaches its readers once, with the value that stood at the end of it.
+ */
+const deferContextValueUpdate = (kernel: Kernel, signal: Signal<unknown>, val: unknown, name: ContextNameType, uuid: string) => {
+  const collector = collectorOf(kernel);
+
+  collector.values.set(signal, {value: val, name, uuid});
+
+  if (collector.flushRequested) return;
+  collector.flushRequested = true;
+
+  queueMicrotask(() => {
+    collector.flushRequested = false;
+
+    // Taken out and emptied before the first write: a reader below can write a context of its own,
+    // and that value belongs to the round behind this one rather than to the list it walks.
+    const contextValues = Array.from(collector.values.entries());
+    collector.values.clear();
+
+    for (const [contextSignal, entry] of contextValues) {
+      // `set()` runs the effects that read this context synchronously and throws what one of them
+      // threw, so every hand-over stands behind a guard of its own -- the way `#runGuarded()`
+      // below and every other loop over entity state in this project does it. A reader that fails
+      // costs its own value and nothing else: the entities waiting behind it still get theirs.
+      try {
+        contextSignal.set(entry.value);
+      } catch (error) {
+        kernel.logger.error(`an effect of a context value failed (${String(entry.name)}):`, entry.uuid, error);
+      }
+    }
+  });
 };
 
 /**
@@ -638,7 +688,7 @@ export class Entity {
     const valuePath = new SignalsPath([provide, inherited]);
 
     const unsubscribePathValue = on(valuePath, SignalsPath.Value, (val) => {
-      deferContextValueUpdate(context, val);
+      deferContextValueUpdate(this.#kernel, context, val, name, this.#uuid);
     });
 
     const ctx: IContextValue = {name, inherited, provide, context, valuePath, providerFeeds: new Set(), unsubscribePathValue};

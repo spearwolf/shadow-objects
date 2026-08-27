@@ -1059,6 +1059,99 @@ describe('Entity', () => {
     });
   });
 
+  describe('a context value whose reader throws', () => {
+    // `Signal.set()` runs the effects of a signal synchronously and re-throws what one of them
+    // threw, so a reader that fails does so inside the round that hands the context values over.
+    // That is the shape both cases below are built on.
+    const armedThrower = (read: () => unknown) => {
+      let armed = false;
+
+      // `createEffect()` runs its callback right away, and a throw from that first run would leave
+      // through this line rather than through the hand-over the cases are about.
+      createEffect(() => {
+        read();
+        if (armed) throw new Error('a context reader fails');
+      });
+
+      armed = true;
+    };
+
+    it('costs no other entity of the same kernel its value', async () => {
+      const kernel = makeKernel();
+      const [failingUuid, healthyUuid] = [generateUUID(), generateUUID()];
+
+      kernel.createEntity(failingUuid, 'failing');
+      kernel.createEntity(healthyUuid, 'healthy');
+
+      const failing = kernel.getEntity(failingUuid);
+      const healthy = kernel.getEntity(healthyUuid);
+
+      // The failing entity takes its context first, so its value stands ahead of the other one in
+      // the round: what this case is about is the entity waiting behind it.
+      armedThrower(failing.useContext('ctx'));
+      const healthyConsumer = healthy.useContext('ctx');
+
+      const errors = vi.spyOn(kernel.logger, 'error').mockImplementation(() => {});
+
+      failing.provideContext('ctx').set('for the failing reader');
+      healthy.provideContext('ctx').set('for the healthy reader');
+
+      await nextMicrotask();
+
+      expect(value(healthyConsumer), 'the entity behind the failing one still gets its value').toBe('for the healthy reader');
+      expect(errors, 'the failure names the context and the entity').toHaveBeenCalledWith(
+        expect.stringContaining('ctx'),
+        failingUuid,
+        expect.any(Error),
+      );
+      expect(errors, 'and it is reported once').toHaveBeenCalledTimes(1);
+
+      kernel.destroy();
+      errors.mockRestore();
+    });
+
+    it('is reported to the kernel it happened in and leaves the other one alone', async () => {
+      const failingKernel = makeKernel();
+      const otherKernel = makeKernel();
+      const [failingUuid, otherUuid] = [generateUUID(), generateUUID()];
+
+      failingKernel.createEntity(failingUuid, 'failing');
+      otherKernel.createEntity(otherUuid, 'other');
+
+      const failing = failingKernel.getEntity(failingUuid);
+      const other = otherKernel.getEntity(otherUuid);
+
+      armedThrower(failing.useContext('ctx'));
+      const otherConsumer = other.useContext('ctx');
+
+      const failingErrors = vi.spyOn(failingKernel.logger, 'error').mockImplementation(() => {});
+      const otherErrors = vi.spyOn(otherKernel.logger, 'error').mockImplementation(() => {});
+
+      // A single collector shared by every Shadow Environment would fold both writes into the same
+      // scheduling flag and hand them over on one microtask; a guard around each entry would make that
+      // pass just as well as the per-Kernel collector this exercises. So the count below is what tells
+      // them apart: each Kernel schedules its own hand-over independently of what the other is doing.
+      const queueMicrotaskSpy = vi.spyOn(globalThis, 'queueMicrotask');
+
+      failing.provideContext('ctx').set('for the failing reader');
+      other.provideContext('ctx').set('for the other kernel');
+
+      expect(queueMicrotaskSpy, 'each kernel schedules its own hand-over').toHaveBeenCalledTimes(2);
+      queueMicrotaskSpy.mockRestore();
+
+      await nextMicrotask();
+
+      expect(value(otherConsumer), 'the other kernel hands its own values over').toBe('for the other kernel');
+      expect(failingErrors, 'the kernel the reader lives in reports it').toHaveBeenCalledTimes(1);
+      expect(otherErrors, 'the other kernel has nothing to report').not.toHaveBeenCalled();
+
+      failingKernel.destroy();
+      otherKernel.destroy();
+      failingErrors.mockRestore();
+      otherErrors.mockRestore();
+    });
+  });
+
   describe('a release with a step that throws', () => {
     // `Signal.prototype.destroy` stands in for a step deep inside the release that this test cannot
     // reach any other way -- the context entries it walks are private state, reachable only through
