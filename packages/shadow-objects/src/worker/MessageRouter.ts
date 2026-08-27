@@ -35,11 +35,25 @@ export const isReadableMessageData = (data: unknown): boolean => typeof data ===
  * from them, and it decides between a confirmation and a refusal by whether `error` is there
  * at all -- so the wording must never come out empty, not even for an `Error` carrying no
  * message of its own.
+ *
+ * Reading a throw means running its code: `String()` goes through its `toString()`, and
+ * `message` and `name` can be getters of the thrown value's own making. A value that throws
+ * from there -- an object whose `toString()` fails, one with no prototype at all -- must not
+ * take the answer with it: the caller in the view is waiting on a reply, and without one it
+ * sits out its `configureTimeout` or `changeTrailTimeout` and learns nothing about why.
  */
-const describeError = (error: unknown): {error: string; errorName?: string} =>
-  error instanceof Error
-    ? {error: error.message || String(error), errorName: error.name}
-    : {error: String(error) || 'unknown error'};
+const describeError = (error: unknown): {error: string; errorName?: string} => {
+  try {
+    return error instanceof Error
+      ? {error: error.message || String(error), errorName: error.name}
+      : {error: String(error) || 'unknown error'};
+  } catch {
+    // No name goes with it: whatever the value would have said about itself is exactly what
+    // could not be read. The throw is already on the console -- both callers log it before
+    // they ask for a description.
+    return {error: 'an error that cannot be described'};
+  }
+};
 
 export interface MessageRouterOptions {
   kernel?: Kernel;

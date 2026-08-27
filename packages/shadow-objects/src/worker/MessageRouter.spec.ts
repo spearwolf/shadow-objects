@@ -280,6 +280,26 @@ describe('MessageRouter', () => {
       expect(error).toHaveBeenCalledTimes(1);
     });
 
+    // The same door on the import path. The module text is a string: neither type-checked nor
+    // formatted, and `encodeURIComponent` keeps its braces and quotes out of the url.
+    it('reports a module whose throw cannot describe itself', async () => {
+      const {posted, router} = setup();
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const url =
+        'data:text/javascript,' +
+        encodeURIComponent("throw {toString() { throw new Error('this value refuses to describe itself'); }};");
+
+      router.route(message({type: Configure, importModule: url}));
+      await waitForPosted(posted, 1);
+
+      expect(posted).toHaveLength(1);
+      expect(posted[0]!.message.type).toBe(ImportedModule);
+      expect(posted[0]!.message.url).toBe(url);
+      expect(posted[0]!.message.error).toBe('an error that cannot be described');
+      expect(posted[0]!.message.errorName).toBeUndefined();
+      expect(error).toHaveBeenCalledTimes(1);
+    });
+
     // The set of imported modules is keyed by module identity, not by url. A second import of the
     // same url resolves to the same module object, so the registration is skipped -- and the view
     // still gets its confirmation, because the url did import.
@@ -424,6 +444,40 @@ describe('MessageRouter', () => {
       expect(message.errorName).toBe('EntityUuidInUseError');
       expect(message.error).toContain('already held by another entity');
       expect(message.appliedCount).toBe(0);
+    });
+
+    // A thrown value has to be read, and reading it runs its code. This one refuses: `String()`
+    // goes through `toString()`, and this `toString()` throws. That the serial still gets its
+    // answer is the whole case -- without one the caller in the view sits out its
+    // `changeTrailTimeout` and learns nothing about why.
+    it('confirms a change trail whose throw cannot describe itself', () => {
+      const {kernel, posted, router} = setup();
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      const indescribable = {
+        toString() {
+          throw new Error('this value refuses to describe itself');
+        },
+      };
+
+      class ThrowsAnIndescribableValue {
+        constructor() {
+          throw indescribable;
+        }
+      }
+
+      kernel.registry.define('indescribable-token', ThrowsAnIndescribableValue);
+
+      router.route(changeTrailMessage(4, createEntity('a', 'indescribable-token')));
+
+      expect(posted).toHaveLength(1);
+      expect(posted[0]!.message).toEqual({
+        type: AppliedChangeTrail,
+        serial: 4,
+        error: 'an error that cannot be described',
+        appliedCount: 0,
+      });
+      expect(error).toHaveBeenCalledTimes(1);
     });
   });
 
