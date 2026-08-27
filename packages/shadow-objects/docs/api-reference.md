@@ -415,6 +415,30 @@ const interval = setInterval(tick, 1000);
 onDestroy(() => clearInterval(interval));
 ```
 
+#### The creation API past the teardown
+
+The creation API belongs to one Shadow Object and ends with it. Once the teardown is through, every
+member of it does nothing: no subscription is taken, no signal, effect, memo or resource is created,
+no context is provided or read, no message goes to the view, and a cleanup registered there never
+runs. The call returns rather than throwing — what reaches the API late is a timer, a continuation
+behind an `await`, a callback of some object that outlived this one, and none of them has anywhere
+to put a throw. It is reported through the `ConsoleLogger` at **error** level instead, naming the
+member and the Shadow Object, once per member.
+
+The `entity` property is the one member this leaves untouched: it stays the same [`EntityApi`
+instance](#7-the-entity-instance) it always was, and is the one path on which a continuation that
+kept a reference to the creation API stays attached to the live Kernel past this point.
+
+What comes back is inert but real, so a call site needs no special case: `on()` and `once()` give a
+handle with no subscription behind it, and everything signal-shaped gives a destroyed signal —
+reading it yields `undefined`, and a write to it reaches nobody. Each of those belongs to its
+caller alone.
+
+The teardown itself is not past it. An `onDestroy` callback runs while the teardown is under way,
+and the whole creation API is open to it: a last message to the view, a last write to a context, a
+signal it needs on the way out. Whatever it registers there is released with everything else before
+the teardown returns.
+
 ---
 
 ### 7. The `entity` Instance

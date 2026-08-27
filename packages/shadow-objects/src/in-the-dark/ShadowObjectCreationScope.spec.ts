@@ -1,4 +1,4 @@
-import {eventize} from '@spearwolf/eventize';
+import {emit, eventize, on} from '@spearwolf/eventize';
 import {createSignal, type Signal, value} from '@spearwolf/signalize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import type {ShadowObjectCreationAPI, ShadowObjectType} from '../types.js';
@@ -21,6 +21,16 @@ describe('ShadowObjectCreationScope', () => {
       uuid,
       scope: new ShadowObjectCreationScope(kernel.getEntity(uuid), kernel.logger, 'TestScope', new Set<string>()),
     };
+  };
+
+  const nextMicrotask = () => new Promise<void>((resolve) => queueMicrotask(() => resolve()));
+
+  // A scope that has been through `bindTo()`, which is the state every case below starts from: the
+  // creation API is open, and the teardown has a shadow-object to end.
+  const boundScope = () => {
+    const {kernel, uuid, scope} = makeUnboundScope();
+    scope.bindTo(eventize({}), vi.fn(), vi.fn());
+    return {kernel, entity: kernel.getEntity(uuid), scope};
   };
 
   afterEach(() => {
@@ -510,6 +520,203 @@ describe('ShadowObjectCreationScope', () => {
       scope.tearDown();
 
       expect(() => scope.bindTo(eventize({}), vi.fn(), vi.fn())).toThrow(/torn down/);
+
+      kernel.destroy();
+    });
+  });
+
+  describe('a subscription that ends before the teardown', () => {
+    // Every subscription the creation API hands out is booked into the scope's cleanup set, so the
+    // teardown reaches the ones a shadow-object never ended itself. One that has already been
+    // unsubscribed has nothing left for the teardown to do, and an entry left standing holds its
+    // callback -- and everything the callback closes over -- for the rest of the object's life.
+    const forms: Array<[string, (scope: ShadowObjectCreationScope, other: object, callback: () => void) => () => void]> = [
+      ['on, on the entity', (scope, _other, callback) => scope.on('ping', callback)],
+      ['on, on another object', (scope, other, callback) => scope.on(other, 'ping', callback)],
+      ['once, on the entity', (scope, _other, callback) => scope.once('ping', callback)],
+      ['once, on another object', (scope, other, callback) => scope.once(other, 'ping', callback)],
+    ];
+
+    it.each(forms)('%s: unsubscribing gives the handle back to the scope', (_label, subscribe) => {
+      const {kernel, scope} = boundScope();
+      const other = eventize({});
+
+      expect(scope.debugCleanupCounts.secondary, 'the scope starts with nothing booked').toBe(0);
+
+      for (let i = 0; i < 10; i++) {
+        const unsubscribe = subscribe(scope, other, () => {});
+        expect(scope.debugCleanupCounts.secondary, 'a live subscription is booked').toBe(1);
+        unsubscribe();
+        expect(scope.debugCleanupCounts.secondary, 'and one that has ended is not').toBe(0);
+      }
+
+      kernel.destroy();
+    });
+
+    it.each(forms)('%s: one nobody ends is still ended by the teardown', (_label, subscribe) => {
+      const {kernel, entity, scope} = boundScope();
+      const other = eventize({});
+      const callback = vi.fn();
+
+      subscribe(scope, other, callback);
+      scope.tearDown();
+
+      emit(entity, 'ping');
+      emit(other, 'ping');
+
+      expect(callback).not.toHaveBeenCalled();
+
+      kernel.destroy();
+    });
+  });
+
+  describe('the creation API past the teardown', () => {
+    it('takes no subscription and hands back a handle with nothing behind it', () => {
+      const {kernel, entity, scope} = boundScope();
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const callback = vi.fn();
+
+      scope.tearDown();
+
+      const unsubscribe = scope.on('ping', callback);
+      scope.once('ping', callback);
+
+      emit(entity, 'ping');
+
+      expect(callback, 'nothing was subscribed').not.toHaveBeenCalled();
+      expect(scope.debugCleanupCounts.secondary, 'and nothing was booked for a teardown that is over').toBe(0);
+      expect(() => unsubscribe(), 'the handle is a real function').not.toThrow();
+      expect(errors, 'one line per member').toHaveBeenCalledTimes(2);
+
+      kernel.destroy();
+    });
+
+    it('creates no reader and no feed, and hands back one that reads undefined', () => {
+      const {kernel, scope} = boundScope();
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      scope.tearDown();
+
+      const property = scope.useProperty('size');
+      const context = scope.useContext('theme');
+      const parentContext = scope.useParentContext('theme');
+
+      expect(scope.debugCleanupCounts.secondary, 'no feed was linked').toBe(0);
+      expect(value(property)).toBeUndefined();
+      expect(value(context)).toBeUndefined();
+      expect(value(parentContext)).toBeUndefined();
+
+      kernel.destroy();
+    });
+
+    it('attaches no provider to the entity', async () => {
+      const {kernel, entity, scope} = boundScope();
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const reader = entity.useContext('theme');
+
+      scope.tearDown();
+
+      scope.provideContext('theme', 'dark');
+      scope.provideGlobalContext('theme', 'dark');
+
+      // the entity hands a context value on a microtask after it is written
+      await nextMicrotask();
+
+      expect(scope.debugCleanupCounts.contextFeeds, 'no feed was attached').toBe(0);
+      expect(value(reader), 'and the entity heard nothing').toBeUndefined();
+
+      kernel.destroy();
+    });
+
+    it('creates no signal, no effect and no resource', () => {
+      const {kernel, scope} = boundScope();
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const body = vi.fn();
+      const factory = vi.fn(() => 'a resource');
+
+      scope.tearDown();
+
+      const signal = scope.createSignal('never');
+      const effect = scope.createEffect(body);
+      const memo = scope.createMemo(() => 'never');
+      const resource = scope.createResource(factory);
+
+      expect(body, 'the effect body never runs').not.toHaveBeenCalled();
+      expect(factory, 'the resource factory never runs').not.toHaveBeenCalled();
+      expect(effect.destroyed, 'the effect is handed out already destroyed').toBe(true);
+      expect(scope.debugCleanupCounts.secondary).toBe(0);
+      expect(value(signal.get), 'the value it was called with goes nowhere').toBeUndefined();
+      expect(value(memo)).toBeUndefined();
+      expect(value(resource.get)).toBeUndefined();
+
+      kernel.destroy();
+    });
+
+    it('registers no cleanup and sends nothing on', () => {
+      const {kernel, entity, scope} = boundScope();
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const toTheView = vi.spyOn(entity, 'dispatchMessageToView').mockImplementation(() => {});
+      const heard = vi.fn();
+      on(entity, 'ping', heard);
+
+      scope.tearDown();
+
+      scope.onDestroy(vi.fn());
+      scope.onViewEvent(vi.fn());
+      scope.emit('ping');
+      scope.dispatchMessageToView('gone');
+
+      expect(scope.debugCleanupCounts.primary).toBe(0);
+      expect(scope.debugCleanupCounts.secondary).toBe(0);
+      expect(heard, 'nothing is emitted on the entity').not.toHaveBeenCalled();
+      expect(toTheView, 'nothing reaches the view').not.toHaveBeenCalled();
+
+      kernel.destroy();
+    });
+
+    it('reports each member of the creation API once', () => {
+      const {kernel, scope} = boundScope();
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      scope.tearDown();
+
+      scope.useProperty('a');
+      scope.useProperty('b');
+      scope.useProperty('c');
+
+      expect(errors, 'one line for useProperty, however many late calls it takes').toHaveBeenCalledTimes(1);
+      // `ConsoleLogger` prints its namespace as a styled badge, so the wording of a report starts at
+      // the third argument: `console.error('%c<namespace>', styles, ...args)`.
+      expect(errors.mock.calls[0]![2], 'and it names the member and the scope').toMatch(
+        /useProperty\(\).*"TestScope".*has torn down/,
+      );
+
+      scope.useContext('a');
+
+      expect(errors, 'a different member is a line of its own').toHaveBeenCalledTimes(2);
+
+      kernel.destroy();
+    });
+
+    it('is still open to the cleanup callbacks the teardown itself runs', () => {
+      const {kernel, entity, scope} = boundScope();
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const toTheView = vi.spyOn(entity, 'dispatchMessageToView').mockImplementation(() => {});
+
+      // A cleanup callback runs while the teardown is under way, and the creation API is what it
+      // has to say goodbye with. What it registers there is still swept up by the teardown around
+      // it, which is why the API closes at the end of the teardown rather than at its start.
+      scope.onDestroy(() => {
+        scope.dispatchMessageToView('gone');
+        scope.createSignal('a signal of the last moment');
+      });
+
+      scope.tearDown();
+
+      expect(toTheView, 'the message reaches the view').toHaveBeenCalledWith('gone', undefined, undefined, false);
+      expect(errors, 'and nothing is reported').not.toHaveBeenCalled();
+      expect(scope.debugCleanupCounts.secondary, 'what it registered went with the rest').toBe(0);
 
       kernel.destroy();
     });

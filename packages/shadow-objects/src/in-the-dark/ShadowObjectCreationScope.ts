@@ -17,6 +17,28 @@ import type {Entity} from './Entity.js';
 import {onDestroy, onViewEvent} from './events.js';
 
 /**
+ * What a creation-API call gets once the scope has closed: a real `Signal`, created and destroyed
+ * on the spot. Reading it gives `undefined` and writing to it reaches nobody -- a destroyed signal
+ * keeps its value but has neither effect nor link left on it. It belongs to whoever asked for it
+ * and goes when they do, so a scope that is asked again and again after its end holds nothing.
+ */
+const inertSignal = (): Signal<any> => {
+  const sig = createSignal<any>(undefined);
+  destroySignal(sig);
+  return sig;
+};
+
+/** The same for `createEffect()`: a real `Effect`, never run, already destroyed. */
+const inertEffect = (): ReturnType<typeof createEffect> => {
+  const effect = createEffect(() => {}, {autorun: false});
+  effect.destroy();
+  return effect;
+};
+
+/** The handle a late `on()` or `once()` gets: there is no subscription behind it. */
+const noSubscription = (): void => {};
+
+/**
  * Everything a single shadow-object was given at construction time, and the end of all of it.
  *
  * The scope holds the signals, links and subscriptions the creation API hands out, and it hands the API
@@ -31,8 +53,10 @@ import {onDestroy, onViewEvent} from './events.js';
  * `onViewEvent`, `createSignal`, `createEffect` and `createMemo`. They are named that way deliberately,
  * because those names are part of the `ShadowObjectCreationAPI` contract a shadow-object destructures by
  * name. Seven of them call or reference their namesake inside their own body; `onDestroy` is the exception,
- * as its import is the entity event that `bindTo()` subscribes to. A bare name inside a body is therefore
- * always the import, and a call on the method of the same name always carries `this.`.
+ * as its import is the entity event that `bindTo()` subscribes to. A bare name inside one of these eight
+ * bodies is therefore always the import, and a call on the method of the same name always carries `this.`
+ * -- `inertSignal`, `inertEffect` and `noSubscription` are bare names of a different kind, module-level
+ * functions with no method of the same name to tell them apart from.
  */
 export class ShadowObjectCreationScope {
   readonly #entity: Entity;
@@ -95,6 +119,17 @@ export class ShadowObjectCreationScope {
 
   #isTornDown = false;
 
+  // Armed at the *end* of `tearDown()`, not at its start, and the difference is the whole point:
+  // the teardown runs the shadow-object's own cleanup callbacks, and those are allowed the creation
+  // API -- a goodbye to the view, a last write. What they register there is still swept up by the
+  // steps behind them. What arrives after the teardown has returned is not, which is what this
+  // closes.
+  #isCreationApiClosed = false;
+
+  // The member names whose late call has already been reported, at most as many as the API has
+  // members. Lazy, because a scope that is used correctly never allocates it.
+  #lateCallsReported: Set<string> | undefined;
+
   /**
    * The name the kernel gave this scope, taken from the constructor it belongs to rather than from
    * the shadow-object that came out of it. The two agree for most forms -- a class and a function
@@ -125,6 +160,21 @@ export class ShadowObjectCreationScope {
       releaseScope: this.#releaseScope,
       forgetShadowObject: this.#forgetShadowObject,
       unsubscribeFromEntityDestroy: this.#unsubscribeFromEntityDestroy,
+    };
+  }
+
+  /**
+   * How many cleanup callbacks the scope is holding, one count per set, read without waiting on a
+   * garbage collector: a test can subscribe and unsubscribe n times and see that the scope let go
+   * of each handle as it went, rather than inferring it from what a collector happened to do.
+   *
+   * @internal
+   */
+  get debugCleanupCounts(): {primary: number; secondary: number; contextFeeds: number} {
+    return {
+      primary: this.#unsubscribePrimary.size,
+      secondary: this.#unsubscribeSecondary.size,
+      contextFeeds: this.#unsubscribeContextFeeds.size,
     };
   }
 
@@ -242,6 +292,12 @@ export class ShadowObjectCreationScope {
    * that failed, and is not re-thrown -- neither `changeToken()` nor `destroyEntity()` deliver it to their
    * caller, nor does it stop the destroy notification the entity is still delivering to whatever comes after
    * this shadow-object in the same run.
+   *
+   * The creation API is closed as the very last step, after everything above has run. Until then it
+   * is open, because the cleanup callbacks of the shadow-object run inside this method and are
+   * entitled to it -- a last message to the view, a last write to a context. What such a callback
+   * registers is still reached by the steps behind it. What arrives once this method has returned
+   * is not, and is turned away by `#refuseAfterTearDown()`.
    */
   tearDown(): void {
     if (this.#isTornDown) return;
@@ -314,6 +370,8 @@ export class ShadowObjectCreationScope {
     this.#releaseScope = undefined;
     this.#forgetShadowObject = undefined;
     this.#unsubscribeFromEntityDestroy = undefined;
+
+    this.#isCreationApiClosed = true;
   }
 
   /**
@@ -327,6 +385,22 @@ export class ShadowObjectCreationScope {
     } catch (error) {
       this.#logger.error(`shadow-object teardown failed (${step}):`, this.#displayName, error);
     }
+  }
+
+  /**
+   * Books an `on()` or `once()` subscription into the cleanup set and hands back a handle that takes
+   * it out again. Unsubscribing releases the callback there and then rather than at the teardown, so
+   * a shadow-object that subscribes and unsubscribes over the whole life of its entity holds one
+   * handle at a time instead of one per call. The target makes no difference to that: a subscription
+   * on the entity ends the same way one on any other object does.
+   */
+  #trackSubscription(unsubscribe: () => void): () => void {
+    this.#unsubscribeSecondary.add(unsubscribe);
+
+    return Object.assign(() => {
+      this.#unsubscribeSecondary.delete(unsubscribe);
+      unsubscribe();
+    }, unsubscribe);
   }
 
   /**
@@ -388,7 +462,36 @@ export class ShadowObjectCreationScope {
     this.#shownDeprecations.add(apiName);
   }
 
+  /**
+   * Answers whether the creation API still has anything to give, and reports it where it has not.
+   *
+   * Past the teardown the scope has released what it held and cleared what it tracked. A call
+   * arriving now would fill those maps again with entries no second teardown ever reaches -- the
+   * teardown runs once, and it has run. Such a call is therefore turned away rather than served.
+   *
+   * Turned away quietly: the callers that arrive late are the ones with nobody to catch a throw --
+   * a timer, a continuation behind an `await`, a callback of some other object that outlived this
+   * one. It is reported instead, through `error` for the same reason the deprecation report above
+   * uses it: this names a mistake in the calling code, and its author has to see it wherever the
+   * application runs. Once per member name and scope, because a stale timer comes back on its next
+   * tick and a line per tick would bury the first one.
+   */
+  #refuseAfterTearDown(apiName: string): boolean {
+    if (!this.#isCreationApiClosed) return false;
+
+    if (!this.#lateCallsReported?.has(apiName)) {
+      (this.#lateCallsReported ??= new Set()).add(apiName);
+      this.#logger.error(
+        `[shadow-objects] ${apiName}(): the creation scope of "${this.#displayName}" has torn down — the call does nothing. Something is still holding the creation API past the end of its shadow-object.`,
+      );
+    }
+
+    return true;
+  }
+
   useProperty<T = any>(name: string, options?: SignalValueOptions<T> | CompareFunc<T | undefined>): SignalReader<Maybe<T>> {
+    if (this.#refuseAfterTearDown('useProperty')) return inertSignal().get;
+
     this.#reportDeprecatedIsEqualOption(options, 'useProperty');
 
     const opts = typeof options === 'function' ? {compare: options} : options;
@@ -476,6 +579,8 @@ export class ShadowObjectCreationScope {
     sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>,
     options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
   ) {
+    if (this.#refuseAfterTearDown('provideContext')) return inertSignal();
+
     this.#reportDeprecatedIsEqualOption(options, 'provideContext');
 
     const opts = typeof options === 'function' ? {compare: options} : options;
@@ -494,6 +599,8 @@ export class ShadowObjectCreationScope {
     sourceOrInitialValue?: T | SignalReader<T> | SignalReader<T | undefined>,
     options?: ProvideContextOptions<T> | CompareFunc<T | undefined>,
   ) {
+    if (this.#refuseAfterTearDown('provideGlobalContext')) return inertSignal();
+
     this.#reportDeprecatedIsEqualOption(options, 'provideGlobalContext');
 
     const opts = typeof options === 'function' ? {compare: options} : options;
@@ -508,6 +615,8 @@ export class ShadowObjectCreationScope {
   }
 
   useContext<T = unknown>(name: string | symbol, options?: SignalValueOptions<T> | CompareFunc<T | undefined>) {
+    if (this.#refuseAfterTearDown('useContext')) return inertSignal().get;
+
     this.#reportDeprecatedIsEqualOption(options, 'useContext');
 
     const opts = typeof options === 'function' ? {compare: options} : options;
@@ -524,6 +633,8 @@ export class ShadowObjectCreationScope {
   }
 
   useParentContext<T = unknown>(name: string | symbol, options?: SignalValueOptions<T> | CompareFunc<T | undefined>) {
+    if (this.#refuseAfterTearDown('useParentContext')) return inertSignal().get;
+
     this.#reportDeprecatedIsEqualOption(options, 'useParentContext');
 
     const opts = typeof options === 'function' ? {compare: options} : options;
@@ -540,6 +651,8 @@ export class ShadowObjectCreationScope {
   }
 
   createSignal(...args: any[]): any {
+    if (this.#refuseAfterTearDown('createSignal')) return inertSignal();
+
     // @ts-ignore
     const sig = createSignal(...args);
     this.#unsubscribeSecondary.add(() => {
@@ -549,6 +662,8 @@ export class ShadowObjectCreationScope {
   }
 
   createEffect(...args: any[]): ReturnType<typeof createEffect> {
+    if (this.#refuseAfterTearDown('createEffect')) return inertEffect();
+
     // @ts-ignore
     const effect = createEffect(...args);
     this.#unsubscribeSecondary.add(effect.destroy);
@@ -556,6 +671,8 @@ export class ShadowObjectCreationScope {
   }
 
   createMemo<T = unknown>(...args: Parameters<typeof createMemo<T>>): SignalReader<T> {
+    if (this.#refuseAfterTearDown('createMemo')) return inertSignal().get;
+
     const sig = createMemo<T>(...args);
     this.#unsubscribeSecondary.add(() => {
       destroySignal(sig);
@@ -564,6 +681,8 @@ export class ShadowObjectCreationScope {
   }
 
   createResource<T = unknown>(factory: () => T | undefined, cleanup?: (resource: NonNullable<T>) => unknown): Signal<Maybe<T>> {
+    if (this.#refuseAfterTearDown('createResource')) return inertSignal();
+
     const resourceSignal = createSignal<Maybe<T>>();
 
     const effect = createEffect(() => {
@@ -598,44 +717,36 @@ export class ShadowObjectCreationScope {
   }
 
   on(...args: any[]): ReturnType<typeof on> {
+    if (this.#refuseAfterTearDown('on')) return noSubscription;
+
     const [firstArg] = args;
-    if (typeof firstArg === 'string' || typeof firstArg === 'symbol' || Array.isArray(firstArg)) {
-      // @ts-ignore
-      const unsub = on(this.#entity, ...args);
-      this.#unsubscribeSecondary.add(unsub);
-      return unsub;
-    }
-    // @ts-ignore
-    const unsub = on(...args);
-    this.#unsubscribeSecondary.add(unsub);
-    // Unsubscribing takes the callback out of the cleanup set as well, so a shadow-object that
-    // subscribes and unsubscribes over and over does not grow that set without bound.
-    return Object.assign(() => {
-      this.#unsubscribeSecondary.delete(unsub);
-      unsub();
-    }, unsub);
+    const unsubscribe =
+      typeof firstArg === 'string' || typeof firstArg === 'symbol' || Array.isArray(firstArg)
+        ? // @ts-ignore
+          on(this.#entity, ...args)
+        : // @ts-ignore
+          on(...args);
+
+    return this.#trackSubscription(unsubscribe);
   }
 
   once(...args: any[]): ReturnType<typeof once> {
+    if (this.#refuseAfterTearDown('once')) return noSubscription;
+
     const [firstArg] = args;
-    if (typeof firstArg === 'string' || typeof firstArg === 'symbol' || Array.isArray(firstArg)) {
-      // @ts-ignore
-      const unsub = once(this.#entity, ...args);
-      this.#unsubscribeSecondary.add(unsub);
-      return unsub;
-    }
-    // @ts-ignore
-    const unsub = once(...args);
-    this.#unsubscribeSecondary.add(unsub);
-    // Unsubscribing takes the callback out of the cleanup set as well, so a shadow-object that
-    // subscribes and unsubscribes over and over does not grow that set without bound.
-    return Object.assign(() => {
-      this.#unsubscribeSecondary.delete(unsub);
-      unsub();
-    }, unsub);
+    const unsubscribe =
+      typeof firstArg === 'string' || typeof firstArg === 'symbol' || Array.isArray(firstArg)
+        ? // @ts-ignore
+          once(this.#entity, ...args)
+        : // @ts-ignore
+          once(...args);
+
+    return this.#trackSubscription(unsubscribe);
   }
 
   emit(...args: any[]): void {
+    if (this.#refuseAfterTearDown('emit')) return;
+
     const [firstArg] = args;
     if (typeof firstArg === 'string' || typeof firstArg === 'symbol' || Array.isArray(firstArg)) {
       // @ts-ignore
@@ -647,6 +758,8 @@ export class ShadowObjectCreationScope {
   }
 
   onViewEvent(callback: (type: string, data: unknown) => any): void {
+    if (this.#refuseAfterTearDown('onViewEvent')) return;
+
     const unsub = on(this.#entity, onViewEvent, (type: string, data: unknown) => {
       callback(type, data);
     });
@@ -654,10 +767,14 @@ export class ShadowObjectCreationScope {
   }
 
   onDestroy(callback: () => any): void {
+    if (this.#refuseAfterTearDown('onDestroy')) return;
+
     this.#unsubscribePrimary.add(callback);
   }
 
   dispatchMessageToView(type: string, data?: unknown, transferables?: Transferable[], traverseChildren = false): void {
+    if (this.#refuseAfterTearDown('dispatchMessageToView')) return;
+
     this.#entity.dispatchMessageToView(type, data, transferables, traverseChildren);
   }
 }
