@@ -2752,6 +2752,11 @@ Returns the root of the Entity Context tree for a context name, creating it on f
 
 Destroys the Kernel and all its Entities.
 
+A destroyed Kernel holds no Entity: the Entity map, the set of root Entities and the cached
+traversal order are all released, whatever a teardown callback along the way threw. A caller
+keeping the Kernel past its `destroy()` — the `kernel` of a `LocalShadowObjectEnv`, for
+instance — keeps an empty one.
+
 - **Signature:** `destroy(): void`
 
 ### Kernel Events

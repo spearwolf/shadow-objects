@@ -144,6 +144,23 @@ export class Kernel {
   }
 
   /**
+   * How many entities the kernel is holding, one count per store, read without waiting on a garbage
+   * collector: a test can destroy a kernel and see that it let go of every one of them, rather than
+   * inferring it from what a collector happened to do. The two traversal counts are the cached
+   * breadth-first order and its reverse.
+   *
+   * @internal
+   */
+  get debugEntityCounts(): {entities: number; rootEntities: number; traversal: number; traversalReversed: number} {
+    return {
+      entities: this.#entities.size,
+      rootEntities: this.#rootEntities.size,
+      traversal: this.#allEntities.length,
+      traversalReversed: this.#allEntitiesReversed.length,
+    };
+  }
+
+  /**
    * @returns all entities in breadth-first order
    *
    * The list belongs to the caller: sorting or reversing it changes nothing about what the next call
@@ -931,6 +948,12 @@ export class Kernel {
     // Whatever a failing callback left half torn down, the kernel holds none of it afterwards.
     this.#entities.clear();
     this.#rootEntities.clear();
+
+    // The flag on its own would only mark the cached order stale -- the two arrays behind it would go
+    // on holding every entity of this kernel until some later walk overwrote them, and a caller that
+    // keeps the kernel past its teardown never makes that walk happen.
+    this.#allEntities.length = 0;
+    this.#allEntitiesReversed.length = 0;
     this.#allEntitiesNeedUpdate = true;
 
     // After the entities, not before: a shadow-object callback that reads a global context during its

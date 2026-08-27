@@ -4187,6 +4187,32 @@ describe('Kernel', () => {
       for (const uuid of [aUuid, bUuid, cUuid]) {
         expect(kernel.hasEntity(uuid)).toBe(false);
       }
+
+      expect(kernel.debugEntityCounts, 'the cached traversal order goes too, half-failed teardown or not').toEqual({
+        entities: 0,
+        rootEntities: 0,
+        traversal: 0,
+        traversalReversed: 0,
+      });
+    });
+
+    it('lets go of the cached traversal order along with the entities', () => {
+      const kernel = new Kernel(new Registry());
+      makeRoots(kernel);
+
+      expect(kernel.traverseLevelOrderBFS(), 'the walk fills the cache the teardown has to release').toHaveLength(3);
+      expect(kernel.debugEntityCounts).toEqual({entities: 3, rootEntities: 3, traversal: 3, traversalReversed: 3});
+
+      kernel.destroy();
+
+      expect(kernel.debugEntityCounts, 'a destroyed kernel holds no entity in any of its four stores').toEqual({
+        entities: 0,
+        rootEntities: 0,
+        traversal: 0,
+        traversalReversed: 0,
+      });
+
+      expect(kernel.traverseLevelOrderBFS(), 'and the walk still answers, with nothing in it').toEqual([]);
     });
 
     // No failing callback here on purpose: with one, the statement would hang on whether the
