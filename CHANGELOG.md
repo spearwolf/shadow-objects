@@ -4,6 +4,10 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-27 — the build-system design spec is marked as history
+
+- **`docs/superpowers/specs/2026-05-09-build-system-renewal-design.md`:** carries the status "Historical" with the date it was archived, in place of "Approved (in-flight)". The document designs the library build on tsdown; the build that exists is `packages/shadow-objects/build.mjs` on esbuild, and tsdown appears in no other file of the repository. Its tooling table, its directory tree and its phasing stay as they were written — they are the plan of that day, and the header now says so, names `CLAUDE.md` as the source for the toolchain as it stands, and gives the one line that went another way. A document that announces itself as in-flight and designs a build nobody uses costs its reader more than no document would.
+
 ## 2026-08-26 — the holdback notes name the mechanism, not a version
 
 - **`CLAUDE.md`, `AGENTS.md`:** the note on the deliberate `turbo` holdback names where the

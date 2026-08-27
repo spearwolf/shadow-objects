@@ -1,6 +1,8 @@
 # Build System Renewal — Design
 
-> Status: Approved (in-flight). Date: 2026-05-09.
+> **Status: Historical.** Written 2026-05-09, archived 2026-08-27. This document is the design as it was approved, kept as the record of what was planned. It is not a plan anyone is still working through, and nothing in it is maintained: the tool versions, the directory tree and the verification commands below describe that plan, not the repository. `CLAUDE.md` describes the toolchain as it stands and is the source to go by; where the two disagree, `CLAUDE.md` is right.
+>
+> One line of the plan went another way: the library build is `packages/shadow-objects/build.mjs` on esbuild rather than tsdown. The fallback this document proposes for its own first risk — keep an esbuild step for the inlined worker — became the whole build, and tsdown appears in no other file of the repository.
 
 ## Goal
 
