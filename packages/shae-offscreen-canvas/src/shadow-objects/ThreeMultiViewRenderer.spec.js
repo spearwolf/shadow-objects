@@ -277,6 +277,93 @@ describe('ThreeMultiViewRenderer', () => {
 
       expect(createImageBitmap).toHaveBeenLastCalledWith(mvr.canvas, 0, 360, 320, 240);
     });
+
+    it('draws one view at a time, in the order the calls arrived', async () => {
+      const {mvr} = create();
+
+      const first = mvr.createView(100, 100);
+      first.scene = {mark: 'firstScene'};
+      first.camera = {mark: 'firstCamera'};
+
+      const second = mvr.createView(200, 200);
+      second.scene = {mark: 'secondScene'};
+      second.camera = {mark: 'secondCamera'};
+
+      // The read-back of the first frame is held open by hand: this is the window in which the
+      // second view would draw over the pixels the first one is still being read from.
+      let finishFirstReadBack;
+      createImageBitmap.mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishFirstReadBack = () => resolve({mark: 'firstImage'});
+        }),
+      );
+
+      const firstRender = mvr.renderView(first);
+      const secondRender = mvr.renderView(second);
+
+      await settle();
+
+      expect(mvr.renderer.log.filter((entry) => entry[0] === 'render')).toEqual([['render', first.scene, first.camera]]);
+
+      finishFirstReadBack();
+      await settle();
+
+      expect(mvr.renderer.log.filter((entry) => entry[0] === 'render')).toEqual([
+        ['render', first.scene, first.camera],
+        ['render', second.scene, second.camera],
+      ]);
+
+      await expect(firstRender).resolves.toEqual({mark: 'firstImage'});
+      await expect(secondRender).resolves.toEqual({mark: 'imageBitmap'});
+    });
+
+    // A rejected link does not end the chain: the view behind the rejected one still takes its turn.
+    // The rejection here comes from the ownership guard, so nothing is drawn for the foreign view at all.
+    it('carries on with the next view after a call that was rejected', async () => {
+      const {mvr} = create();
+
+      const foreign = {viewId: 99999, width: 100, height: 100, scene: {}, camera: {}, viewport: undefined};
+
+      const mine = mvr.createView(100, 100);
+      mine.scene = {mark: 'scene'};
+      mine.camera = {mark: 'camera'};
+
+      const failing = mvr.renderView(foreign);
+      const following = mvr.renderView(mine);
+
+      await expect(failing).rejects.toThrow('not my view: 99999');
+      await expect(following).resolves.toEqual({mark: 'imageBitmap'});
+    });
+
+    it('answers no image for a view destroyed while it waited for its turn', async () => {
+      const {mvr} = create();
+
+      const first = mvr.createView(100, 100);
+      first.scene = {mark: 'firstScene'};
+      first.camera = {mark: 'firstCamera'};
+
+      const second = mvr.createView(100, 100);
+      second.scene = {mark: 'secondScene'};
+      second.camera = {mark: 'secondCamera'};
+
+      let finishFirstReadBack;
+      createImageBitmap.mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishFirstReadBack = () => resolve({mark: 'firstImage'});
+        }),
+      );
+
+      mvr.renderView(first);
+      const secondRender = mvr.renderView(second);
+
+      // handed back while it is still waiting behind the first view
+      mvr.destroyView(second);
+
+      finishFirstReadBack();
+
+      await expect(secondRender).resolves.toBeUndefined();
+      expect(mvr.renderer.log.filter((entry) => entry[0] === 'render')).toEqual([['render', first.scene, first.camera]]);
+    });
   });
 
   describe('teardown', () => {

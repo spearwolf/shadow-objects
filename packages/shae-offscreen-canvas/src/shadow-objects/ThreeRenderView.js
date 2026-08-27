@@ -67,18 +67,34 @@ export class ThreeRenderView {
 
     provideContext(ThreeRenderViewContext, renderView);
 
+    // The frame listener is async, and eventize hands it the next frame whether or not the previous
+    // one has come back. A render is over once its image has been read off the canvas the renderer
+    // shares between all its views, so a frame arriving before that is dropped rather than queued:
+    // the next one is one tick of the frame loop away, and dropping keeps at most one render per
+    // view outstanding, while a queue would grow for as long as the renderer stays behind.
+    let frameInFlight = false;
+
     on(entity, OnFrame, Priority.Low, async () => {
+      if (frameInFlight) return;
+
       const view = renderView.get();
 
       if (view) {
         const multiViewRenderer = getMultiViewRenderer();
 
         if (multiViewRenderer && getImageBitmapRenderer()) {
-          const image = await multiViewRenderer.renderView(view);
+          frameInFlight = true;
 
-          if (image) {
-            getImageBitmapRenderer()?.transferFromImageBitmap(image);
-            image.close();
+          try {
+            const image = await multiViewRenderer.renderView(view);
+
+            if (image) {
+              getImageBitmapRenderer()?.transferFromImageBitmap(image);
+              image.close();
+            }
+          } finally {
+            // a render that failed frees the view for the next frame just as one that succeeded
+            frameInFlight = false;
           }
         }
       }

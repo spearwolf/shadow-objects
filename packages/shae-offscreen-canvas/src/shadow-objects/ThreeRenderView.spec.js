@@ -328,21 +328,48 @@ describe('ThreeRenderView', () => {
       expect(order).toEqual(['laterListener', 'threeRenderView']);
     });
 
-    // Measured, not endorsed: nothing in `ThreeRenderView` keeps a render in flight from starting a
-    // second one for the same view. Two frames arriving before the first `renderView()` resolves both
-    // reach the mock renderer with the same view — a lock per view would make the second one skip.
-    it('enters the frame callback twice for the same view when renderView never resolves', async () => {
+    // The listener is `async`, and eventize hands it the next frame whether or not the previous one
+    // has come back. A render is over once its image has been read off the shared canvas, and a
+    // frame that arrives before that passes without rendering.
+    it('skips a frame for a view whose previous frame has not come back', async () => {
       const {child, renderer, view} = await setupRendering();
 
-      renderer.renderView.mockReturnValue(new Promise(() => {}));
+      let letTheFirstFrameFinish;
+      renderer.renderView.mockReturnValueOnce(
+        new Promise((resolve) => {
+          letTheFirstFrameFinish = () => resolve(undefined);
+        }),
+      );
 
       emit(child, OnFrame, {});
       emit(child, OnFrame, {});
       await settle();
 
+      expect(renderer.renderView).toHaveBeenCalledTimes(1);
+      expect(renderer.renderView).toHaveBeenCalledWith(view);
+
+      letTheFirstFrameFinish();
+      await settle();
+
+      emit(child, OnFrame, {});
+      await settle();
+
+      expect(renderer.renderView, 'the view is free again once its frame came back').toHaveBeenCalledTimes(2);
+    });
+
+    it('takes the next frame after one whose render failed', async () => {
+      const {child, renderer} = await setupRendering();
+
+      renderer.renderView.mockRejectedValueOnce(new Error('the render failed'));
+
+      // the rejection leaves the async listener unhandled; captured so it does not surface as a
+      // file-level note with no failing assertion attached
+      await captureUncaught(() => emit(child, OnFrame, {}));
+
+      emit(child, OnFrame, {});
+      await settle();
+
       expect(renderer.renderView).toHaveBeenCalledTimes(2);
-      expect(renderer.renderView).toHaveBeenNthCalledWith(1, view);
-      expect(renderer.renderView).toHaveBeenNthCalledWith(2, view);
     });
   });
 });

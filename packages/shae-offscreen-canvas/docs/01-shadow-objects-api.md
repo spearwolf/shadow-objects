@@ -80,7 +80,7 @@ Provides an API to create and render multiple rendering views:
 
 > `threeMultiViewRenderer.createView(width, height)` &rarr; _RenderView_
 
-Creates a new _RenderView_ structure. Once created, the _view_ will be rendered automatically with the next frame. however, the user has to set a scene and a camera for this. the view structure can be adjusted at any time (e.g. `width` and `height` or `scene` and `camera` can be changed at any time if you want).
+Creates a new _RenderView_ structure. Once created, the _view_ is rendered automatically with one of the next frames. however, the user has to set a scene and a camera for this. the view structure can be adjusted at any time (e.g. `width` and `height` or `scene` and `camera` can be changed at any time if you want).
 
 ##### RenderView Structure
 
@@ -97,6 +97,8 @@ Creates a new _RenderView_ structure. Once created, the _view_ will be rendered 
 
 Will destroy the _view_. Once destroyed, it will of course no longer be rendered.
 
+Every view of one renderer draws with the same `WebGLRenderer` onto the same canvas, and reading a drawn frame back off that canvas is asynchronous. `renderView()` takes its turn accordingly: one view is drawn and read out at a time, in the order the calls arrived.
+
 When the entity ends, the renderer releases its WebGL context. `renderView()` answers `undefined` from that point on.
 
 #### provide context
@@ -105,7 +107,7 @@ When the entity ends, the renderer releases its WebGL context. `renderView()` an
 |------|------|-------------|
 | `ThreeMultiViewRenderer` | [ThreeMultiViewRenderer](../src/shadow-objects/ThreeMultiViewRenderer.js) | the shadow object itself, offers the **RenderView API** |
 
-[ThreeRenderView](#threerenderview) is what drives this API for a single entity: it takes one view, keeps it at the size of the canvas and renders it on every frame.
+[ThreeRenderView](#threerenderview) is what drives this API for a single entity: it takes one view, keeps it at the size of the canvas and has it rendered again with the next frame after the previous frame of that view has come back.
 
 
 ### ThreeRenderView
@@ -130,6 +132,6 @@ The renderer is not part of the entity: it has to be in reach through the contex
 
 #### local entity events
 
-The shadow object listens to the `onFrame` event of its entity at `Priority.Low`, so that a shadow object setting `scene` and `camera` for this frame has run before it. It renders the view, transfers the resulting [ImageBitmap](https://developer.mozilla.org/en-US/docs/Web/API/ImageBitmap) into the `ImageBitmapRenderingContext` and closes it. A frame the renderer answers with no image transfers nothing.
+The shadow object listens to the `onFrame` event of its entity at `Priority.Low`, so that a shadow object setting `scene` and `camera` for this frame has run before it. It renders the view, transfers the resulting [ImageBitmap](https://developer.mozilla.org/en-US/docs/Web/API/ImageBitmap) into the `ImageBitmapRenderingContext` and closes it. A frame the renderer answers with no image transfers nothing. One frame per view is in flight at a time: a frame that arrives while the render of the previous one is still open passes without rendering.
 
 The view goes back to the renderer through `destroyView()` exactly once — when the shadow object is torn down, and when the renderer leaves the context.
