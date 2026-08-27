@@ -589,6 +589,52 @@ describe('ShaeOffscreenCanvasElement', () => {
       // more. Measured behavior, not endorsed behavior.
       expect(syncSpy).toHaveBeenCalledTimes(1);
     });
+
+    it('tells the entity it gets on the way back in the display size it still holds', () => {
+      const el = connectWithSize('reconnect-unchanged', 320, 200);
+      drain(el);
+      frame(el);
+      drain(el);
+
+      el.remove();
+      drain(el);
+
+      document.body.appendChild(el);
+      drain(el);
+
+      frame(el);
+
+      const props = propsOf(drain(el), el);
+      expect(props.get(CanvasWidth)).toBe(320);
+      expect(props.get(CanvasHeight)).toBe(200);
+      expect(props.get(PixelRatio)).toBe(1);
+      expect(props.get(Fps)).toBe(60);
+    });
+
+    it('tells a fresh entity its pixel ratio when the display box measures nothing on either side of the reconnect', () => {
+      // A box that measures nothing before and after leaves both size comparisons reading 0
+      // against 0 on the frame after the reconnect. The pixel ratio is the only quantity left that
+      // can carry the branch, and it carries it only because the element gives it up on the way
+      // out.
+      const el = connectWithSize('reconnect-empty-box', 0, 0);
+      drain(el);
+      frame(el);
+      drain(el);
+
+      el.remove();
+      drain(el);
+
+      document.body.appendChild(el);
+      drain(el);
+
+      frame(el);
+
+      const props = propsOf(drain(el), el);
+      expect(props.get(CanvasWidth)).toBe(0);
+      expect(props.get(CanvasHeight)).toBe(0);
+      expect(props.get(PixelRatio)).toBe(1);
+      expect(props.get(Fps)).toBe(60);
+    });
   });
 
   describe('the display size', () => {

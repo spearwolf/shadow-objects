@@ -237,6 +237,7 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
     this.#unwatchPixelRatio();
     this.#unobserveDisplaySize();
     this.#destroyViewComponentEffect();
+    this.#forgetWhatTheEntityWasTold();
   }
 
   attributeChangedCallback(name) {
@@ -255,6 +256,17 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
   #lastPixelRatio = 0;
   #lastPixelZoom = 1;
   #lastFps = 0;
+
+  // What the entity was told is state of the connection, not of the element: leaving the document
+  // ends the entity behind this element, and the one that takes its place on the way back in
+  // starts out knowing nothing. #lastPixelRatio goes back to a value devicePixelRatio never takes,
+  // so the first frame after a reconnect reports a change whatever the display box measures by
+  // then — the two fields above it would both read 0 for a box that measures nothing.
+  #forgetWhatTheEntityWasTold() {
+    this.#lastCanvasWidth = 0;
+    this.#lastCanvasHeight = 0;
+    this.#lastPixelRatio = 0;
+  }
 
   [FrameLoop.OnFrame]() {
     const width = this.#displayWidth;
