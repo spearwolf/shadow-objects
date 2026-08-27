@@ -360,7 +360,8 @@ describe('ShadowEnv', () => {
       const first = env.syncWait();
       const second = env.syncWait();
 
-      // one cycle, one promise: the second caller joins the wait rather than opening a new one
+      // both calls stand in the same task, and so ahead of the change trail this cycle builds:
+      // the second caller joins the wait rather than opening a new one
       expect(second).toBe(first);
 
       await expect(withTimeout(first)).rejects.toBe(reason);
@@ -456,6 +457,136 @@ describe('ShadowEnv', () => {
       await expect(withTimeout(env.syncWait())).resolves.toHaveLength(1);
 
       env.destroy();
+    });
+  });
+
+  describe('a change made while a cycle is in flight', () => {
+    /**
+     * A proxy that keeps every change trail it is handed until the test lets it through. The
+     * confirmation of a round trip is the window these cases are about, and holding it open by
+     * hand makes that window a fixed point rather than a matter of timing.
+     */
+    class GatedProxy implements IShadowObjectEnvProxy {
+      onMessageToView?: (event: any) => any;
+      onProxyFailed?: (reason: unknown) => any;
+
+      /** The trails it was handed, in the order they came in. */
+      trails: ChangeTrailType[] = [];
+
+      readonly #gates: Array<{resolve: () => void; reject: (reason: unknown) => void}> = [];
+
+      async start(): Promise<void> {}
+
+      async importScript(): Promise<void> {}
+
+      applyChangeTrail(changeTrail: ChangeTrailType): Promise<void> {
+        this.trails.push(changeTrail);
+        return new Promise<void>((resolve, reject) => {
+          this.#gates.push({resolve, reject});
+        });
+      }
+
+      /** Confirms the oldest trail still held. */
+      confirmNext(): void {
+        this.#gates.shift()!.resolve();
+      }
+
+      /** Refuses the oldest trail still held. */
+      refuseNext(reason: unknown): void {
+        this.#gates.shift()!.reject(reason);
+      }
+
+      destroy(): void {}
+    }
+
+    const makeEnv = async () => {
+      const env = new ShadowEnv();
+      const proxy = new GatedProxy();
+      env.view = ComponentContext.get();
+      env.envProxy = proxy;
+      await env.ready();
+      return {env, proxy};
+    };
+
+    /** Waits until the proxy holds `count` trails, so no case has to guess a microtask depth. */
+    const untilTrails = (proxy: GatedProxy, count: number) =>
+      vi.waitFor(() => {
+        if (proxy.trails.length < count) {
+          throw new Error(`the proxy holds ${proxy.trails.length} of ${count} trails`);
+        }
+      });
+
+    it('opens a new cycle for a caller that arrives after the trail was built', async () => {
+      const {env, proxy} = await makeEnv();
+
+      new ViewComponent('test', {context: env.view, uuid: 'early'});
+      const inFlight = env.syncWait();
+      await untilTrails(proxy, 1);
+
+      // the trail has left; this change cannot be in it
+      new ViewComponent('test', {context: env.view, uuid: 'late'});
+      const next = env.syncWait();
+
+      expect(next).not.toBe(inFlight);
+
+      await untilTrails(proxy, 2);
+
+      proxy.confirmNext();
+      await expect(withTimeout(inFlight)).resolves.toBe(proxy.trails[0]);
+
+      proxy.confirmNext();
+      await expect(withTimeout(next)).resolves.toBe(proxy.trails[1]);
+
+      expect(proxy.trails[0]!.map((entry) => entry.uuid)).toEqual(['early']);
+      expect(proxy.trails[1]!.map((entry) => entry.uuid)).toEqual(['late']);
+
+      env.destroy();
+    });
+
+    it('hands a listener that calls syncWait() from AfterSync the cycle after the one it was told about', async () => {
+      const {env, proxy} = await makeEnv();
+
+      new ViewComponent('test', {context: env.view, uuid: 'first'});
+
+      let fromListener: Promise<ChangeTrailType> | undefined;
+      once(env, ShadowEnv.AfterSync, () => {
+        new ViewComponent('test', {context: env.view, uuid: 'second'});
+        fromListener = env.syncWait();
+      });
+
+      const firstCycle = env.syncWait();
+      await untilTrails(proxy, 1);
+      proxy.confirmNext();
+      await withTimeout(firstCycle);
+
+      expect(fromListener).not.toBe(firstCycle);
+
+      await untilTrails(proxy, 2);
+      proxy.confirmNext();
+
+      await expect(withTimeout(fromListener!)).resolves.toBe(proxy.trails[1]);
+      expect(proxy.trails[1]!.map((entry) => entry.uuid)).toEqual(['second']);
+
+      env.destroy();
+    });
+
+    it('reports nothing when the environment is destroyed while its trail is in flight', async () => {
+      const {env, proxy} = await makeEnv();
+      const errorSpy = vi.spyOn(env.logger, 'error').mockImplementation(() => {});
+
+      new ViewComponent('test', {context: env.view});
+      const pending = env.syncWait();
+      await untilTrails(proxy, 1);
+
+      env.destroy();
+      proxy.refuseNext(new Error('the environment behind the proxy is gone'));
+
+      await expect(withTimeout(pending)).rejects.toBeInstanceOf(ShadowEnvDestroyedError);
+
+      // a macrotask, so the continuation behind the await in #syncNow() has certainly run
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(errorSpy).not.toHaveBeenCalled();
     });
   });
 

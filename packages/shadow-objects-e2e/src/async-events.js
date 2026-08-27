@@ -69,6 +69,32 @@ async function main() {
     waitUntil('the counter to echo 42', () => counted.counter.some((c) => c.value === 42)),
   );
 
+  // --- ASYNC-13: a change made after the trail has left belongs to the next cycle -----
+  //
+  // one microtask turn after syncWait() the sync it scheduled has run: the trail is built and on
+  // its way to the worker. A syncWait() from here on waits for the cycle that carries what is
+  // changed now, not for the one already in flight.
+  const counterProp = byId('counter').querySelector('shae-prop[name="n"]');
+
+  counterProp.value = 5;
+  const inFlightCycle = env.shadowEnv.syncWait();
+
+  await Promise.resolve();
+
+  counterProp.value = 6;
+  const nextCycle = env.shadowEnv.syncWait();
+
+  testBooleanAction('async-midflight-syncwait-opens-a-new-cycle', () => nextCycle !== inFlightCycle);
+
+  await testAsyncAction('async-midflight-syncwait-carries-the-later-change', async () => {
+    await inFlightCycle;
+    await nextCycle;
+    await waitUntil('the counter to echo 6', () => counted.counter.some((c) => c.value === 6));
+  });
+
+  // leave nothing in flight: the idle window further down counts on it
+  await testAsyncAction('async-midflight-drained', () => env.shadowEnv.syncWait());
+
   // --- ASYNC-6 / ASYNC-7: what auto-sync actually controls -------------------------
   //
   // auto-sync governs the *periodic* sync loop, not change-driven syncs: ShaeElement schedules

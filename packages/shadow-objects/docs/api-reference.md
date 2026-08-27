@@ -1259,6 +1259,12 @@ Like `sync()`, but returns a Promise that settles once the cycle is over. Useful
 
 The Promise resolves with the change trail of a cycle the Shadow Environment applied, including one with nothing to send -- then the change trail is an empty array. It stays pending only while the environment is not ready; it settles once `ContextCreated` fires.
 
+Which cycle a caller gets is decided when the change trail is built. Everyone who arrives before
+that point waits on the same Promise -- they all ride the same trail. From the build on the trail is
+fixed, and a call after it belongs to the next cycle, the one that carries the changes made since.
+That holds inside a listener of `ShadowEnv.AfterSync` or `ShadowEnv.SyncFailed` as well: the cycle it
+was told about is over, so the call opens the one behind it.
+
 It rejects with the reason the proxy gave when the Shadow Environment could not apply the trail: a worker that does not confirm within `changeTrailTimeout`, a Kernel error the worker reports back, a `WorkerDestroyedError` from a worker that is already gone. The same reason reaches every listener of `ShadowEnv.SyncFailed`, and `AfterSync` does not fire for that cycle.
 
 Where the Kernel refused the trail, that reason is a `ChangeTrailRefusedError`: `appliedCount` and `entryCount` say how far it got, and `cause` carries what the entry actually threw -- the error object itself locally, and across a worker boundary a `WorkerReportedError` carrying its wording and its name. The entries the Kernel did not apply are still pending and go out again with the next cycle.

@@ -30,6 +30,18 @@ export class ShadowEnvDestroyedError extends Error {
   }
 }
 
+/**
+ * The settlement of one synchronization cycle: the promise `syncWait()` hands out, and the pair
+ * that settles it. A cycle takes its own settlement with it the moment its change trail is
+ * built, which is what lets two cycles be in flight at once without settling each other's
+ * callers.
+ */
+type SyncCycle = {
+  promise: Promise<ChangeTrailType>;
+  resolve: (changeTrail: ChangeTrailType) => void;
+  reject: (reason: unknown) => void;
+};
+
 export class ShadowEnv {
   static AfterSync = 'afterSync';
   static SyncFailed = 'syncFailed';
@@ -47,8 +59,7 @@ export class ShadowEnv {
   #syncScheduled = false;
   #syncAfterContextCreated = false;
   #syncWaitForConfirmation = false;
-  #afterNextSync?: Promise<ChangeTrailType> | undefined;
-  #settleAfterNextSync?: {resolve: (changeTrail: ChangeTrailType) => void; reject: (reason: unknown) => void} | undefined;
+  #nextSyncCycle?: SyncCycle | undefined;
 
   readonly logger = new ConsoleLogger('ShadowEnv');
 
@@ -296,6 +307,13 @@ export class ShadowEnv {
    * Making that call is the consumer's decision, the same way recovering from a
    * {@link ShadowEnv.ProxyFailed} is.
    *
+   * Which cycle a caller gets is decided when the change trail is built. Everyone who arrives
+   * before that point waits on the same promise -- they all ride the same trail. From the build
+   * on the trail is fixed, and a call after it belongs to the next cycle, the one that carries
+   * the changes made since. That holds inside a listener of {@link ShadowEnv.AfterSync} or
+   * {@link ShadowEnv.SyncFailed} as well: the cycle it was told about is over, so the call opens
+   * the one behind it.
+   *
    * @throws {ShadowEnvDestroyedError} if the environment is destroyed before the cycle completes
    */
   syncWait(): Promise<ChangeTrailType> {
@@ -304,33 +322,35 @@ export class ShadowEnv {
     this.#syncWaitForConfirmation = true;
     this.sync();
 
-    // one cycle, one promise: every caller that joins before it ends waits on the same one
-    if (this.#afterNextSync) return this.#afterNextSync;
+    // Every caller that arrives before the change trail is built waits on the same promise: they
+    // all ride the same trail. From the build on the trail is fixed, `#syncNow()` has taken this
+    // cycle with it, and the next caller opens the one behind it -- the cycle that will carry the
+    // change they are about to make.
+    this.#nextSyncCycle ??= this.#openSyncCycle();
 
-    // The cycle settles this promise by hand rather than through `AfterSync` / `SyncFailed`. A
-    // subscription made here would stand in line behind the listeners the application registered
-    // during setup, and an eventize emit stops at the first listener that throws -- everything
-    // behind it, this promise included, would be left waiting forever. Settling by hand also
-    // spares the bookkeeping a subscription per call would need: a cycle produces one of the two
-    // events, and the subscriber of the other one would stay behind and pile up.
-    const cycleOutcome = new Promise<ChangeTrailType>((resolve, reject) => {
-      this.#settleAfterNextSync = {resolve, reject};
+    return this.#nextSyncCycle.promise;
+  }
+
+  /**
+   * The cycle settles this promise by hand rather than through `AfterSync` / `SyncFailed`. A
+   * subscription made here would stand in line behind the listeners the application registered
+   * during setup, and an eventize emit stops at the first listener that throws -- everything
+   * behind it, this promise included, would be left waiting forever. Settling by hand also
+   * spares the bookkeeping a subscription per call would need: a cycle produces one of the two
+   * events, and the subscriber of the other one would stay behind and pile up.
+   */
+  #openSyncCycle(): SyncCycle {
+    let resolve!: (changeTrail: ChangeTrailType) => void;
+    let reject!: (reason: unknown) => void;
+
+    const outcome = new Promise<ChangeTrailType>((res, rej) => {
+      resolve = res;
+      reject = rej;
     });
 
-    this.#afterNextSync = Promise.race([cycleOutcome, this.#destroyedSignal()]).then(
-      (changeTrail) => {
-        this.#settleAfterNextSync = undefined;
-        this.#afterNextSync = undefined;
-        return changeTrail;
-      },
-      (error) => {
-        this.#settleAfterNextSync = undefined;
-        this.#afterNextSync = undefined;
-        throw error;
-      },
-    );
-
-    return this.#afterNextSync;
+    // the race is what settles a caller whose environment is destroyed before the cycle ends:
+    // `destroy()` tears down the very listeners any other route would depend on
+    return {promise: Promise.race([outcome, this.#destroyedSignal()]), resolve, reject};
   }
 
   /**
@@ -356,8 +376,7 @@ export class ShadowEnv {
 
     // settle everyone still waiting before the listeners they depend on are removed
     this.#rejectWhenDestroyed?.(new ShadowEnvDestroyedError());
-    this.#afterNextSync = undefined;
-    this.#settleAfterNextSync = undefined;
+    this.#nextSyncCycle = undefined;
 
     // The effect is built here, so it is released here: its lifetime hangs on this class rather
     // than on what a reactivity library makes of an effect whose dependencies are taken away.
@@ -394,6 +413,13 @@ export class ShadowEnv {
 
     const data = this.view!.buildChangeTrails(false);
 
+    // The trail is fixed from here on, and with it the set of callers this cycle answers: it
+    // leaves holding `#nextSyncCycle`, and a `syncWait()` from now on opens the cycle behind it.
+    // The settlement travels in this frame rather than in a field, because two cycles can be in
+    // flight at once -- `ComponentContext.buildChangeTrails()` says as much at its own end of this.
+    const cycle = this.#nextSyncCycle;
+    this.#nextSyncCycle = undefined;
+
     const waitForConfirmation = this.#syncWaitForConfirmation;
     this.#syncWaitForConfirmation = false;
 
@@ -402,17 +428,25 @@ export class ShadowEnv {
         await this.envProxy!.applyChangeTrail(data, waitForConfirmation);
       }
     } catch (error) {
+      // an environment that was torn down while its trail was in flight ends its cycle in silence:
+      // destroy() has already rejected whoever waited on it and taken the listeners off, and a proxy
+      // that refuses because it is being destroyed is not a failure anybody needs reported. The same
+      // guard `#onProxyFailed()` carries at the neighbouring spot.
+      if (this.#isDestroyed) return;
+
       // the log entry before anything else: what went wrong is on the record even if the report
       // of it runs into a listener that cannot cope
       this.logger.error('failed to apply change trail', error);
       this.#commitSyncCycle(data, error);
-      this.#endSyncCycle(data, {reason: error});
+      this.#endSyncCycle(data, cycle, {reason: error});
       return;
     }
 
+    if (this.#isDestroyed) return;
+
     // an empty change trail ends here as well -- nothing is sent, so nothing can be refused
     this.#commitSyncCycle(data);
-    this.#endSyncCycle(data);
+    this.#endSyncCycle(data, cycle);
   }
 
   /**
@@ -431,7 +465,8 @@ export class ShadowEnv {
     // where the Kernel itself named the count.
     const appliedCount = reason instanceof ChangeTrailRefusedError ? reason.appliedCount : changeTrail.length;
 
-    // `?.` rather than `!`: a destroy() can have run between the await above and this line
+    // `?.` rather than `!`: the view can be taken off -- `env.view = undefined` -- between the
+    // await above and this line
     this.view?.commitChangeTrail(appliedCount, changeTrail);
   }
 
@@ -447,17 +482,17 @@ export class ShadowEnv {
    * that travelled as a listener of its own would be a promise nobody ever settles. The throw ends
    * here as well: `#syncNow()` runs unawaited, and an error escaping it becomes an unhandled
    * rejection rather than a report anybody reads.
+   *
+   * Which cycle is being ended arrives as an argument: the caller carries it from the moment its
+   * change trail was built, so a cycle that is still in flight cannot be settled by the one behind it.
    */
-  #endSyncCycle(changeTrail: ChangeTrailType, failure?: {reason: unknown}) {
-    const settle = this.#settleAfterNextSync;
-    this.#settleAfterNextSync = undefined;
-
+  #endSyncCycle(changeTrail: ChangeTrailType, cycle: SyncCycle | undefined, failure?: {reason: unknown}) {
     try {
       if (failure) {
-        settle?.reject(failure.reason);
+        cycle?.reject(failure.reason);
         emit(this as ShadowEnv, ShadowEnv.SyncFailed, failure.reason, changeTrail, this as ShadowEnv);
       } else {
-        settle?.resolve(changeTrail);
+        cycle?.resolve(changeTrail);
         emit(this as ShadowEnv, ShadowEnv.AfterSync, changeTrail);
       }
     } catch (error) {

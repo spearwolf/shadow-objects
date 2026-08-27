@@ -11,6 +11,10 @@ test.describe('async-events', () => {
     // ASYNC-1: property change -> message to the view
     'async-property-change-syncs',
     'async-property-change-echoed',
+    // ASYNC-13: a change made while a cycle is in flight
+    'async-midflight-syncwait-opens-a-new-cycle',
+    'async-midflight-syncwait-carries-the-later-change',
+    'async-midflight-drained',
     // ASYNC-6 / ASYNC-7: what auto-sync controls
     'async-idle-window',
     'async-no-autosync-stays-idle',
