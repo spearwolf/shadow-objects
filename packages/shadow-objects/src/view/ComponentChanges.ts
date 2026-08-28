@@ -350,8 +350,15 @@ export class ComponentChanges {
     }
 
     if (this.#nextProperties.size > 0) {
-      entry.properties = Array.from(this.#nextProperties.entries()).filter(([, value]) => value !== undefined);
-      this.#noteTravellingProperties(entry.properties);
+      // a create carries only the keys that have a value; where the filter leaves nothing, the
+      // field stays off the entry — an absent `properties` and an empty one say the same thing,
+      // and the shorter one is what travels. The note is taken either way: it records what this
+      // entry carries, and an entry with no property is travelling with none
+      const properties = Array.from(this.#nextProperties.entries()).filter(([, value]) => value !== undefined);
+      this.#noteTravellingProperties(properties);
+      if (properties.length > 0) {
+        entry.properties = properties;
+      }
     }
 
     if (this.#nextOrder !== undefined && this.#nextOrder !== this.#order) {

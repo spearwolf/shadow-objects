@@ -164,6 +164,19 @@ describe('ComponentChanges', () => {
         {type: ComponentChangeType.CreateEntities, uuid: UUID, token: 'a', properties: [['foo', 'bar']]},
       ]);
     });
+
+    it('leaves the properties field off a create whose pending values have all come back to undefined', () => {
+      const changes = new ComponentChanges(UUID);
+      changes.create('a');
+      changes.changeProperty('foo', 'bar');
+
+      // a first trail nobody settles: the entry travels, the component keeps its pending half
+      // and stays new, and the value coming back to `undefined` therefore has to be queued
+      buildTrail(changes);
+      changes.changeProperty('foo', undefined);
+
+      expect(buildTrail(changes)).toEqual([{type: ComponentChangeType.CreateEntities, uuid: UUID, token: 'a'}]);
+    });
   });
 
   describe('destroy', () => {

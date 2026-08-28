@@ -60,6 +60,8 @@ describe('shae-worker auto-sync attribute values', () => {
     ['nonsense', 'nonsense', 'nonsense'],
     ['auto-sync', 'auto-sync', 'auto-sync'],
     ['YES', 'yes', 'yes'],
+    ['  FRAME  ', 'frame', 'frame'],
+    ['  30FPS ', '30fps', '30fps'],
   ];
 
   for (const [value, expectedAutoSync, expectedAttr] of cases) {

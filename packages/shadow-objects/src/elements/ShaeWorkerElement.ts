@@ -28,6 +28,19 @@ const WorkerTimeoutAttributes: [keyof RemoteWorkerEnvOptions, string][] = [
   ['destroyTimeout', ATTR_DESTROY_TIMEOUT],
 ];
 
+/**
+ * The one place the `auto-sync` spelling rule lives: a string is trimmed and lower-cased,
+ * and anything else is read as a flag — a truthy value asks for the frame default, a falsy
+ * one for no syncing at all. Every write into `autoSync$` this element makes goes through
+ * here, so the canonical spelling does not depend on which write ran first.
+ */
+function normaliseAutoSync(value: unknown): string {
+  if (typeof value !== 'string') {
+    return value ? ShaeWorkerElement.DefaultAutoSync : 'no';
+  }
+  return value.trim().toLowerCase();
+}
+
 export class ShaeWorkerElement extends ShaeElement {
   static override observedAttributes = [
     ...ShaeElement.observedAttributes,
@@ -138,9 +151,9 @@ export class ShaeWorkerElement extends ShaeElement {
 
     this.autoSync$.onChange((sVal) => this.#reflectAutoSync(sVal));
 
-    // the catch-up half of `restore()`: `connectedCallback` reads the `auto-sync` attribute back
-    // into the signal a few lines further on, so the canonical spelling has to be on the attribute
-    // by then — otherwise that read pushes the raw one, `auto-sync="YES"`, back over it
+    // the catch-up half of `restore()`: the signal carries the canonical spelling, and this is
+    // what puts it on the attribute — `auto-sync="YES"` is what an author writes, `auto-sync="yes"`
+    // is what the element syncs on, and a reader of the DOM sees the second
     this.#reflectAutoSync(this.autoSync$.value);
 
     // no catch-up for the namespace binding, and that is deliberate: the environment gets its view
@@ -207,10 +220,7 @@ export class ShaeWorkerElement extends ShaeElement {
   }
 
   set autoSync(val: any) {
-    if (typeof val !== 'string') {
-      val = val ? ShaeWorkerElement.DefaultAutoSync : 'no';
-    }
-    this.autoSync$.set(`${val}`.trim().toLowerCase());
+    this.autoSync$.set(normaliseAutoSync(val));
   }
 
   get frameLoop(): FrameLoop {
@@ -264,7 +274,7 @@ export class ShaeWorkerElement extends ShaeElement {
       batch(() => {
         const autoSync = this.getAttribute(ATTR_AUTO_SYNC);
         if (autoSync != null) {
-          this.autoSync$.set(autoSync);
+          this.autoSync = autoSync;
         }
         this.isConnected$.set(true);
       });
@@ -374,7 +384,7 @@ export class ShaeWorkerElement extends ShaeElement {
   #createAutoSyncEffect() {
     this.#autoSync = createEffect(() => {
       if (this.isConnected$.get()) {
-        const autoSync = (this.autoSync$.get() || ShaeWorkerElement.DefaultAutoSync).trim().toLowerCase();
+        const autoSync = normaliseAutoSync(this.autoSync$.get() || ShaeWorkerElement.DefaultAutoSync);
         let delay;
 
         if (['true', 'yes', 'on', 'frame', 'auto-sync'].includes(autoSync)) {
@@ -385,7 +395,7 @@ export class ShaeWorkerElement extends ShaeElement {
           return () => {
             this.frameLoop.stop(this);
           };
-        } else if (autoSync.toLowerCase().endsWith('fps')) {
+        } else if (autoSync.endsWith('fps')) {
           const fps = parseInt(autoSync, 10);
           if (fps > 0) {
             delay = Math.floor(1000 / fps);
