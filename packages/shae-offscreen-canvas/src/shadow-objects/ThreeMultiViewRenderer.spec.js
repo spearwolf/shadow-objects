@@ -10,11 +10,19 @@ import {ThreeMultiViewRenderer} from './ThreeMultiViewRenderer.js';
 // else `three` exports stays real. It reproduces the one piece of behaviour
 // `ThreeMultiViewRenderer.updateSize()` depends on: the initial size is the canvas size, `setSize`
 // writes the new size back onto the canvas, and `getSize(target)` fills the `Vector2` handed in.
+// `vi.mock` is hoisted above every other statement of this file, so the switch its factory reads
+// has to be hoisted with it.
+const webgl = vi.hoisted(() => ({rendererThrows: false}));
+
 vi.mock('three', async (importOriginal) => {
   const actual = await importOriginal();
 
   class RecordingRenderer {
     constructor({canvas, alpha}) {
+      if (webgl.rendererThrows) {
+        throw new Error('no WebGL context');
+      }
+
       this.canvas = canvas;
       this.alpha = alpha;
       this.log = [];
@@ -85,6 +93,7 @@ describe('ThreeMultiViewRenderer', () => {
     env?.destroy();
     env = undefined;
     vi.unstubAllGlobals();
+    webgl.rendererThrows = false;
   });
 
   const create = () => {
@@ -111,6 +120,29 @@ describe('ThreeMultiViewRenderer', () => {
     expect(mvr.renderer.canvas.width).toBe(320);
     expect(mvr.renderer.canvas.height).toBe(240);
     expect(mvr.renderer.alpha).toBe(true);
+  });
+
+  describe('teardown after a renderer that never came to be', () => {
+    // The kernel takes this path itself: `constructShadowObject()` catches a throwing constructor
+    // and tears the creation scope down, and that runs every callback `onDestroy()` collected —
+    // including the one this constructor registered before it threw. The creation API is stood in
+    // for here because there is no instance to reach it through: the constructor does not return.
+    it('disposes nothing when the renderer constructor threw', () => {
+      webgl.rendererThrows = true;
+
+      let releaseOnDestroy;
+      const creationApi = {
+        provideContext: () => ({set: () => {}}),
+        onDestroy: (callback) => {
+          releaseOnDestroy = callback;
+        },
+      };
+
+      expect(() => new ThreeMultiViewRenderer(creationApi)).toThrow('no WebGL context');
+      expect(releaseOnDestroy).toBeTypeOf('function');
+
+      expect(() => releaseOnDestroy()).not.toThrow();
+    });
   });
 
   describe('createView', () => {
@@ -179,6 +211,15 @@ describe('ThreeMultiViewRenderer', () => {
       expect(mvr.renderer.canvas.width).toBe(320);
       expect(mvr.renderer.canvas.height).toBe(240);
     });
+
+    it('sizes nothing once its entity is gone', () => {
+      const {uuid, mvr} = create();
+      mvr.createView(800, 600);
+
+      env.kernel.destroyEntity(uuid);
+
+      expect(() => mvr.updateSize()).not.toThrow();
+    });
   });
 
   describe('destroyView', () => {
@@ -195,6 +236,20 @@ describe('ThreeMultiViewRenderer', () => {
       mvr.updateSize();
       expect(mvr.renderer.canvas.width).toBe(320);
       expect(mvr.renderer.canvas.height).toBe(240);
+    });
+
+    it('destroys nothing when it is handed nothing', () => {
+      const {mvr} = create();
+
+      const view = mvr.createView(500, 500);
+
+      expect(() => mvr.destroyView(undefined)).not.toThrow();
+      expect(() => mvr.destroyView(null)).not.toThrow();
+
+      // the view it did get is still there: it is the only thing that grows the canvas past 320x240
+      mvr.updateSize();
+      expect(mvr.renderer.canvas.width).toBe(500);
+      expect(view.viewId).toBe(1);
     });
   });
 

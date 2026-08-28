@@ -95,11 +95,15 @@ Creates a new _RenderView_ structure. Once created, the _view_ is rendered autom
 
 > `threeMultiViewRenderer.destroyView(view)`
 
-Will destroy the _view_. Once destroyed, it will of course no longer be rendered.
+Will destroy the _view_. Once destroyed, it will of course no longer be rendered. Takes the _view_ structure or its bare `viewId`; handed `undefined` or `null` it destroys nothing.
+
+> `threeMultiViewRenderer.updateSize()`
+
+Sizes the shared canvas so that it holds the largest view of this renderer, and never below 320x240. `renderView()` calls it before it draws, so a view whose `width` or `height` was changed is drawn at its new size with the next render either way.
 
 Every view of one renderer draws with the same `WebGLRenderer` onto the same canvas, and reading a drawn frame back off that canvas is asynchronous. `renderView()` takes its turn accordingly: one view is drawn and read out at a time, in the order the calls arrived.
 
-When the entity ends, the renderer releases its WebGL context. `renderView()` answers `undefined` from that point on.
+When the entity ends, the renderer releases its WebGL context. `renderView()` answers `undefined` from that point on, and `updateSize()` returns without sizing anything.
 
 #### provide context
 

@@ -29,7 +29,10 @@ export class ThreeMultiViewRenderer {
     onDestroy(() => {
       multiViewRenderer.set(null);
       this.#views.clear();
-      this.renderer.dispose();
+      // A renderer is disposed of only if one came to be. A `WebGLRenderer` constructor that
+      // throws — as it does in any environment without WebGL — leaves this callback registered
+      // all the same, and the kernel runs it when it tears the creation scope down.
+      this.renderer?.dispose();
       this.renderer = null;
       this.canvas = null;
     });
@@ -103,11 +106,16 @@ export class ThreeMultiViewRenderer {
   }
 
   destroyView(view) {
-    const viewId = typeof view === 'number' ? view : view.viewId;
+    const viewId = typeof view === 'number' ? view : view?.viewId;
     this.#views.delete(viewId);
   }
 
   updateSize() {
+    // Sizing needs a renderer to size, and after the entity's teardown there is none. The answer
+    // is the silence `renderView()` gives in the same situation: this method is public API, and a
+    // caller holding on to the renderer past the end of its entity is not worth a throw.
+    if (this.renderer == null) return;
+
     let width = DEFAULT_WIDTH;
     let height = DEFAULT_HEIGHT;
 
