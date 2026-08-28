@@ -46,6 +46,14 @@ describe('ViewComponent', () => {
     expect(child.parent).toBe(parent);
   });
 
+  it('reads a ViewComponent argument as the parent and takes nothing else from it', () => {
+    const parent = new ViewComponent('parent', {uuid: 'the-parent', order: 7});
+    const child = new ViewComponent('test', parent);
+    expect(child.parent).toBe(parent);
+    expect(child.uuid).not.toBe('the-parent');
+    expect(child.order).toBe(0);
+  });
+
   it('should use context from params', () => {
     const context = ComponentContext.get('myCtx');
     const child = new ViewComponent('test', {context});
@@ -382,7 +390,12 @@ describe('ViewComponent', () => {
 
   describe('the token', () => {
     it('falls back to the void token when the constructor is given no token', () => {
-      const c = new ViewComponent(undefined as unknown as string);
+      const c = new ViewComponent();
+      expect(c.token).toBe(VoidToken);
+    });
+
+    it('falls back to the void token when the constructor is given an explicit undefined', () => {
+      const c = new ViewComponent(undefined);
       expect(c.token).toBe(VoidToken);
     });
 

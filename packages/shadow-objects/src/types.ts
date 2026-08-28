@@ -23,6 +23,10 @@ export interface IComponentEvent {
  * A list of property entries in a Change Trail. An entry carries a key together with its
  * value; an entry that names only the key counts as set, without carrying a value — the
  * Entity behind it reads the property as `undefined`.
+ *
+ * Nothing in this package writes the one-element form: it is a tolerance on the way in, for a
+ * Change Trail a caller assembles itself. `Kernel.createEntity()` and `Kernel.changeProperties()`
+ * are the two entrances that read it.
  */
 export type ComponentPropertiesType = ([string] | [string, unknown])[];
 
@@ -199,11 +203,13 @@ export interface ShadowObjectCreationAPI {
 
 export interface ShadowObjectConstructor {
   new (params: ShadowObjectCreationAPI): object;
+  /** The name the Kernel reports a Shadow Object built from this constructor under; without it, the constructor's `name`. */
   displayName?: string;
 }
 
 export interface ShadowObjectConstructorFunc {
   (params: ShadowObjectCreationAPI): object | undefined | void;
+  /** The name the Kernel reports a Shadow Object built from this constructor under; without it, the constructor's `name`. */
   displayName?: string;
 }
 

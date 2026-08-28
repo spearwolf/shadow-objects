@@ -57,6 +57,8 @@ export const shadowObjects = {
 };
 ```
 
+A `static displayName = 'MyLogic'` on the constructor names the Shadow Object in the Kernel's reports; without it the reports carry the constructor's name.
+
 ---
 
 ## Creation API Methods

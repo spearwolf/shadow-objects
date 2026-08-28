@@ -29,6 +29,14 @@ function assertUsableAsParent(parent: ViewComponent, childContext: ComponentCont
   }
 }
 
+interface ViewComponentOptions {
+  parent?: ViewComponent | undefined;
+  order?: number | undefined;
+  context?: ComponentContext | undefined;
+  uuid?: string | undefined;
+  autoDestructionOnParentRemoval?: boolean | undefined;
+}
+
 export class ViewComponent {
   /**
    * The last thing a component says before {@link ViewComponent#destroy} takes every subscription
@@ -185,16 +193,24 @@ export class ViewComponent {
     return this.#autoDestructionOnParentRemoval;
   }
 
-  constructor(
-    token: string,
-    options?: {
-      parent?: ViewComponent | undefined;
-      order?: number | undefined;
-      context?: ComponentContext | undefined;
-      uuid?: string | undefined;
-      autoDestructionOnParentRemoval?: boolean | undefined;
-    },
-  ) {
+  // the parent form is declared first on purpose: ViewComponent has a member for every optional
+  // member of the options type, so without it the compiler resolves `new ViewComponent(t, parent)`
+  // structurally against the options object and reads `uuid`, `order` and `context` off the parent
+  // — a meaning the body does not have. An object literal is assignable to neither ViewComponent
+  // (private fields) nor the first overload, and lands on the second one
+  /**
+   * Create a component: `new ViewComponent(token, parent)` hangs it under another component, and
+   * `new ViewComponent(token, options)` takes `parent`, `order`, `context`, `uuid` and
+   * `autoDestructionOnParentRemoval` as an object.
+   *
+   * A {@link ViewComponent} given in place of the options object is read as the parent and as
+   * nothing else — `uuid`, `order` and `context` come from their usual sources, never from it.
+   *
+   * A component created without a `token` carries {@link VoidToken} (`'#void'`).
+   */
+  constructor(token?: string, parent?: ViewComponent);
+  constructor(token?: string, options?: ViewComponentOptions);
+  constructor(token?: string, options?: ViewComponent | ViewComponentOptions) {
     eventize(this);
 
     if (options instanceof ViewComponent) {

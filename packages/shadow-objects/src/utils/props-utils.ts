@@ -2,6 +2,8 @@ import type {ComponentPropertiesType} from '../types.js';
 
 export const filterUndefinedProps = (props: ComponentPropertiesType | undefined) => {
   if (props === undefined || props.length === 0) return undefined;
+  // an entry that names only the key survives the filter: it means "set, without a value", while
+  // `[key, undefined]` means the value is gone. See ComponentPropertiesType for the whole rule
   return props.filter((entry) => entry.length === 1 || entry[1] !== undefined);
 };
 

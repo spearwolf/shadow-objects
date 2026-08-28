@@ -34,6 +34,7 @@ This is the complete API reference for the Shadow Objects framework. Entities ar
 - [Advanced](#advanced)
   - [Programmatic Registration](#programmatic-registration)
   - [The @ShadowObject Decorator](#the-shadowobject-decorator)
+  - [Naming a Shadow Object in reports](#naming-a-shadow-object-in-reports)
   - [Registry Class](#the-registry-class)
   - [Lifecycle Event Symbols](#lifecycle-event-symbols)
   - [Debugging](#debugging)
@@ -661,7 +662,9 @@ import { ViewComponent } from '@spearwolf/shadow-objects';
 ### Constructor
 
 ```typescript
-new ViewComponent(token: string, options?: {
+new ViewComponent(token?: string, parent?: ViewComponent)
+
+new ViewComponent(token?: string, options?: {
     parent?: ViewComponent | undefined;
     order?: number | undefined;
     context?: ComponentContext | undefined;
@@ -680,7 +683,7 @@ new ViewComponent(token: string, options?: {
 | `uuid` | (Optional) Explicit unique identifier. If omitted, one is generated automatically. A uuid that a component of the target `ComponentContext` is holding is refused with a `ComponentUuidInUseError`; it is free again once its holder has left that `ComponentContext`. |
 | `autoDestructionOnParentRemoval` | (Optional) Whether the corresponding Entity is destroyed together with its parent. Default is `false`, which promotes the Entity to a root Entity instead. Immutable after creation. |
 
-A `ViewComponent` passed in place of `options` is read as `{parent: thatComponent}`. It carries no `context` with it, so the new component joins the Default Global Context -- which makes the shorthand work only when the parent lives there too. A parent in a named context makes the constructor throw, because the child would be joining a different context than its parent:
+A `ViewComponent` passed in place of `options` is read as `{parent: thatComponent}` -- a declared overload, and it takes nothing from the component but the parent: `uuid`, `order` and `context` come from their usual sources, never from it. It carries no `context` with it, so the new component joins the Default Global Context -- which makes the shorthand work only when the parent lives there too. A parent in a named context makes the constructor throw, because the child would be joining a different context than its parent:
 
 ```typescript
 const child = new ViewComponent('child', parent);      // fine while parent is in the default context
@@ -2748,7 +2751,7 @@ kernel.noteEntityTreeChange(child.uuid);
 | `destroyEntity` | `(uuid: string)` | Destroys the Entity, its Shadow Objects and its children. Detaching the Entity from its parent, each Shadow Object's teardown, and the Entity's own release each stand behind a guard of their own, so a throw at any one of them costs nothing behind it — a teardown that throws costs no sibling its own; every throw is reported through the `ConsoleLogger` rather than handed to the caller, and the Entity is out of the Kernel when the call returns either way. A listener on the Entity's own destruction notification is held to the same contract: the creation scopes tear down and the Entity releases its properties, listeners, subscriptions and contexts step by step, whether or not that notification reached them and whether or not an earlier step of that release threw — see [`onDestroy(callback)`](#ondestroycallback). |
 | `setParent` | `(uuid, parentUuid?, order?)` | Moves the Entity under a new parent, or makes it a root when `parentUuid` is omitted. An absent `order` keeps the current one -- it is not a reset to `0`. A `parentUuid` naming the Entity itself or one of its descendants is refused with an error, and the Entity stays where it was. |
 | `updateOrder` | `(uuid: string, order: number)` | Sets the sort order among siblings. |
-| `changeProperties` | `(uuid: string, properties: ComponentPropertiesType)` | Writes property values; every reader bound to one of the names sees the new value. Where a written property routes to a constructor that throws, the Shadow Objects go back to the set the Entity carried before the call — the properties stay written, so that set and the new properties can disagree until the next re-resolution. |
+| `changeProperties` | `(uuid: string, properties: ComponentPropertiesType)` | Writes property values; every reader bound to one of the names sees the new value. `properties` is a list of `[name, value]` pairs; an entry that names only `name` sets the property to `undefined`. Where a written property routes to a constructor that throws, the Shadow Objects go back to the set the Entity carried before the call — the properties stay written, so that set and the new properties can disagree until the next re-resolution. |
 | `changeToken` | `(uuid: string, token: string)` | Replaces the Entity's token, which re-resolves its Shadow Objects — the same resolution `upgradeEntities()` runs over the whole tree, but not the same answer to a failure. A creation that does not get through is taken back here: the previous token returns and the Shadow Objects belonging to it are built again, before the error reaches the caller. An `upgradeEntities()` that throws takes nothing back; the paragraph below spells both out. |
 | `dispatchEventsToEntity` | `(uuid: string, events: IComponentEvent[])` | Delivers View Layer events to the Entity, where every attached Shadow Object receives them as `onViewEvent`. A UUID the Kernel does not hold is ignored: the events are dropped, and the rest of the Change Trail is applied. |
 
@@ -2947,7 +2950,31 @@ export class PlayerController implements OnCreate, OnDestroy {
 
 The decorator automatically calls `eventize(this)` on the instance, making it compatible with the event system. You do not need to call `eventize` manually.
 
-What the decorator returns is a subclass of the decorated class, and that subclass is what goes into the Registry. Instances still pass `instanceof` against your class, and the subclass carries your class's name: `constructor.name` reads it, a Kernel log line about that Shadow Object names it, and a stack frame through the constructor shows it.
+What the decorator returns is a subclass of the decorated class, and that subclass is what goes into the Registry. Instances still pass `instanceof` against your class, and the subclass carries your class's name: `constructor.name` reads it, a Kernel log line about that Shadow Object names it, and a stack frame through the constructor shows it; a `static displayName` on the decorated class is inherited by the subclass, and the Kernel reads it ahead of the name -- see [Naming a Shadow Object in reports](#naming-a-shadow-object-in-reports).
+
+---
+
+### Naming a Shadow Object in reports
+
+A `static displayName` on the constructor is the name the Kernel reports a Shadow Object under. Both constructor forms carry the field -- `ShadowObjectConstructor` for a class, `ShadowObjectConstructorFunc` for a function -- and the Kernel reads it first, falling back to the constructor's `name` when it is absent.
+
+The value reaches every report about that Shadow Object:
+
+- the `create shadow-object` and `destroy shadow-object` lines of its Creation Scope
+- the report about a lifecycle hook written as a plain method instead of under its symbol
+- both reports about a failing `onDestroy` -- the hook and the notification
+- every teardown step of a Creation Scope that fails
+- the notice about a Creation API used past its teardown
+- the report about a rolled-back token change that could not restore a Shadow Object
+
+Set it wherever `name` does not survive: a minified build, or a constructor registered as an anonymous class or anonymous function.
+
+```typescript
+export class PlayerController {
+  static displayName = 'PlayerController';
+  constructor({ useProperty }: ShadowObjectCreationAPI) { /* ... */ }
+}
+```
 
 ---
 
