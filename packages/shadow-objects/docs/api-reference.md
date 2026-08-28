@@ -3038,6 +3038,8 @@ Resolves a route to the set of tokens it stands for, and this is where the resol
 
 - **Signature:** `findTokensByRoute(route: string, truthyProps?: Set<string>): Set<string>`
 
+The resolution is computed once per route and per set of truthy properties handed in, and reused from then on. Every write to the registry -- `define()`, `appendRoute()`, `clearRoute()`, `clear()` -- drops what has been resolved, so a resolution never sees a stale registry. The returned `Set` belongs to the caller: keep it, add to it, delete from it.
+
 ```typescript
 registry.appendRoute('game-object', ['physics', 'renderer']);
 registry.appendRoute('@debug', ['debug-overlay']);
@@ -3048,7 +3050,7 @@ registry.findTokensByRoute('game-object', new Set(['debug']));
 
 #### `registry.findConstructors(route, truthyProps?)`
 
-Resolves all constructors for a route, including all routed tokens. Returns `undefined` when the resolution yields no registered constructor at all -- not an empty array.
+Resolves all constructors for a route, including all routed tokens. Returns `undefined` when the resolution yields no registered constructor at all -- not an empty array. It uses the same token resolution as `findTokensByRoute()`, but assembles its constructor list per call.
 
 - **Signature:** `findConstructors(route: string, truthyProps?: Set<string>): ShadowObjectConstructor[] | undefined`
 
