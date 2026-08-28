@@ -5,7 +5,7 @@ import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {type OnCreate, type OnDestroy, onCreate, onDestroy} from '../in-the-dark/events.js';
 import {Registry} from '../in-the-dark/Registry.js';
 import {ShadowObject} from '../in-the-dark/ShadowObject.js';
-import type {ChangeTrailType, ShadowObjectCreationAPI} from '../types.js';
+import type {ChangeTrailType, NamespaceType, ShadowObjectCreationAPI} from '../types.js';
 import {ComponentContext} from './ComponentContext.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 import {LocalShadowObjectEnv} from './LocalShadowObjectEnv.js';
@@ -1266,6 +1266,51 @@ describe('ShadowEnv', () => {
       expect(ShadowEnv.get(NS_B)).toBe(env);
 
       env.destroy();
+    });
+
+    it('carries the namespace of the context it observes', () => {
+      const env = new ShadowEnv();
+
+      expect(env.ns$.value, 'an environment without a view names no namespace').toBeUndefined();
+
+      env.view = ComponentContext.get(NS_A);
+
+      expect(env.ns$.value).toBe(NS_A);
+
+      env.destroy();
+    });
+
+    it('moves the namespace along with the view', () => {
+      const env = new ShadowEnv();
+      const seen: (NamespaceType | undefined)[] = [];
+      const unsubscribe = env.ns$.onChange((ns) => {
+        seen.push(ns);
+      });
+
+      env.view = ComponentContext.get(NS_A);
+      env.view = ComponentContext.get(NS_B);
+      env.view = undefined;
+
+      expect(seen).toEqual([NS_A, NS_B, undefined]);
+
+      unsubscribe();
+      env.destroy();
+    });
+
+    it('lets the namespace go when the environment is destroyed', () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get(NS_A);
+
+      const seen: (NamespaceType | undefined)[] = [];
+      const unsubscribe = env.ns$.onChange((ns) => {
+        seen.push(ns);
+      });
+
+      env.destroy();
+
+      expect(seen, 'the slot is cleared, not merely left behind').toEqual([undefined]);
+
+      unsubscribe();
     });
   });
 

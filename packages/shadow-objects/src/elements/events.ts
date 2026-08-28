@@ -19,7 +19,7 @@ export interface ReRequestEntHostEvent extends CustomEvent {
   };
 }
 
-export interface ShadowEntsEventMap {
+export interface ShadowObjectsEventMap {
   [RequestEntParentEventName]: RequestEntParentEvent;
   [ReRequestEntParentEventName]: ReRequestEntParentEvent;
   [ReRequestEntHostEventName]: ReRequestEntHostEvent;
@@ -28,5 +28,5 @@ export interface ShadowEntsEventMap {
 declare global {
   // An event map maps event names to event types, and nothing else. Anything else declared in
   // here becomes an event name for the whole program — a method name included.
-  interface HTMLElementEventMap extends ShadowEntsEventMap {}
+  interface HTMLElementEventMap extends ShadowObjectsEventMap {}
 }

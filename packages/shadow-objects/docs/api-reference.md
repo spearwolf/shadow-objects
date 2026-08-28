@@ -1190,7 +1190,7 @@ const env = new ShadowEnv();
 | `isReady` | `boolean` (read-only) | `true` when a `view` and an `envProxy` are set, the proxy has started, and the environment is not destroyed. |
 | `isDestroyed` | `boolean` (read-only) | `true` if the environment has been destroyed. |
 | `logger` | `ConsoleLogger` (read-only) | The logger this environment reports through. |
-| `ns$` | `Signal<NamespaceType \| undefined>` (read-only) | A signal slot the environment itself never writes -- it reads `undefined` for the whole lifetime of a `ShadowEnv`. Read the namespace from `env.view.ns`. |
+| `ns$` | `Signal<NamespaceType \| undefined>` (read-only) | The namespace of the `ComponentContext` this environment observes, and `undefined` while it observes none. The `view` setter writes it, so it carries the name `ShadowEnv.get()` finds this environment under, unless another environment has since taken that namespace over; `destroy()` leaves it on `undefined`. |
 | `viewReady` | `boolean` | Set by the `view` setter to reflect whether a context is attached. |
 | `proxyReady` | `boolean` | Set to `true` once the start of the currently assigned proxy has resolved, and back to `false` when that proxy fails. A start that finishes after its proxy has been replaced, cleared or destroyed writes nothing here. |
 
@@ -1216,7 +1216,10 @@ A namespace carries one environment at a time. Assigning a `view` registers the 
 `view.ns` and displaces whatever was registered there, with a warning through the `ConsoleLogger`.
 The registration is released by the environment that holds it -- when its `view` moves to another
 context or is cleared, and when it is destroyed. An environment that has been displaced releases
-nothing, so this lookup keeps answering the environment that is actually registered.
+nothing, so this lookup keeps answering the environment that is actually registered. For an
+environment that has not been displaced, `env.ns$` carries the same name, so an effect can follow
+it from one namespace to the next without observing `view` itself; a displaced environment keeps
+that name in `ns$` even though this lookup no longer answers it.
 
 ### Events
 
@@ -2271,9 +2274,9 @@ into `HTMLElementEventMap` — an `addEventListener` for any of them is typed wi
 | `ReRequestEntHostEventName` | `'shaeReRequestEntHost'` | A `<shae-ent>` that starts or stops answering host requests. `<shae-prop>` listens for it and asks again. Type: `ReRequestEntHostEvent`. |
 
 ```typescript
-import type {ShadowEntsEventMap} from '@spearwolf/shadow-objects';
+import type {ShadowObjectsEventMap} from '@spearwolf/shadow-objects';
 
-const keys: (keyof ShadowEntsEventMap)[] = ['shaeRequestEntParent'];
+const keys: (keyof ShadowObjectsEventMap)[] = ['shaeRequestEntParent'];
 ```
 
 **Registration order does not matter.** The three registration modules are independent and can be

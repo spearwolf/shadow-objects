@@ -63,6 +63,12 @@ export class ShadowEnv {
 
   readonly logger = new ConsoleLogger('ShadowEnv');
 
+  /**
+   * The namespace of the {@link ComponentContext} this environment observes, and `undefined`
+   * while it observes none. The `view` setter writes it, so it carries the name
+   * {@link ShadowEnv.get} finds this environment under, unless another environment has since
+   * taken that namespace over; a `destroy()` leaves it on `undefined`.
+   */
   readonly ns$ = createSignal<NamespaceType | undefined>();
 
   @signal() accessor viewReady = false;
@@ -162,6 +168,14 @@ export class ShadowEnv {
         }
         globalThis.__shadowEnvs.set(this.#comCtx.ns, this);
       }
+
+      // the namespace this environment observes, published where the name promises it. `view` is
+      // the only way one reaches this object -- `ComponentContext.ns` is assigned in its
+      // constructor and never again -- and the write stands behind the registration above, so
+      // whoever reacts to it finds `ShadowEnv.get()` already answering this environment. It needs
+      // no truthiness guard of its own: `toNamespace()` turns an empty or whitespace-only string
+      // into `GlobalNS`, so a context that exists has a namespace that registers.
+      this.ns$.set(this.#comCtx?.ns);
 
       this.viewReady = Boolean(ctx);
     }
@@ -385,7 +399,7 @@ export class ShadowEnv {
 
     // the `envProxy` setter destroys the previous proxy, so it must not be destroyed here as well
     this.envProxy = undefined;
-    // the `view` setter releases the namespace registration on the way out, ownership-checked
+    // the `view` setter releases the namespace registration on the way out, ownership-checked, and clears `ns$` with it
     this.view = undefined;
 
     // settle everyone still waiting before the listeners they depend on are removed
