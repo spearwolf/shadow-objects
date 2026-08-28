@@ -320,9 +320,8 @@ describe('ShaeOffscreenCanvas', () => {
 
       fire(10);
       // 10ms since the last delivered frame is under 0.75 * 1000/60 ≈ 12.5ms: still capped at the
-      // 60fps default. `#frameLoop`'s own constructor default is 90fps (threshold ≈ 8.3ms), which
-      // 10ms would have cleared — so this frame being held back is also what shows that the effect
-      // ran at all and put the 60 in place of that 90.
+      // 60fps default. `#frameLoop` starts uncapped (`maxFps = 0`, every frame due), so this frame
+      // being held back is what shows that the effect ran at all and put the 60 in place.
       expect(hostFrames).toHaveLength(1);
 
       fire(100);
@@ -546,6 +545,31 @@ describe('ShaeOffscreenCanvas', () => {
       expect(cancelAnimationFrame).toHaveBeenCalledTimes(1);
       expect(child.useContext(CanvasContext)()).toBeUndefined();
       expect(child.useContext(OffscreenCanvasContext)()).toBeUndefined();
+    });
+
+    it('gives its offscreen-canvas context back when the shadow object leaves the entity', async () => {
+      env = await makeEnv();
+
+      const hostUuid = crypto.randomUUID();
+      const childUuid = crypto.randomUUID();
+
+      env.kernel.createEntity(hostUuid, 'ShaeOffscreenCanvas');
+      env.kernel.createEntity(childUuid, 'plainChild', hostUuid);
+
+      const child = env.kernel.getEntity(childUuid);
+      const getOffscreenCanvas = child.useContext(OffscreenCanvasContext);
+      await settle();
+      await settle();
+
+      expect(getOffscreenCanvas()).toBeDefined();
+
+      // A token change is the teardown path on which the entity lives, so its context signal
+      // is still there to be read afterwards. Destroying the entity would tear down the reader
+      // along with the provider and leave nothing to assert against.
+      env.kernel.changeToken(hostUuid, 'plainChild');
+      await settle();
+
+      expect(getOffscreenCanvas()).toBeUndefined();
     });
 
     // The teardown block gives back the view channel along with the context signals and the frame

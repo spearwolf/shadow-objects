@@ -23,7 +23,7 @@ const SHOW_FPS_COUNTER_INTERVAL_SECONDS = 5;
 export class ShaeOffscreenCanvas extends ShadowObjectBase {
   static displayName = 'ShaeOffscreenCanvas';
 
-  #frameLoop = new FrameLoop(90);
+  #frameLoop = new FrameLoop();
 
   canvasRequested = false;
   isRunning = false;
@@ -45,11 +45,9 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
     this.dispatchMessageToView = dispatchMessageToView;
 
     const canvas$ = provideContext(CanvasContext);
-    const offscreenCanvas$ = provideContext(OffscreenCanvasContext, this);
+    provideContext(OffscreenCanvasContext, this);
 
     onDestroy(() => {
-      offscreenCanvas$.set(undefined);
-
       // The loop asks the browser for frames only while somebody listens, so a shadow object on its
       // way out takes its subscription along — otherwise the last one to leave keeps the loop of
       // its realm running for the lifetime of the page.

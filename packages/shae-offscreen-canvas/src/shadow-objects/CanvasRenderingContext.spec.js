@@ -210,6 +210,23 @@ describe('CanvasRenderingContext', () => {
       expect(child.useContext(CanvasRenderingContext2D)()).toBeUndefined();
     });
 
+    it('gives its context back when the shadow object leaves the entity', async () => {
+      const {host, child} = await setup();
+
+      const ctx = {mark: 'ctx'};
+      host.canvas$.set({getContext: () => ctx});
+      await settle();
+      expect(child.useContext(CanvasRenderingContext2D)()).toBe(ctx);
+
+      // A token change is the teardown path on which the entity lives, so its context signal
+      // is still there to be read afterwards. Destroying the entity would tear down the reader
+      // along with the provider and leave nothing to assert against.
+      env.kernel.changeToken(child.uuid, 'plainChild');
+      await settle();
+
+      expect(child.useContext(CanvasRenderingContext2D)()).toBeUndefined();
+    });
+
     it('reads a new context once a new canvas arrives', async () => {
       const {host, child} = await setup();
 

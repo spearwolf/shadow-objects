@@ -3,7 +3,7 @@ import {CanvasContext, OffscreenCanvasContext} from '../shared/constants.js';
 let id = 0;
 
 export class CanvasRenderingContext {
-  constructor(contextName, renderingContextType, {useContext, provideContext, onDestroy, createEffect}) {
+  constructor(contextName, renderingContextType, {useContext, provideContext, createEffect}) {
     this.id = ++id;
 
     const getOffscreenCanvas = useContext(OffscreenCanvasContext);
@@ -24,10 +24,6 @@ export class CanvasRenderingContext {
       } else if (canvas == null) {
         canvasRenderCtx$.set(undefined);
       }
-    });
-
-    onDestroy(() => {
-      canvasRenderCtx$.set(undefined);
     });
   }
 }

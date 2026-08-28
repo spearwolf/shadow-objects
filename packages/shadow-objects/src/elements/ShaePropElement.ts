@@ -116,6 +116,18 @@ export class ShaePropElement extends HTMLElement {
   /** Turns what the attribute spells into the value the property carries. */
   #convertValue?: Effect | undefined;
 
+  /** Whether the missing-host warning has already gone out for this element. */
+  #reportedMissingHost = false;
+
+  /** The node this element listens on for a re-request of the host, so the listener can come off the same one. */
+  #reRequestHostTarget?: EventTarget | undefined;
+
+  readonly #hostLookup = new MicrotaskGate(() => {
+    if (this.isConnected) {
+      this.#findEntNode();
+    }
+  });
+
   /** Whether this element has been torn down. */
   get isDestroyed(): boolean {
     return this.#destroyed;
@@ -431,14 +443,6 @@ export class ShaePropElement extends HTMLElement {
     this.#convertValue?.destroy();
     this.#convertValue = undefined;
   }
-
-  #reportedMissingHost = false;
-  #reRequestHostTarget?: EventTarget | undefined;
-  readonly #hostLookup = new MicrotaskGate(() => {
-    if (this.isConnected) {
-      this.#findEntNode();
-    }
-  });
 
   // Determines the host from where the element stands right now. The request runs *without* a
   // namespace: a property belongs to the closest entity above it, whatever namespace that entity
