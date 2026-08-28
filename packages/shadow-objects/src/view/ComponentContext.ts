@@ -106,6 +106,20 @@ export class ComponentContext {
   // trail — so a uuid standing in that map is no statement about anyone still being a member
   readonly #componentInstances = new Set<ViewComponent>();
 
+  /**
+   * The entry `component` owns, and nothing else.
+   *
+   * An entry outlives the departure of its component until the next change trail, so a later
+   * component can take the uuid over while the entry is still standing. A lookup by uuid alone
+   * would then hand back the entry of a namesake, and every write that followed would land on a
+   * live component that was never named. Each method that is given an instance asks through here,
+   * so that it acts on that instance or on nothing.
+   */
+  #entryOf(component: ViewComponent): ViewInstance | undefined {
+    const entry = this.#components.get(component.uuid);
+    return entry !== undefined && entry.component === component ? entry : undefined;
+  }
+
   readonly #componentMemory = new ComponentMemory();
 
   readonly #logger = new ConsoleLogger('ComponentContext');
@@ -239,8 +253,15 @@ export class ComponentContext {
     this.#viewInstances = undefined;
   }
 
+  /**
+   * Whether `component` is a member of this {@link ComponentContext} right now.
+   *
+   * This is the question about the instance, and the only one this class answers about
+   * membership. A component that has left gets `false`, even while its entry is still standing —
+   * {@link ComponentContext.hasComponents} is what counts entries.
+   */
   hasComponent(component: ViewComponent) {
-    return this.#components.has(component.uuid);
+    return this.#componentInstances.has(component);
   }
 
   hasComponents() {
@@ -248,7 +269,7 @@ export class ComponentContext {
   }
 
   isRootComponent(component: ViewComponent) {
-    return this.#rootComponents.includes(component.uuid);
+    return this.#entryOf(component) !== undefined && this.#rootComponents.includes(component.uuid);
   }
 
   destroyComponent(component: ViewComponent) {
@@ -257,13 +278,13 @@ export class ComponentContext {
     // destroyComponent(vc) → vc.destroy() → destroyComponent(vc)
     this.#componentInstances.delete(component);
 
-    const entry = this.#components.get(component.uuid);
+    const entry = this.#entryOf(component);
 
     // destroying an entry twice would put the destroy count ahead of the create count: a
     // component that joins again afterwards would be destroyed by the very next change trail.
     // And the entry belongs to whoever holds the uuid now — a component that has already left
     // goes a second time without taking that one's entity down with it
-    if (entry !== undefined && entry.component === component && !entry.changes.isDestroyed) {
+    if (entry !== undefined && !entry.changes.isDestroyed) {
       for (const childUuid of entry.children.slice(0)) {
         this.#components.get(childUuid)?.component.removeFromParent();
       }
@@ -280,36 +301,30 @@ export class ComponentContext {
   }
 
   getChildren(component: ViewComponent): ViewComponent[] {
-    return this.#components.get(component.uuid)?.children.map((uuid) => this.#components.get(uuid)!.component) ?? [];
+    return this.#entryOf(component)?.children.map((uuid) => this.#components.get(uuid)!.component) ?? [];
   }
 
   removeFromParent(component: ViewComponent, parent: ViewComponent) {
-    if (this.hasComponent(parent)) {
-      // the child may already be gone (destroyComponent, removeSubTree) while the component
-      // still holds on to its parent — detaching it must not resurrect it as a root.
-      // And an entry a later component has taken over must not be touched by the one that left it
-      // behind — same guard as destroyComponent() and moveToRoot(), for the same reason: mutating
-      // it here would corrupt the live component's parent and its place among the roots
-      const childEntry = this.#components.get(component.uuid);
-      if (childEntry === undefined || childEntry.component !== component) return;
+    const parentEntry = this.#entryOf(parent);
+    if (parentEntry === undefined) return;
 
-      const parentEntry = this.#components.get(parent.uuid)!;
-      const childIdx = parentEntry.children.indexOf(component.uuid);
-      if (childIdx !== -1) {
-        parentEntry.children.splice(childIdx, 1);
-        childEntry.changes.setParent(undefined);
-      }
-      this.#appendToOrdered(childEntry.component, this.#rootComponents);
-      this.#viewInstances = undefined;
+    // the child may already be gone (destroyComponent, removeSubTree) while the component
+    // still holds on to its parent — detaching it must not resurrect it as a root
+    const childEntry = this.#entryOf(component);
+    if (childEntry === undefined) return;
+
+    const childIdx = parentEntry.children.indexOf(component.uuid);
+    if (childIdx !== -1) {
+      parentEntry.children.splice(childIdx, 1);
+      childEntry.changes.setParent(undefined);
     }
+    this.#appendToOrdered(childEntry.component, this.#rootComponents);
+    this.#viewInstances = undefined;
   }
 
   moveToRoot(component: ViewComponent) {
-    // an entry a later component has taken over must not be touched by the one that left it
-    // behind — same guard as destroyComponent() and removeFromParent(), for the same reason:
-    // mutating it here would corrupt the live component's parent and its place among the roots
-    const childEntry = this.#components.get(component.uuid);
-    if (childEntry !== undefined && childEntry.component === component) {
+    const childEntry = this.#entryOf(component);
+    if (childEntry !== undefined) {
       childEntry.changes?.setParent(undefined);
       this.#appendToOrdered(childEntry.component, this.#rootComponents);
     }
@@ -317,22 +332,24 @@ export class ComponentContext {
   }
 
   changeToken(component: ViewComponent, token?: string) {
-    this.#components.get(component.uuid)?.changes.changeToken(token);
+    this.#entryOf(component)?.changes.changeToken(token);
   }
 
   isChildOf(child: ViewComponent, parent: ViewComponent) {
-    if (this.hasComponent(parent)) {
-      const entry = this.#components.get(parent.uuid)!;
-      return entry.children.includes(child.uuid);
-    }
-    return false;
+    const parentEntry = this.#entryOf(parent);
+    return parentEntry !== undefined && this.#entryOf(child) !== undefined && parentEntry.children.includes(child.uuid);
   }
 
   addToChildren(parent: ViewComponent, child: ViewComponent) {
-    const entry = this.#components.get(parent.uuid);
+    const entry = this.#entryOf(parent);
     if (entry) {
+      // a uuid put into a children list without an entry of its own behind it makes the next
+      // clear() panic, so the child side is only touched for a child this context holds
+      const childEntry = this.#entryOf(child);
+      if (childEntry === undefined) return;
+
       this.#appendToOrdered(child, entry.children);
-      this.#components.get(child.uuid)?.changes.setParent(parent.uuid);
+      childEntry.changes.setParent(parent.uuid);
       removeFrom(this.#rootComponents, child.uuid);
       this.#viewInstances = undefined;
     } else {
@@ -376,7 +393,7 @@ export class ComponentContext {
    * @returns `true` if the value differs from the last value written to a change trail
    */
   setProperty<T = unknown>(component: ViewComponent, propKey: string, value: T, isEqual?: (a: T, b: T) => boolean): boolean {
-    const vi = this.#components.get(component.uuid);
+    const vi = this.#entryOf(component);
     if (vi != null) {
       if (isEqual != null) {
         vi.propIsEqual ??= new Map();
@@ -390,7 +407,7 @@ export class ComponentContext {
   }
 
   removeProperty(component: ViewComponent, propKey: string) {
-    this.#components.get(component.uuid)?.changes.removeProperty(propKey);
+    this.#entryOf(component)?.changes.removeProperty(propKey);
   }
 
   /**
@@ -417,7 +434,7 @@ export class ComponentContext {
    * copied, not moved. What stays behind goes down with the entity in this context.
    */
   transferPropertiesTo(component: ViewComponent, target: ComponentContext) {
-    const vi = this.#components.get(component.uuid);
+    const vi = this.#entryOf(component);
     if (vi === undefined) return;
 
     for (const [key, value] of vi.changes.getProperties()) {
@@ -431,7 +448,7 @@ export class ComponentContext {
   }
 
   #registerPropIsEqual(component: ViewComponent, propKey: string, isEqual: (a: any, b: any) => boolean) {
-    const vi = this.#components.get(component.uuid);
+    const vi = this.#entryOf(component);
     if (vi === undefined) return;
 
     vi.propIsEqual ??= new Map();
@@ -442,10 +459,10 @@ export class ComponentContext {
     // a component this context does not (or no longer) hold must never be re-inserted into an
     // ordered list — this is public API, so the argument may well be a component whose uuid has
     // no entry here at all, and a uuid put back into an ordered list without one makes clear() panic
-    const entry = this.#components.get(component.uuid);
+    const entry = this.#entryOf(component);
     if (entry === undefined) return;
 
-    const parentEntry = component.parent ? this.#components.get(component.parent.uuid) : undefined;
+    const parentEntry = component.parent ? this.#entryOf(component.parent) : undefined;
     if (parentEntry !== undefined) {
       removeFrom(parentEntry.children, component.uuid);
       this.#appendToOrdered(component, parentEntry.children);
@@ -469,7 +486,7 @@ export class ComponentContext {
    * Dispatch an event to the shadow objects linked to the view component
    */
   dispatchShadowObjectsEvent(component: ViewComponent, type: string, data: unknown, transferables?: Transferable[]) {
-    this.#components.get(component.uuid)?.changes.createEvent(type, data, transferables);
+    this.#entryOf(component)?.changes.createEvent(type, data, transferables);
   }
 
   /**

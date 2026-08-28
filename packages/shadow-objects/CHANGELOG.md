@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 > **Next release: minor.** The package is below `1.0.0`, so the accumulated breaking
-> changes below bump the minor position — `0.33.0` → `0.34.0`. Fifty-three changes reach existing
+> changes below bump the minor position — `0.33.0` → `0.34.0`. Fifty-four changes reach existing
 > consumers: both runtime dependencies take a major step and carry behaviour changes of their
 > own; the emitted declarations carry `| undefined` where a value can be missing, so a
 > build with `strictNullChecks` sees new errors; `RemoteWorkerEnv` rejects with
@@ -187,7 +187,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > where the markup used to keep its own spelling until the element had left the document and come back;
 > and a `LocalShadowObjectEnv.importScript()` on a module without a `shadowObjects` export rejects
 > where it used to resolve, so an `await` without a `catch` throws in the local environment the same
-> way it already did in the worker.
+> way it already did in the worker; and a `ComponentContext` answers every question about the
+> component it is given rather than about that component's uuid, so `hasComponent()` reads `false`
+> for a component that has left while its entry is still standing — `hasComponents()` is the
+> question about the entry — and `getChildren()`, `isRootComponent()`, `isChildOf()`, `changeOrder()`,
+> `changeToken()`, `setProperty()`, `removeProperty()` and `dispatchShadowObjectsEvent()` reach
+> nothing when they are called with a component whose uuid a later one has taken over, where they
+> used to act on that later component's entry.
 > Everything else in this section is additive or a bugfix.
 
 ### ⚠️ Breaking Changes
@@ -248,6 +254,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Behavior
 
+- **Behavior (view):** `ComponentContext` answers for the instance it is given, not for its uuid. `hasComponent()` is the question about membership and reads `false` for a component that has left the context, even while its entry is still standing — `hasComponents()` is the question about the entry, and the two part company for exactly the span between a departure and the change trail that clears the entry away. An entry that survives that span can be taken over by a later component under the same uuid, and `getChildren()`, `isRootComponent()`, `isChildOf()`, `changeOrder()`, `changeToken()`, `setProperty()`, `removeProperty()` and `dispatchShadowObjectsEvent()` no longer touch that entry when they are called with the component that left: each of them does nothing and answers with the empty result of its return type. `addChild()` and `parent = …` throw a `ViewComponentError` naming a parent its context does not hold, alongside the two reasons they already had. `docs/api-reference.md` says so.
 - **Behavior (elements):** an element that becomes an entity while the markup around it already stands asks the entities around it to look for their parent again one microtask later, and everything that becomes an entity in the same task is answered by one round. `customElements.define()` therefore returns before `entParentNode` and `viewComponent.parent` below it have moved — `await Promise.resolve()` before reading either, the same wait a `<shae-prop>` already needs. What the round delivers is unchanged: the hierarchy it leaves behind is the one the element tree shows, and a change trail built in the same task carries it, because the round runs at the head of the build.
 - **Behavior (kernel):** a uuid names one entity at a time. `Kernel.createEntity()` refuses a uuid the Kernel already holds an entity for with an `EntityUuidInUseError`, where the second creation used to take the entry over and leave the entity behind it standing — with its Shadow Objects, its signals and its contexts — out of reach of every teardown, because nothing held that uuid any more. The refusal comes before the call writes anything: the standing entity keeps its Shadow Objects, signals, contexts, token and properties, and a `parentUuid` the refused call named gains no child. The uuid is free again once `destroyEntity()` has been through. In a change trail the trail is refused at that entry, `appliedCount` names the prefix that went through, and `cause` carries the `EntityUuidInUseError` — the object itself locally, and across a worker boundary a `WorkerReportedError` carrying its wording and its name, without the class and without the `uuid`. What follows for the way back: a re-creation from the Component Memory belongs to a fresh proxy — `env.envProxy = new RemoteWorkerEnv()`, into which `ShadowEnv` re-creates the components by itself — while against an environment whose Kernel still holds those uuids it is refused, cycle after cycle. `docs/api-reference.md`, `docs/guides.md` and `docs/cheat-sheet.md` say so.
 - **Behavior (view):** a change trail the Kernel refuses is no longer lost. A trail is applied entry by entry and the first throw ends the run, so what the Kernel holds afterwards is a prefix of it — and the refusal names the length of that prefix. `ShadowEnv` folds exactly those entries into its bookkeeping and leaves the rest pending, so the next cycle carries them again and both sides agree on what is applied. The other side of that promise belongs to the application: a cause that stays put — a token no definition exists for, a Shadow Object whose constructor always throws — refuses every following cycle the same way, where the trail used to be dropped once and the missing state never noticed. `ShadowEnv.SyncFailed` is where that is stopped. A reason that says nothing about how far the Kernel got — a confirmation window that ran out, a `WorkerDestroyedError`, a proxy of someone else's making — still counts the whole trail as applied, which is the safe direction: a worker that timed out may well hold all of it, and a creation sent a second time to a Kernel that holds the entity is refused, so a trail kept pending on a guess would come back to that refusal cycle after cycle. Over a worker the count travels on the confirmed route only: `syncWait()` asks for a confirmation, `sync()` does not, and a trail nobody waits for gets no answer to read a count from.

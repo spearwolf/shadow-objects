@@ -21,6 +21,12 @@ function assertUsableAsParent(parent: ViewComponent, childContext: ComponentCont
   if (parent.context !== childContext) {
     throw new ViewComponentError('cannot add a child from another context');
   }
+  // the two checks above ask the instance which context it names; this one asks the context
+  // whether it holds the instance. Both have to agree before a child is hung on the parent — a
+  // parent the context does not hold would take the child into a children list nobody reads
+  if (!childContext.hasComponent(parent)) {
+    throw new ViewComponentError('cannot add a child to a view component its context does not hold');
+  }
 }
 
 export class ViewComponent {

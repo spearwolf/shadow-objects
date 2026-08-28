@@ -182,6 +182,32 @@ describe('ComponentContext', () => {
     });
   });
 
+  describe('hasComponent', () => {
+    it('answers no for a component that has left, while its entry still stands', () => {
+      ctx = makeContext();
+      const vc = new ViewComponent('vc', {context: ctx});
+      ctx.buildChangeTrails();
+
+      vc.destroy();
+
+      expect(ctx.hasComponent(vc), 'the component is no member any more').toBe(false);
+      expect(ctx.hasComponents(), 'its entry stands until the next change trail').toBe(true);
+    });
+
+    it('answers no for a component whose uuid a successor has taken over', () => {
+      ctx = makeContext();
+      const holder = new ViewComponent('holder', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      holder.destroy();
+
+      const successor = new ViewComponent('successor', {context: ctx, uuid: 'twin'});
+
+      expect(ctx.hasComponent(holder)).toBe(false);
+      expect(ctx.hasComponent(successor)).toBe(true);
+    });
+  });
+
   describe('ordered insertion (children)', () => {
     const childTokens = (parent: ViewComponent) => ctx.getChildren(parent).map((c) => c.token);
 
@@ -354,6 +380,51 @@ describe('ComponentContext', () => {
         a.order = 7;
       }).not.toThrow();
       expect(ctx.hasComponents()).toBe(false);
+    });
+  });
+
+  describe('changeOrder', () => {
+    it('leaves the entry of a successor where it is', () => {
+      ctx = makeContext();
+      const parent = new ViewComponent('parent', {context: ctx});
+      const holder = new ViewComponent('holder', {context: ctx, uuid: 'twin', order: 7});
+      ctx.buildChangeTrails();
+
+      holder.destroy();
+
+      const successor = new ViewComponent('successor', {context: ctx, uuid: 'twin', parent, order: 0});
+      ctx.buildChangeTrails();
+
+      ctx.changeOrder(holder);
+
+      // the order of the component that left says nothing about where the entry sits now: it
+      // belongs to the successor, and that one hangs on a parent the departed component never had
+      expect(ctx.isRootComponent(successor)).toBe(false);
+      expect(ctx.getChildren(parent).map((c) => c.token)).toEqual(['successor']);
+      expect(ctx.buildChangeTrails()).toEqual([]);
+    });
+  });
+
+  describe('a component whose entry a successor holds', () => {
+    it('is turned away by every way in that takes a component', () => {
+      ctx = makeContext();
+      const holder = new ViewComponent('holder', {context: ctx, uuid: 'twin'});
+      ctx.buildChangeTrails();
+
+      holder.destroy();
+
+      const successor = new ViewComponent('successor', {context: ctx, uuid: 'twin'});
+      const kid = new ViewComponent('kid', {context: ctx, parent: successor});
+      ctx.buildChangeTrails();
+
+      expect(ctx.getChildren(holder)).toEqual([]);
+      expect(ctx.isRootComponent(holder)).toBe(false);
+      expect(ctx.isChildOf(kid, holder)).toBe(false);
+      expect(ctx.setProperty(holder, 'x', 1)).toBe(false);
+
+      ctx.changeToken(holder, 'nope');
+
+      expect(ctx.buildChangeTrails(), 'the token of the successor is untouched').toEqual([]);
     });
   });
 
@@ -997,7 +1068,7 @@ describe('ComponentContext', () => {
 
       ctx.commitChangeTrail(0);
 
-      expect(ctx.hasComponent(a), 'the entry stands until the destruction is applied').toBe(true);
+      expect(ctx.hasComponents(), 'the entry stands until the destruction is applied').toBe(true);
       expect(ctx.buildChangeTrails(false)).toEqual(first);
     });
 
@@ -1053,7 +1124,7 @@ describe('ComponentContext', () => {
       a.destroy();
       ctx.commitChangeTrail(trail.length);
 
-      expect(ctx.hasComponent(a), 'the entry stands until its destruction has been sent').toBe(true);
+      expect(ctx.hasComponents(), 'the entry stands until its destruction has been sent').toBe(true);
       expect(ctx.buildChangeTrails(false)).toEqual([{type: ComponentChangeType.DestroyEntities, uuid: 'a'}]);
     });
 
