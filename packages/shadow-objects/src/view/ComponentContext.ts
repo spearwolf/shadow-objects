@@ -302,8 +302,28 @@ export class ComponentContext {
     }
   }
 
+  /**
+   * The children of `component`, in sort order — a fresh array each call, and an empty one for
+   * an instance that does not own its entry.
+   *
+   * Uuids without a matching view instance are skipped instead of dereferenced: `addToChildren()`
+   * writes a uuid into a children list without the parent link of the child following along, so
+   * `#deleteComponent()` has no list to take that uuid out of and the entry behind it goes while
+   * the list keeps naming it. `#appendToOrdered()` and `#traverseLevelOrderBFS()` read a children
+   * list the same way.
+   */
   getChildren(component: ViewComponent): ViewComponent[] {
-    return this.#entryOf(component)?.children.map((uuid) => this.#components.get(uuid)!.component) ?? [];
+    const children = this.#entryOf(component)?.children;
+    if (children === undefined) return [];
+
+    const result: ViewComponent[] = [];
+    for (const uuid of children) {
+      const entry = this.#components.get(uuid);
+      if (entry !== undefined) {
+        result.push(entry.component);
+      }
+    }
+    return result;
   }
 
   removeFromParent(component: ViewComponent, parent: ViewComponent) {

@@ -967,6 +967,24 @@ describe('ComponentContext', () => {
       expect(ctx.traverseLevelOrderBFS().map((c) => c.uuid)).toEqual(['r', 'a', 'b']);
     });
 
+    it('skips a child uuid whose entry is gone instead of dereferencing it', () => {
+      ctx = makeContext();
+      const parent = new ViewComponent('p', {context: ctx});
+      const orphan = new ViewComponent('o', {context: ctx});
+
+      // the same primitive as above: the children list is written without the parent link
+      // following along, so the delete has no list to take the uuid out of
+      ctx.addToChildren(parent, orphan);
+      ctx.buildChangeTrails();
+
+      orphan.destroy();
+      ctx.buildChangeTrails();
+
+      expect(ctx.getChildren(parent)).toEqual([]);
+      expect(ctx.traverseLevelOrderBFS().map((c) => c.token)).toEqual(['p']);
+      expect(() => ctx.clear()).not.toThrow();
+    });
+
     it('every component is either a root or a child of a known parent', () => {
       ctx = makeContext();
       const parent = new ViewComponent('p', {context: ctx});

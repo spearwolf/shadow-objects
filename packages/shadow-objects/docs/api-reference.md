@@ -1019,7 +1019,7 @@ Three event names that arrive as ordinary events on a `ViewComponent`; see [Rece
 | `hasComponents()` | Whether it holds any component at all. |
 | `isRootComponent(component)` | Whether the component is a root, i.e. has no parent in this context. `false` for an instance that does not own its entry. |
 | `isChildOf(child, parent)` | Whether `child` currently sits in the children list of `parent`. `false` unless both instances own their entries. |
-| `getChildren(component)` | The children of a component, in sort order. A fresh array each call, and an empty one for an instance that does not own its entry. |
+| `getChildren(component)` | The children of a component, in sort order. A fresh array each call, and an empty one for an instance that does not own its entry. A uuid in the children list that no entry stands behind is skipped rather than dereferenced. |
 | `traverseLevelOrderBFS()` | Every component in the context, breadth-first from the roots. |
 | `destroyComponent(component)` | Write the destroy change for a component, promote its children to roots and detach the component from this context. |
 | `addToChildren(parent, child)` | Insert `child` into the children of `parent`. Throws a plain `Error` when the context does not hold `parent`. It only appends: a `child` that already stands in the children list of another parent stays there as well, and it is not checked against the ancestors of `parent`. Both are the job of `ViewComponent.addChild()`. The child side is left alone where the context does not hold the child entry for that instance. |
