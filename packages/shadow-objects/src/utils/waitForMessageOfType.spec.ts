@@ -1,4 +1,5 @@
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
+import {WorkerTimeoutError} from '../WorkerTimeoutError.js';
 import {waitForMessageOfType} from './waitForMessageOfType.js';
 
 // A worker double of the same build as `src/view/RemoteWorkerEnv.spec.ts:23-77`: `reply()` calls
@@ -70,5 +71,27 @@ describe('waitForMessageOfType', () => {
     worker.reply({type: 'ready'});
 
     await expect(promise).resolves.toBeUndefined();
+  });
+
+  it('rejects a wait that runs out of time with a WorkerTimeoutError', async () => {
+    try {
+      vi.useFakeTimers();
+
+      const worker = new FakeWorker();
+      // caught through `then`, not awaited: a wait that never runs out would hang the whole run
+      const settled = waitForMessageOfType(worker as unknown as Worker, 'ready', 1234).then(
+        () => undefined,
+        (reason: unknown) => reason,
+      );
+
+      await vi.advanceTimersByTimeAsync(1234);
+
+      const reason = await settled;
+      expect(reason, 'the deadline has a class of its own').toBeInstanceOf(WorkerTimeoutError);
+      expect((reason as WorkerTimeoutError).messageType, 'and names the reply that stayed out').toBe('ready');
+      expect((reason as WorkerTimeoutError).timeout, 'and the number it waited').toBe(1234);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

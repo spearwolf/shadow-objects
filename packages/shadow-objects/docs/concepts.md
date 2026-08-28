@@ -194,7 +194,7 @@ The transport between View Layer and Shadow Environment is a **change trail**: a
 
 > **The change trail is batched and clocked, not immediate.** Setting a property does not run the dependent effect on the next line. If you expect a synchronous pass-through, you are building race conditions.
 
-When you do need a guarantee, use `syncWait()`, which resolves after the Shadow Environment has processed the batch. See [`ShadowEnv`](./api-reference.md#shadowenv) for both methods.
+When you do need a guarantee, use `syncWait()`, which resolves after the Shadow Environment has processed the batch -- and it is at the same time the only route on which a worker reports a change trail handover it refused. See [`ShadowEnv`](./api-reference.md#shadowenv) for both methods.
 
 For local environments you can additionally switch off structured cloning, and then references travel instead of copies. That is more than a performance knob: it is the only way to hand a non-cloneable object such as a DOM node or a canvas context straight to a Shadow Object.
 

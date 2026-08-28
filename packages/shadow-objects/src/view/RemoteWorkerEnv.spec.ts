@@ -17,6 +17,7 @@ import {
 } from '../constants.js';
 import type {ChangeTrailType, ISendEvents, IUpdateOrderChange} from '../types.js';
 import {CONSOLE_LOGGER, CONSOLE_LOGGER_STORAGE} from '../utils/ConsoleLogger.js';
+import {WorkerTimeoutError} from '../WorkerTimeoutError.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 import {RemoteWorkerEnv, type RemoteWorkerEnvOptions, WorkerReportedError} from './RemoteWorkerEnv.js';
 
@@ -778,9 +779,7 @@ describe('RemoteWorkerEnv', () => {
 
         await vi.advanceTimersByTimeAsync(WorkerLoadTimeout);
 
-        expect((await started)?.message, 'the handshake reports its own timeout').toContain(
-          'Timeout waiting for message of type',
-        );
+        expect(await started, 'the handshake reports its own timeout').toBeInstanceOf(WorkerTimeoutError);
         expect(env.isDestroyed, 'a start that failed is not a teardown').toBe(false);
         expect(worker.terminateCount, 'the start that failed owns the worker it created').toBe(1);
         expect(error, 'the failure is reported').toHaveBeenCalled();
@@ -984,8 +983,9 @@ describe('RemoteWorkerEnv', () => {
       return state;
     };
 
-    const expectTimedOut = (settled: {value: unknown}) => {
-      expect((settled.value as Error)?.message, 'and then, by its own clock').toContain('Timeout waiting for message of type');
+    const expectTimedOut = (settled: {value: unknown}, messageType: string) => {
+      expect(settled.value, 'and then, by its own clock').toBeInstanceOf(WorkerTimeoutError);
+      expect((settled.value as WorkerTimeoutError).messageType, 'and names the reply that stayed out').toBe(messageType);
     };
 
     it('cut the load handshake off at the loadTimeout', async () => {
@@ -1001,7 +1001,7 @@ describe('RemoteWorkerEnv', () => {
         expect(settled.value, 'not before its time').toBe('pending');
 
         await vi.advanceTimersByTimeAsync(1);
-        expectTimedOut(settled);
+        expectTimedOut(settled, Loaded);
       } finally {
         vi.restoreAllMocks();
         vi.useRealTimers();
@@ -1019,7 +1019,7 @@ describe('RemoteWorkerEnv', () => {
         expect(settled.value, 'not before its time').toBe('pending');
 
         await vi.advanceTimersByTimeAsync(1);
-        expectTimedOut(settled);
+        expectTimedOut(settled, AppliedChangeTrail);
       } finally {
         vi.useRealTimers();
       }
@@ -1036,7 +1036,7 @@ describe('RemoteWorkerEnv', () => {
         expect(settled.value, 'not before its time').toBe('pending');
 
         await vi.advanceTimersByTimeAsync(1);
-        expectTimedOut(settled);
+        expectTimedOut(settled, ImportedModule);
       } finally {
         vi.useRealTimers();
       }

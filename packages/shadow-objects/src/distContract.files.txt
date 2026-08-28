@@ -8,6 +8,10 @@ src/EntityUuidInUseError.d.ts
 src/EntityUuidInUseError.d.ts.map
 src/EntityUuidInUseError.js
 src/EntityUuidInUseError.js.map
+src/WorkerTimeoutError.d.ts
+src/WorkerTimeoutError.d.ts.map
+src/WorkerTimeoutError.js
+src/WorkerTimeoutError.js.map
 src/bundle.d.ts
 src/bundle.d.ts.map
 src/bundle.js

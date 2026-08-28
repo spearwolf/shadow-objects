@@ -18,3 +18,4 @@ export * from './view/LocalShadowObjectEnv.js';
 export * from './view/RemoteWorkerEnv.js';
 export * from './view/ShadowEnv.js';
 export * from './view/ViewComponent.js';
+export * from './WorkerTimeoutError.js';

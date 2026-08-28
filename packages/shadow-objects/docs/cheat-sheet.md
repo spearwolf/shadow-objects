@@ -433,7 +433,7 @@ loop();
 | `ShadowEnv.ProxyFailed` | The proxy lost its Shadow Environment; the reason comes with the event |
 
 ```typescript
-import {ChangeTrailRefusedError, RemoteWorkerEnv} from '@spearwolf/shadow-objects';
+import {ChangeTrailRefusedError, RemoteWorkerEnv, WorkerTimeoutError} from '@spearwolf/shadow-objects';
 
 // resolves with the change trail of an applied cycle, rejects with the reason a refused one gave
 try {
@@ -444,6 +444,8 @@ try {
     // it stopped -- the rest is still pending and goes out again with the next cycle
   } else {
     // a reason that says nothing about how far the kernel got: the whole trail counts as applied.
+    // a WorkerTimeoutError is that case when the confirmation window ran out -- reason.messageType
+    // names the reply that stayed out, reason.timeout the number of milliseconds it waited.
     // a fresh worker is the way back -- the kernel behind the old proxy may still hold the uuids,
     // and a creation for a uuid it holds is refused. three steps, none of them optional:
     const proxy = new RemoteWorkerEnv();

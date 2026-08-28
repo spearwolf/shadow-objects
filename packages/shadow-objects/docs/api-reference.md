@@ -1227,7 +1227,7 @@ nothing, so this lookup keeps answering the environment that is actually registe
 | `ShadowEnv.ContextCreated` | Fired when the environment becomes ready (view and proxy both connected). Receives the `ShadowEnv`. Retained, so a listener registered afterwards still gets it. |
 | `ShadowEnv.ContextLost` | Fired when the environment loses its connection. Receives the `ShadowEnv`. Clears the retained `ContextCreated`, so a listener registered after the loss gets nothing until the environment becomes ready again. |
 | `ShadowEnv.AfterSync` | Fired after a synchronization cycle the Shadow Environment applied, including cycles with nothing to send. Receives the `ChangeTrailType` data, which is an empty array when nothing changed. A cycle that failed emits `SyncFailed` instead, so a listener of this event hears the successful cycles and nothing else. |
-| `ShadowEnv.SyncFailed` | Fired when the Shadow Environment could not apply the change trail of a cycle — a worker that does not confirm within `changeTrailTimeout`, a Kernel error the worker reports back, a proxy whose environment is already gone. Receives the reason, the full `ChangeTrailType` of that cycle, and the `ShadowEnv`. Where the Kernel itself refused, the reason is a `ChangeTrailRefusedError` and its `appliedCount` says how much of that trail went through. The environment stays ready: what failed is the cycle, not the connection. |
+| `ShadowEnv.SyncFailed` | Fired when the Shadow Environment could not apply the change trail of a cycle — a worker that does not confirm within `changeTrailTimeout`, which arrives as a [`WorkerTimeoutError`](#workertimeouterror), a Kernel error the worker reports back, a proxy whose environment is already gone. Receives the reason, the full `ChangeTrailType` of that cycle, and the `ShadowEnv`. Where the Kernel itself refused, the reason is a `ChangeTrailRefusedError` and its `appliedCount` says how much of that trail went through. The environment stays ready: what failed is the cycle, not the connection. |
 | `ShadowEnv.ProxyFailed` | Fired when the proxy loses the Shadow Environment it stands for. Receives the reason and the `ShadowEnv`. `ContextLost` follows, because the environment stops being ready. |
 
 ```typescript
@@ -1263,7 +1263,8 @@ is where an application puts a stop to that -- by taking the offending component
 by tearing the environment down.
 
 A reason that says nothing about how far the Kernel got is read differently: a confirmation window
-that ran out, a `WorkerDestroyedError`, a proxy of someone else's making. The whole trail then counts
+that ran out and left a [`WorkerTimeoutError`](#workertimeouterror), a `WorkerDestroyedError`, a
+proxy of someone else's making. The whole trail then counts
 as applied, which is the safe direction -- a worker that timed out may well hold all of it, and a
 creation sent a second time to a Kernel that holds the entity is refused, so a trail kept pending on
 a guess would come back to that refusal cycle after cycle. Over a worker this is also
@@ -1284,6 +1285,15 @@ then the new worker needs its Registry through `importScript()`, and the rebuilt
 
 Triggers synchronization of pending changes from the `ComponentContext` to the Shadow Environment. Call this in your main render loop (e.g., inside `requestAnimationFrame`). If the environment is not ready, the sync is deferred until `ContextCreated` fires.
 
+The trail goes out without asking the Shadow Environment to confirm it -- [`syncWait()`](#syncwait)
+is the call that asks. What becomes of a refusal is then the proxy's decision, and the two shipped
+ones differ. A `LocalShadowObjectEnv` runs the Kernel in the tick of whoever calls the proxy, one
+microtask after `sync()` returned rather than in the tick that called it, and rejects with what it
+threw, so a refusal reaches `ShadowEnv.SyncFailed` here as well, carrying its number. A
+`RemoteWorkerEnv` sends no serial without a confirmation and gets no answer back, so a refusal stays
+in the worker: it is written to the console there, `SyncFailed` stays silent, and the whole trail is
+booked as applied. [`syncWait()`](#syncwait) is the way both proxies answer on.
+
 #### `syncWait()`
 
 Like `sync()`, but returns a Promise that settles once the cycle is over. Useful when you need to guarantee the Shadow Environment has processed changes before continuing.
@@ -1296,7 +1306,7 @@ fixed, and a call after it belongs to the next cycle, the one that carries the c
 That holds inside a listener of `ShadowEnv.AfterSync` or `ShadowEnv.SyncFailed` as well: the cycle it
 was told about is over, so the call opens the one behind it.
 
-It rejects with the reason the proxy gave when the Shadow Environment could not apply the trail: a worker that does not confirm within `changeTrailTimeout`, a Kernel error the worker reports back, a `WorkerDestroyedError` from a worker that is already gone. The same reason reaches every listener of `ShadowEnv.SyncFailed`, and `AfterSync` does not fire for that cycle.
+It rejects with the reason the proxy gave when the Shadow Environment could not apply the trail: a worker that does not confirm within `changeTrailTimeout` and therefore rejects with a [`WorkerTimeoutError`](#workertimeouterror), a Kernel error the worker reports back, a `WorkerDestroyedError` from a worker that is already gone. The same reason reaches every listener of `ShadowEnv.SyncFailed`, and `AfterSync` does not fire for that cycle.
 
 Where the Kernel refused the trail, that reason is a `ChangeTrailRefusedError`: `appliedCount` and `entryCount` say how far it got, and `cause` carries what the entry actually threw -- the error object itself locally, and across a worker boundary a `WorkerReportedError` carrying its wording and its name. The entries the Kernel did not apply are still pending and go out again with the next cycle.
 
@@ -1554,7 +1564,7 @@ that quietly means something else than it says is turned away rather than honour
 | Property | Description |
 | :--- | :--- |
 | `isDestroyed` | `boolean` (read-only). Also `true` once the worker has failed. |
-| `workerLoaded` | Promise that resolves once the worker is ready. It rejects with a `WorkerFailedError` when the worker fails and with a `WorkerDestroyedError` when the environment is torn down. Every read hands out a promise that can reject, so attach a `catch()` even when you do not await it -- otherwise the rejection surfaces as an unhandled one. |
+| `workerLoaded` | Promise that resolves once the worker is ready. It rejects with a `WorkerFailedError` when the worker fails, with a `WorkerDestroyedError` when the environment is torn down, and with a [`WorkerTimeoutError`](#workertimeouterror) when the load handshake does not complete within `loadTimeout`. Every read hands out a promise that can reject, so attach a `catch()` even when you do not await it -- otherwise the rejection surfaces as an unhandled one. |
 | `timeouts` | `Readonly<WorkerTimeouts>`. The four timeouts this environment holds itself to, resolved once when it is built. This is what a diagnosis asks when the values come from a template rather than from a call. The object is frozen, so writing `env.timeouts.loadTimeout` throws in strict mode and does nothing outside it; the property slot itself is not — like `logger`, it is `readonly` to the type layer only, and an assignment to `env.timeouts` goes through and bypasses the check above. |
 | `logger` | `ConsoleLogger` (read-only). The logger this environment reports through. Its enabled state travels into the worker together with the shared logger configuration when the worker starts. A JSON object stored under `ConsoleLogger.RemoteWorkerEnv.workerConfig` is merged on top of that configuration; see [Console Logger](#console-logger). |
 
@@ -1562,9 +1572,9 @@ that quietly means something else than it says is turned away rather than honour
 
 | Method | Description |
 | :--- | :--- |
-| `importScript(url)` | Import a shadow objects module inside the worker. Rejects with a `WorkerDestroyedError` after `destroy()`. A failure the worker reports arrives as a `WorkerReportedError`: its `message` is the wording from the worker, its `name` the name the error was thrown under there. A module with no `shadowObjects` export is therefore an `Error` named `Error`, with the same wording a `LocalShadowObjectEnv` throws for that case. |
-| `applyChangeTrail(changeTrail, waitForConfirmation)` | Send a change trail to the worker; with `waitForConfirmation` the promise resolves once the worker has applied it, and rejects with a `ChangeTrailRefusedError` where the worker's Kernel refused it. A confirmation that names no `appliedCount` rejects with the reported reason itself -- a `WorkerReportedError` -- instead of a `ChangeTrailRefusedError`. A trail sent without a confirmation carries no serial, gets no answer, and therefore never reports a refusal. Rejects with a `WorkerDestroyedError` after `destroy()`. |
-| `start()` | Spawn the worker and wait for the load handshake. Rejects with a `WorkerDestroyedError` after `destroy()`. |
+| `importScript(url)` | Import a shadow objects module inside the worker. Rejects with a `WorkerDestroyedError` after `destroy()`, and with a [`WorkerTimeoutError`](#workertimeouterror) when no answer arrives within `configureTimeout`. A failure the worker reports arrives as a `WorkerReportedError`: its `message` is the wording from the worker, its `name` the name the error was thrown under there. A module with no `shadowObjects` export is therefore an `Error` named `Error`, with the same wording a `LocalShadowObjectEnv` throws for that case. |
+| `applyChangeTrail(changeTrail, waitForConfirmation)` | Send a change trail to the worker; with `waitForConfirmation` the promise resolves once the worker has applied it, and rejects with a `ChangeTrailRefusedError` where the worker's Kernel refused it. A confirmation that names no `appliedCount` rejects with the reported reason itself -- a `WorkerReportedError` -- instead of a `ChangeTrailRefusedError`. A confirmation that does not arrive within `changeTrailTimeout` rejects with a [`WorkerTimeoutError`](#workertimeouterror). A trail sent without a confirmation carries no serial, gets no answer, and therefore never reports a refusal. Rejects with a `WorkerDestroyedError` after `destroy()`. |
+| `start()` | Spawn the worker and wait for the load handshake. Rejects with a `WorkerDestroyedError` after `destroy()`, and with a [`WorkerTimeoutError`](#workertimeouterror) when the handshake does not complete within `loadTimeout`. |
 | `destroy()` | Tears the environment down and terminates the worker — once it has acknowledged, or after `WorkerDestroyTimeout` if it stays silent. Takes effect whether or not a worker was ever spawned. On that message the worker tears its own kernel down — its entities are destroyed and the `onDestroy` callbacks of their Shadow Objects run — acknowledges with `Destroyed` once, and hears nothing after that. The environment stops listening to the worker as the teardown begins, so whatever it still sends -- a `MessageToView` among it -- does not arrive. |
 
 **Events:**
@@ -1609,6 +1619,35 @@ on(remoteEnv, RemoteWorkerEnv.WorkerFailed, ({ type, message, reason }) => {
 });
 ```
 
+#### `WorkerTimeoutError`
+
+The reason a reply from the worker did not arrive in time. Exported from
+`@spearwolf/shadow-objects`; it is a view-side class and has no counterpart in
+`@spearwolf/shadow-objects/shadow-objects`.
+
+| Member | Type | Description |
+| :--- | :--- | :--- |
+| `messageType` | `string` | The type of the message that did not arrive, spelled as it travels: `'loaded'` for the load handshake of `start()`, `'importedModule'` for an `importScript()`, `'appliedChangeTrail'` for a change trail sent with a confirmation, `'destroyed'` for the acknowledgement of a teardown. |
+| `timeout` | `number` | How many milliseconds were waited for it. A diagnosis therefore knows which of the four values was in force without reaching for `env.timeouts`. |
+
+```typescript
+import { WorkerTimeoutError } from '@spearwolf/shadow-objects';
+
+try {
+  await env.syncWait();
+} catch (error) {
+  if (error instanceof WorkerTimeoutError) {
+    console.warn('no', error.messageType, 'within', error.timeout, 'ms');
+  }
+}
+```
+
+It says nothing about how far the Kernel got. A confirmation window that ran out leaves a Shadow
+Environment that may well have applied the whole change trail, which is why the view books it as
+applied; a [`ChangeTrailRefusedError`](#changetrailrefusederror) is the only refusal that names a
+number. The `Destroyed` deadline is the one exception a caller never sees: `destroy()` swallows it
+into a warning and tears down regardless.
+
 ### Worker Timeout Constants
 
 These constants control how long the framework waits for worker responses:
@@ -1619,6 +1658,10 @@ These constants control how long the framework waits for worker responses:
 | `WorkerConfigureTimeout` | 60000ms | Time to wait for module imports. |
 | `WorkerChangeTrailTimeout` | 5000ms | Time to wait for change trail confirmation. |
 | `WorkerDestroyTimeout` | 5000ms | Time to wait for worker destruction. |
+
+When one of the four runs out, the waiting request rejects with a
+[`WorkerTimeoutError`](#workertimeouterror) that carries the reply that stayed out and the number of
+milliseconds it waited.
 
 They are the last line of defence, not the first: a worker that dies or sends something unreadable rejects the waiting calls immediately.
 
@@ -1774,6 +1817,12 @@ is parked until the first connect, so `hasAttribute('local')` reads the refused 
 | `"no"` / `"off"` / `"false"` | Disables auto-sync. Call `.syncShadowObjects()` manually. |
 | Anything else | Reports through `logger.error` and switches syncing off. |
 
+Whichever of these values syncs at all runs `sync()` and never `syncWait()`, so over a worker every
+sync takes the unconfirmed path. A trail the Kernel refuses comes back neither as a number nor as
+an event, and the view books it as applied. Whoever needs the answer sets `auto-sync="off"` and runs `syncWait()` from
+their own loop. It is not wired the other way round for a reason: at `auto-sync="frame"` a
+confirmation would cost a round trip per frame.
+
 ```html
 <!-- Worker mode (default) -->
 <shae-worker src="./my-game-kernel.js"></shae-worker>
@@ -1794,7 +1843,7 @@ is parked until the first connect, so `hasAttribute('local')` reads the refused 
 | :--- | :--- |
 | `start()` | Creates the Shadow Environment and waits until it is ready. The element calls it on connect by itself, unless `no-autostart` is set. |
 | `importScript(src)` | Waits for the environment and imports a shadow objects module into it. Rejects with a `ShadowEnvDestroyedError` when the environment is torn down before the import begins. A blank `src` rejects with `Error('src is blank')` — the method is `async`, so nothing is thrown at the call site and a `try`/`catch` around it catches nothing; use `await` or `.catch()`. `src` is executable code, not data — see [Security](#security). |
-| `syncShadowObjects()` | Hands the environment of this element's namespace to the next sync. The call is collected per namespace and carried out one microtask later, so calling it more than once in a task costs one sync. Needed with `auto-sync="off"`. Inherited from `ShaeElement`, which means `<shae-ent>` has it too. |
+| `syncShadowObjects()` | Hands the environment of this element's namespace to the next sync -- the unconfirmed path. The call is collected per namespace and carried out one microtask later, so calling it more than once in a task costs one sync. Over a worker it learns nothing of a confirmation the Shadow Environment refused, and no `syncfailed` event follows; whoever needs to know switches `auto-sync` off and runs `syncWait()` from their own loop. Needed with `auto-sync="off"`. Inherited from `ShaeElement`, which means `<shae-ent>` has it too. |
 | `destroy()` | Tears down the environment, its proxy and the element's signals. Called by the element itself one microtask after it leaves the tree, unless it is back in the tree by then. It counts once: every call after the first finds nothing left to do and changes nothing. |
 
 **The subscriptions begin at the first connect.** A `<shae-worker>` built with

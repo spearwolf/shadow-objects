@@ -276,6 +276,20 @@ export class ShadowEnv {
     return Promise.race([onceAsync<ShadowEnv>(this as ShadowEnv, ShadowEnv.ContextCreated), this.#destroyedSignal()]);
   };
 
+  /**
+   * Send the change trail without asking the Shadow Environment to confirm it --
+   * {@link ShadowEnv.syncWait} is the call that asks.
+   *
+   * What becomes of a refusal is then the proxy's decision, and the two shipped ones differ.
+   * `LocalShadowObjectEnv` runs the Kernel in the tick of whoever calls the proxy, one microtask
+   * after `sync()` returned rather than in the tick that called it, and rejects with what it
+   * threw, so a refusal reaches {@link ShadowEnv.SyncFailed} here as well, carrying its number.
+   * `RemoteWorkerEnv` sends no serial without a confirmation and gets no answer back, so a
+   * refusal stays in the worker: it is written to the console there, `SyncFailed` stays silent, and
+   * the whole trail is booked as applied.
+   *
+   * {@link ShadowEnv.syncWait} is the way both proxies answer on.
+   */
   sync(): void {
     if (this.#isDestroyed) return;
     if (!this.isReady) {

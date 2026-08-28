@@ -1,7 +1,10 @@
+import {WorkerTimeoutError} from '../WorkerTimeoutError.js';
 import {isReadableMessageData} from '../worker/MessageRouter.js';
 
 /**
  * Wait for a message of a specific type or reject after a timeout.
+ *
+ * A deadline that runs out rejects with a `WorkerTimeoutError`.
  *
  * A `signal` rejects the promise the moment it is aborted, with the abort reason,
  * so that a caller does not sit out the timeout waiting for a reply that can no
@@ -39,7 +42,7 @@ export const waitForMessageOfType = (
     if (timeout !== 0 && timeout !== Infinity) {
       timeoutId = setTimeout(() => {
         cleanup();
-        reject(new Error(`Timeout waiting for message of type: ${type}`));
+        reject(new WorkerTimeoutError(type, timeout));
       }, timeout) as any;
     }
 

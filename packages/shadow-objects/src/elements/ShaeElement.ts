@@ -281,6 +281,14 @@ export class ShaeElement extends HTMLElement {
     }
   }
 
+  /**
+   * Hand the environment of this element's namespace on to the next `sync()` -- the unconfirmed
+   * path.
+   *
+   * Over a worker it learns nothing of a confirmation the Shadow Environment refused, and no
+   * `syncfailed` event follows. Whoever needs to know switches `auto-sync` off and runs
+   * `syncWait()` from their own loop.
+   */
   syncShadowObjects() {
     syncShadowObjects(this.ns);
   }
