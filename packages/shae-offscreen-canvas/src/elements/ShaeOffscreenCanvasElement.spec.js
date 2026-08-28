@@ -573,7 +573,7 @@ describe('ShaeOffscreenCanvasElement', () => {
       expect(syncSpy).not.toHaveBeenCalled();
     });
 
-    it('a second frame asks for a sync again while a pixel zoom is set', () => {
+    it('a second frame with a pixel zoom set asks for no sync', () => {
       const el = connectWithSize('frame-carries', 320, 200);
       el.setAttribute('pixel-zoom', '4');
       drain(el);
@@ -582,12 +582,10 @@ describe('ShaeOffscreenCanvasElement', () => {
       const syncSpy = vi.spyOn(el.shadowEntity, 'syncShadowObjects');
       frame(el);
 
-      // [FrameLoop.OnFrame]() compares #lastPixelRatio against the plain, undivided pixelRatio, but
-      // stores pixelRatio / pixelZoom in that same field — at pixel-zoom="1" both quantities
-      // coincide and the branch stays quiet; above that, the stored value never matches what the
-      // comparison expects again, so every following frame reports a ratio change and syncs once
-      // more. Measured behavior, not endorsed behavior.
-      expect(syncSpy).toHaveBeenCalledTimes(1);
+      // The pixel zoom belongs to the value the entity is told and to nothing else. The comparison
+      // reads #lastPixelRatio against the ratio the element measured, which is what that field
+      // holds, so a zoom above one makes no frame look like a change of its own.
+      expect(syncSpy).not.toHaveBeenCalled();
     });
 
     it('tells the entity it gets on the way back in the display size it still holds', () => {
@@ -632,6 +630,27 @@ describe('ShaeOffscreenCanvasElement', () => {
       const props = propsOf(drain(el), el);
       expect(props.get(CanvasWidth)).toBe(0);
       expect(props.get(CanvasHeight)).toBe(0);
+      expect(props.get(PixelRatio)).toBe(1);
+      expect(props.get(Fps)).toBe(60);
+    });
+
+    it('keeps a change a frame without a view component could not deliver', () => {
+      const el = connectWithSize('frame-without-view-component', 320, 200);
+      const viewComponent = el.viewComponent;
+      drain(el);
+
+      // The entity of a connected element can stand without a view component: applying a component
+      // context is allowed to fail, and #applyComponentContext logs rather than throws. A frame in
+      // that state has nowhere to hand anything to.
+      el.shadowEntity.viewComponent$.set(undefined);
+      frame(el);
+
+      el.shadowEntity.viewComponent$.set(viewComponent);
+      frame(el);
+
+      const props = propsOf(drain(el), el);
+      expect(props.get(CanvasWidth)).toBe(320);
+      expect(props.get(CanvasHeight)).toBe(200);
       expect(props.get(PixelRatio)).toBe(1);
       expect(props.get(Fps)).toBe(60);
     });

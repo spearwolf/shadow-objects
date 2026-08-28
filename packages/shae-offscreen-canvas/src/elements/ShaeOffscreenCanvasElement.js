@@ -269,6 +269,13 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
   }
 
   [FrameLoop.OnFrame]() {
+    // A frame with no view component has nowhere to hand anything to. It leaves the fields below
+    // untouched and the change pending for the first frame that has one -- writing them down here
+    // would use up the report without sending it, and the entity that arrives afterwards would
+    // never hear the size, the ratio or the frame rate this element already holds.
+    const viewComponent = this.viewComponent;
+    if (!viewComponent) return;
+
     const width = this.#displayWidth;
     const height = this.#displayHeight;
     const pixelRatio = this.#pixelRatio;
@@ -284,7 +291,7 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
     ) {
       this.#lastCanvasWidth = width;
       this.#lastCanvasHeight = height;
-      this.#lastPixelRatio = pixelRatio / pixelZoom;
+      this.#lastPixelRatio = pixelRatio;
 
       if (fps !== this.#lastFps) {
         if (this.logger.isInfo) {
@@ -303,13 +310,14 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
         this.canvas.style.imageRendering = `var(--display-image-rendering, ${pixelZoom > 1 ? 'pixelated' : 'auto'})`;
       }
 
-      if (this.viewComponent) {
-        this.viewComponent.setProperty(CanvasWidth, this.#lastCanvasWidth);
-        this.viewComponent.setProperty(CanvasHeight, this.#lastCanvasHeight);
-        this.viewComponent.setProperty(PixelRatio, this.#lastPixelRatio);
-        this.viewComponent.setProperty(Fps, this.#lastFps);
-        this.shadowEntity.syncShadowObjects();
-      }
+      // Every field above holds the quantity the element measured, which is what the comparison
+      // reads it against. The zoom belongs to the value the entity gets and to nothing else: it
+      // divides the ratio, so one canvas pixel covers that many display pixels.
+      viewComponent.setProperty(CanvasWidth, width);
+      viewComponent.setProperty(CanvasHeight, height);
+      viewComponent.setProperty(PixelRatio, pixelRatio / pixelZoom);
+      viewComponent.setProperty(Fps, fps);
+      this.shadowEntity.syncShadowObjects();
     }
   }
 
