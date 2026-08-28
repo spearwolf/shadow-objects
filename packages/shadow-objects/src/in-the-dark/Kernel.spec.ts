@@ -4113,6 +4113,28 @@ describe('Kernel', () => {
 
       kernel.destroy();
     });
+
+    it('drops a child the kernel no longer holds', () => {
+      const kernel = new Kernel(new Registry());
+      const [rUuid, aUuid, bUuid] = makeEntityChain(kernel);
+
+      const looseUuid = generateUUID();
+      kernel.createEntity(looseUuid, 'node');
+
+      // `addChild()` writes a children list without touching the parent link, so the detachment
+      // inside `destroyEntity()` finds nothing to cut and the list keeps the name afterwards
+      kernel.getEntity(aUuid).addChild(kernel.getEntity(looseUuid));
+      kernel.destroyEntity(looseUuid);
+
+      expect(
+        kernel.getEntity(aUuid).children.map((e) => e.uuid),
+        'the children list still names the entity the kernel let go',
+      ).toEqual([bUuid, looseUuid]);
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([rUuid, aUuid, bUuid]);
+
+      kernel.destroy();
+    });
   });
 
   describe('getEntityGraph', () => {
@@ -4817,6 +4839,40 @@ describe('Kernel', () => {
 
       consoleError.mockRestore();
       kernel.destroy();
+    });
+
+    it('leaves the walk over the entity tree, and the kernel teardown behind it, intact', () => {
+      const kernel = new Kernel(new Registry());
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const parentUuid = generateUUID();
+      const childUuid = generateUUID();
+      kernel.createEntity(parentUuid, 'node');
+      kernel.createEntity(childUuid, 'node', parentUuid);
+
+      kernel.getEntity(childUuid).removeFromParent = () => {
+        throw new Error('removeFromParent fails');
+      };
+
+      kernel.destroyEntity(childUuid);
+
+      expect(kernel.hasEntity(childUuid), 'the kernel let the entity go all the same').toBe(false);
+      expect(
+        kernel.getEntity(parentUuid).children.map((e) => e.uuid),
+        'and the detachment that failed left it in the children list of its parent',
+      ).toEqual([childUuid]);
+
+      expect(kernel.traverseLevelOrderBFS().map((e) => e.uuid)).toEqual([parentUuid]);
+      expect(() => kernel.destroy()).not.toThrow();
+
+      expect(kernel.debugEntityCounts, 'the teardown got all the way through').toEqual({
+        entities: 0,
+        rootEntities: 0,
+        traversal: 0,
+        traversalReversed: 0,
+      });
+
+      consoleError.mockRestore();
     });
   });
 

@@ -2623,6 +2623,8 @@ Returns all Entities in breadth-first order. Pass `true` to reverse (leaves to r
 
 The list is cached and rebuilt on the first call after the Entity tree moves -- a creation, a destruction, a new parent, a new `order`. Every route that moves it counts, the Kernel methods as much as a write straight to `entity.parent`, `entity.parentUuid` or `entity.order`, and a call to `entity.removeFromParent()`.
 
+A uuid the Kernel no longer holds drops out of the walk, and whatever hangs below it drops out with it -- the rule `getEntityGraph()` follows over the same tree. A children list keeps naming an Entity the Kernel has let go whenever the detachment that would have cut it does not happen, and `destroy()` and `upgradeEntities()` both walk from here.
+
 - **Signature:** `traverseLevelOrderBFS(reverse?: boolean): Entity[]`
 
 ```typescript
@@ -2705,7 +2707,7 @@ kernel.noteEntityTreeChange(child.uuid);
 
 Neither check reaches a children list written without the parent link -- `Entity.addChild()` and `ComponentContext.addToChildren()` do exactly that. Neither does the Kernel's bookkeeping, and `Entity.removeChild()` and `Entity.resortChildren()` join the two there: all four write or reorder a children list and report nothing, so the cached traversal can lag a call behind them. Whoever writes the children list drives that themselves with `kernel.noteEntityTreeChange(uuid)`, which drops the cache -- the root set stays out of reach, as it follows the parent link none of the four wrote. The four traversals over the children lists carry the ring case instead: `Kernel.traverseLevelOrderBFS()`, `Kernel.getEntityGraph()`, `entity.traverse()` and `ComponentContext.traverseLevelOrderBFS()` each visit every node once and terminate.
 
-Termination is all they carry, though. A ring closed through `Entity.addChild()` or `ComponentContext.addToChildren()` and reachable from no root is not walked by `Kernel.destroy()`, which sweeps from the roots: its Entities go with the bookkeeping and their `onDestroy` never runs. Keep such a ring reachable from a root, or take it down yourself before the Kernel goes.
+Reachability is another matter, though. A ring closed through `Entity.addChild()` or `ComponentContext.addToChildren()` and reachable from no root is not walked by `Kernel.destroy()`, which sweeps from the roots: its Entities go with the bookkeeping and their `onDestroy` never runs. Keep such a ring reachable from a root, or take it down yourself before the Kernel goes. An Entity hanging below a uuid the Kernel no longer holds is out of reach the same way: the two Kernel walks drop that uuid and everything under it.
 
 #### `EntityUuidInUseError`
 

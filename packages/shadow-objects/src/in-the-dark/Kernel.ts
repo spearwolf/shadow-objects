@@ -167,6 +167,9 @@ export class Kernel {
    * hands out. The walk behind it visits every entity once, which also carries it over a children list
    * that points back at an ancestor -- `Entity.addChild()` writes such a list without touching the parent
    * link, so no check along the parent chain can cover it.
+   *
+   * A uuid the kernel no longer holds drops out, and what hangs below it with it -- `getEntityGraph()`
+   * walks the same tree by the same rule.
    */
   traverseLevelOrderBFS(reverse = false): Entity[] {
     if (this.#allEntitiesNeedUpdate) {
@@ -177,7 +180,14 @@ export class Kernel {
         if (visited.has(uuid)) return;
         visited.add(uuid);
 
-        const e = this.getEntity(uuid);
+        // A uuid the kernel no longer holds drops out of the walk, the same way it drops out of
+        // `getEntityGraph()`. A children list keeps naming an entity the kernel has let go whenever the
+        // detachment that would have cut it does not happen: `addChild()` writes such a list without the
+        // parent link `removeFromParent()` follows, and a detachment that throws inside `destroyEntity()`
+        // is logged rather than handed on. `destroy()` and `upgradeEntities()` both walk from here, so a
+        // lookup that threw would cost every entity behind that one name its own teardown.
+        const e = this.findEntity(uuid);
+        if (e === undefined) return;
 
         const entities = lvl.get(depth);
         if (entities) {
