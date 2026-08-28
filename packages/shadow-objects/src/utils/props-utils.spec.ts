@@ -94,6 +94,27 @@ describe('props-utils', () => {
       const result = applyPropsChanges(undefined, changes);
       expect(result).toEqual([['foo'], ['bar', 2]]);
     });
+
+    it('keeps a bare key that lands on a standing list', () => {
+      const curProps: ComponentPropertiesType = [['abc', 1]];
+      const changes: ComponentPropertiesType = [['foo'], ['bar', 2]];
+      expect(applyPropsChanges(curProps, changes)).toEqual([['abc', 1], ['foo'], ['bar', 2]]);
+    });
+
+    it('takes the value off an entry a bare key names', () => {
+      const curProps: ComponentPropertiesType = [['foo', 'bar']];
+      expect(applyPropsChanges(curProps, [['foo']])).toEqual([['foo']]);
+    });
+
+    it('reads a bare key the same way with and without curProps', () => {
+      const changes: ComponentPropertiesType = [['foo'], ['bar', 2]];
+      expect(applyPropsChanges([], changes)).toEqual(applyPropsChanges(undefined, changes));
+    });
+
+    it('drops an entry a change names with an explicit undefined', () => {
+      const curProps: ComponentPropertiesType = [['foo'], ['bar', 2]];
+      expect(applyPropsChanges(curProps, [['foo', undefined]])).toEqual([['bar', 2]]);
+    });
   });
 
   describe('propsEqual', () => {

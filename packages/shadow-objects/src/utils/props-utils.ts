@@ -18,16 +18,20 @@ export const applyPropsChanges = (
   if (curProps === changes) return curProps;
   if (changes === undefined) return curProps;
   // the tuples belong to `changes` — a change trail that has been handed out is a value, and
-  // the loop below writes through `entry[1] = value` on every later call
+  // every entry that stays here is one this function built itself
   if (curProps === undefined)
     return filterUndefinedProps(changes)?.map((entry) => (entry.length === 1 ? [entry[0]] : [entry[0], entry[1]]));
 
-  for (const [key, value] of changes) {
-    const entry = curProps.find(([k]) => k === key);
-    if (entry === undefined) {
-      curProps.push([key, value]);
+  for (const change of changes) {
+    const key = change[0];
+    // the arity carries the meaning, so it is read rather than destructured away: an entry of
+    // one element says "set, without a value" and has to stay one element on the way in
+    const next: [string] | [string, unknown] = change.length === 1 ? [key] : [key, change[1]];
+    const idx = curProps.findIndex(([k]) => k === key);
+    if (idx === -1) {
+      curProps.push(next);
     } else {
-      entry[1] = value;
+      curProps[idx] = next;
     }
   }
   return filterUndefinedProps(curProps);
