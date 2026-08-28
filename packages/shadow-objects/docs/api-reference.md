@@ -395,7 +395,7 @@ el.addEventListener('login-success', (e) => console.log((e as CustomEvent).detai
 
 #### `onDestroy(callback)`
 
-Registers a cleanup function that runs when the Shadow Object is destroyed. Critical for preventing memory leaks with non-framework resources like timers, WebSocket connections, or GPU resources.
+Registers a cleanup function that runs when the Shadow Object is destroyed. Critical for preventing memory leaks with non-framework resources like timers, WebSocket connections, or GPU resources. A callback that throws is reported and costs no other callback its run, under the teardown side of [Two error contracts](#two-error-contracts).
 
 A Shadow Object reaches that point on two paths: its Entity is destroyed, or it leaves the constructor set of an Entity that lives on — a token change or a route that stops resolving to it. The callback runs on both, exactly once.
 
@@ -2612,6 +2612,23 @@ const customRegistry = new Registry();
 const customKernel = new Kernel(customRegistry);
 ```
 
+### Two error contracts
+
+Every Kernel method answers a throw under one of two contracts, and which one it is follows from what the method was doing. A path that builds hands the error to its caller and takes back what it had already built, so the caller learns that nothing of its request stands. A path that tears down catches each step on its own, reports it through the Kernel's `logger` and carries on to the next one — there is no caller left who could decide anything, and the steps behind the failing one still have to run.
+
+| Path | On a throw |
+| :--- | :--- |
+| Building: [`run()`](#runevent), `createEntity()`, `setParent()`, `changeToken()`, `changeProperties()`, `upgradeEntities()` | The error reaches the caller. `run()` wraps it in a [`ChangeTrailRefusedError`](#changetrailrefusederror) whose `appliedCount` says how far the Change Trail got; the other five throw what they caught. How far each one takes its work back is in [Applying a Change Trail by Hand](#applying-a-change-trail-by-hand) — see the paragraphs "A failed creation takes its own Entity back" and "A failed token change is taken back". |
+| Tearing down: `destroyEntity()`, `Kernel.destroy()`, a Shadow Object's `[onDestroy]` hook and the `onDestroy` notification other objects listen to, the teardown of a creation scope, the release of the Entity | No error reaches the caller. Each step is guarded on its own, so a step that fails costs itself and nothing behind it. What a registered callback may and may not rely on is in [`onDestroy(callback)`](#ondestroycallback) and [The creation API past the teardown](#the-creation-api-past-the-teardown). |
+
+Three places do not follow from the rough rule alone:
+
+- `onParentChanged` is a delivery on a building path and is guarded all the same. The parent link already stands when the notification goes out, and a listener cannot take it back; a throw from there would turn one bad listener into a refused Change Trail.
+- The way back of a building path follows the teardown contract. What fails while a failed creation or token change is being taken back is reported and never thrown again, because the caller is waiting for the error of the build itself.
+- The hand-over of an Entity Context value is guarded per reader — see [A `useContext` consumer that throws costs its own context value and no other](#a-usecontext-consumer-that-throws-costs-its-own-context-value-and-no-other).
+
+Every report goes through the [`ConsoleLogger`](#console-logger) under the namespace `Kernel`. `logger.error` sits behind no switch, so these reports stay visible outside localhost, and each of them reads in the same order: the message, then what names the subject of the step, then the error.
+
 ### Properties
 
 | Property | Type | Description |
@@ -2623,7 +2640,7 @@ const customKernel = new Kernel(customRegistry);
 
 #### `run(event)`
 
-Processes a sync event containing change trails from the View Layer. Each entry of the trail is dispatched to one of the seven writing methods below.
+Processes a sync event containing change trails from the View Layer. Each entry of the trail is dispatched to one of the seven writing methods below. A trail entry that throws refuses the trail rather than being reported and skipped — see [Two error contracts](#two-error-contracts).
 
 - **Signature:** `run(event: SyncEvent): void`
 
@@ -2748,7 +2765,7 @@ kernel.noteEntityTreeChange(child.uuid);
 | Method | Signature | Description |
 | :--- | :--- | :--- |
 | `createEntity` | `(uuid, token, parentUuid?, order?, properties?, autoDestructionOnParentRemoval?)` | Creates an Entity and its Shadow Objects. A uuid the Kernel already holds an Entity for is refused with an [`EntityUuidInUseError`](#entityuuidinuseerror), and the Entity standing behind that uuid is left exactly as it is. `properties` is a list of `[name, value]` pairs; an entry that names only `name` sets the property to `undefined`. A creation that does not get through leaves no Entity behind: the error reaches the caller, and the Entity the call was made for is not in the Kernel afterwards. What its constructors did to *other* Entities before the throw is not taken back, and the rollback reaches one step further: an Entity a constructor hung or moved under the failed one is left as a root, or destroyed where it carries `autoDestructionOnParentRemoval`. The paragraph below spells that out. |
-| `destroyEntity` | `(uuid: string)` | Destroys the Entity, its Shadow Objects and its children. Detaching the Entity from its parent, each Shadow Object's teardown, and the Entity's own release each stand behind a guard of their own, so a throw at any one of them costs nothing behind it — a teardown that throws costs no sibling its own; every throw is reported through the `ConsoleLogger` rather than handed to the caller, and the Entity is out of the Kernel when the call returns either way. A listener on the Entity's own destruction notification is held to the same contract: the creation scopes tear down and the Entity releases its properties, listeners, subscriptions and contexts step by step, whether or not that notification reached them and whether or not an earlier step of that release threw — see [`onDestroy(callback)`](#ondestroycallback). |
+| `destroyEntity` | `(uuid: string)` | Destroys the Entity, its Shadow Objects and its children. Detaching the Entity from its parent, each Shadow Object's teardown, and the Entity's own release each stand behind a guard of their own, so a throw at any one of them costs nothing behind it — a teardown that throws costs no sibling its own; every throw is reported through the `ConsoleLogger` rather than handed to the caller, and the Entity is out of the Kernel when the call returns either way. A listener on the Entity's own destruction notification is held to the same contract: the creation scopes tear down and the Entity releases its properties, listeners, subscriptions and contexts step by step, whether or not that notification reached them and whether or not an earlier step of that release threw — see [`onDestroy(callback)`](#ondestroycallback) and [Two error contracts](#two-error-contracts). |
 | `setParent` | `(uuid, parentUuid?, order?)` | Moves the Entity under a new parent, or makes it a root when `parentUuid` is omitted. An absent `order` keeps the current one -- it is not a reset to `0`. A `parentUuid` naming the Entity itself or one of its descendants is refused with an error, and the Entity stays where it was. |
 | `updateOrder` | `(uuid: string, order: number)` | Sets the sort order among siblings. |
 | `changeProperties` | `(uuid: string, properties: ComponentPropertiesType)` | Writes property values; every reader bound to one of the names sees the new value. `properties` is a list of `[name, value]` pairs; an entry that names only `name` sets the property to `undefined`. Where a written property routes to a constructor that throws, the Shadow Objects go back to the set the Entity carried before the call — the properties stay written, so that set and the new properties can disagree until the next re-resolution. |

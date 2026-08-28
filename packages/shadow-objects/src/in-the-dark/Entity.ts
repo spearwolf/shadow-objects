@@ -12,6 +12,7 @@ import {
   value,
 } from '@spearwolf/signalize';
 import type {ComponentPropertiesType, IComponentEvent} from '../types.js';
+import {runGuarded} from '../utils/runGuarded.js';
 import {onDestroy, onViewEvent} from './events.js';
 import {Kernel} from './Kernel.js';
 import {SignalsPath} from './SignalsPath.js';
@@ -103,14 +104,15 @@ const deferContextValueUpdate = (kernel: Kernel, signal: Signal<unknown>, val: u
 
     for (const [contextSignal, entry] of contextValues) {
       // `set()` runs the effects that read this context synchronously and throws what one of them
-      // threw, so every hand-over stands behind a guard of its own -- the way `#runGuarded()`
-      // below and every other loop over entity state in this project does it. A reader that fails
-      // costs its own value and nothing else: the entities waiting behind it still get theirs.
-      try {
-        contextSignal.set(entry.value);
-      } catch (error) {
-        kernel.logger.error(`an effect of a context value failed (${String(entry.name)}):`, entry.uuid, error);
-      }
+      // threw, so every hand-over stands behind a guard of its own -- the way `runGuarded()` and
+      // every other loop over entity state in this project does it. A reader that fails costs its
+      // own value and nothing else: the entities waiting behind it still get theirs.
+      runGuarded(
+        kernel.logger,
+        () => contextSignal.set(entry.value),
+        `an effect of a context value failed (${String(entry.name)}):`,
+        entry.uuid,
+      );
     }
   });
 };
@@ -301,14 +303,12 @@ export class Entity {
 
   /**
    * Isolates one release step from the ones around it: a step that throws is reported through the
-   * kernel's logger and does not stop `[onDestroy]()` from reaching the steps that follow.
+   * kernel's logger and does not stop `[onDestroy]()` from reaching the steps that follow. The
+   * report goes out through the shared `runGuarded()`; what this wrapper adds is the label of the
+   * step and the uuid of the entity it belongs to.
    */
   #runGuarded(step: string, run: () => void): void {
-    try {
-      run();
-    } catch (error) {
-      this.#kernel.logger.error(`entity teardown step failed (${step}):`, this.#uuid, error);
-    }
+    runGuarded(this.#kernel.logger, run, `entity teardown step failed (${step}):`, this.#uuid);
   }
 
   /**

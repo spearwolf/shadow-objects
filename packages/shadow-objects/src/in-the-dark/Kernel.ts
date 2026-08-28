@@ -12,6 +12,7 @@ import type {
   SyncEvent,
 } from '../types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
+import {runGuarded} from '../utils/runGuarded.js';
 import {Entity} from './Entity.js';
 import {type OnCreate, type OnDestroy, onCreate, onDestroy, onParentChanged, onViewEvent} from './events.js';
 import {Registry} from './Registry.js';
@@ -406,11 +407,12 @@ export class Kernel {
    * snapshot of the kernel, which this path does not take.
    */
   #rollbackFailedCreation(uuid: string): void {
-    try {
-      this.destroyEntity(uuid);
-    } catch (error) {
-      this.logger.error('rollback of a failed entity creation failed:', uuid, error);
-    }
+    runGuarded(
+      this.logger,
+      () => this.destroyEntity(uuid),
+      'rollback of a failed entity creation could not destroy the entity:',
+      uuid,
+    );
   }
 
   destroyEntity(uuid: string): void {
@@ -428,22 +430,21 @@ export class Kernel {
       for (const child of childrenSnapshot) {
         // One guard per child, so that a cascade breaking off somewhere below still leaves the
         // siblings next to it with the treatment they were owed.
-        try {
-          if (child.autoDestructionOnParentRemoval) {
-            this.destroyEntity(child.uuid);
-          } else {
-            child.removeFromParent();
-          }
-        } catch (error) {
-          this.logger.error('child of a destroyed entity could not be handed on:', child.uuid, error);
-        }
+        runGuarded(
+          this.logger,
+          () => {
+            if (child.autoDestructionOnParentRemoval) {
+              this.destroyEntity(child.uuid);
+            } else {
+              child.removeFromParent();
+            }
+          },
+          'child of a destroyed entity could not be handed on:',
+          child.uuid,
+        );
       }
 
-      try {
-        entity.removeFromParent();
-      } catch (error) {
-        this.logger.error('entity could not be detached from its parent:', entity.uuid, error);
-      }
+      runGuarded(this.logger, () => entity.removeFromParent(), 'entity could not be detached from its parent:', entity.uuid);
 
       // The list is read before the first notification goes out, because the bookkeeping behind it is
       // emptied while they run: every scope that tears down takes its shadow-object out of it.
@@ -469,11 +470,7 @@ export class Kernel {
       // every shadow-object has been told. Below them the kernel has nothing of its own on this
       // notification, so a listener on `Priority.Min` is the last one the delivery reaches, and it
       // reads an entity that still holds its properties and its contexts.
-      try {
-        emit(entity, onDestroy, entity);
-      } catch (error) {
-        this.logger.error('entity onDestroy notification failed:', entity.uuid, error);
-      }
+      runGuarded(this.logger, () => emit(entity, onDestroy, entity), 'entity onDestroy notification failed:', entity.uuid);
 
       // The notification is one delivery, and it ends at the first listener that throws -- everything
       // registered behind that listener is skipped, the creation scopes among them. They do not belong
@@ -486,22 +483,19 @@ export class Kernel {
       // fall short of its end without one -- a listener that unsubscribes the rest of them returns
       // perfectly normally.
       for (const shadowObject of shadowObjects) {
-        try {
-          this.#shadowObjectScopes.get(shadowObject)?.tearDown();
-        } catch (error) {
-          this.logger.error('creation scope teardown of a destroyed entity failed:', entity.uuid, error);
-        }
+        runGuarded(
+          this.logger,
+          () => this.#shadowObjectScopes.get(shadowObject)?.tearDown(),
+          'creation scope teardown of a destroyed entity failed:',
+          entity.uuid,
+        );
       }
 
       // `Entity[onDestroy]()` guards every one of its own steps and reports a failing one through
       // this same logger under its own label, so this catch is a backstop rather than the path a
       // failing release actually takes -- it stands for whatever reaches this call from outside that
       // guarantee.
-      try {
-        entity[onDestroy]();
-      } catch (error) {
-        this.logger.error('entity release failed:', entity.uuid, error);
-      }
+      runGuarded(this.logger, () => entity[onDestroy](), 'entity release failed:', entity.uuid);
     } finally {
       // The kernel lets go of the entity whatever the notifications above did, so that a failing
       // teardown cannot leave an entity standing that nothing points at any more.
@@ -577,11 +571,7 @@ export class Kernel {
     // the handler makes throws back into it, such as `createEntity()` refusing a uuid already in
     // use. Without it either throw would leave through `setParent()` and turn one bad handler into
     // a refused change trail.
-    try {
-      emit(e, onParentChanged, e);
-    } catch (error) {
-      this.logger.error('entity onParentChanged notification failed:', uuid, error);
-    }
+    runGuarded(this.logger, () => emit(e, onParentChanged, e), 'entity onParentChanged notification failed:', uuid);
   }
 
   updateOrder(uuid: string, order: number): void {
@@ -756,29 +746,23 @@ export class Kernel {
     }
 
     for (let i = created.length - 1; i >= 0; i--) {
-      try {
-        this.#destroyShadowObject(created[i]!, entry.entity);
-      } catch (error) {
-        this.logger.error(
-          'rollback of a failed shadow-object update could not remove a new shadow-object:',
-          entry.entity.uuid,
-          error,
-        );
-      }
+      runGuarded(
+        this.logger,
+        () => this.#destroyShadowObject(created[i]!, entry.entity),
+        'rollback of a failed shadow-object update could not remove a new shadow-object:',
+        entry.entity.uuid,
+      );
     }
 
     for (const {construct, count} of removed) {
       for (let i = 0; i < count; i++) {
-        try {
-          this.#constructShadowObject(construct, entry);
-        } catch (error) {
-          this.logger.error(
-            'rollback of a failed shadow-object update could not restore a shadow-object:',
-            getDisplayName(construct),
-            entry.entity.uuid,
-            error,
-          );
-        }
+        runGuarded(
+          this.logger,
+          () => this.#constructShadowObject(construct, entry),
+          'rollback of a failed shadow-object update could not restore a shadow-object:',
+          getDisplayName(construct),
+          entry.entity.uuid,
+        );
       }
     }
   }
@@ -905,20 +889,22 @@ export class Kernel {
     const displayName = this.#shadowObjectScopes.get(shadowObject)?.displayName;
 
     if (typeof (shadowObject as any)[onDestroy] === 'function') {
-      try {
-        (shadowObject as OnDestroy)[onDestroy](entity);
-      } catch (error) {
-        this.logger.error('shadow-object onDestroy hook failed:', displayName, error);
-      }
+      runGuarded(
+        this.logger,
+        () => (shadowObject as OnDestroy)[onDestroy](entity),
+        'shadow-object onDestroy hook failed:',
+        displayName,
+      );
     }
 
     // A listener a Shadow Object put directly on this one's own `onDestroy` notification -- through
     // `on(otherShadowObject, onDestroy, …)` -- runs here.
-    try {
-      emit(shadowObject, onDestroy, entity);
-    } catch (error) {
-      this.logger.error('shadow-object onDestroy notification failed:', displayName, error);
-    }
+    runGuarded(
+      this.logger,
+      () => emit(shadowObject, onDestroy, entity),
+      'shadow-object onDestroy notification failed:',
+      displayName,
+    );
   }
 
   #destroyShadowObject(shadowObject: object, entity: Entity): void {
@@ -950,11 +936,12 @@ export class Kernel {
     // reach their own teardown. The reversed order is already cached, so the walk does not turn its own
     // result around.
     for (const entity of this.traverseLevelOrderBFS(true)) {
-      try {
-        this.destroyEntity(entity.uuid);
-      } catch (error) {
-        this.logger.error('entity teardown failed:', entity.uuid, error);
-      }
+      runGuarded(
+        this.logger,
+        () => this.destroyEntity(entity.uuid),
+        'entity teardown during kernel destroy failed:',
+        entity.uuid,
+      );
     }
 
     // Whatever a failing callback left half torn down, the kernel holds none of it afterwards.

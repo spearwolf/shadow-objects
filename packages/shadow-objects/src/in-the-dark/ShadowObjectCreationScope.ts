@@ -12,6 +12,7 @@ import {
 } from '@spearwolf/signalize';
 import type {Maybe, ProvideContextOptions, ShadowObjectCreationAPI, ShadowObjectType, SignalValueOptions} from '../types.js';
 import type {ConsoleLogger} from '../utils/ConsoleLogger.js';
+import {runGuarded} from '../utils/runGuarded.js';
 import {toMaybe} from '../utils/toMaybe.js';
 import type {Entity} from './Entity.js';
 import {onDestroy, onViewEvent} from './events.js';
@@ -377,14 +378,11 @@ export class ShadowObjectCreationScope {
   /**
    * Isolates one teardown step from the ones around it: a step that throws is reported through the
    * logger -- ungated, so the report stays visible outside localhost -- and does not stop `tearDown()`
-   * from reaching the steps that follow.
+   * from reaching the steps that follow. The report goes out through the shared `runGuarded()`;
+   * what this wrapper adds is the label of the step and the display name it belongs to.
    */
   #runGuarded(step: string, run: () => void): void {
-    try {
-      run();
-    } catch (error) {
-      this.#logger.error(`shadow-object teardown failed (${step}):`, this.#displayName, error);
-    }
+    runGuarded(this.#logger, run, `shadow-object teardown failed (${step}):`, this.#displayName);
   }
 
   /**
