@@ -2,6 +2,8 @@ import {ChangeTrailPhase, ContextLost, GlobalNS} from '../constants.js';
 import type {ChangeTrailType, IComponentChangeType, NamespaceType} from '../types.js';
 import {removeFrom} from '../utils/array-utils.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
+import {MicrotaskCollector} from '../utils/MicrotaskCollector.js';
+import {runGuarded} from '../utils/runGuarded.js';
 import {toNamespace} from '../utils/toNamespace.js';
 import {ComponentChanges} from './ComponentChanges.js';
 import {ComponentMemory} from './ComponentMemory.js';
@@ -584,9 +586,7 @@ export class ComponentContext {
    * The peers waiting for a round: sender by sender in arrival order, each with the data the
    * round it asks for would carry.
    */
-  #pendingPeerReRequests = new Map<ViewComponent, unknown>();
-
-  #peerReRequestFlushScheduled = false;
+  #peerReRequests = new MicrotaskCollector<ViewComponent, unknown>((pending) => this.#deliverPeerReRequests(pending));
 
   /**
    * Take a peer re-request from `sender` — an entity that has just become one and may be the new
@@ -611,28 +611,11 @@ export class ComponentContext {
    * @internal
    */
   collectPeerReRequest(sender: ViewComponent, data: unknown = undefined): void {
-    this.#pendingPeerReRequests.set(sender, data);
-
-    if (!this.#peerReRequestFlushScheduled) {
-      this.#peerReRequestFlushScheduled = true;
-      queueMicrotask(() => {
-        this.#flushPeerReRequests();
-      });
-    }
+    this.#peerReRequests.add(sender, data);
   }
 
   /** Run the collected rounds, one per candidate set. */
-  #flushPeerReRequests(): void {
-    this.#peerReRequestFlushScheduled = false;
-
-    if (this.#pendingPeerReRequests.size === 0) return;
-
-    // emptied before the first message goes out: an entity that arrives while the round is being
-    // delivered lands in a fresh map and books a round of its own, instead of disappearing into a
-    // round that is already running
-    const pending = this.#pendingPeerReRequests;
-    this.#pendingPeerReRequests = new Map();
-
+  #deliverPeerReRequests(pending: Map<ViewComponent, unknown>): void {
     // the candidate set is decided here and not when the request came in: a sender's parent can
     // have been settled since, and a sender that has left this context in the meantime is a new
     // ancestor for nobody. `null` stands for the roots, which is the candidate set of a sender
@@ -664,19 +647,30 @@ export class ComponentContext {
       }
     }
 
+    // one hand-over is one round, not one message: a round over the roots leaves this method as a
+    // single call into dispatchReRequestParentRoots(), and every message goes out over eventize's
+    // synchronous emit(), which hands a listener's error straight back here. A round that fails
+    // costs the rest of itself and none of the rounds behind it.
     for (const [parent, round] of rounds) {
-      if (parent == null) {
-        this.dispatchReRequestParentRoots();
-      } else {
-        // the sender is asked along with the rest: a second sender of the same round can sit above
-        // it, and an element never answers its own request — the message costs it one ascent and
-        // can save it a wrong parent.
-        // getChildren() hands out a fresh array, so a child that re-parents mid-loop cannot
-        // displace the entry behind it
-        for (const child of this.getChildren(parent)) {
-          this.dispatchMessage(child.uuid, ComponentContext.ReRequestParent, round.data);
-        }
-      }
+      runGuarded(
+        this.#logger,
+        () => {
+          if (parent == null) {
+            this.dispatchReRequestParentRoots();
+          } else {
+            // the sender is asked along with the rest: a second sender of the same round can sit
+            // above it, and an element never answers its own request — the message costs it one
+            // ascent and can save it a wrong parent.
+            // getChildren() hands out a fresh array, so a child that re-parents mid-loop cannot
+            // displace the entry behind it
+            for (const child of this.getChildren(parent)) {
+              this.dispatchMessage(child.uuid, ComponentContext.ReRequestParent, round.data);
+            }
+          }
+        },
+        'a peer re-request round could not be delivered:',
+        parent?.uuid ?? 'roots',
+      );
     }
   }
 
@@ -695,7 +689,7 @@ export class ComponentContext {
     // a collected round settles where entities hang, and a trail built before it ran would carry
     // the hierarchy of a moment that is already over. Running it here makes that a rule rather
     // than a matter of which microtask happens to come first
-    this.#flushPeerReRequests();
+    this.#peerReRequests.flush();
 
     if (this.#uncommittedTrail != null) {
       // Two sync cycles can be in flight at once, and the older one no longer has a trail to

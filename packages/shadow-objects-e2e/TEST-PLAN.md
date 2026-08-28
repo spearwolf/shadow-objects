@@ -166,10 +166,9 @@ environment and back, properties included (MULTI-8).
 
 What is still never verified:
 
-**Shared sync scheduling.** `ShaeElement` keeps one module-global `SyncNamespaces` set and a single
-`nextSyncIsScheduled` flag for *all* namespaces, draining them in one microtask
-(`syncShadowObjects` in `ShaeElement.ts`). Whether two environments both get their sync in the same drain is
-untested — MULTI-9 comes closest.
+**Shared sync scheduling.** `ShaeElement` keeps one module-global collector for *all* namespaces
+and hands them over in one microtask (`syncShadowObjects` in `ShaeElement.ts`). Whether two
+environments both get their sync in the same hand-over is untested — MULTI-9 comes closest.
 
 **Namespace collisions.** `ShadowEnv`'s view setter warns on "overwrite a namespace already in use"
 (the `view` setter in `ShadowEnv.ts`) when a second environment claims a namespace. The resulting behaviour —

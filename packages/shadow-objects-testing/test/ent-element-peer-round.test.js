@@ -332,4 +332,61 @@ describe('shae-ent and the peer re-request round', () => {
       'the entity below the new element arrives under it in this very trail',
     ).to.deep.equal([{type: ComponentChangeType.SetParent, uuid: kid.viewComponent.uuid, parentUuid: mid.viewComponent.uuid}]);
   });
+
+  it('a round whose receiver throws costs the rest of that round and no other round', async () => {
+    const ns = 'peer-round-throwing-receiver';
+    const container = connectedContainer();
+    container.innerHTML =
+      `<shae-ent id="pr8-a" ns="${ns}" token="a"><shae-ent id="pr8-a1" ns="${ns}" token="kid"></shae-ent></shae-ent>` +
+      `<shae-ent id="pr8-b" ns="${ns}" token="b"><shae-ent id="pr8-b1" ns="${ns}" token="kid"></shae-ent></shae-ent>`;
+
+    await nextTask();
+
+    const a = container.querySelector('#pr8-a');
+    const b = container.querySelector('#pr8-b');
+    const a1 = container.querySelector('#pr8-a1');
+    const b1 = container.querySelector('#pr8-b1');
+
+    const messages = countMessages(ComponentContext.get(ns));
+
+    // a message goes out over eventize, which delivers synchronously and hands what a listener
+    // throws straight back to the round that is being delivered
+    on(a1.viewComponent, ComponentContext.ReRequestParent, () => {
+      throw new Error('a receiver of the first round failed');
+    });
+
+    const reports = [];
+    const consoleError = console.error;
+    console.error = (...args) => reports.push(args);
+
+    try {
+      // two senders under two different parents, so the task collects two rounds: one over the
+      // children of a, one over the children of b
+      a.insertAdjacentHTML('beforeend', `<shae-ent id="pr8-a2" ns="${ns}" token="late"></shae-ent>`);
+      b.insertAdjacentHTML('beforeend', `<shae-ent id="pr8-b2" ns="${ns}" token="late"></shae-ent>`);
+
+      await nextTask();
+    } finally {
+      console.error = consoleError;
+    }
+
+    const a2 = container.querySelector('#pr8-a2');
+    const b2 = container.querySelector('#pr8-b2');
+
+    expect(messages.of(ComponentContext.ReRequestParent, a1.viewComponent.uuid), 'the receiver that throws was asked').to.equal(
+      1,
+    );
+    expect(
+      messages.of(ComponentContext.ReRequestParent, a2.viewComponent.uuid),
+      'and what its failure costs is the rest of its own round',
+    ).to.equal(0);
+
+    expect(
+      [b1, b2].map((el) => messages.of(ComponentContext.ReRequestParent, el.viewComponent.uuid)),
+      'the round waiting behind it is delivered in full',
+    ).to.deep.equal([1, 1]);
+
+    expect(reports.length, 'the failure is reported once').to.equal(1);
+    expect(reports[0].join(' '), 'and the report names the candidate set it belonged to').to.contain(a.viewComponent.uuid);
+  });
 });

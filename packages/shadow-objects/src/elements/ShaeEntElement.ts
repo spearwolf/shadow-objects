@@ -2,6 +2,7 @@ import {on} from '@spearwolf/eventize';
 import {beQuiet, createEffect, createSignal, Effect, hibernate} from '@spearwolf/signalize';
 import {VoidToken} from '../constants.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
+import {MicrotaskGate} from '../utils/MicrotaskGate.js';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {ViewComponent} from '../view/ViewComponent.js';
 import {
@@ -187,7 +188,16 @@ export class ShaeEntElement extends ShaeElement {
    */
   readonly #reSubscribe$ = createSignal(0);
 
-  #reSubscribePending = false;
+  /**
+   * The wait for the next microtask is the point, not a detail: the subscriptions come off right
+   * behind the announcement, so a listener set up inside the handler would be taken off with them.
+   * And a context tearing itself down walks its own set of instances — the element stays out of
+   * that walk and comes back once it is over. However many announcements arrive in one task, one
+   * round of setting up answers them all.
+   */
+  readonly #reSubscribe = new MicrotaskGate(() => {
+    this.#reSubscribe$.set(this.#reSubscribe$.value + 1);
+  });
 
   /** Moves this element's entity into the context of whichever namespace it names. */
   #namespaceBinding?: (() => void) | undefined;
@@ -206,22 +216,6 @@ export class ShaeEntElement extends ShaeElement {
 
   /** Carries a new token through to the entity. */
   #tokenToViewComponent?: (() => void) | undefined;
-
-  /**
-   * The wait for the next microtask is the point, not a detail: the subscriptions come off right
-   * behind the announcement, so a listener set up inside the handler would be taken off with them.
-   * And a context tearing itself down walks its own set of instances — the element stays out of
-   * that walk and comes back once it is over. However many announcements arrive in one task, one
-   * round of setting up answers them all.
-   */
-  #reSubscribeToViewComponent() {
-    if (this.#reSubscribePending) return;
-    this.#reSubscribePending = true;
-    queueMicrotask(() => {
-      this.#reSubscribePending = false;
-      this.#reSubscribe$.set(this.#reSubscribe$.value + 1);
-    });
-  }
 
   constructor() {
     super();
@@ -273,8 +267,8 @@ export class ShaeEntElement extends ShaeElement {
 
       // the environment it leaves holds the destruction of this entity and hears about it from
       // nobody else: `syncShadowObjects()` without an argument reads `this.ns`, which carries the
-      // new value by now. The call is cheap — the namespaces are collected in a set and worked
-      // through in one microtask
+      // new value by now. The call is cheap — the namespaces are collected per namespace and
+      // handed over in one microtask
       if (previousNs != null && previousNs !== ns) {
         this.syncShadowObjectsOf(previousNs);
       }
@@ -297,7 +291,7 @@ export class ShaeEntElement extends ShaeElement {
         on(vc, ComponentContext.ReRequestEntHost, () => this.#askPropertiesToReRequestHost()),
         // this one hangs on the same component as the three above and comes off with them, which
         // is exactly why it belongs in the same effect: it is what puts all four back
-        on(vc, ViewComponent.Destroyed, () => this.#reSubscribeToViewComponent()),
+        on(vc, ViewComponent.Destroyed, () => this.#reSubscribe.schedule()),
       ];
 
       return () => {

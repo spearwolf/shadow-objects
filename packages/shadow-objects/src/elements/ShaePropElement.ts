@@ -1,6 +1,7 @@
 import {batch, createEffect, createSignal, Effect, hibernate, link} from '@spearwolf/signalize';
 import {readBooleanAttribute} from '../utils/attr-utils.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
+import {MicrotaskGate} from '../utils/MicrotaskGate.js';
 import type {ViewComponent} from '../view/ViewComponent.js';
 import {ATTR_NAME, ATTR_NO_TRIM, ATTR_TYPE, ATTR_VALUE, ReRequestEntHostEventName} from './constants.js';
 import {DeferredTeardown} from './deferredTeardown.js';
@@ -433,7 +434,11 @@ export class ShaePropElement extends HTMLElement {
 
   #reportedMissingHost = false;
   #reRequestHostTarget?: EventTarget | undefined;
-  #hostLookupPending = false;
+  readonly #hostLookup = new MicrotaskGate(() => {
+    if (this.isConnected) {
+      this.#findEntNode();
+    }
+  });
 
   // Determines the host from where the element stands right now. The request runs *without* a
   // namespace: a property belongs to the closest entity above it, whatever namespace that entity
@@ -492,18 +497,10 @@ export class ShaePropElement extends HTMLElement {
   // Nothing observable turns on the test — a departing entity takes its properties with it
   // either way — so it stands as a rule, not as a measurement.
   //
-  // `#hostLookupPending` bounds the cost: a page filling up with entities sends many messages
-  // through the same ancestor chain, and the flag turns them into one lookup per microtask and
-  // per element.
+  // `#hostLookup` bounds the cost: a page filling up with entities sends many messages through the
+  // same ancestor chain, and the gate turns them into one lookup per microtask and per element.
   #onReRequestHost = () => {
-    if (this.#hostLookupPending) return;
-    this.#hostLookupPending = true;
-    queueMicrotask(() => {
-      this.#hostLookupPending = false;
-      if (this.isConnected) {
-        this.#findEntNode();
-      }
-    });
+    this.#hostLookup.schedule();
   };
 
   #listenForHostChanges = () => {

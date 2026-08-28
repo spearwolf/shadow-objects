@@ -12,6 +12,7 @@ import {
   value,
 } from '@spearwolf/signalize';
 import type {ComponentPropertiesType, IComponentEvent} from '../types.js';
+import {MicrotaskCollector} from '../utils/MicrotaskCollector.js';
 import {runGuarded} from '../utils/runGuarded.js';
 import {onDestroy, onViewEvent} from './events.js';
 import {Kernel} from './Kernel.js';
@@ -55,11 +56,6 @@ interface IDeferredContextValue {
   uuid: string;
 }
 
-interface IContextValueCollector {
-  values: Map<Signal<unknown>, IDeferredContextValue>;
-  flushRequested: boolean;
-}
-
 /**
  * The context values waiting to reach their readers, one collector per kernel.
  *
@@ -70,12 +66,23 @@ interface IContextValueCollector {
  * belongs to and needs no teardown of its own -- every round empties it, and the last one is
  * emptied by the kernel going out of reach.
  */
-const contextValueCollectors = new WeakMap<Kernel, IContextValueCollector>();
+const contextValueCollectors = new WeakMap<Kernel, MicrotaskCollector<Signal<unknown>, IDeferredContextValue>>();
 
-const collectorOf = (kernel: Kernel): IContextValueCollector => {
+const collectorOf = (kernel: Kernel): MicrotaskCollector<Signal<unknown>, IDeferredContextValue> => {
   let collector = contextValueCollectors.get(kernel);
   if (collector == null) {
-    collector = {values: new Map(), flushRequested: false};
+    collector = new MicrotaskCollector<Signal<unknown>, IDeferredContextValue>((contextValues) => {
+      for (const [contextSignal, entry] of contextValues) {
+        // one hand-over is one context value: `set()` runs the effects that read it synchronously
+        // and throws what one of them threw
+        runGuarded(
+          kernel.logger,
+          () => contextSignal.set(entry.value),
+          `an effect of a context value failed (${String(entry.name)}):`,
+          entry.uuid,
+        );
+      }
+    });
     contextValueCollectors.set(kernel, collector);
   }
   return collector;
@@ -87,34 +94,7 @@ const collectorOf = (kernel: Kernel): IContextValueCollector => {
  * written twice in a task reaches its readers once, with the value that stood at the end of it.
  */
 const deferContextValueUpdate = (kernel: Kernel, signal: Signal<unknown>, val: unknown, name: ContextNameType, uuid: string) => {
-  const collector = collectorOf(kernel);
-
-  collector.values.set(signal, {value: val, name, uuid});
-
-  if (collector.flushRequested) return;
-  collector.flushRequested = true;
-
-  queueMicrotask(() => {
-    collector.flushRequested = false;
-
-    // Taken out and emptied before the first write: a reader below can write a context of its own,
-    // and that value belongs to the round behind this one rather than to the list it walks.
-    const contextValues = Array.from(collector.values.entries());
-    collector.values.clear();
-
-    for (const [contextSignal, entry] of contextValues) {
-      // `set()` runs the effects that read this context synchronously and throws what one of them
-      // threw, so every hand-over stands behind a guard of its own -- the way `runGuarded()` and
-      // every other loop over entity state in this project does it. A reader that fails costs its
-      // own value and nothing else: the entities waiting behind it still get theirs.
-      runGuarded(
-        kernel.logger,
-        () => contextSignal.set(entry.value),
-        `an effect of a context value failed (${String(entry.name)}):`,
-        entry.uuid,
-      );
-    }
-  });
+  collectorOf(kernel).add(signal, {value: val, name, uuid});
 };
 
 /**

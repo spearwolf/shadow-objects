@@ -2,6 +2,9 @@ import {createSignal, hibernate, Signal} from '@spearwolf/signalize';
 import {GlobalNS} from '../constants.js';
 import type {NamespaceType} from '../types.js';
 import {readNamespaceAttribute} from '../utils/attr-utils.js';
+import {ConsoleLogger} from '../utils/ConsoleLogger.js';
+import {MicrotaskCollector} from '../utils/MicrotaskCollector.js';
+import {runGuarded} from '../utils/runGuarded.js';
 import {toNamespace} from '../utils/toNamespace.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
 import {ATTR_NS} from './constants.js';
@@ -12,21 +15,24 @@ const updateNamespace = (el: HTMLElement, ns: Signal<NamespaceType>) => {
   ns.set(readNamespaceAttribute(el));
 };
 
-const SyncNamespaces = new Set<NamespaceType>();
-let nextSyncIsScheduled = false;
+const logger = new ConsoleLogger('ShaeElement');
+
+// Module-wide, and one collector for every element in the realm: the key *is* the namespace and
+// `ShadowEnv.get(ns)` resolves it realm-wide, so two environments of one realm can take nothing
+// from each other here.
+//
+// One hand-over is one namespace: the call for each of them stands on its own, so none can take
+// the rest of the round with it, and what comes up while handing one over is reported instead of
+// carried out of the loop. What becomes of the trail is settled inside the environment, a
+// microtask later, and does not travel back through here.
+const syncCollector = new MicrotaskCollector<NamespaceType>((namespaces) => {
+  for (const ns of namespaces.keys()) {
+    runGuarded(logger, () => ShadowEnv.get(ns)?.sync(), 'a namespace could not be synced:', ns);
+  }
+});
 
 const syncShadowObjects = (ns: NamespaceType) => {
-  SyncNamespaces.add(ns);
-  if (!nextSyncIsScheduled) {
-    nextSyncIsScheduled = true;
-    queueMicrotask(() => {
-      nextSyncIsScheduled = false;
-      for (const ns of SyncNamespaces) {
-        ShadowEnv.get(ns)?.sync();
-      }
-      SyncNamespaces.clear();
-    });
-  }
+  syncCollector.add(ns);
 };
 
 /**

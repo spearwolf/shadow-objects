@@ -140,6 +140,14 @@ src/utils/FrameLoop.d.ts
 src/utils/FrameLoop.d.ts.map
 src/utils/FrameLoop.js
 src/utils/FrameLoop.js.map
+src/utils/MicrotaskCollector.d.ts
+src/utils/MicrotaskCollector.d.ts.map
+src/utils/MicrotaskCollector.js
+src/utils/MicrotaskCollector.js.map
+src/utils/MicrotaskGate.d.ts
+src/utils/MicrotaskGate.d.ts.map
+src/utils/MicrotaskGate.js
+src/utils/MicrotaskGate.js.map
 src/utils/array-utils.d.ts
 src/utils/array-utils.d.ts.map
 src/utils/array-utils.js
