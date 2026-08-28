@@ -1,298 +1,76 @@
-// https://github.com/mrdoob/three.js/blob/master/src/math/MathUtils.js
+import {ConsoleLogger} from './ConsoleLogger.js';
 
-// prettier-ignore
-const _lut = [
-  '00',
-  '01',
-  '02',
-  '03',
-  '04',
-  '05',
-  '06',
-  '07',
-  '08',
-  '09',
-  '0a',
-  '0b',
-  '0c',
-  '0d',
-  '0e',
-  '0f',
-  '10',
-  '11',
-  '12',
-  '13',
-  '14',
-  '15',
-  '16',
-  '17',
-  '18',
-  '19',
-  '1a',
-  '1b',
-  '1c',
-  '1d',
-  '1e',
-  '1f',
-  '20',
-  '21',
-  '22',
-  '23',
-  '24',
-  '25',
-  '26',
-  '27',
-  '28',
-  '29',
-  '2a',
-  '2b',
-  '2c',
-  '2d',
-  '2e',
-  '2f',
-  '30',
-  '31',
-  '32',
-  '33',
-  '34',
-  '35',
-  '36',
-  '37',
-  '38',
-  '39',
-  '3a',
-  '3b',
-  '3c',
-  '3d',
-  '3e',
-  '3f',
-  '40',
-  '41',
-  '42',
-  '43',
-  '44',
-  '45',
-  '46',
-  '47',
-  '48',
-  '49',
-  '4a',
-  '4b',
-  '4c',
-  '4d',
-  '4e',
-  '4f',
-  '50',
-  '51',
-  '52',
-  '53',
-  '54',
-  '55',
-  '56',
-  '57',
-  '58',
-  '59',
-  '5a',
-  '5b',
-  '5c',
-  '5d',
-  '5e',
-  '5f',
-  '60',
-  '61',
-  '62',
-  '63',
-  '64',
-  '65',
-  '66',
-  '67',
-  '68',
-  '69',
-  '6a',
-  '6b',
-  '6c',
-  '6d',
-  '6e',
-  '6f',
-  '70',
-  '71',
-  '72',
-  '73',
-  '74',
-  '75',
-  '76',
-  '77',
-  '78',
-  '79',
-  '7a',
-  '7b',
-  '7c',
-  '7d',
-  '7e',
-  '7f',
-  '80',
-  '81',
-  '82',
-  '83',
-  '84',
-  '85',
-  '86',
-  '87',
-  '88',
-  '89',
-  '8a',
-  '8b',
-  '8c',
-  '8d',
-  '8e',
-  '8f',
-  '90',
-  '91',
-  '92',
-  '93',
-  '94',
-  '95',
-  '96',
-  '97',
-  '98',
-  '99',
-  '9a',
-  '9b',
-  '9c',
-  '9d',
-  '9e',
-  '9f',
-  'a0',
-  'a1',
-  'a2',
-  'a3',
-  'a4',
-  'a5',
-  'a6',
-  'a7',
-  'a8',
-  'a9',
-  'aa',
-  'ab',
-  'ac',
-  'ad',
-  'ae',
-  'af',
-  'b0',
-  'b1',
-  'b2',
-  'b3',
-  'b4',
-  'b5',
-  'b6',
-  'b7',
-  'b8',
-  'b9',
-  'ba',
-  'bb',
-  'bc',
-  'bd',
-  'be',
-  'bf',
-  'c0',
-  'c1',
-  'c2',
-  'c3',
-  'c4',
-  'c5',
-  'c6',
-  'c7',
-  'c8',
-  'c9',
-  'ca',
-  'cb',
-  'cc',
-  'cd',
-  'ce',
-  'cf',
-  'd0',
-  'd1',
-  'd2',
-  'd3',
-  'd4',
-  'd5',
-  'd6',
-  'd7',
-  'd8',
-  'd9',
-  'da',
-  'db',
-  'dc',
-  'dd',
-  'de',
-  'df',
-  'e0',
-  'e1',
-  'e2',
-  'e3',
-  'e4',
-  'e5',
-  'e6',
-  'e7',
-  'e8',
-  'e9',
-  'ea',
-  'eb',
-  'ec',
-  'ed',
-  'ee',
-  'ef',
-  'f0',
-  'f1',
-  'f2',
-  'f3',
-  'f4',
-  'f5',
-  'f6',
-  'f7',
-  'f8',
-  'f9',
-  'fa',
-  'fb',
-  'fc',
-  'fd',
-  'fe',
-  'ff',
-];
+// A uuid here names one Entity and nothing else: it is not a credential, it is not a
+// capability, and it never leaves the process that made it. That is what makes the last of
+// the three sources below tolerable at all, and why it is loud rather than forbidden.
 
-// Every index is masked down to a byte, and the table holds an entry for all 256 of them.
-const hex = (byte: number): string => _lut[byte]!;
+const UUID_BYTE_COUNT = 16;
 
-const _generateUUID = () => {
-  // http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript/21963136#21963136
-  const d0 = (Math.random() * 0xffffffff) | 0;
-  const d1 = (Math.random() * 0xffffffff) | 0;
-  const d2 = (Math.random() * 0xffffffff) | 0;
-  const d3 = (Math.random() * 0xffffffff) | 0;
-  const uuid =
-    hex(d0 & 0xff) +
-    hex((d0 >> 8) & 0xff) +
-    hex((d0 >> 16) & 0xff) +
-    hex((d0 >> 24) & 0xff) +
-    '-' +
-    hex(d1 & 0xff) +
-    hex((d1 >> 8) & 0xff) +
-    '-' +
-    hex(((d1 >> 16) & 0x0f) | 0x40) +
-    hex((d1 >> 24) & 0xff) +
-    '-' +
-    hex((d2 & 0x3f) | 0x80) +
-    hex((d2 >> 8) & 0xff) +
-    '-' +
-    hex((d2 >> 16) & 0xff) +
-    hex((d2 >> 24) & 0xff) +
-    hex(d3 & 0xff) +
-    hex((d3 >> 8) & 0xff) +
-    hex((d3 >> 16) & 0xff) +
-    hex((d3 >> 24) & 0xff);
+// Named after `crypto.randomUUID()`'s own return type instead of spelling out the template
+// literal a second time: the two stay in lockstep by construction, not by copy-paste.
+type UuidV4 = ReturnType<Crypto['randomUUID']>;
 
-  // .toLowerCase() here flattens concatenated strings to save heap memory space.
-  return uuid.toLowerCase();
+/**
+ * Stamps the version and variant bits into 16 random bytes and writes them out in the
+ * canonical 8-4-4-4-12 form. The bytes are written to in place, so the caller hands over an
+ * array it does not keep.
+ *
+ * RFC 4122 §4.4: version 4 goes into the high nibble of byte 6, the variant `10xx` into the
+ * two high bits of byte 8.
+ */
+const toUuidV4 = (bytes: Uint8Array): UuidV4 => {
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}` as UuidV4;
 };
 
-export const generateUUID = () => globalThis?.crypto?.randomUUID?.() ?? _generateUUID();
+let mathRandomAnnounced = false;
+
+const mathRandomBytes = (): Uint8Array => {
+  if (!mathRandomAnnounced) {
+    mathRandomAnnounced = true;
+    // Once per realm, not once per uuid: an application that makes thousands of them would
+    // bury its console, and what is reported is a property of the realm, not of the call.
+    new ConsoleLogger('generateUUID').warn(
+      'no Web Crypto API in this realm: entity uuids come from Math.random() and are not unguessable',
+    );
+  }
+
+  const bytes = new Uint8Array(UUID_BYTE_COUNT);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = (Math.random() * 256) | 0;
+  }
+  return bytes;
+};
+
+/**
+ * A version-4 uuid in the canonical 8-4-4-4-12 form, from the best source this realm offers.
+ *
+ * Three of them, in order. `crypto.randomUUID()` is bound to a secure context and is out of
+ * reach whenever the page is served over plain http -- a LAN address during development is
+ * the usual way to meet that. `crypto.getRandomValues()` carries no such restriction and is
+ * the same cryptographic generator, so the step down to it costs four lines of formatting and
+ * nothing else. Only a realm with no Web Crypto API at all reaches `Math.random()`, and that
+ * one says so on the console, once: the uuids stay unique enough to name an entity, and they
+ * stop being unguessable.
+ */
+// No explicit return-type annotation here: emitDeclarationOnly then prints the inferred
+// template-literal form of `UuidV4` rather than the alias name, so callers reading the
+// emitted `.d.ts` see the exact shape `crypto.randomUUID()` guarantees, not a reference they
+// would have to look up.
+export const generateUUID = () => {
+  const webCrypto = (globalThis as {crypto?: Crypto}).crypto;
+
+  if (typeof webCrypto?.randomUUID === 'function') {
+    return webCrypto.randomUUID();
+  }
+
+  if (typeof webCrypto?.getRandomValues === 'function') {
+    return toUuidV4(webCrypto.getRandomValues(new Uint8Array(UUID_BYTE_COUNT)));
+  }
+
+  return toUuidV4(mathRandomBytes());
+};
