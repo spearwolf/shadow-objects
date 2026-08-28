@@ -742,7 +742,7 @@ describe('Kernel', () => {
       //
       // The constructor sets below are built without the decorator: `@ShadowObject` takes exactly
       // one token, and these cases need two tokens pointing at the same class, so that a token
-      // change drops one constructor and leaves the other in place. `updateShadowObjects()` does
+      // change drops one constructor and leaves the other in place. `#updateShadowObjects()` does
       // not re-run a constructor that is already in use, so the staying shadow-object is untouched.
       describe('two shadow-objects providing the same context name', () => {
         it('hands the context to the provider that stays when the other one leaves the constructor set', async () => {
@@ -5911,6 +5911,28 @@ describe('Kernel', () => {
 
       consoleError.mockRestore();
       kernel.destroy();
+    });
+  });
+
+  // The bookkeeping of the kernel has one way in from the outside, and that is its public
+  // surface. A member written with the TypeScript `private` keyword keeps standing on the
+  // prototype after the transpile and answers a call from JavaScript, so the shape of the
+  // class is asserted here rather than left to the reading of a declaration file.
+  describe('the members that carry the bookkeeping of the kernel', () => {
+    it('stand off the prototype', () => {
+      const names = [
+        'getEntityGraphNode',
+        'parse',
+        'updateShadowObjects',
+        'constructShadowObject',
+        'createShadowObjects',
+        'attachShadowObject',
+        'destroyShadowObject',
+      ];
+
+      const onPrototype = names.filter((name) => Object.getOwnPropertyNames(Kernel.prototype).includes(name));
+
+      expect(onPrototype, 'reachable from JavaScript').toEqual([]);
     });
   });
 });

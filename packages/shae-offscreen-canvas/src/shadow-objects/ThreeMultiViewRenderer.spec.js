@@ -123,7 +123,7 @@ describe('ThreeMultiViewRenderer', () => {
   });
 
   describe('teardown after a renderer that never came to be', () => {
-    // The kernel takes this path itself: `constructShadowObject()` catches a throwing constructor
+    // The kernel takes this path itself: `#constructShadowObject()` catches a throwing constructor
     // and tears the creation scope down, and that runs every callback `onDestroy()` collected —
     // including the one this constructor registered before it threw. The creation API is stood in
     // for here because there is no instance to reach it through: the constructor does not return.

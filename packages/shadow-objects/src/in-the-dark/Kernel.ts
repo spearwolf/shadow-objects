@@ -48,9 +48,9 @@ enum ShadowObjectAction {
 const getDisplayName = (construct: ShadowObjectConstructor) => construct.displayName || construct.name;
 
 // The four lifecycle hooks are symbols, and a string key of the same name is never picked up by
-// eventize or by the direct calls in `attachShadowObject()` -- a shadow-object that writes one as
+// eventize or by the direct calls in `#attachShadowObject()` -- a shadow-object that writes one as
 // a plain method looks correct and never runs, with nothing to say so. This table is what
-// `attachShadowObject()` walks to catch that case.
+// `#attachShadowObject()` walks to catch that case.
 const LIFECYCLE_HOOKS: [string, symbol][] = [
   ['onCreate', onCreate],
   ['onDestroy', onDestroy],
@@ -82,7 +82,7 @@ export class Kernel {
   /**
    * The creation scope of a shadow-object, keyed by the shadow-object itself.
    *
-   * `destroyShadowObject()` needs to reach the scope from the outside when a shadow-object leaves the
+   * `#destroyShadowObject()` needs to reach the scope from the outside when a shadow-object leaves the
    * constructor set of an entity that stays alive. The scope removes its own entry when it tears down,
    * so nothing here outlives the shadow-object it belongs to.
    *
@@ -128,7 +128,7 @@ export class Kernel {
    * The entry for an entity that is expected to exist.
    *
    * The uuid is the caller's responsibility: `getEntity()` hands the throw on to its own
-   * callers, and `updateShadowObjects()` is reached only for an entity the caller has just
+   * callers, and `#updateShadowObjects()` is reached only for an entity the caller has just
    * confirmed. Failing here names the uuid instead of failing later on an undefined field.
    */
   #requireEntry(uuid: string): EntityEntry {
@@ -224,11 +224,11 @@ export class Kernel {
   getEntityGraph(): EntityGraphNode[] {
     const visited = new Set<string>();
     return Array.from(this.#rootEntities)
-      .map((uuid) => this.getEntityGraphNode(uuid, visited))
+      .map((uuid) => this.#getEntityGraphNode(uuid, visited))
       .filter((node) => node !== undefined);
   }
 
-  private getEntityGraphNode(uuid: string, visited: Set<string>): EntityGraphNode | undefined {
+  #getEntityGraphNode(uuid: string, visited: Set<string>): EntityGraphNode | undefined {
     if (visited.has(uuid)) return undefined;
     visited.add(uuid);
 
@@ -241,7 +241,9 @@ export class Kernel {
       entity,
       props: Object.fromEntries(entity.propEntries()),
       // A node the kernel no longer holds drops out of the graph.
-      children: entity.children.map((child) => this.getEntityGraphNode(child.uuid, visited)).filter((node) => node !== undefined),
+      children: entity.children
+        .map((child) => this.#getEntityGraphNode(child.uuid, visited))
+        .filter((node) => node !== undefined),
     };
   }
 
@@ -253,12 +255,12 @@ export class Kernel {
     // the time its turn comes: it needs no upgrade, and the entities behind it still do.
     for (const entity of this.traverseLevelOrderBFS(true)) {
       if (!this.hasEntity(entity.uuid)) continue;
-      entityConstructors.set(entity.uuid, this.updateShadowObjects(entity.uuid, ShadowObjectAction.DestroyOnly));
+      entityConstructors.set(entity.uuid, this.#updateShadowObjects(entity.uuid, ShadowObjectAction.DestroyOnly));
     }
 
     for (const entity of this.traverseLevelOrderBFS(false)) {
       if (!this.hasEntity(entity.uuid)) continue;
-      this.updateShadowObjects(entity.uuid, ShadowObjectAction.JustCreate, entityConstructors.get(entity.uuid));
+      this.#updateShadowObjects(entity.uuid, ShadowObjectAction.JustCreate, entityConstructors.get(entity.uuid));
     }
 
     entityConstructors.clear();
@@ -269,7 +271,7 @@ export class Kernel {
    *
    * The loop ends at the entry that throws, so what the kernel holds afterwards is a prefix of the
    * trail; the {@link ChangeTrailRefusedError} names its length. The counter sits behind
-   * {@link Kernel.parse} and therefore counts only entries that returned normally.
+   * `#parse` and therefore counts only entries that returned normally.
    *
    * An effect the batch defers belongs to no single entry: the batch releases it once the loop is
    * through, and a throw from there arrives with every entry already counted. `appliedCount` then
@@ -288,7 +290,7 @@ export class Kernel {
     try {
       batch(() => {
         for (const entry of event.changeTrail) {
-          this.parse(entry);
+          this.#parse(entry);
           appliedCount++;
         }
       });
@@ -297,7 +299,7 @@ export class Kernel {
     }
   }
 
-  private parse(entry: IComponentChangeType): void {
+  #parse(entry: IComponentChangeType): void {
     switch (entry.type) {
       case ComponentChangeType.CreateEntities:
         this.createEntity(
@@ -380,7 +382,7 @@ export class Kernel {
         e.setProperties(properties);
       }
 
-      this.createShadowObjects(entry);
+      this.#createShadowObjects(entry);
     } catch (error) {
       this.#rollbackFailedCreation(uuid);
       throw error;
@@ -456,7 +458,7 @@ export class Kernel {
         // This is the one point at which the two teardown paths differ, and it is worth knowing which
         // way round: a shadow-object that emits an event on the entity from inside its `[onDestroy]`
         // does not reach its own siblings here, because they are taken off one by one as their turn
-        // comes. `destroyShadowObject()` leaves the subscription in place until after the hook for
+        // comes. `#destroyShadowObject()` leaves the subscription in place until after the hook for
         // exactly the opposite reason -- there the entity lives on, so there is no second delivery to
         // avoid. An entity that is being destroyed is no address for an event either way.
         off(entity, shadowObject);
@@ -627,7 +629,7 @@ export class Kernel {
 
   changeProperties(uuid: string, properties: ComponentPropertiesType): void {
     this.getEntity(uuid).setProperties(properties);
-    this.updateShadowObjects(uuid);
+    this.#updateShadowObjects(uuid);
   }
 
   changeToken(uuid: string, token: string): void {
@@ -636,15 +638,15 @@ export class Kernel {
 
     if (entry.token === token) return;
 
-    // The new token has to stand before the constructors run, because `updateShadowObjects()` resolves
+    // The new token has to stand before the constructors run, because `#updateShadowObjects()` resolves
     // the constructor set out of `entry.token`. A change that does not get through hands the previous
     // token back and rebuilds what belongs to it, as far as the rebuild gets. Taking the change back
-    // belongs to `updateShadowObjects()` rather than here: it is one act with the rebuilding of the
+    // belongs to `#updateShadowObjects()` rather than here: it is one act with the rebuilding of the
     // shadow-objects, and the order within it matters -- the token first, then the objects.
     const previousToken = entry.token;
     entry.token = token;
 
-    this.updateShadowObjects(uuid, ShadowObjectAction.CreateAndDestroy, undefined, previousToken);
+    this.#updateShadowObjects(uuid, ShadowObjectAction.CreateAndDestroy, undefined, previousToken);
   }
 
   dispatchMessageToView(message: MessageToViewEvent): void {
@@ -662,7 +664,7 @@ export class Kernel {
    *   back before it restores the shadow-objects, so an entity is never built against a token it does
    *   not carry.
    */
-  private updateShadowObjects(
+  #updateShadowObjects(
     uuid: string,
     action = ShadowObjectAction.CreateAndDestroy,
     nextConstructors?: Set<ShadowObjectConstructor>,
@@ -691,7 +693,7 @@ export class Kernel {
           // restoration reads what is written down instead of assuming that.
           removed.push({construct, count: shadowObjects.size});
           for (const obj of shadowObjects) {
-            this.destroyShadowObject(obj, entry.entity);
+            this.#destroyShadowObject(obj, entry.entity);
           }
         }
       }
@@ -703,7 +705,7 @@ export class Kernel {
       for (const construct of nextConstructors) {
         if (!entry.usedConstructors.has(construct)) {
           try {
-            created.push(this.constructShadowObject(construct, entry));
+            created.push(this.#constructShadowObject(construct, entry));
           } catch (error) {
             this.#rollbackFailedShadowObjectUpdate(entry, created, removed, previousToken);
             throw error;
@@ -755,7 +757,7 @@ export class Kernel {
 
     for (let i = created.length - 1; i >= 0; i--) {
       try {
-        this.destroyShadowObject(created[i]!, entry.entity);
+        this.#destroyShadowObject(created[i]!, entry.entity);
       } catch (error) {
         this.logger.error(
           'rollback of a failed shadow-object update could not remove a new shadow-object:',
@@ -768,7 +770,7 @@ export class Kernel {
     for (const {construct, count} of removed) {
       for (let i = 0; i < count; i++) {
         try {
-          this.constructShadowObject(construct, entry);
+          this.#constructShadowObject(construct, entry);
         } catch (error) {
           this.logger.error(
             'rollback of a failed shadow-object update could not restore a shadow-object:',
@@ -781,7 +783,7 @@ export class Kernel {
     }
   }
 
-  private constructShadowObject(construct: ShadowObjectConstructor, entry: EntityEntry): ShadowObjectType {
+  #constructShadowObject(construct: ShadowObjectConstructor, entry: EntityEntry): ShadowObjectType {
     const scope = new ShadowObjectCreationScope(entry.entity, this.logger, getDisplayName(construct), this.#shownDeprecations);
 
     let shadowObject: ShadowObjectType;
@@ -816,7 +818,7 @@ export class Kernel {
     );
 
     // `entry.usedConstructors` tracks, per constructor, the set of shadow-objects it created.
-    // `updateShadowObjects()` reads this bookkeeping to tell which shadow-objects belong to a
+    // `#updateShadowObjects()` reads this bookkeeping to tell which shadow-objects belong to a
     // constructor that has left the entity's current constructor set, so it knows which ones to
     // tear down. An entry disappears from the set above when the tear-down of its shadow-object
     // runs, so this bookkeeping never outlives what it describes.
@@ -828,26 +830,26 @@ export class Kernel {
     }
 
     try {
-      this.attachShadowObject(shadowObject, entry.entity);
+      this.#attachShadowObject(shadowObject, entry.entity);
     } catch (error) {
       // Attaching is the last step of a creation, and a shadow-object whose `[onCreate]` does not get
       // through is none: it goes the way one takes that leaves the constructor set of its entity, so it
       // hears its `[onDestroy]` hook and its `onDestroy` callbacks, gives up its creation scope and
       // comes off the entity before the error travels on. A second guard rather than one around both
       // steps, because there is more to take back here: the shadow-object stands in
-      // `#shadowObjectScopes`, in `entry.usedConstructors` and, since `attachShadowObject()` set its
-      // `on(entity, shadowObject)`, as a listener of the entity -- and `destroyShadowObject()` is the
+      // `#shadowObjectScopes`, in `entry.usedConstructors` and, since `#attachShadowObject()` set its
+      // `on(entity, shadowObject)`, as a listener of the entity -- and `#destroyShadowObject()` is the
       // only exit that clears all three.
-      this.destroyShadowObject(shadowObject, entry.entity);
+      this.#destroyShadowObject(shadowObject, entry.entity);
       throw error;
     }
 
     return shadowObject;
   }
 
-  private createShadowObjects(entry: EntityEntry): void {
+  #createShadowObjects(entry: EntityEntry): void {
     this.registry.findConstructors(entry.token, entry.entity.truthyProps())?.forEach((construct) => {
-      this.constructShadowObject(construct, entry);
+      this.#constructShadowObject(construct, entry);
     });
   }
 
@@ -860,7 +862,7 @@ export class Kernel {
     return Array.from(new Set(Array.from(usedConstructors.values()).flatMap((objs) => Array.from(objs))));
   }
 
-  private attachShadowObject(shadowObject: object, entity: Entity): void {
+  #attachShadowObject(shadowObject: object, entity: Entity): void {
     // A plain method under one of the four hook names, without the matching symbol, is the
     // silent-failure case `LIFECYCLE_HOOKS` exists for: report it through the logger before the
     // shadow-object goes live, on the same `warn`-vs-`error` reasoning as the refusal notice at
@@ -919,7 +921,7 @@ export class Kernel {
     }
   }
 
-  private destroyShadowObject(shadowObject: object, entity: Entity): void {
+  #destroyShadowObject(shadowObject: object, entity: Entity): void {
     this.#notifyShadowObjectDestroy(shadowObject, entity);
 
     // The teardown runs after the destroy notifications, so a shadow-object that reacts to its own

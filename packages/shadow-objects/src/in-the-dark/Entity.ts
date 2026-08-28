@@ -490,7 +490,7 @@ export class Entity {
 
   /**
    * A write head for one property. Every write through it drops the cache behind
-   * `truthyProps()`: that cache answers `Kernel.updateShadowObjects()`, which picks the shadow
+   * `truthyProps()`: that cache answers `Kernel.#updateShadowObjects()`, which picks the shadow
    * objects of this entity along the property routes of the registry, and a write the cache does
    * not see routes the entity to a state it no longer has.
    *
