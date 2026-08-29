@@ -203,10 +203,23 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
    */
   readonly #workerFailure = new AbortController();
 
-  readonly logger = new ConsoleLogger('RemoteWorkerEnv');
+  readonly #logger = new ConsoleLogger('RemoteWorkerEnv');
 
-  /** The four timeouts this environment holds itself to, resolved once when it is built. */
-  readonly timeouts: Readonly<WorkerTimeouts>;
+  /** The logger this environment reports through. */
+  get logger(): ConsoleLogger {
+    return this.#logger;
+  }
+
+  readonly #timeouts: Readonly<WorkerTimeouts>;
+
+  /**
+   * The four timeouts this environment holds itself to, resolved once when it is built. The
+   * object is frozen and the slot holds no setter, so the constructor is the one way in --
+   * and `resolveTimeouts()` vets every value that goes through it.
+   */
+  get timeouts(): Readonly<WorkerTimeouts> {
+    return this.#timeouts;
+  }
 
   get isDestroyed(): boolean {
     return this.#isDestroyed;
@@ -255,7 +268,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
 
   constructor(options?: RemoteWorkerEnvOptions) {
     // the logger is a field initializer and is therefore already in place
-    this.timeouts = Object.freeze(resolveTimeouts(options, this.logger));
+    this.#timeouts = Object.freeze(resolveTimeouts(options, this.logger));
 
     retain(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerLoaded);
     // a consumer that subscribes only after the failure still gets to hear about it

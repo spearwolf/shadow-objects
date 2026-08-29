@@ -1537,4 +1537,30 @@ describe('ShadowEnv', () => {
       expect(contextLostSpy).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('the property slots that hold no setter', () => {
+    it('refuses an assignment to logger and keeps the instance it reports through', () => {
+      const env = new ShadowEnv();
+      const logger = env.logger;
+
+      expect(() => {
+        (env as unknown as {logger: unknown}).logger = {};
+      }).toThrow(TypeError);
+
+      expect(env.logger).toBe(logger);
+    });
+
+    it('stands on the prototype as a getter without a setter', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(ShadowEnv.prototype, 'logger');
+
+      expect(typeof descriptor?.get).toBe('function');
+      expect(descriptor?.set).toBeUndefined();
+    });
+
+    it('hands out the same object on every read', () => {
+      const env = new ShadowEnv();
+
+      expect(env.logger).toBe(env.logger);
+    });
+  });
 });

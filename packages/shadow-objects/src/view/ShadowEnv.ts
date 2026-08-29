@@ -61,7 +61,12 @@ export class ShadowEnv {
   #syncWaitForConfirmation = false;
   #nextSyncCycle?: SyncCycle | undefined;
 
-  readonly logger = new ConsoleLogger('ShadowEnv');
+  readonly #logger = new ConsoleLogger('ShadowEnv');
+
+  /** The logger this environment reports through. */
+  get logger(): ConsoleLogger {
+    return this.#logger;
+  }
 
   /**
    * The namespace of the {@link ComponentContext} this environment observes, and `undefined`

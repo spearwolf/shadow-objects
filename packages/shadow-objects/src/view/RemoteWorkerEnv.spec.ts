@@ -1119,4 +1119,46 @@ describe('RemoteWorkerEnv', () => {
       }
     });
   });
+
+  describe('the property slots that hold no setter', () => {
+    it('refuses an assignment to timeouts and keeps the four values it resolved', () => {
+      const env = new RemoteWorkerEnv({loadTimeout: 1234});
+
+      expect(() => {
+        (env as unknown as {timeouts: unknown}).timeouts = {
+          loadTimeout: 1,
+          configureTimeout: 1,
+          changeTrailTimeout: 1,
+          destroyTimeout: 1,
+        };
+      }).toThrow(TypeError);
+
+      expect(env.timeouts.loadTimeout).toBe(1234);
+    });
+
+    it('refuses an assignment to logger and keeps the instance it reports through', () => {
+      const env = new RemoteWorkerEnv();
+      const logger = env.logger;
+
+      expect(() => {
+        (env as unknown as {logger: unknown}).logger = {};
+      }).toThrow(TypeError);
+
+      expect(env.logger).toBe(logger);
+    });
+
+    it.each(['timeouts', 'logger'] as const)('stand on the prototype as getters without setters: %s', (name) => {
+      const descriptor = Object.getOwnPropertyDescriptor(RemoteWorkerEnv.prototype, name);
+
+      expect(typeof descriptor?.get).toBe('function');
+      expect(descriptor?.set).toBeUndefined();
+    });
+
+    it('hand out the same object on every read', () => {
+      const env = new RemoteWorkerEnv();
+
+      expect(env.timeouts).toBe(env.timeouts);
+      expect(env.logger).toBe(env.logger);
+    });
+  });
 });

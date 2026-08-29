@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 > **Next release: minor.** The package is below `1.0.0`, so the accumulated breaking
-> changes below bump the minor position — `0.33.0` → `0.34.0`. Fifty-seven changes reach existing
+> changes below bump the minor position — `0.33.0` → `0.34.0`. Fifty-eight changes reach existing
 > consumers: both runtime dependencies take a major step and carry behaviour changes of their
 > own; the emitted declarations carry `| undefined` where a value can be missing, so a
 > build with `strictNullChecks` sees new errors; `RemoteWorkerEnv` rejects with
@@ -201,7 +201,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > `ComponentContext` it observes, where it used to read `undefined` for the whole lifetime of an
 > environment; and the seven methods of `Kernel` that carry its bookkeeping no longer stand on
 > the prototype, so a call to one of them from JavaScript that bypasses the type layer now finds
-> `undefined`.
+> `undefined`; and `RemoteWorkerEnv.timeouts`, `RemoteWorkerEnv.logger` and `ShadowEnv.logger` are
+> getters without setters, so an assignment to one of them from JavaScript that bypasses the type
+> layer throws a `TypeError` in strict mode, and the three names are absent from
+> `Object.keys(env)`, from a `{...env}` spread and from `JSON.stringify(env)`.
 > Everything else in this section is additive or a bugfix.
 
 ### ⚠️ Breaking Changes
@@ -228,6 +231,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking (view):** a synchronization cycle ends in exactly one of two events, and `ShadowEnv.syncWait()` follows suit. A cycle the Shadow Environment applied emits `ShadowEnv.AfterSync` and resolves the promise with its change trail; a cycle whose trail the environment could not apply emits the new `ShadowEnv.SyncFailed` and rejects the promise with the reason the proxy gave — a worker that did not confirm within `changeTrailTimeout`, a Kernel error the worker reported back, a proxy whose environment is already gone. Such a cycle used to emit `AfterSync` with the trail that never arrived and resolve as if it had, which left the loss visible only as a `ConsoleLogger` line that is silenced outside localhost. An `await env.syncWait()` without a `catch` therefore throws where it used to carry on, and a listener of `AfterSync` hears the successful cycles and nothing else. The trail of a failed cycle is gone — `buildChangeTrails()` folds every pending change into the state it wrote before the trail leaves — and a re-creation from the Component Memory is what brings it back; it belongs to a fresh proxy, because an environment whose Kernel still holds those uuids refuses every re-created creation. Handing `envProxy` a new proxy stays with the consumer, the same way recovering from a `ProxyFailed` does.
 - **Breaking (environments):** `LocalShadowObjectEnv.importScript()` rejects a module that has no `shadowObjects` export, with the same wording `RemoteWorkerEnv` reports for the same case, instead of resolving silently. An `await env.importScript(url)` without a `catch` therefore throws where it used to carry on, and a `<shae-worker local src="…">` on such a module reports the failure through `logger.error`, where the declarative path stayed silent before.
 - **Breaking (environments):** `RemoteWorkerEnv` rejects a failure the worker reported with a `WorkerReportedError` instead of with the bare wording. Two routes end that way: an `importScript()` on a module the worker could not load, and an `applyChangeTrail(trail, true)` whose confirmation carries a reason without an `appliedCount`. What reaches a consumer: a `catch` that compared the reason against a string, or printed it directly, now holds an object — `error.message` carries the wording, `error.name` the name the error was thrown under inside the worker.
+- **Breaking (environments):** `RemoteWorkerEnv.timeouts`, `RemoteWorkerEnv.logger` and `ShadowEnv.logger` are getters without setters, so the slots are closed at runtime and not only to the type layer. An assignment — `env.timeouts = {…}`, `env.logger = myLogger` — throws a `TypeError` in strict mode and does nothing outside it. Both classes are exported from `@spearwolf/shadow-objects`, so this is a change a consumer meets directly. For `timeouts` the constructor is the way in, where `resolveTimeouts()` vets each of the four values, and the object itself stays frozen, so `env.timeouts.loadTimeout = …` is refused the same way. Every read hands back the same object. One thing travels with the change: the three names are accessors on the prototype rather than own properties of the instance, so they are absent from `Object.keys(env)`, from a `{...env}` spread and from `JSON.stringify(env)`.
 - **Breaking (globals):** the three realm-wide names this package hangs off `globalThis` and the global symbol registry carry the package name: `globalThis.__shadowEntsContexts` becomes `globalThis.__shadowObjectsContexts`, `globalThis.SHADOW_ENTS_BUNDLE_LOADED` becomes `globalThis.SHADOW_OBJECTS_BUNDLE_LOADED`, and `Symbol.for('ShadowEntsGlobalNS')` becomes `Symbol.for('ShadowObjectsGlobalNS')`. A debugging or testing tool of a consumer that reaches for one of the old names by string finds nothing there any more, and two copies of this library loaded side by side no longer share a Component Context registry or a default namespace across that boundary. No old name is kept alongside the new one.
 
 ### New
