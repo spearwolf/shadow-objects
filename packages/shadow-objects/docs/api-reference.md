@@ -2716,6 +2716,8 @@ const reversed = kernel.traverseLevelOrderBFS(true);
 
 Returns the Entity tree as a hierarchical structure, starting at the root Entities -- those without a parent. The Kernel keeps that set from the parent link of the Entity itself, so an Entity attached or detached through a setter joins and leaves it exactly as one moved with `setParent` does. Each node contains `token`, `entity`, `props`, and `children`; a node the Kernel no longer holds drops out, and every Entity appears exactly once. Useful for debugging.
 
+A child a node's own `children` leaves out is named at that same node under `omittedChildren`, one entry per omission with the uuid and the reason: `not-in-kernel` for a uuid the Kernel no longer holds, `already-in-graph` for one the walk has placed elsewhere already. The field is absent wherever nothing was left out, never an empty array. A root the walk reaches only through another root's children list falls off the top level of the returned array without a note of its own -- it still stands in the graph, just nested under the root that reached it first, the same placement `noteEntityTreeChange()` describes for the traversal cache below.
+
 - **Signature:** `getEntityGraph(): EntityGraphNode[]`
 
 ```typescript
@@ -3203,6 +3205,8 @@ const graph = kernel.getEntityGraph();
 // - entity: Entity
 // - props: Record<string, unknown>
 // - children: EntityGraphNode[]
+// - omittedChildren?: {uuid: string, reason: 'already-in-graph' | 'not-in-kernel'}[]
+//   (present only where the walk left a child out)
 
 // The entity keeps its state in private fields, so it serializes as `{}`.
 // Read token, props and children from the snapshot; reach for the entity itself

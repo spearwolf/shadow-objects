@@ -4154,6 +4154,80 @@ describe('Kernel', () => {
         graph[0]!.children[0]!.children[0]!.children,
         'the entity that is already in the graph is not written twice',
       ).toEqual([]);
+      expect(
+        graph[0]!.children[0]!.children[0]!.omittedChildren,
+        'the node names the back-edge instead of staying silent about it',
+      ).toEqual([{uuid: aUuid, reason: 'already-in-graph'}]);
+
+      kernel.destroy();
+    });
+
+    it('names a child the kernel no longer holds', () => {
+      const kernel = new Kernel(new Registry());
+      const rUuid = generateUUID();
+      const aUuid = generateUUID();
+      const xUuid = generateUUID();
+      kernel.createEntity(rUuid, 'node');
+      kernel.createEntity(aUuid, 'node', rUuid);
+      kernel.createEntity(xUuid, 'node');
+
+      // writes the children list without the parent link `removeFromParent()` follows
+      kernel.getEntity(aUuid).addChild(kernel.getEntity(xUuid));
+      kernel.destroyEntity(xUuid);
+
+      const graph = kernel.getEntityGraph();
+
+      expect(
+        graph.map((node) => node.entity.uuid),
+        'the destroyed entity is gone from the roots too',
+      ).toEqual([rUuid]);
+      const aNode = graph[0]!.children[0]!;
+      expect(aNode.entity.uuid).toBe(aUuid);
+      expect(aNode.children, 'the entity the kernel no longer holds drops out of the children').toEqual([]);
+      expect(aNode.omittedChildren, 'the drop is named instead of silent').toEqual([{uuid: xUuid, reason: 'not-in-kernel'}]);
+
+      kernel.destroy();
+    });
+
+    it('names the same missing child at every parent that lists it', () => {
+      const kernel = new Kernel(new Registry());
+      const rUuid = generateUUID();
+      const aUuid = generateUUID();
+      const bUuid = generateUUID();
+      const xUuid = generateUUID();
+      kernel.createEntity(rUuid, 'node');
+      kernel.createEntity(aUuid, 'node', rUuid);
+      kernel.createEntity(bUuid, 'node', rUuid);
+      kernel.createEntity(xUuid, 'node');
+
+      kernel.getEntity(aUuid).addChild(kernel.getEntity(xUuid));
+      kernel.getEntity(bUuid).addChild(kernel.getEntity(xUuid));
+      kernel.destroyEntity(xUuid);
+
+      const graph = kernel.getEntityGraph();
+      const [aNode, bNode] = graph[0]!.children;
+
+      expect(aNode!.omittedChildren, 'the visited guard does not shadow the kernel-lookup guard for the second parent').toEqual([
+        {uuid: xUuid, reason: 'not-in-kernel'},
+      ]);
+      expect(bNode!.omittedChildren).toEqual([{uuid: xUuid, reason: 'not-in-kernel'}]);
+
+      kernel.destroy();
+    });
+
+    it('leaves omittedChildren off a node over a healthy tree', () => {
+      const kernel = new Kernel(new Registry());
+      makeEntityChain(kernel);
+
+      const graph = kernel.getEntityGraph();
+
+      const walk = (nodes: ReturnType<typeof kernel.getEntityGraph>): void => {
+        for (const node of nodes) {
+          expect('omittedChildren' in node, 'the key is absent, not present with an empty array').toBe(false);
+          walk(node.children);
+        }
+      };
+      walk(graph);
 
       kernel.destroy();
     });

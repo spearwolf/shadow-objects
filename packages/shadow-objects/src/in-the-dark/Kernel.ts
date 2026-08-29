@@ -33,11 +33,17 @@ interface EntityEntry {
   usedConstructors: Map<ShadowObjectConstructor, Set<ShadowObjectType>>;
 }
 
+interface OmittedGraphChild {
+  uuid: string;
+  reason: 'already-in-graph' | 'not-in-kernel';
+}
+
 interface EntityGraphNode {
   token: string;
   entity: Entity;
   props: Record<string, unknown>;
   children: EntityGraphNode[];
+  omittedChildren?: OmittedGraphChild[];
 }
 
 enum ShadowObjectAction {
@@ -220,7 +226,11 @@ export class Kernel {
   /**
    * The entity tree as nested nodes, one node per entity. The visited set is what makes that count
    * hold: a children list that points back at an ancestor would otherwise be walked forever, and this
-   * is the one traversal a caller reaches for while debugging a tree that is already broken.
+   * is the one traversal a caller reaches for while debugging a tree that is already broken. A child
+   * the walk leaves out is named at its parent under `omittedChildren`, with the reason -- a uuid the
+   * kernel does not hold, or one the walk has already placed elsewhere in the graph. A root the walk
+   * has already reached through another root's children falls off the top level without a note; it
+   * still stands in the graph, just at the other position.
    */
   getEntityGraph(): EntityGraphNode[] {
     const visited = new Set<string>();
@@ -229,22 +239,35 @@ export class Kernel {
       .filter((node) => node !== undefined);
   }
 
-  #getEntityGraphNode(uuid: string, visited: Set<string>): EntityGraphNode | undefined {
-    if (visited.has(uuid)) return undefined;
+  #getEntityGraphNode(uuid: string, visited: Set<string>, omitted?: OmittedGraphChild[]): EntityGraphNode | undefined {
+    const entry = this.#entities.get(uuid);
+    if (entry === undefined) {
+      omitted?.push({uuid, reason: 'not-in-kernel'});
+      return undefined;
+    }
+
+    // The kernel lookup goes first so that a uuid the kernel does not hold is named at every
+    // parent that lists it, not just at the one the walk reaches first. `visited` is written
+    // only for an entity that actually enters the graph.
+    if (visited.has(uuid)) {
+      omitted?.push({uuid, reason: 'already-in-graph'});
+      return undefined;
+    }
     visited.add(uuid);
 
-    const entry = this.#entities.get(uuid);
-    if (entry === undefined) return undefined;
-
     const {token, entity} = entry;
+
+    const omittedChildren: OmittedGraphChild[] = [];
+    const children = entity.children
+      .map((child) => this.#getEntityGraphNode(child.uuid, visited, omittedChildren))
+      .filter((node) => node !== undefined);
+
     return {
       token,
       entity,
       props: Object.fromEntries(entity.propEntries()),
-      // A node the kernel no longer holds drops out of the graph.
-      children: entity.children
-        .map((child) => this.#getEntityGraphNode(child.uuid, visited))
-        .filter((node) => node !== undefined),
+      children,
+      ...(omittedChildren.length > 0 ? {omittedChildren} : {}),
     };
   }
 
