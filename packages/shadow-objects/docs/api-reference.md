@@ -2347,7 +2347,7 @@ channel repeats the same question every time anything above the element changes,
 first unanswered lookup is reported. An element on its way out of the tree reports nothing — the
 report needs the element to be connected, because a departing element is not one that is missing a
 host. The report is a `warn` and therefore gated behind `ConsoleLogger.sharedConfig.enable`, which
-defaults to "the page is served from localhost" — off a localhost page the case is silent.
+defaults to "the page is served from a loopback host" — off a loopback host the case is silent.
 
 The namespace plays no part in it: what counts is proximity, not membership. A `<shae-prop>` under
 a `<shae-ent ns="hud">` inside a `<shae-ent>` of the global namespace belongs to the `hud` entity,
@@ -2504,8 +2504,8 @@ An unknown *type name* is a different case from an unconvertible value, and it i
 differently. `type="whatever"` names no conversion, so the element reports the name through
 `logger.warn` and lets the string through untouched — trimmed, unless `no-trim` says otherwise,
 and otherwise exactly as written. Nothing is cleared and nothing throws. Being a `warn`, that
-report *is* gated behind `ConsoleLogger.sharedConfig.enable` and stays silent off a localhost
-page, where the `error` of an unconvertible value is not.
+report *is* gated behind `ConsoleLogger.sharedConfig.enable` and stays silent off a loopback
+host, where the `error` of an unconvertible value is not.
 
 ```html
 <shae-ent token="player">
@@ -2627,7 +2627,7 @@ Three places do not follow from the rough rule alone:
 - The way back of a building path follows the teardown contract. What fails while a failed creation or token change is being taken back is reported and never thrown again, because the caller is waiting for the error of the build itself.
 - The hand-over of an Entity Context value is guarded per reader — see [A `useContext` consumer that throws costs its own context value and no other](#a-usecontext-consumer-that-throws-costs-its-own-context-value-and-no-other).
 
-Every report goes through the [`ConsoleLogger`](#console-logger) under the namespace `Kernel`. `logger.error` sits behind no switch, so these reports stay visible outside localhost, and each of them reads in the same order: the message, then what names the subject of the step, then the error.
+Every report goes through the [`ConsoleLogger`](#console-logger) under the namespace `Kernel`. `logger.error` sits behind no switch, so these reports stay visible off a loopback host, and each of them reads in the same order: the message, then what names the subject of the step, then the error.
 
 ### Properties
 
@@ -3148,7 +3148,7 @@ There is no log level to set. Logging is decided by four independent switches sh
 
 | Where | Field | Default |
 | :--- | :--- | :--- |
-| `ConsoleLogger.sharedConfig` | `enable` | on for `localhost` only |
+| `ConsoleLogger.sharedConfig` | `enable` | on for a loopback host only |
 | `ConsoleLogger.sharedConfig` | `debug` | off |
 | `ConsoleLogger.sharedConfig` | `info`, `warn` | on |
 | the instance | `enable` | `true` |
@@ -3156,6 +3156,8 @@ There is no log level to set. Logging is decided by four independent switches sh
 | `globalThis.ConsoleLoggerStorage` | typed `ConsoleLoggerConfig` | — |
 
 `isEnabled` combines the two `enable` flags: the instance's own and the shared one. The other three getters take `isEnabled` and add the switch for their level, so `debug` is the one that needs turning on before anything else matters.
+
+The shared `enable` default compares the page's hostname against the exact set `localhost`, `127.0.0.1`, `::1` — a host whose name merely starts with one of these does not match.
 
 ```typescript
 import { ConsoleLogger } from '@spearwolf/shadow-objects/ConsoleLogger.js';

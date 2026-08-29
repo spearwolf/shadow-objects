@@ -3,7 +3,15 @@
 export const CONSOLE_LOGGER = 'ConsoleLogger';
 export const CONSOLE_LOGGER_STORAGE = `${CONSOLE_LOGGER}Storage`;
 
-const IS_LOCALHOST = Boolean(globalThis.location?.host?.startsWith('localhost') ?? false);
+// A loopback host is the one place this library talks by default. `host` carries the port,
+// which a prefix test would have to get past -- and a prefix test says yes to every name that
+// merely begins with the word, `localhost.example.com` among them, while saying no to the
+// addresses that carry no name at all. So the port-free `hostname` is compared against the
+// exact set. A browser hands an IPv6 host over in brackets; the bare form is there for a
+// realm that does not.
+const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+
+const IS_LOOPBACK_HOST = LOOPBACK_HOSTNAMES.has(globalThis.location?.hostname ?? '');
 
 // The name `localStorage` says nothing about a usable Storage behind it: node defines an inert
 // object on `globalThis`, and a browser with disabled cookies throws a `SecurityError` -- on the
@@ -155,7 +163,7 @@ export class ConsoleLogger {
   enable = true;
 
   static sharedConfig: ConsoleLoggerConfig = {
-    enable: IS_LOCALHOST,
+    enable: IS_LOOPBACK_HOST,
 
     debug: false,
     info: true,

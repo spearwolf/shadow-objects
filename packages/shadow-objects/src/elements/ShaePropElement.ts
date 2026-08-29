@@ -288,8 +288,8 @@ export class ShaePropElement extends HTMLElement {
             value = convert(value);
           } catch (error) {
             // reported through `error`, not `warn`: `warn` is gated behind
-            // `ConsoleLogger.sharedConfig.enable`, which defaults to "the page is served from
-            // localhost". A dropped property value has to stay visible in production too.
+            // `ConsoleLogger.sharedConfig.enable`, which defaults to "the page is served from a
+            // loopback host". A dropped property value has to stay visible in production too.
             this.logger.error(`[${this.name}] could not convert the value into the type "${type}"`, {
               value,
               error,
@@ -467,7 +467,7 @@ export class ShaePropElement extends HTMLElement {
     // out of the tree is not missing a host.
     //
     // The limit of this report belongs next to it: `logger.warn` hangs on
-    // `ConsoleLogger.sharedConfig.enable`, which means "the page is served from localhost" —
+    // `ConsoleLogger.sharedConfig.enable`, which means "the page is served from a loopback host" —
     // elsewhere the case stays silent. `warn` and not `error`, because in the upgrade path this
     // framework supports by design, "no entity above me yet" is a state to pass through: a
     // <shae-prop> under an element whose tag is registered later reports once and finds its host
