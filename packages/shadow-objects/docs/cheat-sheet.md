@@ -231,10 +231,10 @@ ent.addEventListener('login-success', (e) => console.log(e.detail.user));
 | `no-autostart` | truthy value | Do not create the environment on connect, call `start()` yourself. Not observed: read once, at connect |
 | `load-timeout`, `configure-timeout`, `change-trail-timeout`, `destroy-timeout` | milliseconds | How long the worker environment waits for each of the four replies a worker owes it. Defaults: 60000 / 60000 / 5000 / 5000. A number from 1 to 2147483647 (close to 25 days), anything else is reported and the default stays. Not observed, read once when the environment is built; no effect under `local` |
 
-**Truthy value ≠ presence.** `local`, `no-autostart` and `no-trim` count as set for `on`, `true`,
-`yes`, `local`, `1` (case-insensitive) or for the bare attribute — and as unset for everything
-else, `="false"` and `="0"` included. Of the boolean-looking attributes, only
-`no-structured-clone` asks for presence alone.
+**Truthy value ≠ presence.** `local` and `no-autostart` count as set for `on`, `true`, `yes`,
+`local`, `1` (case-insensitive) or for the bare attribute — and as unset for everything else,
+`="false"` and `="0"` included. Of the boolean-looking attributes, only `no-structured-clone`
+asks for presence alone.
 
 **Teardown.** Leaving the tree destroys the environment one microtask later, for good. Back in
 the tree before that microtask — a re-render within one task — and nothing is torn down. This is the
@@ -282,6 +282,10 @@ the entities and properties below it, and it stays released until it has left an
 | `value` | string | The value (cast according to `type`); `value=""` counts as no value |
 | `type` | see below | Type cast for the value attribute; an unknown name is reported and the string passes through |
 | `no-trim` | truthy value | Preserve whitespace in string values; `no-trim="false"` still trims. Without it `value="   "` trims down to `''`, and with `type="number"` that is `0` |
+
+**Truthy value ≠ presence.** `no-trim` counts as set for `on`, `true`, `yes`, `local`, `1`
+(case-insensitive) or for the bare attribute — and as unset for everything else, `="false"` and
+`="0"` included.
 
 The host is the closest entity above the element in the flattened tree — through shadow roots,
 along slot projections, across closed boundaries — regardless of its namespace. It is re-decided

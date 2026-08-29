@@ -300,9 +300,10 @@ export class ShadowEnv {
    * {@link ShadowEnv.syncWait} is the call that asks.
    *
    * What becomes of a refusal is then the proxy's decision, and the two shipped ones differ.
-   * `LocalShadowObjectEnv` runs the Kernel in the tick of whoever calls the proxy, one microtask
-   * after `sync()` returned rather than in the tick that called it, and rejects with what it
-   * threw, so a refusal reaches {@link ShadowEnv.SyncFailed} here as well, carrying its number.
+   * `LocalShadowObjectEnv` runs the Kernel synchronously, inside the call the environment makes to
+   * the proxy -- one microtask after `sync()` returned, not inside the call to `sync()` itself --
+   * and rejects with what it threw, so a refusal reaches {@link ShadowEnv.SyncFailed} here as well,
+   * carrying its number.
    * `RemoteWorkerEnv` sends no serial without a confirmation and gets no answer back, so a
    * refusal stays in the worker: it is written to the console there, `SyncFailed` stays silent, and
    * the whole trail is booked as applied.

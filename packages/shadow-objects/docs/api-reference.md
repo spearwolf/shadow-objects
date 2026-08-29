@@ -1298,9 +1298,10 @@ Triggers synchronization of pending changes from the `ComponentContext` to the S
 
 The trail goes out without asking the Shadow Environment to confirm it -- [`syncWait()`](#syncwait)
 is the call that asks. What becomes of a refusal is then the proxy's decision, and the two shipped
-ones differ. A `LocalShadowObjectEnv` runs the Kernel in the tick of whoever calls the proxy, one
-microtask after `sync()` returned rather than in the tick that called it, and rejects with what it
-threw, so a refusal reaches `ShadowEnv.SyncFailed` here as well, carrying its number. A
+ones differ. A `LocalShadowObjectEnv` runs the Kernel synchronously, inside the call the
+environment makes to the proxy -- one microtask after `sync()` returned, not inside the call to
+`sync()` itself -- and rejects with what it threw, so a refusal reaches `ShadowEnv.SyncFailed`
+here as well, carrying its number. A
 `RemoteWorkerEnv` sends no serial without a confirmation and gets no answer back, so a refusal stays
 in the worker: it is written to the console there, `SyncFailed` stays silent, and the whole trail is
 booked as applied. [`syncWait()`](#syncwait) is the way both proxies answer on.
