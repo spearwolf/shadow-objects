@@ -192,19 +192,6 @@ export class ShaePropElement extends HTMLElement {
       }
     });
 
-    // this.viewComponent$.onChange((vc) => {
-    //   if (vc) {
-    //     console.log(`[shae-prop:"${this.name}"] view-component changed to`, vc?.uuid, {
-    //       viewComponent: vc,
-    //       shaeProp: this,
-    //     });
-    //   } else {
-    //     console.log(`[shae-prop:"${this.name}"] lost connection to view-component :/`, {
-    //       shaeProp: this,
-    //     });
-    //   }
-    // });
-
     // The binding this element holds is the pair (view component, name). It ends in three ways —
     // the element leaves the tree, its name changes, or it moves to another entity — and each of
     // them moves one of these two signals. The cleanup takes the property back for exactly the

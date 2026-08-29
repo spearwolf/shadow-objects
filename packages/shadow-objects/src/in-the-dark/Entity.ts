@@ -310,6 +310,13 @@ export class Entity {
     }
   }
 
+  /**
+   * Puts `child` into the children list, at its place among the siblings.
+   *
+   * Nothing here notifies. Neither this method nor {@link Entity.removeChild} nor a detachment
+   * sends anything to a listener on the entity -- the one notification over a moved entity is
+   * `onParentChanged`, and `Kernel.setParent()` is the call that sends it.
+   */
   addChild(child: Entity) {
     if (this.#childrenUuids.has(child.uuid)) {
       throw new Error(`child with uuid: ${child.uuid} already exists! parentUuid: ${this.uuid}`);
@@ -323,9 +330,6 @@ export class Entity {
     for (const [, ctx] of child.#context) {
       child.#subscribeToParent(ctx);
     }
-
-    // this.emit(onAddChild, this, child);
-    // child.emit(onAddToParent, child, this);
   }
 
   /**
@@ -357,7 +361,6 @@ export class Entity {
     if (this.#childrenUuids.has(child.uuid)) {
       this.#childrenUuids.delete(child.uuid);
       this.#children.splice(this.#children.indexOf(child), 1);
-      // this.emit(onRemoveChild, this, child);
     }
   }
 
@@ -377,8 +380,6 @@ export class Entity {
     // The field `parent` and `parentUuid` both answer from: clearing it here clears what either
     // getter would report, with nothing left over for a second check to find.
     if (this.#parent) {
-      // const prevParent = this.#parent;
-
       this.#parent.removeChild(this);
 
       this.#parent = undefined;
@@ -394,8 +395,6 @@ export class Entity {
       // Detached is a place too: an entity with no parent is a root, and the root set is where
       // every traversal starts.
       this.#kernel.noteEntityTreeChange(this.#uuid);
-
-      // this.emit(onRemoveFromParent, this, prevParent);
     }
   }
 
