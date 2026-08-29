@@ -2,6 +2,17 @@ import {WorkerTimeoutError} from '../WorkerTimeoutError.js';
 import {isReadableMessageData} from '../worker/MessageRouter.js';
 
 /**
+ * The largest delay a timer actually keeps. `setTimeout()` truncates its delay into a signed
+ * 32-bit field, so a larger number comes back out as some other, shorter one: a millisecond
+ * past this bound already fires at once. Whatever it lands on, it is not the wait that was
+ * asked for, and nothing says so.
+ */
+export const MaxWorkerTimeout = 2_147_483_647;
+
+export const isTimeout = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= MaxWorkerTimeout;
+
+/**
  * Wait for a message of a specific type or reject after a timeout.
  *
  * A deadline that runs out rejects with a `WorkerTimeoutError`.
@@ -18,6 +29,15 @@ export const waitForMessageOfType = (
   signal?: AbortSignal,
 ) =>
   new Promise<void>((resolve, reject) => {
+    if (timeout !== 0 && timeout !== Infinity && !isTimeout(timeout)) {
+      reject(
+        new TypeError(
+          `cannot wait for a ${type} message: expected a timeout of 1 to ${MaxWorkerTimeout} milliseconds, or 0 or Infinity for no deadline, got ${String(timeout)}`,
+        ),
+      );
+      return;
+    }
+
     if (signal?.aborted) {
       reject(signal.reason);
       return;

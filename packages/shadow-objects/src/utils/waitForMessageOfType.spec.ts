@@ -94,4 +94,74 @@ describe('waitForMessageOfType', () => {
       vi.useRealTimers();
     }
   });
+
+  describe('a deadline no timer can keep', () => {
+    it.each([
+      ['NaN', NaN],
+      ['a negative number', -1],
+      ['a number past the 32-bit signed bound', 2_147_483_648],
+      ['a non-number', 'nope' as unknown as number],
+    ])('rejects %s with a TypeError', async (_label, timeout) => {
+      try {
+        vi.useFakeTimers();
+
+        const worker = new FakeWorker();
+        const settled = waitForMessageOfType(worker as unknown as Worker, 'ready', timeout).then(
+          () => undefined,
+          (reason: unknown) => reason,
+        );
+
+        await vi.advanceTimersByTimeAsync(1);
+
+        const reason = await settled;
+        expect(reason).toBeInstanceOf(TypeError);
+        expect((reason as TypeError).message).toContain(String(timeout));
+        expect(worker.listeners.get('message') ?? new Set()).toEqual(new Set());
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('still arms no timer for 0', async () => {
+      try {
+        vi.useFakeTimers();
+
+        const worker = new FakeWorker();
+        const settled = waitForMessageOfType(worker as unknown as Worker, 'ready', 0);
+        let resolved = false;
+        settled.then(() => {
+          resolved = true;
+        });
+
+        await vi.advanceTimersByTimeAsync(10_000_000);
+        expect(resolved).toBe(false);
+
+        worker.reply({type: 'ready'});
+        await expect(settled).resolves.toBeUndefined();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('still arms no timer for Infinity', async () => {
+      try {
+        vi.useFakeTimers();
+
+        const worker = new FakeWorker();
+        const settled = waitForMessageOfType(worker as unknown as Worker, 'ready', Infinity);
+        let resolved = false;
+        settled.then(() => {
+          resolved = true;
+        });
+
+        await vi.advanceTimersByTimeAsync(10_000_000);
+        expect(resolved).toBe(false);
+
+        worker.reply({type: 'ready'});
+        await expect(settled).resolves.toBeUndefined();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
 });

@@ -18,7 +18,7 @@ import createWorker from '../create-worker.js';
 import type {AppliedChangeTrailEvent, ChangeTrailType, ImportedModuleEvent, SyncEvent, TransferablesType} from '../types.js';
 import {CONSOLE_LOGGER, ConsoleLogger, consoleLoggerConfigKey, loadConsoleLoggerConfig} from '../utils/ConsoleLogger.js';
 import {toUrlString} from '../utils/toUrlString.js';
-import {waitForMessageOfType} from '../utils/waitForMessageOfType.js';
+import {isTimeout, MaxWorkerTimeout, waitForMessageOfType} from '../utils/waitForMessageOfType.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 
 /**
@@ -140,17 +140,6 @@ const DefaultWorkerTimeouts: WorkerTimeouts = {
   changeTrailTimeout: WorkerChangeTrailTimeout,
   destroyTimeout: WorkerDestroyTimeout,
 };
-
-/**
- * The largest delay a timer actually keeps. `setTimeout()` truncates its delay into a signed
- * 32-bit field, so a larger number comes back out as some other, shorter one: a millisecond
- * past this bound already fires at once. Whatever it lands on, it is not the wait that was
- * asked for, and nothing says so.
- */
-const MaxWorkerTimeout = 2_147_483_647;
-
-const isTimeout = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= MaxWorkerTimeout;
 
 /**
  * Resolves the options against the defaults. A timeout is a number of milliseconds from 1 to
