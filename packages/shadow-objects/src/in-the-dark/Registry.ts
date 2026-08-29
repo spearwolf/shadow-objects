@@ -1,15 +1,10 @@
 import type {ShadowObjectConstructor} from '../types.js';
 import {appendTo} from '../utils/array-utils.js';
 
-interface RegistryEntry {
-  token: string;
-  constructors: ShadowObjectConstructor[];
-}
-
-const toPropRoute = (route: string): undefined | {key: string; prop: string; token?: string} => {
+const toPropRoute = (route: string): undefined | {key: string; prop: string} => {
   const parts = route.split('@').map((part) => part.trim());
   if (parts.length === 2 && parts[1]) {
-    return parts[0] ? {key: `${parts[0]}@${parts[1]}`, prop: parts[1], token: parts[0]} : {key: parts[1], prop: parts[1]};
+    return parts[0] ? {key: `${parts[0]}@${parts[1]}`, prop: parts[1]} : {key: parts[1], prop: parts[1]};
   } else {
     return undefined;
   }
@@ -21,9 +16,9 @@ const addRoutes = (set: Set<string>, routes: string[] | Set<string>) => {
   }
 };
 
-const addConstructors = (entry: RegistryEntry | null | undefined, constructors: Set<ShadowObjectConstructor>) => {
-  if (entry != null) {
-    for (const c of entry.constructors) {
+const addConstructors = (known: ShadowObjectConstructor[] | null | undefined, constructors: Set<ShadowObjectConstructor>) => {
+  if (known != null) {
+    for (const c of known) {
       constructors.add(c);
     }
   }
@@ -36,9 +31,9 @@ export class Registry {
     return registry ?? defaultRegistry;
   }
 
-  readonly #registry = new Map<string, RegistryEntry>();
+  readonly #registry = new Map<string, ShadowObjectConstructor[]>();
   readonly #routes = new Map<string, Set<string>>();
-  readonly #truthyPropRoutes = new Map<string, {routes: Set<string>; token?: string | undefined}>();
+  readonly #truthyPropRoutes = new Map<string, Set<string>>();
 
   // The set of property names that any routing rule mentions. It only decides how finely the
   // resolution key is cut, never what a resolution yields -- so it may be too large, but never too
@@ -53,17 +48,20 @@ export class Registry {
   //
   // It has no upper bound and evicts nothing, and it lives exactly as long as the registry that owns
   // it -- for the default registry, that is the lifetime of the process. What holds it small is its
-  // key space: the routes times the permutations of the routing property names, because the key
-  // follows the caller's property order. Both counts are fixed by the module manifests a registry is
-  // built from, and a manifest declares a handful of routes and one or two routing properties.
+  // key space: the routes times the ordered subsets of the routing property names, because the key
+  // names only the properties some rule routes on, and names them in the caller's order. For n such
+  // names that is the sum over k of C(n, k) * k! keys per route -- 2 for one name, 5 for two, 16 for
+  // three, 65 for four -- and #routingProps, which supplies n, never gives a name back. Both counts
+  // are fixed by the module manifests a registry is built from, and a manifest declares a handful of
+  // routes and one or two routing properties, so n stays small where the growth in it is steep.
   readonly #resolvedTokens = new Map<string, Map<string, Set<string>>>();
 
   define(token: string, constructa: ShadowObjectConstructor) {
-    const entry = this.#registry.get(token);
-    if (entry) {
-      appendTo(entry.constructors, constructa);
+    const constructors = this.#registry.get(token);
+    if (constructors) {
+      appendTo(constructors, constructa);
     } else {
-      this.#registry.set(token, {token, constructors: [constructa]});
+      this.#registry.set(token, [constructa]);
     }
     this.#dropResolvedTokens();
   }
@@ -74,9 +72,9 @@ export class Registry {
       this.#routingProps.add(propRoute.prop);
       const knownPropRoutes = this.#truthyPropRoutes.get(propRoute.key);
       if (knownPropRoutes) {
-        addRoutes(knownPropRoutes.routes, routes);
+        addRoutes(knownPropRoutes, routes);
       } else {
-        this.#truthyPropRoutes.set(propRoute.key, {routes: new Set(routes), token: propRoute.token});
+        this.#truthyPropRoutes.set(propRoute.key, new Set(routes));
       }
     } else {
       const knownRoutes = this.#routes.get(token);
@@ -114,8 +112,10 @@ export class Registry {
   // The key is built in the caller's property order, not sorted. The order of the properties decides
   // the order of the tokens in the result, and that in turn the order in which the kernel builds the
   // shadow objects. A sorted key would map two differently ordered questions onto one answer and so
-  // change the build order for one of them. Caller order costs at most a second entry and keeps the
-  // behaviour character for character.
+  // change the build order for one of them. Caller order keeps the behaviour character for character
+  // and pays in entries: a question over k routing properties can arrive in k! orders and fills one
+  // entry per order, where a sorted key would fill one for all of them. What that comes to over the
+  // whole store is at #resolvedTokens.
   //
   // Each name follows its own length, which makes the key unambiguous: no property name can imitate
   // the boundary between two others. A separator could, as soon as a name contains it.
@@ -160,7 +160,7 @@ export class Registry {
       for (const prop of truthyProps) {
         const propRoutes = this.#truthyPropRoutes.get(prop);
         if (propRoutes) {
-          addRoutes(tokens, propRoutes.routes);
+          addRoutes(tokens, propRoutes);
         }
       }
 
@@ -171,7 +171,7 @@ export class Registry {
           for (const prop of truthyProps) {
             const keyedRoutes = this.#truthyPropRoutes.get(`${token}@${prop}`);
             if (keyedRoutes) {
-              addRoutes(tokens, keyedRoutes.routes);
+              addRoutes(tokens, keyedRoutes);
             }
           }
         }
