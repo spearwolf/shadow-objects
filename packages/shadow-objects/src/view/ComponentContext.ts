@@ -347,7 +347,7 @@ export class ComponentContext {
   moveToRoot(component: ViewComponent) {
     const childEntry = this.#entryOf(component);
     if (childEntry !== undefined) {
-      childEntry.changes?.setParent(undefined);
+      childEntry.changes.setParent(undefined);
       this.#appendToOrdered(childEntry.component, this.#rootComponents);
     }
     this.#viewInstances = undefined;
@@ -375,7 +375,7 @@ export class ComponentContext {
       removeFrom(this.#rootComponents, child.uuid);
       this.#viewInstances = undefined;
     } else {
-      throw new Error(`the view component ${parent.uuid} cannot have a child added to it because the component do not exist!`);
+      throw new Error(`the view component ${parent.uuid} cannot have a child added to it because this context does not hold it`);
     }
   }
 
@@ -534,10 +534,12 @@ export class ComponentContext {
    * sender, so this side cannot narrow the set down at all. The receiver is the one that can:
    * it re-asks the element tree, and whoever answers first wins.
    *
-   * Delivery is immediate: the round is over by the time the call returns. Nothing inside the
-   * library calls it — an entity that has just arrived hands its round to the collector
-   * below — and it stays because running a round at a moment of one's own choosing is what this
-   * method is for.
+   * Delivery is immediate: the round is over by the time the call returns. Two paths inside the
+   * library end here — {@link ComponentContext.dispatchReRequestParentSiblings} for a component
+   * without a parent, whose candidate set is the roots, and the delivery of a collected round for
+   * that same set. What does not come this way is an entity that has just arrived: it hands its
+   * round to the collector below. The method is public because running a round at a moment of
+   * one's own choosing is what it is for.
    */
   dispatchReRequestParentRoots() {
     // a root that answers with a parent is taken out of #rootComponents right away, so walking
@@ -584,8 +586,9 @@ export class ComponentContext {
    * {@link ComponentContext.ReRequestParent} asks first and releases only where nobody answers,
    * which leaves every component that is already bound where it stands, order included.
    *
-   * Delivery is immediate, and nothing inside the library calls it — it stays for the
-   * same reason {@link ComponentContext.dispatchReRequestParentRoots} does.
+   * Delivery is immediate, and nothing inside the library calls it: like
+   * {@link ComponentContext.dispatchReRequestParentRoots} it is public so that a round can be run
+   * at a moment of one's own choosing.
    */
   dispatchReRequestParentSiblings(component: ViewComponent, data: unknown = undefined) {
     const parent = component.parent;
