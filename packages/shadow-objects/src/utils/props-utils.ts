@@ -1,15 +1,18 @@
 import type {ComponentPropertiesType} from '../types.js';
 
 export const filterUndefinedProps = (props: ComponentPropertiesType | undefined) => {
-  if (props === undefined || props.length === 0) return undefined;
+  if (props === undefined) return undefined;
   // an entry that names only the key survives the filter: it means "set, without a value", while
   // `[key, undefined]` means the value is gone. See ComponentPropertiesType for the whole rule
-  return props.filter((entry) => entry.length === 1 || entry[1] !== undefined);
+  const kept = props.filter((entry) => entry.length === 1 || entry[1] !== undefined);
+  // "nothing" has one form here: whoever gets an array gets one with at least one entry in it
+  return kept.length === 0 ? undefined : kept;
 };
 
 /**
  * Maybe `curProps` will be modified and returned. But it can also return a newly created array. `changes` will never be modified.
  * The result never shares a tuple with `changes` — except when `curProps === changes`, where `changes`, tuples included, comes back as-is.
+ * A list the changes empty out comes back as `undefined`, never as an empty array.
  */
 export const applyPropsChanges = (
   curProps: ComponentPropertiesType | undefined,
@@ -24,8 +27,8 @@ export const applyPropsChanges = (
 
   for (const change of changes) {
     const key = change[0];
-    // the arity carries the meaning, so it is read rather than destructured away: an entry of
-    // one element says "set, without a value" and has to stay one element on the way in
+    // the arity carries the meaning: a one-element entry says "set, without a value" and has to
+    // stay one element on the way in, so the length decides the shape of the copy
     const next: [string] | [string, unknown] = change.length === 1 ? [key] : [key, change[1]];
     const idx = curProps.findIndex(([k]) => k === key);
     if (idx === -1) {
@@ -35,19 +38,4 @@ export const applyPropsChanges = (
     }
   }
   return filterUndefinedProps(curProps);
-};
-
-export const propsEqual = (a: ComponentPropertiesType | undefined, b: ComponentPropertiesType | undefined) => {
-  if (a === b) return true;
-  a = filterUndefinedProps(a);
-  b = filterUndefinedProps(b);
-  if (a === b) return true;
-  if (a === undefined || b === undefined) return false;
-  if (a.length !== b.length) return false;
-  for (const [aKey, value] of a) {
-    const bEntry = b.find(([bKey]) => aKey === bKey);
-    if (bEntry === undefined) return false;
-    if (bEntry[1] !== value) return false;
-  }
-  return true;
 };
