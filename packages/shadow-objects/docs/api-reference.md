@@ -440,6 +440,11 @@ and the whole creation API is open to it: a last message to the view, a last wri
 signal it needs on the way out. Whatever it registers there is released with everything else before
 the teardown returns.
 
+That holds in both directions: a cleanup the teardown runs — the one a `createEffect` or a
+`createResource` carries — may register an `onDestroy` callback of its own, and that callback runs,
+with whatever it registers in turn released along with it. The teardown ends when neither side has
+anything left.
+
 ---
 
 ### 7. The `entity` Instance

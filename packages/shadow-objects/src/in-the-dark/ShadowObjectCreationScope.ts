@@ -297,8 +297,10 @@ export class ShadowObjectCreationScope {
    * The creation API is closed as the very last step, after everything above has run. Until then it
    * is open, because the cleanup callbacks of the shadow-object run inside this method and are
    * entitled to it -- a last message to the view, a last write to a context. What such a callback
-   * registers is still reached by the steps behind it. What arrives once this method has returned
-   * is not, and is turned away by `#refuseAfterTearDown()`.
+   * registers is still reached by the steps behind it. The two sets of cleanup callbacks are run
+   * in rounds until neither has anything left, so a callback that another one registers is reached
+   * whichever of the two it lands in. The context feed releases follow all of them. What arrives
+   * once this method has returned is not, and is turned away by `#refuseAfterTearDown()`.
    */
   tearDown(): void {
     if (this.#isTornDown) return;
@@ -313,12 +315,33 @@ export class ShadowObjectCreationScope {
       this.#logger.info('destroy shadow-object', this.#displayName, {shadowObject: this.#shadowObject, entity: this.#entity});
     }
 
-    for (const callback of this.#unsubscribePrimary) {
-      this.#runGuarded('onDestroy callback', callback);
-    }
+    // The two callback sets are run in rounds, and the rounds are what a cleanup that books into a
+    // set which has already had its turn needs. A `for…of` over a `Set` reaches what is added to it
+    // while it runs, so a callback that registers another one of its own kind is caught by the pass
+    // it stands in. Across the two sets there is no such reach: a creation-api cleanup that calls
+    // `onDestroy()` books into the first set, which is through, and a callback pulled along that way
+    // may take a subscription or create a signal, which books back into the second. Each of them gets
+    // its turn here, and the teardown ends when neither set has anything left to run. A pass skips
+    // what has already run, so a callback that hands itself in again is not called twice; one that
+    // hands in a new callback every time does not terminate, and never did.
+    const alreadyRun = new Set<() => any>();
 
-    for (const callback of this.#unsubscribeSecondary) {
-      this.#runGuarded('creation-api cleanup', callback);
+    const runCleanups = (callbacks: Set<() => any>, step: string): boolean => {
+      let ranAny = false;
+      for (const callback of callbacks) {
+        if (alreadyRun.has(callback)) continue;
+        alreadyRun.add(callback);
+        ranAny = true;
+        this.#runGuarded(step, callback);
+      }
+      return ranAny;
+    };
+
+    let ranAnything = true;
+    while (ranAnything) {
+      const ranPrimary = runCleanups(this.#unsubscribePrimary, 'onDestroy callback');
+      const ranSecondary = runCleanups(this.#unsubscribeSecondary, 'creation-api cleanup');
+      ranAnything = ranPrimary || ranSecondary;
     }
 
     for (const callback of this.#unsubscribeContextFeeds) {

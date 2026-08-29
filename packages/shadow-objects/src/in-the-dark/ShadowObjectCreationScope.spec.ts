@@ -720,5 +720,38 @@ describe('ShadowObjectCreationScope', () => {
 
       kernel.destroy();
     });
+
+    it('reaches an onDestroy callback a cleanup books while the teardown is under way', () => {
+      const {kernel, entity, scope} = boundScope();
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const ownCallback = vi.fn();
+      const lateCallback = vi.fn();
+      const lateSubscriber = vi.fn();
+
+      scope.onDestroy(ownCallback);
+
+      // The cleanup of an effect runs in the round behind the `onDestroy` callbacks, and it books
+      // one of its own. What that callback takes in turn -- a subscription -- lands back in the
+      // round the cleanup came from, so both rounds have to come round again.
+      scope.createEffect(() => () => {
+        scope.onDestroy(() => {
+          lateCallback();
+          scope.on('ping', lateSubscriber);
+        });
+      });
+
+      scope.tearDown();
+
+      expect(ownCallback, 'a callback registered before the teardown runs once').toHaveBeenCalledTimes(1);
+      expect(lateCallback, 'the callback a cleanup booked runs').toHaveBeenCalledTimes(1);
+
+      emit(entity, 'ping');
+      expect(lateSubscriber, 'and the subscription that callback took is released with the rest').not.toHaveBeenCalled();
+
+      expect(errors, 'and nothing is reported').not.toHaveBeenCalled();
+
+      kernel.destroy();
+    });
   });
 });
