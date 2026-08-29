@@ -80,7 +80,7 @@ Provides an API to create and render multiple rendering views:
 
 > `threeMultiViewRenderer.createView(width, height)` &rarr; _RenderView_
 
-Creates a new _RenderView_ structure. Once created, the _view_ is rendered automatically with one of the next frames. however, the user has to set a scene and a camera for this. the view structure can be adjusted at any time (e.g. `width` and `height` or `scene` and `camera` can be changed at any time if you want).
+Creates a new _RenderView_ structure. Drawing it is a separate call: a view is drawn once for every `renderView()` call it gets, and this renderer issues none of those on its own. [ThreeRenderView](#threerenderview) makes them for the one view it holds, on the frames of its entity; whoever calls `createView()` directly makes them for their view themselves. however, the user has to set a scene and a camera for this. the view structure can be adjusted at any time (e.g. `width` and `height` or `scene` and `camera` can be changed at any time if you want).
 
 ##### RenderView Structure
 
@@ -97,11 +97,15 @@ Creates a new _RenderView_ structure. Once created, the _view_ is rendered autom
 
 Will destroy the _view_. Once destroyed, it will of course no longer be rendered. Takes the _view_ structure or its bare `viewId`; handed `undefined` or `null` it destroys nothing.
 
+> `threeMultiViewRenderer.renderView(view)` &rarr; `Promise<ImageBitmap | undefined>`
+
+Draws the view and answers with what it drew, read off the shared canvas as an `ImageBitmap`. Where there is nothing to draw, the answer carries no image: a view without a `scene` or without a `camera`, a view whose `width` or `height` is not above zero, and a view that was destroyed while it waited for its turn. Where there is something to draw and the view is not one this renderer made, the call is rejected with an error naming its `viewId`.
+
+Every view of one renderer draws with the same `WebGLRenderer` onto the same canvas, and reading a drawn frame back off that canvas is asynchronous. `renderView()` takes its turn accordingly: one view is drawn and read out at a time, in the order the calls arrived.
+
 > `threeMultiViewRenderer.updateSize()`
 
 Sizes the shared canvas so that it holds the largest view of this renderer, and never below 320x240. `renderView()` calls it before it draws, so a view whose `width` or `height` was changed is drawn at its new size with the next render either way.
-
-Every view of one renderer draws with the same `WebGLRenderer` onto the same canvas, and reading a drawn frame back off that canvas is asynchronous. `renderView()` takes its turn accordingly: one view is drawn and read out at a time, in the order the calls arrived.
 
 When the entity ends, the renderer releases its WebGL context. `renderView()` answers `undefined` from that point on, and `updateSize()` returns without sizing anything.
 
