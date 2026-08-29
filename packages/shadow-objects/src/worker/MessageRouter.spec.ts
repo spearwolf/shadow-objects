@@ -667,4 +667,30 @@ describe('MessageRouter', () => {
       expect(debug).not.toHaveBeenCalled();
     });
   });
+
+  describe('the logger slot holds no setter', () => {
+    it('stands on the prototype as a getter without a setter', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(MessageRouter.prototype, 'logger');
+
+      expect(typeof descriptor?.get).toBe('function');
+      expect(descriptor?.set).toBeUndefined();
+    });
+
+    it('refuses an assignment and keeps the logger it reports through', () => {
+      const {router} = setup();
+      const logger = router.logger;
+
+      expect(() => {
+        (router as unknown as {logger: unknown}).logger = {};
+      }).toThrow(TypeError);
+
+      expect(router.logger).toBe(logger);
+    });
+
+    it('hands out the same logger on every read', () => {
+      const {router} = setup();
+
+      expect(router.logger).toBe(router.logger);
+    });
+  });
 });

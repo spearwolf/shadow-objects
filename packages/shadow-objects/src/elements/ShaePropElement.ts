@@ -88,7 +88,12 @@ export class ShaePropElement extends HTMLElement {
   protected readonly type$ = createSignal<string | undefined>();
   protected readonly shouldTrim$ = createSignal(true);
 
-  protected readonly logger = new ConsoleLogger('ShaePropElement');
+  readonly #logger = new ConsoleLogger('ShaePropElement');
+
+  /** The logger this element reports through: a subclass reads it and does not replace it. */
+  protected get logger(): ConsoleLogger {
+    return this.#logger;
+  }
 
   #destroyed = false;
 

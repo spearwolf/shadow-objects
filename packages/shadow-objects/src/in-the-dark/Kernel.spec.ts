@@ -6009,4 +6009,30 @@ describe('Kernel', () => {
       expect(onPrototype, 'reachable from JavaScript').toEqual([]);
     });
   });
+
+  describe('the logger slot holds no setter', () => {
+    it('stands on the prototype as a getter without a setter', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(Kernel.prototype, 'logger');
+
+      expect(typeof descriptor?.get).toBe('function');
+      expect(descriptor?.set).toBeUndefined();
+    });
+
+    it('refuses an assignment and keeps the logger it reports through', () => {
+      const kernel = new Kernel();
+      const logger = kernel.logger;
+
+      expect(() => {
+        (kernel as unknown as {logger: unknown}).logger = {};
+      }).toThrow(TypeError);
+
+      expect(kernel.logger).toBe(logger);
+    });
+
+    it('hands out the same logger on every read', () => {
+      const kernel = new Kernel();
+
+      expect(kernel.logger).toBe(kernel.logger);
+    });
+  });
 });

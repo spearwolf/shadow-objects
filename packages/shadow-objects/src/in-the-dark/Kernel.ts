@@ -75,7 +75,12 @@ const LIFECYCLE_HOOKS: [string, symbol][] = [
 export class Kernel {
   registry: Registry;
 
-  readonly logger = new ConsoleLogger('Kernel');
+  readonly #logger = new ConsoleLogger('Kernel');
+
+  /** The logger this Kernel reports through. */
+  get logger(): ConsoleLogger {
+    return this.#logger;
+  }
 
   #entities: Map<string, EntityEntry> = new Map();
   #rootEntities: Set<string> = new Set();

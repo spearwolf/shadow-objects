@@ -64,14 +64,20 @@ export class MessageRouter {
   #importedModules: Set<ShadowObjectsModule> = new Set();
 
   /**
-   * A plain field rather than the lazy getter `WorkerRuntime.logger` needs to be: a `MessageRouter`
-   * is only ever built from `WorkerRuntime.onmessage`, and only past the branch that answers the
-   * `CONSOLE_LOGGER` configuration message and returns -- so by the time this field initializer
-   * runs, that configuration has already been installed. The `Kernel` this router holds builds its
-   * own logger the same way, in its own field initializer, on the same guarantee; which of the two
-   * is built first is not something either one depends on.
+   * Built in the field initializer rather than on first read, the way the lazy getter
+   * `WorkerRuntime.logger` has to be: a `MessageRouter` is only ever built from
+   * `WorkerRuntime.onmessage`, and only past the branch that answers the `CONSOLE_LOGGER`
+   * configuration message and returns -- so by the time this initializer runs, that configuration
+   * has already been installed. The `Kernel` this router holds builds its own logger the same way,
+   * in its own field initializer, on the same guarantee; which of the two is built first is not
+   * something either one depends on.
    */
-  readonly logger = new ConsoleLogger('MessageRouter');
+  readonly #logger = new ConsoleLogger('MessageRouter');
+
+  /** The logger this router reports through. */
+  get logger(): ConsoleLogger {
+    return this.#logger;
+  }
 
   #isDestroyed = false;
 

@@ -1895,7 +1895,7 @@ teardown takes the environment with it, so there is nothing to return to.
 | :--- | :--- |
 | `shadowEnv` | The `ShadowEnv` this element owns, read-only. Available before the environment is started. |
 | `isDestroyed` | Read-only: whether the element has been torn down. Once `true` it stays `true` — putting the element back into the document does not change it. |
-| `logger` | The `ConsoleLogger` this element reports through, read-only. |
+| `logger` | The `ConsoleLogger` this element reports through, read-only. The slot is a getter without a setter, so `el.logger = …` throws a `TypeError` in strict mode and does nothing outside it. |
 | `autostart` | Whether the element may start on connect. Writable, defaults to `true`; the `no-autostart` attribute is the declarative half of the same decision. |
 | `shouldAutostart` | Read-only: `autostart` and the `no-autostart` attribute taken together. This is what the element asks when it connects. |
 | `autoSync` | The current `auto-sync` value. **Writing takes strings only:** any other value is read as a flag — a truthy one becomes `"frame"`, a falsy one `"no"`. `el.autoSync = 30` therefore syncs every frame, while `auto-sync="30"` is a 30-millisecond interval. Every value other than the frame default is reflected into the attribute; the frame default is written only when the attribute is already there. |
@@ -2038,7 +2038,9 @@ element writes it out as it reconnects, before it reads any attribute back. The 
 exchange, never the attribute left standing on the older value.
 
 `getParentNodeForObserver()` and the inherited `syncShadowObjectsOf()` are `protected` and meant
-for subclasses, and so is `logger`, a `ConsoleLogger` in the namespace `ShaeEntElement` — see
+for subclasses, and so is `logger`, a `ConsoleLogger` in the namespace `ShaeEntElement` that a
+subclass reads and does not replace — the slot is a getter without a setter, so an assignment
+throws a `TypeError` in strict mode and does nothing outside it. See
 [Console Logger](#console-logger) for `ConsoleLogger.ShaeEntElement.enable`. That switch decides
 the `isDebug`, `isInfo` and `isWarn` getters on this element's own logger, not the `debug`, `info`
 and `warn` calls themselves, which print whatever a caller passes to them regardless; `error` has
@@ -2424,8 +2426,10 @@ five apply per element to `bool[]` and `boolean[]`.
 | `ShaePropElement.observedAttributes` | Static: `name`, `value`, `type`, `no-trim`. |
 
 Unlike the two other elements, `<shae-prop>` keeps its signals to itself: `entNode$`,
-`viewComponent$`, `name$`, `valueIn$`, `valueOut$`, `type$`, `shouldTrim$` and `logger` are
-`protected` and only reachable from a subclass. The Custom Elements callbacks —
+`viewComponent$`, `name$`, `valueIn$`, `valueOut$`, `type$` and `shouldTrim$` are `protected`
+and only reachable from a subclass, and so is `logger` — that one a getter without a setter,
+which a subclass reads and does not replace: an assignment throws a `TypeError` in strict mode
+and does nothing outside it. The Custom Elements callbacks —
 `connectedCallback`, `disconnectedCallback`, `attributeChangedCallback` — are implemented; a
 subclass that overrides one has to call `super`.
 
@@ -2640,7 +2644,7 @@ Every report goes through the [`ConsoleLogger`](#console-logger) under the names
 | Property | Type | Description |
 | :--- | :--- | :--- |
 | `registry` | `Registry` | The Registry instance used by this Kernel. Writable: a Registry assigned here decides the resolution from the next lookup on, and `upgradeEntities()` is what applies it to the Entities that already exist. |
-| `logger` | `ConsoleLogger` (readonly) | Logger for debugging, see [Console Logger](#console-logger). |
+| `logger` | `ConsoleLogger` (read-only) | Logger for debugging, see [Console Logger](#console-logger). The slot is a getter without a setter, so `kernel.logger = …` throws a `TypeError` in strict mode and does nothing outside it. |
 
 ### Methods
 

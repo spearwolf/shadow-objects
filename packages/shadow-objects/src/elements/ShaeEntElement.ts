@@ -141,7 +141,12 @@ export class ShaeEntElement extends ShaeElement {
   readonly token$ = createSignal<string | undefined>();
   readonly forwardCustomEvents$ = createSignal<Set<string> | boolean>(false);
 
-  protected readonly logger = new ConsoleLogger('ShaeEntElement');
+  readonly #logger = new ConsoleLogger('ShaeEntElement');
+
+  /** The logger this element reports through: a subclass reads it and does not replace it. */
+  protected get logger(): ConsoleLogger {
+    return this.#logger;
+  }
 
   get componentContext(): ComponentContext | undefined {
     return this.componentContext$.value;

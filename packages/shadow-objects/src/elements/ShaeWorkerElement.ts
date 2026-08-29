@@ -56,7 +56,12 @@ export class ShaeWorkerElement extends ShaeElement {
 
   readonly shadowEnv = new ShadowEnv();
 
-  readonly logger = new ConsoleLogger('ShaeWorkerElement');
+  readonly #logger = new ConsoleLogger('ShaeWorkerElement');
+
+  /** The logger this element reports through. */
+  get logger(): ConsoleLogger {
+    return this.#logger;
+  }
 
   autostart = true;
 
