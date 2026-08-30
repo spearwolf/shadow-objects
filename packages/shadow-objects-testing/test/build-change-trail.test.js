@@ -33,15 +33,11 @@ describe('build-change-trail', () => {
 
     let changeTrail = cc.buildChangeTrails();
 
-    // console.log('append e to b (1st)', JSON.stringify(changeTrail, null, 2));
-
     e.token = 'bee';
 
     b.append(e);
 
     changeTrail = cc.buildChangeTrails();
-
-    // console.log('append e to b (2nd)', JSON.stringify(changeTrail, null, 2));
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
       // --- I) structural changes ---
@@ -128,8 +124,6 @@ describe('build-change-trail', () => {
 
     expect(contextLostSpy.calledOnce, 'contextLostSpy').to.be.true;
 
-    // console.log('reCreateChanges', JSON.stringify(changeTrail, null, 2));
-
     expect(changeTrail, 'changeTrail').to.deep.equal([
       {
         type: ComponentChangeType.CreateEntities,
@@ -187,8 +181,6 @@ describe('build-change-trail', () => {
     a.viewComponent.dispatchShadowObjectsEvent('event3', {abc: 'def'}, ['xyz', 666]);
 
     changeTrail = cc.buildChangeTrails();
-
-    // console.log('reCreateChanges with change gap', JSON.stringify(changeTrail, null, 2));
 
     expect(changeTrail, 'changeTrail').to.deep.equal([
       {

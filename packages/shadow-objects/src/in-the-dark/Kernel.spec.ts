@@ -95,19 +95,13 @@ describe('Kernel', () => {
 
   it('change token', () => {
     @ShadowObject({token: 'foo'})
-    class Foo {
-      // name = 'foo';
-    }
+    class Foo {}
 
     @ShadowObject({token: 'bar'})
-    class Bar {
-      // name = 'bar';
-    }
+    class Bar {}
 
     @ShadowObject({token: 'plah'})
-    class Plah {
-      // name = 'plah';
-    }
+    class Plah {}
 
     @ShadowObject({token: 'obDir'})
     class ObersteDirektive {}
@@ -138,12 +132,7 @@ describe('Kernel', () => {
 
     kernel.createEntity(uuid, 'testA');
 
-    let shadowObjects = kernel.findShadowObjects(uuid); // as unknown as {name: string}[];
-
-    // console.log(
-    //   'shadowObjects before changeToken',
-    //   shadowObjects.map((so) => so.name),
-    // );
+    let shadowObjects = kernel.findShadowObjects(uuid);
 
     expect(shadowObjects, 'testA shadow-constructors').toHaveLength(2);
     expect(
@@ -156,14 +145,9 @@ describe('Kernel', () => {
 
     kernel.changeToken(uuid, 'testB');
 
-    shadowObjects = kernel.findShadowObjects(uuid); // as unknown as {name: string}[];
+    shadowObjects = kernel.findShadowObjects(uuid);
 
     expect(shadowObjects, 'check 2').toHaveLength(2);
-
-    // console.log(
-    //   'shadowObjects after changeToken',
-    //   shadowObjects.map((so) => so.name),
-    // );
 
     expect(
       shadowObjects.find((so) => so === bar),
@@ -176,9 +160,6 @@ describe('Kernel', () => {
     ).toBeDefined();
 
     kernel.changeProperties(uuid, [['plah', 'hello']]);
-
-    // console.log('truthyProps', Array.from(kernel.getEntity(uuid).truthyProps()));
-    // console.log('changeProperties', Array.from(kernel.getEntity(uuid).propKeys()));
 
     shadowObjects = kernel.findShadowObjects(uuid);
 
@@ -3435,9 +3416,8 @@ describe('Kernel', () => {
       kernel.destroyEntity(uuid);
 
       expect(onDestroyFn).toHaveBeenCalledTimes(1);
-      // When entity is destroyed, the kernel is passed (event emitted by destroyEntity)
+      // The hook is handed the entity the shadow-object was attached to, not the kernel that released it.
       expect(onDestroyFn).toHaveBeenCalledWith(entity);
-      // expect(onDestroyFn).toHaveBeenCalledWith(kernel);
     });
 
     it('should call onDestroy when shadow-object is removed due to token change', () => {

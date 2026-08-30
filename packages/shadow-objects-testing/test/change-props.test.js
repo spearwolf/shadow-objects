@@ -32,8 +32,6 @@ describe('change props', () => {
 
     let changeTrail = await localEnv.shadowEnv.syncWait();
 
-    // console.log('changeTrail:before', JSON.stringify(changeTrail, null, 2));
-
     expect(changeTrail, 'changeTrail:before').to.deep.equal([
       {
         type: ComponentChangeType.CreateEntities,
@@ -61,8 +59,6 @@ describe('change props', () => {
 
     changeTrail = await localEnv.shadowEnv.syncWait();
 
-    // console.log('changeTrail:after', JSON.stringify(changeTrail, null, 2));
-
     expect(changeTrail, 'changeTrail:after').to.deep.equal([
       {
         type: ComponentChangeType.ChangeProperties,
@@ -87,8 +83,6 @@ describe('change props', () => {
     a.viewComponent.removeProperty('null');
 
     changeTrail = await localEnv.shadowEnv.syncWait();
-
-    // console.log('changeTrail:after:2', JSON.stringify(changeTrail, null, 2));
 
     expect(changeTrail, 'changeTrail:after:2').to.deep.equal([
       {

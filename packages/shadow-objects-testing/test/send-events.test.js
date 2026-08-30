@@ -35,8 +35,6 @@ describe('send events', () => {
 
     let changeTrail = await localEnv.shadowEnv.syncWait();
 
-    // console.log('changeTrail:before', JSON.stringify(changeTrail, null, 2));
-
     expect(changeTrail, 'changeTrail:before').to.deep.equal([
       {
         type: ComponentChangeType.CreateEntities,
@@ -67,8 +65,6 @@ describe('send events', () => {
     a.viewComponent.dispatchShadowObjectsEvent('event3', {abc: 'def'}, ['xyz', 666]);
 
     changeTrail = await localEnv.shadowEnv.syncWait();
-
-    // console.log('changeTrail:after', JSON.stringify(changeTrail, null, 2));
 
     expect(changeTrail, 'changeTrail:after').to.deep.equal([
       {
