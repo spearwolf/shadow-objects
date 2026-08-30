@@ -174,16 +174,16 @@ details.card[open] > summary{margin-bottom:1em}
   <div class="top">
     <div class="top-l">
       <h1>Projekt-Audit · @spearwolf/shadow-objects (Monorepo)</h1>
-      <p class="dates">Stand 2026-08-28 &middot; Vorlauf 2026-08-28 &middot; 47 offene Findings</p>
+      <p class="dates">Stand 2026-08-30 &middot; Vorlauf 2026-08-28 &middot; 30 offene Findings</p>
       <div class="stacks"><span class='stack'>TypeScript 7</span><span class='stack'>pnpm 11</span><span class='stack'>turborepo 2.10</span><span class='stack'>esbuild 0.28</span><span class='stack'>vitest 4</span><span class='stack'>Playwright 1.62</span><span class='stack'>Biome 2.5</span><span class='stack'>Node 24</span><span class='stack'>Web Components</span><span class='stack'>Web Worker</span></div>
     </div>
     <div class="score-box">
-      <div class="score">92</div>
-      <div class="score-sub"><span class="delta up">&#9650; +4</span> gegenüber 88</div>
-      <div class="score-sub">Code &amp; Laufzeit <b>98</b> &middot; Projekt-Harness <b>94</b></div>
+      <div class="score">94</div>
+      <div class="score-sub"><span class="delta up">&#9650; +2</span> gegenüber 92</div>
+      <div class="score-sub">Code &amp; Laufzeit <b>100</b> &middot; Projekt-Harness <b>94</b></div>
     </div>
   </div>
-  <p class="diffline"><strong>19 Findings behoben</strong> gegenüber dem Stand vom selben Tag (Score 88), 0 verbessert, 21 neu. Die Zahlen stammen aus einem Remediation-Lauf, nicht aus einer neuen Prüfung des Codes: vierzehn Pakete haben die Befunde geschlossen, dazu die offene Frage des Reports und alle vier Punkte des Optimierungspotenzials. Die einundzwanzig neuen sind den Paketen bei der Arbeit am Code aufgefallen — Nebenbefunde und kleine Reviewer-Befunde, jeder mit Fundstelle, keiner davon in diesem Lauf behoben. Der Bereich Code trägt danach vier Befunde niedrigen Grades, alles Übrige ist Info.</p>
+  <p class="diffline"><strong>19 Findings behoben</strong> gegenüber dem Stand vom 2026-08-28 (Score 92), 0 verbessert, 2 neu. Die Zahlen stammen aus einem Remediation-Lauf, nicht aus einer neuen Prüfung des Codes: der Lauf nahm sich den gesamten Bereich Code &amp; Laufzeit vor und schloss ihn in vierzehn Paketen, jedes in genau einer Runde. Der Bereich trägt danach keinen Befund mehr, der in den Score fällt. Die zwei neuen sind bei dieser Arbeit aufgefallen — einer davon steht offen, weil seine Behebung die Darstellung der Eigenschaften im Change Trail betrifft und einen eigenen Durchgang verlangt. Der Bereich Projekt-Harness war nicht im Scope und ist unverändert.</p>
 </header>
 
 <section class="card" id="portrait">
@@ -208,9 +208,9 @@ details.card[open] > summary{margin-bottom:1em}
 <section class="domain-block">
   <header class="domain-head">
     <h3>Code &amp; Laufzeit</h3>
-    <span class="domain-score">98</span>
+    <span class="domain-score">100</span>
   </header>
-  <p class="prose">Der Kern trägt: Kernel, Entity und Creation Scope nehmen gescheiterte Aufbauten zurück, kapseln jeden Abbauschritt und begründen die Reihenfolge im Kommentar; Lint und Typecheck sind sauber, 93,1 % der Anweisungen sind geprüft. Kein Befund mittleren Grades steht mehr offen — die drei, die es waren, sind geschlossen: der ungeschützte Sammler der Entity-Kontextwerte, die Promise von syncWait(), die einen Zyklus zu früh geteilt wurde, und der Dekorator, der jeder Klasse ihren Namen nahm. Was bleibt, ist zu großen Teilen eine einzige Reihe: elf Konsistenz-Befunde, die fast alle dieselbe Frage stellen — führt der ComponentContext seine Mitglieder über die Instanz oder über die uuid. Daneben vier Punkte an der öffentlichen API, zwei davon in der Dokumentation, und ein letzter Async-Befund, dessen Behebung ein Zeitvertrag ist und keine Codeänderung.</p>
+  <p class="prose">Der Bereich trägt keinen Befund mehr, der in den Score fällt. Geschlossen sind die vier Punkte niedrigen Grades — die Loopback-Erkennung des Loggers, der auskommentierte Code an vier Stellen und die Render-Zusage der Canvas-Doku — und mit ihnen die fünfzehn Info-Punkte: die Rückkante, die getEntityGraph() verschwieg, die Frist, die NaN durchließ, das onDestroy, das aus dem Abbau heraus nie lief, die beiden Eigenschaftsslots, die nur der Typ schützte, und die Reihe kleinerer Widersprüche in Registry, ComponentContext, props-utils und der Doku. Was steht, sind zwei Info-Befunde, beide bei dieser Arbeit aufgefallen: ein Kommentar im Teardown, der sich aus dem Vorzustand erklärt, und der eine, der nicht nebenbei zu haben war — eine Eigenschaft, die nur ihren Schlüssel nennt, überlebt den Neuaufbau eines Context nicht, weil ComponentChanges »gesetzt, ohne Wert« in seiner Map gar nicht darstellen kann.</p>
   <h4>Schweregrade</h4>
   <div class="bars"><div class="bar-row"><span class="bar-label">kritisch</span>
 <div class="bar-track"><div class="bar-fill sv-critical" style="width:0.0%"></div></div>
@@ -222,17 +222,14 @@ details.card[open] > summary{margin-bottom:1em}
 <div class="bar-track"><div class="bar-fill sv-medium" style="width:0.0%"></div></div>
 <span class="bar-num">0</span></div>
 <div class="bar-row"><span class="bar-label">niedrig</span>
-<div class="bar-track"><div class="bar-fill sv-low" style="width:26.7%"></div></div>
-<span class="bar-num">4</span></div>
+<div class="bar-track"><div class="bar-fill sv-low" style="width:0.0%"></div></div>
+<span class="bar-num">0</span></div>
 <div class="bar-row"><span class="bar-label">Info</span>
 <div class="bar-track"><div class="bar-fill sv-info" style="width:100.0%"></div></div>
-<span class="bar-num">15</span></div></div>
+<span class="bar-num">2</span></div></div>
   <h4>Kategorien</h4>
-  <ul class="cats"><li><span class="cat-name">Lesbarkeit &amp; Clean Code</span><span class="cat-bar"><i style="width:100%"></i></span><span class="cat-num">8</span></li>
-<li><span class="cat-name">Öffentliche API</span><span class="cat-bar"><i style="width:75%"></i></span><span class="cat-num">6</span></li>
-<li><span class="cat-name">Konsistenz</span><span class="cat-bar"><i style="width:38%"></i></span><span class="cat-num">3</span></li>
-<li><span class="cat-name">Async &amp; Concurrency</span><span class="cat-bar"><i style="width:12%"></i></span><span class="cat-num">1</span></li>
-<li><span class="cat-name">Sicherheit</span><span class="cat-bar"><i style="width:12%"></i></span><span class="cat-num">1</span></li></ul>
+  <ul class="cats"><li><span class="cat-name">Konsistenz</span><span class="cat-bar"><i style="width:100%"></i></span><span class="cat-num">1</span></li>
+<li><span class="cat-name">Lesbarkeit &amp; Clean Code</span><span class="cat-bar"><i style="width:100%"></i></span><span class="cat-num">1</span></li></ul>
 </section>
 <section class="domain-block">
   <header class="domain-head">
@@ -269,56 +266,11 @@ details.card[open] > summary{margin-bottom:1em}
   <div class="filters">
     <label>Bereich<select id="f-domain"><option value="all">alle</option><option value="code">Code &amp; Laufzeit</option><option value="harness">Projekt-Harness</option></select></label>
     <label>Schweregrad<select id="f-sev"><option value="all">alle</option><option value="low">niedrig</option><option value="info">Info</option></select></label>
-    <label>Kategorie<select id="f-cat"><option value="all">alle</option><option value="Async &amp; Concurrency">Async &amp; Concurrency</option><option value="Developer Experience">Developer Experience</option><option value="Konsistenz">Konsistenz</option><option value="Lesbarkeit &amp; Clean Code">Lesbarkeit &amp; Clean Code</option><option value="Projektaufbau &amp; Build">Projektaufbau &amp; Build</option><option value="Sicherheit">Sicherheit</option><option value="Testabdeckung &amp; Teststrategie">Testabdeckung &amp; Teststrategie</option><option value="Typsicherheit">Typsicherheit</option><option value="Öffentliche API">Öffentliche API</option></select></label>
+    <label>Kategorie<select id="f-cat"><option value="all">alle</option><option value="Developer Experience">Developer Experience</option><option value="Konsistenz">Konsistenz</option><option value="Lesbarkeit &amp; Clean Code">Lesbarkeit &amp; Clean Code</option><option value="Projektaufbau &amp; Build">Projektaufbau &amp; Build</option><option value="Testabdeckung &amp; Teststrategie">Testabdeckung &amp; Teststrategie</option><option value="Typsicherheit">Typsicherheit</option></select></label>
     <label>Status<select id="f-status"><option value="all">alle</option><option value="carried-over">übernommen</option><option value="new">neu</option></select></label>
     <span class="count" id="f-count"></span>
   </div>
   <div class="rows">
-<article class="row" data-sev="low" data-domain="code" data-cat="Lesbarkeit &amp; Clean Code" data-status="carried-over">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-low">niedrig</span></span>
-    <span class="c-id">CLEAN-009</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">Auskommentierter Code an drei Stellen</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/in-the-dark/Entity.ts:297,330,350,368; packages/shadow-objects-e2e/playwright.config.ts:7</span><span class="sep">·</span><span>Lesbarkeit &amp; Clean Code</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-carried-over">übernommen</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> In Entity stehen vier Emit-Aufrufe für Ereignisse, die es nicht gibt: onAddChild, onAddToParent, onRemoveChild und onRemoveFromParent. Sie lesen sich wie eine geplante Erweiterung, tragen aber keinen Hinweis darauf, ob sie kommt oder verworfen wurde. Dazu ein auskommentiertes console.debug im MessageRouter und sechs Zeilen Diagnose-Ausgabe in ShaePropElement. Auskommentierter Code ist die eine Form von Kommentar, die ein Leser nicht prüfen kann: er sagt nichts über den geltenden Zustand und veraltet stumm.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Streichen. Sollen die vier Entity-Ereignisse kommen, gehören sie als Satz in Backlog.md statt als toter Code in die Klasse; der git-Verlauf hält die Zeilen ohnehin.</p>
-    <p class="evidence"><strong>Beleg.</strong> Beim Re-Check am 2026-08-27 an der genannten Stelle erneut nachgelesen und bestätigt.</p>
-  </div>
-</article>
-<article class="row" data-sev="low" data-domain="code" data-cat="Lesbarkeit &amp; Clean Code" data-status="carried-over">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-low">niedrig</span></span>
-    <span class="c-id">CLEAN-010</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">Ein auskommentierter Debug-Block steht als toter Code in shae-prop</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/elements/ShaePropElement.ts:182-193</span><span class="sep">·</span><span>Lesbarkeit &amp; Clean Code</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-carried-over">übernommen</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> Ein auskommentierter Block mit zwei console.log steht mitten in der Anmeldung des Elements. Er trägt nichts bei, überlebt aber jeden Umbau der Methode, weil ihn niemand mitliest — und beim nächsten Leser stellt sich die Frage, ob er wieder eingeschaltet werden soll oder vergessen wurde.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Streichen. Wer die Werte im Betrieb sehen will, hat den ConsoleLogger, der sich je Namensraum einschalten lässt.</p>
-    <p class="evidence"><strong>Beleg.</strong> Beim Re-Check am 2026-08-27 an der genannten Stelle erneut nachgelesen und bestätigt.</p>
-  </div>
-</article>
-<article class="row" data-sev="low" data-domain="code" data-cat="Sicherheit" data-status="carried-over">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-low">niedrig</span></span>
-    <span class="c-id">SEC-003</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">Die localhost-Erkennung des Loggers greift auf jeden Host, der so anfängt</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/utils/ConsoleLogger.ts:6</span><span class="sep">·</span><span>Sicherheit</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-carried-over">übernommen</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> IS_LOCALHOST prüft location.host.startsWith(&#x27;localhost&#x27;). Der Schalter entscheidet, ob der ConsoleLogger überhaupt spricht, und damit über jede debug-, info- und warn-Zeile des Frameworks: Change Trails samt Property-Werten, Entity-uuids, Shadow-Object-Instanzen, die Worker-Konfiguration. Ein Präfixvergleich sagt aber zu localhost.example.com und zu localhostile.com genauso ja wie zu localhost:5173 — ein Angreifer, der einen Namen unter seiner Kontrolle so anfangen lässt, bekommt bei einem Konsumenten dieses Frameworks die volle Diagnoseausgabe in der Konsole. Umgekehrt fehlen die Adressen, die tatsächlich gemeint sind: 127.0.0.1 und [::1] fallen durch. Der Schaden ist begrenzt — es geht um Konsolenausgabe, nicht um einen Datenabfluss —, und der Vergleich ist trotzdem an beiden Enden falsch.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Auf den Hostnamen prüfen statt auf den Host samt Port und exakt vergleichen: location.hostname gegen die Menge {&#x27;localhost&#x27;, &#x27;127.0.0.1&#x27;, &#x27;::1&#x27;, &#x27;[::1]&#x27;}. Das schließt die Fremdnamen aus und nimmt die Loopback-Adressen auf, die heute fehlen.</p>
-    <p class="evidence"><strong>Beleg.</strong> An ConsoleLogger.ts:6 gelesen (2026-08-27). Der Wert speist sharedConfig.enable (:157) und damit isEnabled, isDebug, isInfo und isWarn (:170-176, :277-292).</p>
-  </div>
-</article>
 <article class="row" data-sev="low" data-domain="harness" data-cat="Developer Experience" data-status="carried-over">
   <button class="row-head" aria-expanded="false">
     <span class="c-sev"><span class="sev-badge sv-low">niedrig</span></span>
@@ -484,21 +436,6 @@ details.card[open] > summary{margin-bottom:1em}
     <p class="evidence"><strong>Beleg.</strong> Beim Re-Check am 2026-08-27 an der genannten Stelle erneut nachgelesen und bestätigt.</p>
   </div>
 </article>
-<article class="row" data-sev="low" data-domain="code" data-cat="Öffentliche API" data-status="carried-over">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-low">niedrig</span></span>
-    <span class="c-id">API-005</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">Die API-Doku des Canvas-Pakets sagt eine Render-Automatik zu, die es nicht gibt</span>
-    <span class="c-meta"><span class="loc">packages/shae-offscreen-canvas/docs/01-shadow-objects-api.md:83</span><span class="sep">·</span><span>Öffentliche API</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-carried-over">übernommen</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> Der Satz »Once created, the view is rendered automatically with one of the next frames« beschreibt ein Verhalten, das der Code nicht hat: ThreeMultiViewRenderer hört auf keinen Frame-Takt. Gezeichnet wird eine Ansicht ausschließlich durch das ThreeRenderView, das sie besitzt und renderView() für sie ruft. Eine von Hand über createView() erzeugte Ansicht zeichnet damit niemand — sie bleibt leer, und die Doku sagt dem Leser, er müsse nur warten.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Den Halbsatz durch die tatsächliche Bedingung ersetzen: eine Ansicht wird gezeichnet, solange ein ThreeRenderView sie hält und in seinem Frame renderView() für sie ruft. Wer createView() direkt benutzt, braucht den Hinweis, dass er das Zeichnen selbst auslöst.</p>
-    <p class="evidence"><strong>Beleg.</strong> Beim Abgleich von Paket 7 eines Remediation-Laufs am 2026-08-27 an der Fundstelle gelesen und gegen ThreeMultiViewRenderer.js geprüft; bei git show 292714c: steht derselbe Satz mit »with the next frame«.</p>
-  </div>
-</article>
 <article class="row" data-sev="low" data-domain="harness" data-cat="Testabdeckung &amp; Teststrategie" data-status="carried-over">
   <button class="row-head" aria-expanded="false">
     <span class="c-sev"><span class="sev-badge sv-low">niedrig</span></span>
@@ -512,21 +449,6 @@ details.card[open] > summary{margin-bottom:1em}
     <p class="prose"><strong>Befund.</strong> Der Fall ASYNC-2 — dispatchShadowObjectsEvent von der View zum Shadow Object über einen echten Worker — trägt Priorität P1, ist aber weder als Implemented markiert wie die Zeilen in §3.3, noch in der Offen-Liste im Kopf des Dokuments, noch in der ID-Klammer seiner §2-Zeile. Abgedeckt ist er tatsächlich, und zwar zweimal: src/async-events.js:158 und :177 schicken beide über dispatchShadowObjectsEvent, laufen dort aber unter anderen Fallnummern. Es fehlt die Zuordnung, nicht der Test — und wer den Plan liest, hält eine P1-Lücke für offen, die keine ist.</p>
     <p class="prose"><strong>Empfehlung.</strong> Den Fall als Implemented markieren und in seiner ID-Klammer die beiden Stellen nennen, die ihn tatsächlich abdecken. Wenn zwei Fälle denselben Weg prüfen, gehört das in den Plan, damit die nächste Lücken-Suche nicht dieselbe Runde dreht.</p>
     <p class="evidence"><strong>Beleg.</strong> Beim Abgleich von Paket 1 eines Remediation-Laufs am 2026-08-27 gegen den Testcode geprüft; beide Fundstellen gelesen.</p>
-  </div>
-</article>
-<article class="row" data-sev="info" data-domain="code" data-cat="Öffentliche API" data-status="carried-over">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
-    <span class="c-id">API-001</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">getEntityGraph() verschweigt die Rückkante eines Rings</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/in-the-dark/Kernel.ts:192-215</span><span class="sep">·</span><span>Öffentliche API</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-carried-over">übernommen</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> Die Besuchsmenge sorgt dafür, dass der Abstieg über eine Kinderliste, die auf einen Vorfahren zurückzeigt, terminiert — der zweite Besuch liefert undefined und wird herausgefiltert. Der Graph, den der Aufrufer bekommt, ist danach ein Baum, und nichts an ihm sagt, dass ein Knoten weggelassen wurde. Die Methode ist ausdrücklich das Werkzeug, zu dem man greift, wenn ein Baum bereits kaputt ist; sie ist damit genau an der Stelle stumm, an der sie sprechen müsste.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Den ausgelassenen Knoten als eigenen Eintrag ausweisen — ein Flag am Knoten oder eine zweite Rückgabe, die die Rückkanten sammelt. Ohne sie sieht der Aufrufer einen intakten Baum und sucht den Fehler woanders.</p>
-    <p class="evidence"><strong>Beleg.</strong> Bestand aus dem Audit vom 2026-08-19, an der Fundstelle nachgelesen; die Zeilen sind von 195-217 auf 196-218 gewandert. Beim Re-Check am 2026-08-27 an der genannten Stelle erneut nachgelesen und bestätigt.</p>
   </div>
 </article>
 <article class="row" data-sev="info" data-domain="harness" data-cat="Developer Experience" data-status="carried-over">
@@ -664,103 +586,13 @@ details.card[open] > summary{margin-bottom:1em}
     <p class="evidence"><strong>Beleg.</strong> Nebenbefund aus dem Remediation-Lauf vom 2026-08-26, an der Fundstelle nachgesehen; vorbestehend, git show bfcc54b:… trägt denselben Cast. Beim Re-Check am 2026-08-27 an der genannten Stelle erneut nachgelesen und bestätigt.</p>
   </div>
 </article>
-<article class="row" data-sev="info" data-domain="code" data-cat="Lesbarkeit &amp; Clean Code" data-status="new">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
-    <span class="c-id">CLEAN-012</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">Eine Fehlermeldung an den Konsumenten steht im falschen Numerus</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/view/ComponentContext.ts:356</span><span class="sep">·</span><span>Lesbarkeit &amp; Clean Code</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> Der Wortlaut der Meldung von addToChildren() lautet »because the component do not exist!«. Sie ist keine interne Notiz, sondern das, was ein Konsument im Log oder im catch zu sehen bekommt, wenn er ein Kind an einen Eintrag hängt, den der Context nicht führt.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Den Satz auf »does not exist« bringen. Bei der Gelegenheit lohnt der Blick auf die Nachbarmeldungen derselben Datei, damit sie eine Form führen.</p>
-    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
-  </div>
-</article>
-<article class="row" data-sev="info" data-domain="code" data-cat="Lesbarkeit &amp; Clean Code" data-status="new">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
-    <span class="c-id">CLEAN-013</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">Ein Optional-Chain behauptet eine Lücke, die der Typ ausschließt</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/view/ComponentContext.ts:328</span><span class="sep">·</span><span>Lesbarkeit &amp; Clean Code</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> childEntry.changes?.setParent(undefined) fragt einen Slot ab, den das ViewInstance-Interface als nicht optional führt. Der Zweig ist damit tot, und er sagt jedem Leser das Gegenteil: dass changes fehlen kann und dass es hier jemand bedacht hat.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Den Optional-Chain streichen. Kann changes tatsächlich fehlen, gehört das ins Interface und nicht in einen stillen Guard an einer einzelnen Aufrufstelle.</p>
-    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
-  </div>
-</article>
-<article class="row" data-sev="info" data-domain="code" data-cat="Async &amp; Concurrency" data-status="new">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
-    <span class="c-id">ASYNC-006</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">Die Frist von waitForMessageOfType lässt NaN und negative Werte durch</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/utils/waitForMessageOfType.ts:39</span><span class="sep">·</span><span>Async &amp; Concurrency</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> Der Wächter prüft timeout !== 0 &amp;&amp; timeout !== Infinity. Ein negativer Wert oder NaN kommt durch; NaN lässt setTimeout sofort feuern, und die Ablehnung trägt dann timeout: NaN als Grund. Kein Aufrufer im Repository reicht so etwas durch — die vier Fristen sind Konstanten oder Optionswerte —, erreichbar ist der Weg über die öffentliche Optionsstruktur trotzdem.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Auf einen positiven, endlichen Wert prüfen statt auf zwei Sonderfälle. Ein Wert, der das nicht ist, bekommt entweder die Vorgabe oder eine Ablehnung, die sagt was falsch war.</p>
-    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
-  </div>
-</article>
-<article class="row" data-sev="info" data-domain="code" data-cat="Öffentliche API" data-status="new">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
-    <span class="c-id">API-007</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">Ein eingefrorenes Objekt hinter einem Slot, den nur der Typ schützt</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/docs/api-reference.md:1567</span><span class="sep">·</span><span>Öffentliche API</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> Die Doku beschreibt für timeouts und logger eine Lücke, statt sie zu schließen: das Objekt selbst ist eingefroren, der Eigenschaftsslot aber nur typseitig readonly. Ein env.timeouts = … aus JavaScript geht zur Laufzeit durch und umgeht die Zusage, die einen Satz darüber steht.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Den Slot zur Laufzeit schließen — ein Getter ohne Setter oder ein Feld hinter Object.defineProperty —, dann deckt sich die Doku mit der Oberfläche. Bleibt es, wie es ist, sagt die Zeile besser, dass die Zusage allein für TypeScript gilt.</p>
-    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
-  </div>
-</article>
-<article class="row" data-sev="info" data-domain="code" data-cat="Öffentliche API" data-status="new">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
-    <span class="c-id">API-008</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">Eine CHANGELOG-Zusage über ein Symbol, das kein Konsument erreicht</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/CHANGELOG.md:389</span><span class="sep">·</span><span>Öffentliche API</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> Die Types-Zeile sagt Konsumenten eine Verengung des Rückgabetyps von generateUUID() zu. Das Symbol steht weder in index.ts noch in einem Pfad der exports-Map, und ViewComponent.uuid bleibt get uuid(): string. Am emittierten .d.ts ist die Aussage wahr; sie erreicht trotzdem niemanden, der das Paket einbindet.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Den Eintrag unter die internen Änderungen stellen oder den Halbsatz ergänzen, dass die Verengung an keiner exportierten Stelle sichtbar wird. Ein CHANGELOG, das Konsumenten etwas verspricht, das sie nicht sehen können, kostet beim nächsten Lesen Zeit.</p>
-    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
-  </div>
-</article>
-<article class="row" data-sev="info" data-domain="code" data-cat="Konsistenz" data-status="new">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
-    <span class="c-id">CONS-018</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">Ein onDestroy aus dem Abbau heraus wird gebucht und nie gerufen</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts:769</span><span class="sep">·</span><span>Konsistenz</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> onDestroy(cb), gerufen aus einem Cleanup, den tearDown() in seiner zweiten Schleife (:319) fährt — dem Cleanup eines createEffect oder dem cleanup eines createResource —, bucht cb in #unsubscribePrimary. Die erste Schleife (:315) ist dort bereits durch, :347 leert die Menge: cb läuft nie und wird nirgends gemeldet. Leser, Links und Provider aus derselben Stelle werden weiter mitgenommen, wie der Kommentar auf :122-126 und der Doku-Absatz »The creation API past the teardown« es zusagen.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Entweder auch diesen Fall mitnehmen — eine zweite Runde über die Menge, solange sie wächst —, oder ihn melden, statt ihn zu verschlucken. Die Asymmetrie zu den übrigen Mitgliedern ist das eigentliche Problem.</p>
-    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
-  </div>
-</article>
-<article class="row" data-sev="info" data-domain="harness" data-cat="Testabdeckung &amp; Teststrategie" data-status="new">
+<article class="row" data-sev="info" data-domain="harness" data-cat="Testabdeckung &amp; Teststrategie" data-status="carried-over">
   <button class="row-head" aria-expanded="false">
     <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
     <span class="c-id">TEST-018</span>
     <span class="c-dom"><span class="dom-badge">Projekt-Harness</span></span>
     <span class="c-title">Zwei Testnamen behaupten das Gegenteil ihrer eigenen Zusicherung</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/view/ViewComponent.spec.ts:430,438</span><span class="sep">·</span><span>Testabdeckung &amp; Teststrategie</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
+    <span class="c-meta"><span class="loc">packages/shadow-objects/src/view/ViewComponent.spec.ts:430,438</span><span class="sep">·</span><span>Testabdeckung &amp; Teststrategie</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-carried-over">übernommen</span></span>
     <span class="chev" aria-hidden="true"></span>
   </button>
   <div class="row-body" hidden>
@@ -769,13 +601,13 @@ details.card[open] > summary{margin-bottom:1em}
     <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
   </div>
 </article>
-<article class="row" data-sev="info" data-domain="harness" data-cat="Developer Experience" data-status="new">
+<article class="row" data-sev="info" data-domain="harness" data-cat="Developer Experience" data-status="carried-over">
   <button class="row-head" aria-expanded="false">
     <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
     <span class="c-id">DX-028</span>
     <span class="c-dom"><span class="dom-badge">Projekt-Harness</span></span>
     <span class="c-title">Ein Abschnitt des Cheat-Sheets steht ohne den Trenner der übrigen</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/docs/cheat-sheet.md:497</span><span class="sep">·</span><span>Developer Experience</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
+    <span class="c-meta"><span class="loc">packages/shadow-objects/docs/cheat-sheet.md:497</span><span class="sep">·</span><span>Developer Experience</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-carried-over">übernommen</span></span>
     <span class="chev" aria-hidden="true"></span>
   </button>
   <div class="row-body" hidden>
@@ -784,13 +616,13 @@ details.card[open] > summary{margin-bottom:1em}
     <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
   </div>
 </article>
-<article class="row" data-sev="info" data-domain="harness" data-cat="Testabdeckung &amp; Teststrategie" data-status="new">
+<article class="row" data-sev="info" data-domain="harness" data-cat="Testabdeckung &amp; Teststrategie" data-status="carried-over">
   <button class="row-head" aria-expanded="false">
     <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
     <span class="c-id">TEST-019</span>
     <span class="c-dom"><span class="dom-badge">Projekt-Harness</span></span>
     <span class="c-title">new Set(&#x27;x&#x27;) in einer Spec hält nur, solange der Name ein Zeichen lang ist</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/in-the-dark/Registry.spec.ts:31</span><span class="sep">·</span><span>Testabdeckung &amp; Teststrategie</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
+    <span class="c-meta"><span class="loc">packages/shadow-objects/src/in-the-dark/Registry.spec.ts:31</span><span class="sep">·</span><span>Testabdeckung &amp; Teststrategie</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-carried-over">übernommen</span></span>
     <span class="chev" aria-hidden="true"></span>
   </button>
   <div class="row-body" hidden>
@@ -799,88 +631,13 @@ details.card[open] > summary{margin-bottom:1em}
     <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
   </div>
 </article>
-<article class="row" data-sev="info" data-domain="code" data-cat="Lesbarkeit &amp; Clean Code" data-status="new">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
-    <span class="c-id">CLEAN-014</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">Ein Feld der Registry wird geschrieben und von niemandem gelesen</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/in-the-dark/Registry.ts:41,59</span><span class="sep">·</span><span>Lesbarkeit &amp; Clean Code</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> Der Wert in #truthyPropRoutes führt neben routes ein Feld token, das appendRoute() schreibt (:59) und keine Lesestelle abfragt: die drei Leser (:57, :102, :113) greifen ausschließlich auf .routes zu, und das Feld ist privat, also von außen nicht erreichbar. Der Token steckt ohnehin im Schlüssel der Map (token@prop), aus dem toPropRoute ihn gewonnen hat.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Das Feld streichen. Wer den Token braucht, hat ihn im Schlüssel.</p>
-    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
-  </div>
-</article>
-<article class="row" data-sev="info" data-domain="code" data-cat="Öffentliche API" data-status="new">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
-    <span class="c-id">API-009</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">Das Cheat-Sheet führt ein Attribut unter dem falschen Element</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/docs/cheat-sheet.md:234-237</span><span class="sep">·</span><span>Öffentliche API</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> Der Absatz »Truthy value ≠ presence« steht unter &lt;shae-worker&gt; und zählt no-trim mit auf. no-trim ist ein Attribut von &lt;shae-prop&gt; und dort auf :284 auch korrekt geführt. Wer die Tabelle darüber liest, sucht es bei &lt;shae-worker&gt; vergeblich.</p>
-    <p class="prose"><strong>Empfehlung.</strong> no-trim aus dem Absatz unter &lt;shae-worker&gt; herausnehmen. Die Stelle bei &lt;shae-prop&gt; trägt die Aussage bereits.</p>
-    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
-  </div>
-</article>
-<article class="row" data-sev="info" data-domain="code" data-cat="Konsistenz" data-status="new">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
-    <span class="c-id">CONS-019</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">Ein Doc-Kommentar sagt, niemand rufe die Methode, und zwei Stellen tun es</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/view/ComponentContext.ts:517</span><span class="sep">·</span><span>Konsistenz</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> Der Doc-Kommentar von dispatchReRequestParentRoots() sagt »Nothing inside the library calls it«, während dispatchReRequestParentSiblings() (:573) sie aufruft und die Auslieferung der gesammelten Runden (:659) ebenfalls. Der Nachbarsatz an dispatchReRequestParentSiblings() (:568) stimmt dagegen — die hat wirklich keinen Aufrufer in der Bibliothek.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Den Satz auf die beiden Aufrufer bringen. Ein Kommentar, der Erreichbarkeit behauptet, wird beim nächsten Umbau als Erlaubnis gelesen.</p>
-    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
-  </div>
-</article>
-<article class="row" data-sev="info" data-domain="code" data-cat="Lesbarkeit &amp; Clean Code" data-status="new">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
-    <span class="c-id">CLEAN-015</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">propsEqual hat außerhalb der eigenen Spec keinen Aufrufer</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/utils/props-utils.ts:36</span><span class="sep">·</span><span>Lesbarkeit &amp; Clean Code</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> Die Funktion steht allein in props-utils.ts und in props-utils.spec.ts, wo zehn Fälle (:99-167) sie decken. Erreichbar ist sie von außen nicht — das Modul steht weder in index.ts noch in einem Pfad der exports-Map. Zehn geprüfte Fälle über Code, den nichts ruft.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Streichen samt Spec, oder den Aufrufer benennen, für den sie da ist. Solange beides fehlt, wächst sie bei jedem Umbau mit, ohne etwas zu tragen.</p>
-    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
-  </div>
-</article>
-<article class="row" data-sev="info" data-domain="code" data-cat="Konsistenz" data-status="new">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
-    <span class="c-id">CONS-020</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">filterUndefinedProps meldet »nichts« in zwei Formen</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/utils/props-utils.ts:4</span><span class="sep">·</span><span>Konsistenz</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> Die Funktion liefert undefined für eine fehlende oder leere Liste und ein leeres Array für eine Liste, aus der der Filter alles herausnimmt. Beide Formen stehen im Rückgabetyp, und applyPropsChanges reicht die zweite an ComponentState.properties durch. Folgenlos, solange niemand sie auseinanderhält: if (cMem.properties) in ComponentContext.reCreateChanges() (:820) hält ein leeres Array für gesetzt und läuft null Runden, und die eine Stelle, an der sie auseinanderfielen — propsEqual (:41) —, ruft niemand.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Auf eine Form festlegen und den Rückgabetyp entsprechend verengen. Zwei Schreibweisen für dieselbe Aussage sind eine Falle, die auf einen Leser wartet.</p>
-    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
-  </div>
-</article>
-<article class="row" data-sev="info" data-domain="harness" data-cat="Developer Experience" data-status="new">
+<article class="row" data-sev="info" data-domain="harness" data-cat="Developer Experience" data-status="carried-over">
   <button class="row-head" aria-expanded="false">
     <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
     <span class="c-id">DX-029</span>
     <span class="c-dom"><span class="dom-badge">Projekt-Harness</span></span>
     <span class="c-title">Eine Zeile der API-Referenz bricht erst bei 118 Spalten um</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/docs/api-reference.md:1822</span><span class="sep">·</span><span>Developer Experience</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
+    <span class="c-meta"><span class="loc">packages/shadow-objects/docs/api-reference.md:1822</span><span class="sep">·</span><span>Developer Experience</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-carried-over">übernommen</span></span>
     <span class="chev" aria-hidden="true"></span>
   </button>
   <div class="row-body" hidden>
@@ -889,28 +646,13 @@ details.card[open] > summary{margin-bottom:1em}
     <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
   </div>
 </article>
-<article class="row" data-sev="info" data-domain="code" data-cat="Öffentliche API" data-status="new">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
-    <span class="c-id">API-010</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">»tick« steht im selben Absatz für zwei verschiedene Dinge</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/docs/api-reference.md, Abschnitt sync()</span><span class="sep">·</span><span>Öffentliche API</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> Der Absatz benutzt das Wort zweimal in zwei Bedeutungen — einmal für den Takt des Frame-Loops, einmal für den Durchlauf einer Sync-Runde. Die Ordnungsaussage daneben ist präzise; das Wort trägt sie nicht mit.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Für eines der beiden ein anderes Wort nehmen, und zwar dasselbe, das der übrige Text dafür schon führt.</p>
-    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
-  </div>
-</article>
-<article class="row" data-sev="info" data-domain="harness" data-cat="Typsicherheit" data-status="new">
+<article class="row" data-sev="info" data-domain="harness" data-cat="Typsicherheit" data-status="carried-over">
   <button class="row-head" aria-expanded="false">
     <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
     <span class="c-id">TYPE-008</span>
     <span class="c-dom"><span class="dom-badge">Projekt-Harness</span></span>
     <span class="c-title">WorkerTimeoutError.messageType steht auf string statt auf der Union der vier Konstanten</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/utils/waitForMessageOfType.ts</span><span class="sep">·</span><span>Typsicherheit</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
+    <span class="c-meta"><span class="loc">packages/shadow-objects/src/utils/waitForMessageOfType.ts</span><span class="sep">·</span><span>Typsicherheit</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-carried-over">übernommen</span></span>
     <span class="chev" aria-hidden="true"></span>
   </button>
   <div class="row-body" hidden>
@@ -919,13 +661,13 @@ details.card[open] > summary{margin-bottom:1em}
     <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
   </div>
 </article>
-<article class="row" data-sev="info" data-domain="harness" data-cat="Typsicherheit" data-status="new">
+<article class="row" data-sev="info" data-domain="harness" data-cat="Typsicherheit" data-status="carried-over">
   <button class="row-head" aria-expanded="false">
     <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
     <span class="c-id">TYPE-009</span>
     <span class="c-dom"><span class="dom-badge">Projekt-Harness</span></span>
     <span class="c-title">Die Template-Literal-Form der uuid hängt allein an der Inferenz</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/utils/generateUUID.ts</span><span class="sep">·</span><span>Typsicherheit</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
+    <span class="c-meta"><span class="loc">packages/shadow-objects/src/utils/generateUUID.ts</span><span class="sep">·</span><span>Typsicherheit</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-carried-over">übernommen</span></span>
     <span class="chev" aria-hidden="true"></span>
   </button>
   <div class="row-body" hidden>
@@ -934,49 +676,49 @@ details.card[open] > summary{margin-bottom:1em}
     <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
   </div>
 </article>
-<article class="row" data-sev="info" data-domain="code" data-cat="Lesbarkeit &amp; Clean Code" data-status="new">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
-    <span class="c-id">CLEAN-016</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">Zwei Kommentare am Auflösungsvorrat der Registry widersprechen einander</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/in-the-dark/Registry.ts:56,117</span><span class="sep">·</span><span>Lesbarkeit &amp; Clean Code</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> :117 sagt »Caller order costs at most a second entry«, was ab drei routenden Properties nicht mehr stimmt. :56 nennt den Schlüsselraum »routes times the permutations«, wo es geordnete Teilmengen sind — ∑ C(n,k)·k!, für n=3 also 16 statt 6. Die beiden widersprechen einander; das Verhalten berühren sie nicht.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Eine der beiden Beschreibungen zur richtigen machen und die andere darauf ziehen. Ein Kommentar über Wachstum, der zu klein rechnet, lädt zum nächsten Cache ohne Obergrenze ein.</p>
-    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
-  </div>
-</article>
-<article class="row" data-sev="info" data-domain="code" data-cat="Lesbarkeit &amp; Clean Code" data-status="new">
-  <button class="row-head" aria-expanded="false">
-    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
-    <span class="c-id">CLEAN-017</span>
-    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
-    <span class="c-title">Ein Kommentar in props-utils erklärt den Vorzustand statt der Regel</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/utils/props-utils.ts:27-28</span><span class="sep">·</span><span>Lesbarkeit &amp; Clean Code</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
-    <span class="chev" aria-hidden="true"></span>
-  </button>
-  <div class="row-body" hidden>
-    <p class="prose"><strong>Befund.</strong> Der Kommentar streift die Grenze zum Rückblick: er erklärt sich aus dem, was vorher dort stand, statt aus dem, was jetzt gilt. Wer den Vorzustand nie gesehen hat, liest einen halben Satz.</p>
-    <p class="prose"><strong>Empfehlung.</strong> Die Regel ausschreiben, die heute gilt. Die Vorgeschichte trägt die Commit-Historie.</p>
-    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
-  </div>
-</article>
-<article class="row" data-sev="info" data-domain="harness" data-cat="Testabdeckung &amp; Teststrategie" data-status="new">
+<article class="row" data-sev="info" data-domain="harness" data-cat="Testabdeckung &amp; Teststrategie" data-status="carried-over">
   <button class="row-head" aria-expanded="false">
     <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
     <span class="c-id">TEST-020</span>
     <span class="c-dom"><span class="dom-badge">Projekt-Harness</span></span>
     <span class="c-title">Ein Testname der props-utils-Spec verspricht mehr, als der Fall prüft</span>
-    <span class="c-meta"><span class="loc">packages/shadow-objects/src/utils/props-utils.spec.ts</span><span class="sep">·</span><span>Testabdeckung &amp; Teststrategie</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
+    <span class="c-meta"><span class="loc">packages/shadow-objects/src/utils/props-utils.spec.ts</span><span class="sep">·</span><span>Testabdeckung &amp; Teststrategie</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-carried-over">übernommen</span></span>
     <span class="chev" aria-hidden="true"></span>
   </button>
   <div class="row-body" hidden>
     <p class="prose"><strong>Befund.</strong> Der Fall heißt »reads a bare key the same way with and without curProps« und prüft dabei [] gegen undefined. Er ist damit enger als sein Name: die Gleichheit, die er zusagt, deckt er nur für diesen einen Wertvergleich ab.</p>
     <p class="prose"><strong>Empfehlung.</strong> Den Namen auf den geprüften Vergleich verengen oder den Fall auf die Zusage erweitern.</p>
     <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft.</p>
+  </div>
+</article>
+<article class="row" data-sev="info" data-domain="code" data-cat="Konsistenz" data-status="new">
+  <button class="row-head" aria-expanded="false">
+    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
+    <span class="c-id">CONS-021</span>
+    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
+    <span class="c-title">reCreateChanges() verliert eine Eigenschaft, die nur ihren Schlüssel nennt</span>
+    <span class="c-meta"><span class="loc">packages/shadow-objects/src/view/ComponentContext.ts:824; src/view/ComponentChanges.ts:357</span><span class="sep">·</span><span>Konsistenz</span><span class="sep">·</span><span>Aufwand M</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
+    <span class="chev" aria-hidden="true"></span>
+  </button>
+  <div class="row-body" hidden>
+    <p class="prose"><strong>Befund.</strong> ComponentPropertiesType führt zwei Formen, und types.ts:23-31 hält sie ausdrücklich auseinander: [name, value] heißt »Wert ist da«, das einträgrige [name] heißt »gesetzt, ohne Wert«. ComponentMemory bewahrt die einträgrige Form treu. reCreateChanges() destrukturiert dagegen const [key, value] und reicht einen solchen Eintrag als changeProperty(key, undefined, …) weiter — aus »gesetzt, ohne Wert« wird damit »Wert ist weg«. ComponentChanges führt seine Eigenschaften als Map&lt;string, unknown&gt; und nimmt beim Bauen des Create-Eintrags jeden undefined-Wert wieder heraus: der Schlüssel fällt ganz weg. Eine so gesetzte Eigenschaft überlebt den Neuaufbau eines Context also nicht.</p>
+    <p class="prose"><strong>Empfehlung.</strong> Zuerst die dritte Form darstellbar machen. Solange ComponentChanges seine Eigenschaften als Map&lt;string, unknown&gt; führt, kann sie »gesetzt, ohne Wert« von »Wert ist weg« nicht unterscheiden, und jede Korrektur allein an reCreateChanges() läuft eine Grenze weiter wieder auf. Das ist eine Entscheidung über die Darstellung im Change Trail und berührt beide Seiten des Protokolls — sie gehört in einen eigenen Durchgang, nicht in ein Aufräumpaket.</p>
+    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-30 in Zug 0 von Paket 6 beim Nachsehen der Aufrufer von filterUndefinedProps() aufgefallen und an der Fundstelle belegt; vorbestehend, unverändert seit df9f9b9. Der Nutzer hat den Punkt in der Drain-Runde ausdrücklich einem eigenen Lauf zugewiesen.</p>
+  </div>
+</article>
+<article class="row" data-sev="info" data-domain="code" data-cat="Lesbarkeit &amp; Clean Code" data-status="new">
+  <button class="row-head" aria-expanded="false">
+    <span class="c-sev"><span class="sev-badge sv-info">Info</span></span>
+    <span class="c-id">CLEAN-018</span>
+    <span class="c-dom"><span class="dom-badge">Code &amp; Laufzeit</span></span>
+    <span class="c-title">Ein Kommentar im Teardown erklärt sich aus dem Vorzustand</span>
+    <span class="c-meta"><span class="loc">packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts:326</span><span class="sep">·</span><span>Lesbarkeit &amp; Clean Code</span><span class="sep">·</span><span>Aufwand S</span><span class="sep">·</span><span class="st-badge st-new">neu</span></span>
+    <span class="chev" aria-hidden="true"></span>
+  </button>
+  <div class="row-body" hidden>
+    <p class="prose"><strong>Befund.</strong> Der Kommentarblock über den Abbauschleifen endet auf »…does not terminate, and never did«. Der Halbsatz hinter dem Komma sagt nichts über den geltenden Zustand, sondern über den vorherigen — und er trägt auch sachlich nicht durch: er stimmt innerhalb einer Menge, über die Mengengrenze hinweg wird die Nichtterminierung erst mit den nachziehenden Runden erreichbar.</p>
+    <p class="prose"><strong>Empfehlung.</strong> Den Satz nach »does not terminate« enden lassen. Damit fällt der Rückblick weg, und was stehen bleibt, stimmt auch über die Mengengrenze hinweg.</p>
+    <p class="evidence"><strong>Beleg.</strong> Im Remediation-Lauf vom 2026-08-30 vom Reviewer des Teardown-Pakets als kleiner Befund gemeldet und nicht behoben; an der Fundstelle belegt.</p>
   </div>
 </article>
   </div>
@@ -998,20 +740,20 @@ details.card[open] > summary{margin-bottom:1em}
     </div>
     <div>
       <h4>Nicht oder nur punktuell gelesen</h4>
-      <ul><li><strong>Für diesen Stand wurde kein Code neu gelesen: die Zahlen oben sind die Buchhaltung eines Remediation-Laufs vom 2026-08-27/28 auf dem Prüfumfang des Audits vom 2026-08-27. Die nächste gemessene Bewertung liefert der folgende Audit-Lauf.</strong></li><li>Die Spec-Dateien wurden nur dort gelesen, wo ein Befund sie betrifft — 29 644 der 39 915 Zeilen des Repositories sind Testcode.</li><li>packages/shadow-objects-e2e/src/ und tests/ nur an den Fundstellen der Altbefunde und für die Suche nach Risikomustern.</li><li>docs/api-reference.md (3 062 Zeilen) wurde nicht Zeile für Zeile gelesen, sondern gezielt an den Stellen, die Altbefunde nennen.</li><li>Die vorhandene ./audit.html blieb bis zum Merge geschlossen; sie ist in keinem Befund dieses Laufs eine Quelle.</li></ul>
+      <ul><li><strong>Für diesen Stand wurde kein Code neu gelesen: die Zahlen oben sind die Buchhaltung eines Remediation-Laufs vom 2026-08-29/30 auf dem Prüfumfang des Audits vom 2026-08-27 — der gesamte Bereich Code &amp; Laufzeit, vierzehn Pakete, vierzehn Commits, jedes Paket in einer Runde. Geschlossen wurde nur, wofür ein Reviewer-Urteil mit Fundstelle und ein Commit-Hash vorlagen. Die nächste gemessene Bewertung liefert der folgende Audit-Lauf.</strong></li><li>Die Spec-Dateien wurden nur dort gelesen, wo ein Befund sie betrifft — 29 644 der 39 915 Zeilen des Repositories sind Testcode.</li><li>packages/shadow-objects-e2e/src/ und tests/ nur an den Fundstellen der Altbefunde und für die Suche nach Risikomustern.</li><li>docs/api-reference.md (3 062 Zeilen) wurde nicht Zeile für Zeile gelesen, sondern gezielt an den Stellen, die Altbefunde nennen.</li><li>Die vorhandene ./audit.html blieb bis zum Merge geschlossen; sie ist in keinem Befund dieses Laufs eine Quelle.</li></ul>
     </div>
   </div>
   <h4 style="margin-top:1.8em">Wie der Score entsteht</h4>
   <p class="prose">Start bei 100, Abzug je Finding: kritisch −10, hoch −5, mittel −2, niedrig −0,5, Info 0; Untergrenze 0. Dieselbe Formel läuft dreimal — einmal über alle Findings und je einmal über die eines Bereichs. Die beiden Teilscores sind keine Summanden des Gesamtscores und stehen auf derselben Skala von 0 bis 100: ein Projekt mit sauberem Code und verrottetem Gerüst soll genau das zeigen, statt beides zu einem Mittelwert zu glätten.</p>
-  <p class="formula">Gesamt: 100 − (16 × 0,5) = <strong>92</strong> &nbsp;·&nbsp; Code &amp; Laufzeit: 100 − (4 × 0,5) = <strong>98</strong> &nbsp;·&nbsp; Projekt-Harness: 100 − (12 × 0,5) = <strong>94</strong></p>
+  <p class="formula">Gesamt: 100 − (12 × 0,5) = <strong>94</strong> &nbsp;·&nbsp; Code &amp; Laufzeit: 100 − (0 × 0,5) = <strong>100</strong> &nbsp;·&nbsp; Projekt-Harness: 100 − (12 × 0,5) = <strong>94</strong></p>
   <h4 style="margin-top:1.8em">Abgleich mit dem Vorlauf</h4>
   <p class="prose">Dieser Absatz beschreibt den Audit-Lauf vom 2026-08-27, aus dem der Prüfumfang stammt. Der Vorlauf vom 2026-08-26 führte 54 Findings. Gematcht wurde primär über Kategorie und überlappende Location, sekundär über Titelähnlichkeit; im Zweifel blieben zwei Findings stehen, statt sie zusammenzuziehen. Vor jeder Übernahme stand der Pflicht-Re-Check an der Fundstelle — 12 Befunde sind dabei entfallen: acht, weil der Code sie nicht mehr hergibt (Backlog.md ist gelöscht, WebKit läuft, der Konstruktor von ShaeEntElement ist auf sechs Zeilen geschrumpft, das Canvas-Element schirmt seinen connectedCallback ab, zwei Doku-Stellen sind neu geschrieben, ein doppelter Kommentar ist weg, eine Kommentarzeile hat ihren Platz gefunden), und vier kontextbedingt, weil das Verhalten inzwischen als beabsichtigt dokumentiert ist. 41 Befunde haben beide Prüfungen überstanden und stehen als <em>übernommen</em>; ein Befund des Vorlaufs ist diesem Lauf selbst wieder aufgefallen und steht mit höherem Grad als <em>unverändert</em>. Das Delta von ▼ −8,5 Punkten liegt unter der Schwelle, ab der eine formale Einordnung fällig wäre; es stammt aus tatsächlichen Befunden am Code, nicht aus einer anderen Prüftiefe.</p>
   <h4 style="margin-top:1.8em">Was der Remediation-Lauf gebucht hat</h4>
-  <p class="prose">Zwischen dem 2026-08-27 und dem 2026-08-28 hat ein Remediation-Lauf zwölf Pakete auf <code>main</code> committet und dabei elf Findings geschlossen — vier mittleren Grades, sieben niedrigen. Geschlossen wurde nur, wofür ein unabhängiger Reviewer die Behebung an der Fundstelle bestätigt hat und ein Commit-Hash vorliegt; beides steht im Remediation-Plan, den die Historie dieser Datei mitführt. Ein Finding blieb ausdrücklich stehen: die Bestätigung für DOM-getriebene Change Trails ist ein Zeitvertrag und wurde als Produktentscheidung zurückgestellt. Für diesen Stand wurde kein Code neu gelesen: die Zahlen oben sind die Buchhaltung eines Remediation-Laufs vom 2026-08-28 auf dem Prüfumfang des Audits vom 2026-08-27. Vierzehn Pakete, dreizehn Commits; geschlossen wurde nur, wofür ein Reviewer-Urteil mit Fundstelle und ein Commit-Hash vorlagen. Eine Ausnahme trägt ihren Beleg anders: die Vereinheitlichung der Sichtbarkeit im Kernel (Commit d38ce80) wurde von ihrem Runner ohne Implementierer- und Reviewer-Beleg abgelegt und stattdessen vom Orchestrator gegen den Diff geprüft. Die neuen Einträge sind Nebenbefunde der Pakete und kleine Reviewer-Befunde, jeder mit Fundstelle; keiner von ihnen wurde in diesem Lauf behoben. Die nächste gemessene Bewertung liefert der folgende Audit-Lauf.</p>
+  <p class="prose">Am 2026-08-29 und 2026-08-30 hat ein Remediation-Lauf vierzehn Pakete auf <code>main</code> committet und dabei alle 19 Findings des Bereichs Code &amp; Laufzeit geschlossen — vier niedrigen Grades, fünfzehn Info. Der Scope war der Bereich als ganzer, jede Severity, jede Kategorie; der Bereich Projekt-Harness war nicht darin und ist unverändert. Jedes Paket ging in genau einer Runde durch. Geschlossen wurde nur, wofür ein unabhängiger Reviewer die Behebung an der Fundstelle bestätigt hat und ein Commit-Hash vorliegt; beides steht im Remediation-Plan, den die Historie dieser Datei mitführt. Fünf Nebenbefunde fielen den Paketen bei der Arbeit auf: drei davon hat der Lauf in eigenen Paketen mit erledigt, einer war ein kleiner Reviewer-Befund ohne eigene Runde, und einer steht auf ausdrückliche Entscheidung des Nutzers offen — seine Behebung betrifft die Darstellung der Eigenschaften im Change Trail und verlangt einen eigenen Durchgang. Die beiden letzten stehen oben im Backlog. Für diesen Stand wurde kein Code neu gelesen.</p>
   <h4 style="margin-top:1.8em">Theme</h4>
   <p class="prose">Hell — übernommen aus dem Vorlauf, damit die Optik über Folgeläufe stabil bleibt; fest ausgeliefert, nicht an <code>prefers-color-scheme</code> gehängt.</p>
   <figure class="chart">
-<svg viewBox="0 0 640 200" role="img" aria-label="Verlauf der Health-Scores"><line x1="34" y1="166.0" x2="626" y2="166.0" class="ax-grid"/><text x="28" y="169.5" class="ax-lab" text-anchor="end">0</text><line x1="34" y1="92.0" x2="626" y2="92.0" class="ax-grid"/><text x="28" y="95.5" class="ax-lab" text-anchor="end">50</text><line x1="34" y1="18.0" x2="626" y2="18.0" class="ax-grid"/><text x="28" y="21.5" class="ax-lab" text-anchor="end">100</text><polyline points="34.0,69.8 66.9,89.8 99.8,134.2 132.7,108.3 165.6,46.1 198.4,56.5 231.3,57.2 264.2,40.9 297.1,69.8 330.0,53.5 362.9,49.1 395.8,92.0 428.7,73.5 461.6,48.3 494.4,45.4 527.3,38.0 560.2,50.6 593.1,35.8 626.0,29.8" class="line"/><circle cx="34.0" cy="69.8" r="2.4" class="dot"/><circle cx="66.9" cy="89.8" r="2.4" class="dot"/><circle cx="99.8" cy="134.2" r="2.4" class="dot"/><circle cx="132.7" cy="108.3" r="2.4" class="dot"/><circle cx="165.6" cy="46.1" r="2.4" class="dot"/><circle cx="198.4" cy="56.5" r="2.4" class="dot"/><circle cx="231.3" cy="57.2" r="2.4" class="dot"/><circle cx="264.2" cy="40.9" r="2.4" class="dot"/><circle cx="297.1" cy="69.8" r="2.4" class="dot"/><circle cx="330.0" cy="53.5" r="2.4" class="dot"/><circle cx="362.9" cy="49.1" r="2.4" class="dot"/><circle cx="395.8" cy="92.0" r="2.4" class="dot"/><circle cx="428.7" cy="73.5" r="2.4" class="dot"/><circle cx="461.6" cy="48.3" r="2.4" class="dot"/><circle cx="494.4" cy="45.4" r="2.4" class="dot"/><circle cx="527.3" cy="38.0" r="2.4" class="dot"/><circle cx="560.2" cy="50.6" r="2.4" class="dot"/><circle cx="593.1" cy="35.8" r="2.4" class="dot"/><circle cx="626.0" cy="29.8" r="4" class="dot dot-now"/><text x="626.0" y="18.8" class="dot-lab" text-anchor="end">92</text><text x="34" y="188" class="ax-lab" text-anchor="start">2026-05-14</text><text x="626" y="188" class="ax-lab" text-anchor="end">2026-08-28</text></svg>
+<svg viewBox="0 0 640 200" role="img" aria-label="Verlauf der Health-Scores"><line x1="34" y1="166.0" x2="626" y2="166.0" class="ax-grid"/><text x="28" y="169.5" class="ax-lab" text-anchor="end">0</text><line x1="34" y1="92.0" x2="626" y2="92.0" class="ax-grid"/><text x="28" y="95.5" class="ax-lab" text-anchor="end">50</text><line x1="34" y1="18.0" x2="626" y2="18.0" class="ax-grid"/><text x="28" y="21.5" class="ax-lab" text-anchor="end">100</text><polyline points="34.0,69.8 65.2,89.8 96.3,134.2 127.5,108.3 158.6,46.1 189.8,56.5 220.9,57.2 252.1,40.9 283.3,69.8 314.4,53.5 345.6,49.1 376.7,92.0 407.9,73.5 439.1,48.3 470.2,45.4 501.4,38.0 532.5,50.6 563.7,35.8 594.8,29.8 626.0,26.9" class="line"/><circle cx="34.0" cy="69.8" r="2.4" class="dot"/><circle cx="65.2" cy="89.8" r="2.4" class="dot"/><circle cx="96.3" cy="134.2" r="2.4" class="dot"/><circle cx="127.5" cy="108.3" r="2.4" class="dot"/><circle cx="158.6" cy="46.1" r="2.4" class="dot"/><circle cx="189.8" cy="56.5" r="2.4" class="dot"/><circle cx="220.9" cy="57.2" r="2.4" class="dot"/><circle cx="252.1" cy="40.9" r="2.4" class="dot"/><circle cx="283.3" cy="69.8" r="2.4" class="dot"/><circle cx="314.4" cy="53.5" r="2.4" class="dot"/><circle cx="345.6" cy="49.1" r="2.4" class="dot"/><circle cx="376.7" cy="92.0" r="2.4" class="dot"/><circle cx="407.9" cy="73.5" r="2.4" class="dot"/><circle cx="439.1" cy="48.3" r="2.4" class="dot"/><circle cx="470.2" cy="45.4" r="2.4" class="dot"/><circle cx="501.4" cy="38.0" r="2.4" class="dot"/><circle cx="532.5" cy="50.6" r="2.4" class="dot"/><circle cx="563.7" cy="35.8" r="2.4" class="dot"/><circle cx="594.8" cy="29.8" r="2.4" class="dot"/><circle cx="626.0" cy="26.9" r="4" class="dot dot-now"/><text x="626.0" y="15.9" class="dot-lab" text-anchor="end">94</text><text x="34" y="188" class="ax-lab" text-anchor="start">2026-05-14</text><text x="626" y="188" class="ax-lab" text-anchor="end">2026-08-30</text></svg>
 <figcaption>Verlauf der Health-Scores seit 2026-05-14. Nur der Gesamtscore; Teilscores haben keinen Vorwert. Punkte aus einem Remediation-Lauf tragen im Datensatz die Herkunft <code>remediation</code> — sie sind neu gerechnet, nicht neu gemessen.</figcaption>
 </figure>
 </details>
@@ -1038,35 +780,32 @@ details.card[open] > summary{margin-bottom:1em}
    "Web Components",
    "Web Worker"
   ],
-  "date": "2026-08-28",
+  "date": "2026-08-30",
   "previousDate": "2026-08-28",
   "theme": "light",
-  "score": 92.0,
-  "previousScore": 88,
-  "scoreDelta": 4.0,
+  "score": 94.0,
+  "previousScore": 92.0,
+  "scoreDelta": 2.0,
   "bySeverity": {
    "critical": 0,
    "high": 0,
    "medium": 0,
-   "low": 16,
-   "info": 31
+   "low": 12,
+   "info": 18
   },
   "byCategory": {
    "Testabdeckung & Teststrategie": 13,
-   "Lesbarkeit & Clean Code": 8,
    "Developer Experience": 7,
    "Typsicherheit": 6,
-   "Öffentliche API": 6,
-   "Konsistenz": 3,
    "Projektaufbau & Build": 2,
-   "Async & Concurrency": 1,
-   "Sicherheit": 1
+   "Konsistenz": 1,
+   "Lesbarkeit & Clean Code": 1
   },
-  "findingCount": 47,
+  "findingCount": 30,
   "resolvedCount": 19,
   "improvedCount": 0,
-  "newCount": 21,
-  "carriedOverCount": 26,
+  "newCount": 2,
+  "carriedOverCount": 28,
   "scoreHistory": [
    {
     "date": "2026-05-14",
@@ -1159,25 +898,27 @@ details.card[open] > summary{margin-bottom:1em}
     "date": "2026-08-28",
     "score": 92.0,
     "source": "remediation"
+   },
+   {
+    "date": "2026-08-30",
+    "score": 94.0,
+    "source": "remediation"
    }
   ],
   "domains": {
    "code": {
     "label": "Code & Laufzeit",
-    "score": 98.0,
+    "score": 100.0,
     "bySeverity": {
      "critical": 0,
      "high": 0,
      "medium": 0,
-     "low": 4,
-     "info": 15
+     "low": 0,
+     "info": 2
     },
     "byCategory": {
-     "Lesbarkeit & Clean Code": 8,
-     "Öffentliche API": 6,
-     "Konsistenz": 3,
-     "Async & Concurrency": 1,
-     "Sicherheit": 1
+     "Konsistenz": 1,
+     "Lesbarkeit & Clean Code": 1
     },
     "executiveSummary": "Der Kern trägt: Kernel, Entity und Creation Scope nehmen gescheiterte Aufbauten zurück, kapseln jeden Abbauschritt und begründen die Reihenfolge im Kommentar; Lint und Typecheck sind sauber, 93,1 % der Anweisungen sind geprüft. Kein Befund mittleren Grades steht mehr offen — die drei, die es waren, sind geschlossen: der ungeschützte Sammler der Entity-Kontextwerte, die Promise von syncWait(), die einen Zyklus zu früh geteilt wurde, und der Dekorator, der jeder Klasse ihren Namen nahm. Was bleibt, ist zu großen Teilen eine einzige Reihe: elf Konsistenz-Befunde, die fast alle dieselbe Frage stellen — führt der ComponentContext seine Mitglieder über die Instanz oder über die uuid. Daneben vier Punkte an der öffentlichen API, zwei davon in der Dokumentation, und ein letzter Async-Befund, dessen Behebung ein Zeitvertrag ist und keine Codeänderung."
    },
@@ -1255,45 +996,6 @@ details.card[open] > summary{margin-bottom:1em}
   ]
  },
  "findings": [
-  {
-   "id": "CLEAN-009",
-   "category": "Lesbarkeit & Clean Code",
-   "domain": "code",
-   "severity": "low",
-   "effort": "S",
-   "title": "Auskommentierter Code an drei Stellen",
-   "location": "packages/shadow-objects/src/in-the-dark/Entity.ts:297,330,350,368; packages/shadow-objects-e2e/playwright.config.ts:7",
-   "description": "In Entity stehen vier Emit-Aufrufe für Ereignisse, die es nicht gibt: onAddChild, onAddToParent, onRemoveChild und onRemoveFromParent. Sie lesen sich wie eine geplante Erweiterung, tragen aber keinen Hinweis darauf, ob sie kommt oder verworfen wurde. Dazu ein auskommentiertes console.debug im MessageRouter und sechs Zeilen Diagnose-Ausgabe in ShaePropElement. Auskommentierter Code ist die eine Form von Kommentar, die ein Leser nicht prüfen kann: er sagt nichts über den geltenden Zustand und veraltet stumm.",
-   "recommendation": "Streichen. Sollen die vier Entity-Ereignisse kommen, gehören sie als Satz in Backlog.md statt als toter Code in die Klasse; der git-Verlauf hält die Zeilen ohnehin.",
-   "status": "carried-over",
-   "evidence": "Beim Re-Check am 2026-08-27 an der genannten Stelle erneut nachgelesen und bestätigt."
-  },
-  {
-   "id": "CLEAN-010",
-   "category": "Lesbarkeit & Clean Code",
-   "domain": "code",
-   "severity": "low",
-   "status": "carried-over",
-   "title": "Ein auskommentierter Debug-Block steht als toter Code in shae-prop",
-   "location": "packages/shadow-objects/src/elements/ShaePropElement.ts:182-193",
-   "description": "Ein auskommentierter Block mit zwei console.log steht mitten in der Anmeldung des Elements. Er trägt nichts bei, überlebt aber jeden Umbau der Methode, weil ihn niemand mitliest — und beim nächsten Leser stellt sich die Frage, ob er wieder eingeschaltet werden soll oder vergessen wurde.",
-   "recommendation": "Streichen. Wer die Werte im Betrieb sehen will, hat den ConsoleLogger, der sich je Namensraum einschalten lässt.",
-   "effort": "S",
-   "evidence": "Beim Re-Check am 2026-08-27 an der genannten Stelle erneut nachgelesen und bestätigt."
-  },
-  {
-   "id": "SEC-003",
-   "category": "Sicherheit",
-   "domain": "code",
-   "severity": "low",
-   "status": "carried-over",
-   "title": "Die localhost-Erkennung des Loggers greift auf jeden Host, der so anfängt",
-   "location": "packages/shadow-objects/src/utils/ConsoleLogger.ts:6",
-   "description": "IS_LOCALHOST prüft location.host.startsWith('localhost'). Der Schalter entscheidet, ob der ConsoleLogger überhaupt spricht, und damit über jede debug-, info- und warn-Zeile des Frameworks: Change Trails samt Property-Werten, Entity-uuids, Shadow-Object-Instanzen, die Worker-Konfiguration. Ein Präfixvergleich sagt aber zu localhost.example.com und zu localhostile.com genauso ja wie zu localhost:5173 — ein Angreifer, der einen Namen unter seiner Kontrolle so anfangen lässt, bekommt bei einem Konsumenten dieses Frameworks die volle Diagnoseausgabe in der Konsole. Umgekehrt fehlen die Adressen, die tatsächlich gemeint sind: 127.0.0.1 und [::1] fallen durch. Der Schaden ist begrenzt — es geht um Konsolenausgabe, nicht um einen Datenabfluss —, und der Vergleich ist trotzdem an beiden Enden falsch.",
-   "recommendation": "Auf den Hostnamen prüfen statt auf den Host samt Port und exakt vergleichen: location.hostname gegen die Menge {'localhost', '127.0.0.1', '::1', '[::1]'}. Das schließt die Fremdnamen aus und nimmt die Loopback-Adressen auf, die heute fehlen.",
-   "effort": "S",
-   "evidence": "An ConsoleLogger.ts:6 gelesen (2026-08-27). Der Wert speist sharedConfig.enable (:157) und damit isEnabled, isDebug, isInfo und isWarn (:170-176, :277-292)."
-  },
   {
    "id": "DX-024",
    "category": "Developer Experience",
@@ -1438,19 +1140,6 @@ details.card[open] > summary{margin-bottom:1em}
    "evidence": "Beim Re-Check am 2026-08-27 an der genannten Stelle erneut nachgelesen und bestätigt."
   },
   {
-   "id": "API-005",
-   "category": "Öffentliche API",
-   "domain": "code",
-   "severity": "low",
-   "status": "carried-over",
-   "title": "Die API-Doku des Canvas-Pakets sagt eine Render-Automatik zu, die es nicht gibt",
-   "location": "packages/shae-offscreen-canvas/docs/01-shadow-objects-api.md:83",
-   "description": "Der Satz »Once created, the view is rendered automatically with one of the next frames« beschreibt ein Verhalten, das der Code nicht hat: ThreeMultiViewRenderer hört auf keinen Frame-Takt. Gezeichnet wird eine Ansicht ausschließlich durch das ThreeRenderView, das sie besitzt und renderView() für sie ruft. Eine von Hand über createView() erzeugte Ansicht zeichnet damit niemand — sie bleibt leer, und die Doku sagt dem Leser, er müsse nur warten.",
-   "recommendation": "Den Halbsatz durch die tatsächliche Bedingung ersetzen: eine Ansicht wird gezeichnet, solange ein ThreeRenderView sie hält und in seinem Frame renderView() für sie ruft. Wer createView() direkt benutzt, braucht den Hinweis, dass er das Zeichnen selbst auslöst.",
-   "effort": "S",
-   "evidence": "Beim Abgleich von Paket 7 eines Remediation-Laufs am 2026-08-27 an der Fundstelle gelesen und gegen ThreeMultiViewRenderer.js geprüft; bei git show 292714c: steht derselbe Satz mit »with the next frame«."
-  },
-  {
    "id": "TEST-017",
    "category": "Testabdeckung & Teststrategie",
    "domain": "harness",
@@ -1462,19 +1151,6 @@ details.card[open] > summary{margin-bottom:1em}
    "recommendation": "Den Fall als Implemented markieren und in seiner ID-Klammer die beiden Stellen nennen, die ihn tatsächlich abdecken. Wenn zwei Fälle denselben Weg prüfen, gehört das in den Plan, damit die nächste Lücken-Suche nicht dieselbe Runde dreht.",
    "effort": "S",
    "evidence": "Beim Abgleich von Paket 1 eines Remediation-Laufs am 2026-08-27 gegen den Testcode geprüft; beide Fundstellen gelesen."
-  },
-  {
-   "id": "API-001",
-   "category": "Öffentliche API",
-   "domain": "code",
-   "severity": "info",
-   "status": "carried-over",
-   "title": "getEntityGraph() verschweigt die Rückkante eines Rings",
-   "location": "packages/shadow-objects/src/in-the-dark/Kernel.ts:192-215",
-   "description": "Die Besuchsmenge sorgt dafür, dass der Abstieg über eine Kinderliste, die auf einen Vorfahren zurückzeigt, terminiert — der zweite Besuch liefert undefined und wird herausgefiltert. Der Graph, den der Aufrufer bekommt, ist danach ein Baum, und nichts an ihm sagt, dass ein Knoten weggelassen wurde. Die Methode ist ausdrücklich das Werkzeug, zu dem man greift, wenn ein Baum bereits kaputt ist; sie ist damit genau an der Stelle stumm, an der sie sprechen müsste.",
-   "recommendation": "Den ausgelassenen Knoten als eigenen Eintrag ausweisen — ein Flag am Knoten oder eine zweite Rückgabe, die die Rückkanten sammelt. Ohne sie sieht der Aufrufer einen intakten Baum und sucht den Fehler woanders.",
-   "effort": "S",
-   "evidence": "Bestand aus dem Audit vom 2026-08-19, an der Fundstelle nachgelesen; die Zeilen sind von 195-217 auf 196-218 gewandert. Beim Re-Check am 2026-08-27 an der genannten Stelle erneut nachgelesen und bestätigt."
   },
   {
    "id": "DX-009",
@@ -1594,84 +1270,6 @@ details.card[open] > summary{margin-bottom:1em}
    "evidence": "Nebenbefund aus dem Remediation-Lauf vom 2026-08-26, an der Fundstelle nachgesehen; vorbestehend, git show bfcc54b:… trägt denselben Cast. Beim Re-Check am 2026-08-27 an der genannten Stelle erneut nachgelesen und bestätigt."
   },
   {
-   "id": "CLEAN-012",
-   "category": "Lesbarkeit & Clean Code",
-   "domain": "code",
-   "severity": "info",
-   "effort": "S",
-   "title": "Eine Fehlermeldung an den Konsumenten steht im falschen Numerus",
-   "location": "packages/shadow-objects/src/view/ComponentContext.ts:356",
-   "description": "Der Wortlaut der Meldung von addToChildren() lautet »because the component do not exist!«. Sie ist keine interne Notiz, sondern das, was ein Konsument im Log oder im catch zu sehen bekommt, wenn er ein Kind an einen Eintrag hängt, den der Context nicht führt.",
-   "recommendation": "Den Satz auf »does not exist« bringen. Bei der Gelegenheit lohnt der Blick auf die Nachbarmeldungen derselben Datei, damit sie eine Form führen.",
-   "status": "new",
-   "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
-  },
-  {
-   "id": "CLEAN-013",
-   "category": "Lesbarkeit & Clean Code",
-   "domain": "code",
-   "severity": "info",
-   "effort": "S",
-   "title": "Ein Optional-Chain behauptet eine Lücke, die der Typ ausschließt",
-   "location": "packages/shadow-objects/src/view/ComponentContext.ts:328",
-   "description": "childEntry.changes?.setParent(undefined) fragt einen Slot ab, den das ViewInstance-Interface als nicht optional führt. Der Zweig ist damit tot, und er sagt jedem Leser das Gegenteil: dass changes fehlen kann und dass es hier jemand bedacht hat.",
-   "recommendation": "Den Optional-Chain streichen. Kann changes tatsächlich fehlen, gehört das ins Interface und nicht in einen stillen Guard an einer einzelnen Aufrufstelle.",
-   "status": "new",
-   "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
-  },
-  {
-   "id": "ASYNC-006",
-   "category": "Async & Concurrency",
-   "domain": "code",
-   "severity": "info",
-   "effort": "S",
-   "title": "Die Frist von waitForMessageOfType lässt NaN und negative Werte durch",
-   "location": "packages/shadow-objects/src/utils/waitForMessageOfType.ts:39",
-   "description": "Der Wächter prüft timeout !== 0 && timeout !== Infinity. Ein negativer Wert oder NaN kommt durch; NaN lässt setTimeout sofort feuern, und die Ablehnung trägt dann timeout: NaN als Grund. Kein Aufrufer im Repository reicht so etwas durch — die vier Fristen sind Konstanten oder Optionswerte —, erreichbar ist der Weg über die öffentliche Optionsstruktur trotzdem.",
-   "recommendation": "Auf einen positiven, endlichen Wert prüfen statt auf zwei Sonderfälle. Ein Wert, der das nicht ist, bekommt entweder die Vorgabe oder eine Ablehnung, die sagt was falsch war.",
-   "status": "new",
-   "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
-  },
-  {
-   "id": "API-007",
-   "category": "Öffentliche API",
-   "domain": "code",
-   "severity": "info",
-   "effort": "S",
-   "title": "Ein eingefrorenes Objekt hinter einem Slot, den nur der Typ schützt",
-   "location": "packages/shadow-objects/docs/api-reference.md:1567",
-   "description": "Die Doku beschreibt für timeouts und logger eine Lücke, statt sie zu schließen: das Objekt selbst ist eingefroren, der Eigenschaftsslot aber nur typseitig readonly. Ein env.timeouts = … aus JavaScript geht zur Laufzeit durch und umgeht die Zusage, die einen Satz darüber steht.",
-   "recommendation": "Den Slot zur Laufzeit schließen — ein Getter ohne Setter oder ein Feld hinter Object.defineProperty —, dann deckt sich die Doku mit der Oberfläche. Bleibt es, wie es ist, sagt die Zeile besser, dass die Zusage allein für TypeScript gilt.",
-   "status": "new",
-   "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
-  },
-  {
-   "id": "API-008",
-   "category": "Öffentliche API",
-   "domain": "code",
-   "severity": "info",
-   "effort": "S",
-   "title": "Eine CHANGELOG-Zusage über ein Symbol, das kein Konsument erreicht",
-   "location": "packages/shadow-objects/CHANGELOG.md:389",
-   "description": "Die Types-Zeile sagt Konsumenten eine Verengung des Rückgabetyps von generateUUID() zu. Das Symbol steht weder in index.ts noch in einem Pfad der exports-Map, und ViewComponent.uuid bleibt get uuid(): string. Am emittierten .d.ts ist die Aussage wahr; sie erreicht trotzdem niemanden, der das Paket einbindet.",
-   "recommendation": "Den Eintrag unter die internen Änderungen stellen oder den Halbsatz ergänzen, dass die Verengung an keiner exportierten Stelle sichtbar wird. Ein CHANGELOG, das Konsumenten etwas verspricht, das sie nicht sehen können, kostet beim nächsten Lesen Zeit.",
-   "status": "new",
-   "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
-  },
-  {
-   "id": "CONS-018",
-   "category": "Konsistenz",
-   "domain": "code",
-   "severity": "info",
-   "effort": "S",
-   "title": "Ein onDestroy aus dem Abbau heraus wird gebucht und nie gerufen",
-   "location": "packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts:769",
-   "description": "onDestroy(cb), gerufen aus einem Cleanup, den tearDown() in seiner zweiten Schleife (:319) fährt — dem Cleanup eines createEffect oder dem cleanup eines createResource —, bucht cb in #unsubscribePrimary. Die erste Schleife (:315) ist dort bereits durch, :347 leert die Menge: cb läuft nie und wird nirgends gemeldet. Leser, Links und Provider aus derselben Stelle werden weiter mitgenommen, wie der Kommentar auf :122-126 und der Doku-Absatz »The creation API past the teardown« es zusagen.",
-   "recommendation": "Entweder auch diesen Fall mitnehmen — eine zweite Runde über die Menge, solange sie wächst —, oder ihn melden, statt ihn zu verschlucken. Die Asymmetrie zu den übrigen Mitgliedern ist das eigentliche Problem.",
-   "status": "new",
-   "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
-  },
-  {
    "id": "TEST-018",
    "category": "Testabdeckung & Teststrategie",
    "domain": "harness",
@@ -1681,7 +1279,7 @@ details.card[open] > summary{margin-bottom:1em}
    "location": "packages/shadow-objects/src/view/ViewComponent.spec.ts:430,438",
    "description": "Die Fälle heißen »ignores a token change« und »ignores an order change«, prüfen aber beide, dass der Wert lokal ankommt: expect(c.token).toBe('other') und expect(c.order).toBe(5). Ignoriert wird allein die Meldung an den ComponentContext. Wer die Namen liest, um den Vertrag zu verstehen, liest ihn falsch herum.",
    "recommendation": "Die Namen auf das bringen, was sie prüfen — etwa »keeps a token change to itself«. Der Testname ist die Zusage, die ein Leser zuerst sieht.",
-   "status": "new",
+   "status": "carried-over",
    "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
   },
   {
@@ -1694,7 +1292,7 @@ details.card[open] > summary{margin-bottom:1em}
    "location": "packages/shadow-objects/docs/cheat-sheet.md:497",
    "description": "## FrameLoop beginnt ohne die ---, die jeder andere Abschnitt der Datei vor sich führt. Beim Überfliegen verschwimmt die Grenze zum Abschnitt darüber.",
    "recommendation": "Den Trenner ergänzen.",
-   "status": "new",
+   "status": "carried-over",
    "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
   },
   {
@@ -1707,72 +1305,7 @@ details.card[open] > summary{margin-bottom:1em}
    "location": "packages/shadow-objects/src/in-the-dark/Registry.spec.ts:31",
    "description": "Die Zeile übergibt einen String statt eines Arrays. Das ergibt hier zufällig Set {'x'}, weil der Property-Name aus einem Zeichen besteht; bei new Set('debug') stünden fünf Einzelbuchstaben in der Menge. Der Test prüft, was er meint, aber nur bis jemand den Namen verlängert. Die vier Nachbarn schreiben new Set([...]).",
    "recommendation": "new Set(['x']) schreiben, wie die Nachbarn.",
-   "status": "new",
-   "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
-  },
-  {
-   "id": "CLEAN-014",
-   "category": "Lesbarkeit & Clean Code",
-   "domain": "code",
-   "severity": "info",
-   "effort": "S",
-   "title": "Ein Feld der Registry wird geschrieben und von niemandem gelesen",
-   "location": "packages/shadow-objects/src/in-the-dark/Registry.ts:41,59",
-   "description": "Der Wert in #truthyPropRoutes führt neben routes ein Feld token, das appendRoute() schreibt (:59) und keine Lesestelle abfragt: die drei Leser (:57, :102, :113) greifen ausschließlich auf .routes zu, und das Feld ist privat, also von außen nicht erreichbar. Der Token steckt ohnehin im Schlüssel der Map (token@prop), aus dem toPropRoute ihn gewonnen hat.",
-   "recommendation": "Das Feld streichen. Wer den Token braucht, hat ihn im Schlüssel.",
-   "status": "new",
-   "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
-  },
-  {
-   "id": "API-009",
-   "category": "Öffentliche API",
-   "domain": "code",
-   "severity": "info",
-   "effort": "S",
-   "title": "Das Cheat-Sheet führt ein Attribut unter dem falschen Element",
-   "location": "packages/shadow-objects/docs/cheat-sheet.md:234-237",
-   "description": "Der Absatz »Truthy value ≠ presence« steht unter <shae-worker> und zählt no-trim mit auf. no-trim ist ein Attribut von <shae-prop> und dort auf :284 auch korrekt geführt. Wer die Tabelle darüber liest, sucht es bei <shae-worker> vergeblich.",
-   "recommendation": "no-trim aus dem Absatz unter <shae-worker> herausnehmen. Die Stelle bei <shae-prop> trägt die Aussage bereits.",
-   "status": "new",
-   "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
-  },
-  {
-   "id": "CONS-019",
-   "category": "Konsistenz",
-   "domain": "code",
-   "severity": "info",
-   "effort": "S",
-   "title": "Ein Doc-Kommentar sagt, niemand rufe die Methode, und zwei Stellen tun es",
-   "location": "packages/shadow-objects/src/view/ComponentContext.ts:517",
-   "description": "Der Doc-Kommentar von dispatchReRequestParentRoots() sagt »Nothing inside the library calls it«, während dispatchReRequestParentSiblings() (:573) sie aufruft und die Auslieferung der gesammelten Runden (:659) ebenfalls. Der Nachbarsatz an dispatchReRequestParentSiblings() (:568) stimmt dagegen — die hat wirklich keinen Aufrufer in der Bibliothek.",
-   "recommendation": "Den Satz auf die beiden Aufrufer bringen. Ein Kommentar, der Erreichbarkeit behauptet, wird beim nächsten Umbau als Erlaubnis gelesen.",
-   "status": "new",
-   "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
-  },
-  {
-   "id": "CLEAN-015",
-   "category": "Lesbarkeit & Clean Code",
-   "domain": "code",
-   "severity": "info",
-   "effort": "S",
-   "title": "propsEqual hat außerhalb der eigenen Spec keinen Aufrufer",
-   "location": "packages/shadow-objects/src/utils/props-utils.ts:36",
-   "description": "Die Funktion steht allein in props-utils.ts und in props-utils.spec.ts, wo zehn Fälle (:99-167) sie decken. Erreichbar ist sie von außen nicht — das Modul steht weder in index.ts noch in einem Pfad der exports-Map. Zehn geprüfte Fälle über Code, den nichts ruft.",
-   "recommendation": "Streichen samt Spec, oder den Aufrufer benennen, für den sie da ist. Solange beides fehlt, wächst sie bei jedem Umbau mit, ohne etwas zu tragen.",
-   "status": "new",
-   "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
-  },
-  {
-   "id": "CONS-020",
-   "category": "Konsistenz",
-   "domain": "code",
-   "severity": "info",
-   "effort": "S",
-   "title": "filterUndefinedProps meldet »nichts« in zwei Formen",
-   "location": "packages/shadow-objects/src/utils/props-utils.ts:4",
-   "description": "Die Funktion liefert undefined für eine fehlende oder leere Liste und ein leeres Array für eine Liste, aus der der Filter alles herausnimmt. Beide Formen stehen im Rückgabetyp, und applyPropsChanges reicht die zweite an ComponentState.properties durch. Folgenlos, solange niemand sie auseinanderhält: if (cMem.properties) in ComponentContext.reCreateChanges() (:820) hält ein leeres Array für gesetzt und läuft null Runden, und die eine Stelle, an der sie auseinanderfielen — propsEqual (:41) —, ruft niemand.",
-   "recommendation": "Auf eine Form festlegen und den Rückgabetyp entsprechend verengen. Zwei Schreibweisen für dieselbe Aussage sind eine Falle, die auf einen Leser wartet.",
-   "status": "new",
+   "status": "carried-over",
    "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
   },
   {
@@ -1785,20 +1318,7 @@ details.card[open] > summary{margin-bottom:1em}
    "location": "packages/shadow-objects/docs/api-reference.md:1822",
    "description": "Die Zeile ist 118 Zeichen lang, während der Rest der Datei bei etwa 100 umbricht. In einem Diff nebeneinander gestellt fällt sie aus der Spalte.",
    "recommendation": "Auf die Breite der Nachbarschaft umbrechen.",
-   "status": "new",
-   "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
-  },
-  {
-   "id": "API-010",
-   "category": "Öffentliche API",
-   "domain": "code",
-   "severity": "info",
-   "effort": "S",
-   "title": "»tick« steht im selben Absatz für zwei verschiedene Dinge",
-   "location": "packages/shadow-objects/docs/api-reference.md, Abschnitt sync()",
-   "description": "Der Absatz benutzt das Wort zweimal in zwei Bedeutungen — einmal für den Takt des Frame-Loops, einmal für den Durchlauf einer Sync-Runde. Die Ordnungsaussage daneben ist präzise; das Wort trägt sie nicht mit.",
-   "recommendation": "Für eines der beiden ein anderes Wort nehmen, und zwar dasselbe, das der übrige Text dafür schon führt.",
-   "status": "new",
+   "status": "carried-over",
    "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
   },
   {
@@ -1811,7 +1331,7 @@ details.card[open] > summary{margin-bottom:1em}
    "location": "packages/shadow-objects/src/utils/waitForMessageOfType.ts",
    "description": "Das Feld nennt die Nachricht, die ausgeblieben ist, und kann nur einen von vier Werten tragen. Deklariert ist string, weil der Wert aus dem type: string-Parameter von waitForMessageOfType() stammt. Wer den Fehler im catch auswertet, bekommt vom Typ keine Hilfe dabei, welche Fälle es zu behandeln gibt.",
    "recommendation": "Die Union führen und die Signatur von waitForMessageOfType() mit umstellen. Beides gehört in einen Zug, sonst wandert der breite Typ nur eine Stelle weiter.",
-   "status": "new",
+   "status": "carried-over",
    "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
   },
   {
@@ -1824,33 +1344,7 @@ details.card[open] > summary{margin-bottom:1em}
    "location": "packages/shadow-objects/src/utils/generateUUID.ts",
    "description": "Der Rückgabetyp trägt die Template-Literal-Form, weil TypeScript sie aus der Implementierung ableitet. Weder eine Typ-Assertion noch ein Contract-Check hält dist/src/utils/generateUUID.d.ts darauf fest. Eine spätere Annotation oder ein Umbau der Implementierung nimmt die Zusage zurück, ohne dass ein Lauf rot wird.",
    "recommendation": "Den Rückgabetyp ausschreiben, statt ihn ableiten zu lassen. Dann steht die Zusage da, wo sie gelesen wird, und ein Umbau muss sie ausdrücklich aufgeben.",
-   "status": "new",
-   "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
-  },
-  {
-   "id": "CLEAN-016",
-   "category": "Lesbarkeit & Clean Code",
-   "domain": "code",
-   "severity": "info",
-   "effort": "S",
-   "title": "Zwei Kommentare am Auflösungsvorrat der Registry widersprechen einander",
-   "location": "packages/shadow-objects/src/in-the-dark/Registry.ts:56,117",
-   "description": ":117 sagt »Caller order costs at most a second entry«, was ab drei routenden Properties nicht mehr stimmt. :56 nennt den Schlüsselraum »routes times the permutations«, wo es geordnete Teilmengen sind — ∑ C(n,k)·k!, für n=3 also 16 statt 6. Die beiden widersprechen einander; das Verhalten berühren sie nicht.",
-   "recommendation": "Eine der beiden Beschreibungen zur richtigen machen und die andere darauf ziehen. Ein Kommentar über Wachstum, der zu klein rechnet, lädt zum nächsten Cache ohne Obergrenze ein.",
-   "status": "new",
-   "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
-  },
-  {
-   "id": "CLEAN-017",
-   "category": "Lesbarkeit & Clean Code",
-   "domain": "code",
-   "severity": "info",
-   "effort": "S",
-   "title": "Ein Kommentar in props-utils erklärt den Vorzustand statt der Regel",
-   "location": "packages/shadow-objects/src/utils/props-utils.ts:27-28",
-   "description": "Der Kommentar streift die Grenze zum Rückblick: er erklärt sich aus dem, was vorher dort stand, statt aus dem, was jetzt gilt. Wer den Vorzustand nie gesehen hat, liest einen halben Satz.",
-   "recommendation": "Die Regel ausschreiben, die heute gilt. Die Vorgeschichte trägt die Commit-Historie.",
-   "status": "new",
+   "status": "carried-over",
    "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
   },
   {
@@ -1863,8 +1357,34 @@ details.card[open] > summary{margin-bottom:1em}
    "location": "packages/shadow-objects/src/utils/props-utils.spec.ts",
    "description": "Der Fall heißt »reads a bare key the same way with and without curProps« und prüft dabei [] gegen undefined. Er ist damit enger als sein Name: die Gleichheit, die er zusagt, deckt er nur für diesen einen Wertvergleich ab.",
    "recommendation": "Den Namen auf den geprüften Vergleich verengen oder den Fall auf die Zusage erweitern.",
-   "status": "new",
+   "status": "carried-over",
    "evidence": "Im Remediation-Lauf vom 2026-08-28 an der Fundstelle aufgefallen und dort belegt; der Code wurde für diesen Stand nicht neu geprüft."
+  },
+  {
+   "id": "CONS-021",
+   "category": "Konsistenz",
+   "domain": "code",
+   "severity": "info",
+   "effort": "M",
+   "title": "reCreateChanges() verliert eine Eigenschaft, die nur ihren Schlüssel nennt",
+   "location": "packages/shadow-objects/src/view/ComponentContext.ts:824; src/view/ComponentChanges.ts:357",
+   "description": "ComponentPropertiesType führt zwei Formen, und types.ts:23-31 hält sie ausdrücklich auseinander: [name, value] heißt »Wert ist da«, das einträgrige [name] heißt »gesetzt, ohne Wert«. ComponentMemory bewahrt die einträgrige Form treu. reCreateChanges() destrukturiert dagegen const [key, value] und reicht einen solchen Eintrag als changeProperty(key, undefined, …) weiter — aus »gesetzt, ohne Wert« wird damit »Wert ist weg«. ComponentChanges führt seine Eigenschaften als Map<string, unknown> und nimmt beim Bauen des Create-Eintrags jeden undefined-Wert wieder heraus: der Schlüssel fällt ganz weg. Eine so gesetzte Eigenschaft überlebt den Neuaufbau eines Context also nicht.",
+   "recommendation": "Zuerst die dritte Form darstellbar machen. Solange ComponentChanges seine Eigenschaften als Map<string, unknown> führt, kann sie »gesetzt, ohne Wert« von »Wert ist weg« nicht unterscheiden, und jede Korrektur allein an reCreateChanges() läuft eine Grenze weiter wieder auf. Das ist eine Entscheidung über die Darstellung im Change Trail und berührt beide Seiten des Protokolls — sie gehört in einen eigenen Durchgang, nicht in ein Aufräumpaket.",
+   "status": "new",
+   "evidence": "Im Remediation-Lauf vom 2026-08-30 in Zug 0 von Paket 6 beim Nachsehen der Aufrufer von filterUndefinedProps() aufgefallen und an der Fundstelle belegt; vorbestehend, unverändert seit df9f9b9. Der Nutzer hat den Punkt in der Drain-Runde ausdrücklich einem eigenen Lauf zugewiesen."
+  },
+  {
+   "id": "CLEAN-018",
+   "category": "Lesbarkeit & Clean Code",
+   "domain": "code",
+   "severity": "info",
+   "effort": "S",
+   "title": "Ein Kommentar im Teardown erklärt sich aus dem Vorzustand",
+   "location": "packages/shadow-objects/src/in-the-dark/ShadowObjectCreationScope.ts:326",
+   "description": "Der Kommentarblock über den Abbauschleifen endet auf »…does not terminate, and never did«. Der Halbsatz hinter dem Komma sagt nichts über den geltenden Zustand, sondern über den vorherigen — und er trägt auch sachlich nicht durch: er stimmt innerhalb einer Menge, über die Mengengrenze hinweg wird die Nichtterminierung erst mit den nachziehenden Runden erreichbar.",
+   "recommendation": "Den Satz nach »does not terminate« enden lassen. Damit fällt der Rückblick weg, und was stehen bleibt, stimmt auch über die Mengengrenze hinweg.",
+   "status": "new",
+   "evidence": "Im Remediation-Lauf vom 2026-08-30 vom Reviewer des Teardown-Pakets als kleiner Befund gemeldet und nicht behoben; an der Fundstelle belegt."
   }
  ],
  "acknowledged": [
@@ -1894,7 +1414,7 @@ details.card[open] > summary{margin-bottom:1em}
    "Ausgeführt: pnpm lint:ci (219 Dateien, 0 Diagnosen), pnpm typecheck (3 Tasks grün), pnpm test:ci (alle Suiten grün), pnpm outdated -r, und der zusammengeführte Coverage-Bericht pro Datei."
   ],
   "notRead": [
-   "Für diesen Stand wurde kein Code neu gelesen: die Zahlen oben sind die Buchhaltung eines Remediation-Laufs vom 2026-08-28 auf dem Prüfumfang des Audits vom 2026-08-27. Vierzehn Pakete, dreizehn Commits; geschlossen wurde nur, wofür ein Reviewer-Urteil mit Fundstelle und ein Commit-Hash vorlagen. Eine Ausnahme trägt ihren Beleg anders: die Vereinheitlichung der Sichtbarkeit im Kernel (Commit d38ce80) wurde von ihrem Runner ohne Implementierer- und Reviewer-Beleg abgelegt und stattdessen vom Orchestrator gegen den Diff geprüft. Die neuen Einträge sind Nebenbefunde der Pakete und kleine Reviewer-Befunde, jeder mit Fundstelle; keiner von ihnen wurde in diesem Lauf behoben. Die nächste gemessene Bewertung liefert der folgende Audit-Lauf.",
+   "Für diesen Stand wurde kein Code neu gelesen: die Zahlen oben sind die Buchhaltung eines Remediation-Laufs vom 2026-08-29/30 auf dem Prüfumfang des Audits vom 2026-08-27. Der Lauf nahm sich den gesamten Bereich »Code & Laufzeit« vor — alle 19 Findings, jede Severity — und schloss sie in vierzehn Paketen und vierzehn Commits, jedes Paket in genau einer Runde. Geschlossen wurde nur, wofür ein Reviewer-Urteil mit Fundstelle und ein Commit-Hash vorlagen. Die beiden neuen Einträge sind ein Nebenbefund und ein kleiner Reviewer-Befund, beide mit Fundstelle und beide in diesem Lauf nicht behoben: der erste auf ausdrückliche Entscheidung des Nutzers, weil seine Behebung die Darstellung der Eigenschaften im Change Trail betrifft und einen eigenen Durchgang verlangt. Der Bereich »Projekt-Harness« war in diesem Lauf nicht im Scope und ist unverändert. Die nächste gemessene Bewertung liefert der folgende Audit-Lauf.",
    "Die Spec-Dateien wurden nur dort gelesen, wo ein Befund sie betrifft — 29 644 der 39 915 Zeilen des Repositories sind Testcode.",
    "packages/shadow-objects-e2e/src/ und tests/ nur an den Fundstellen der Altbefunde und für die Suche nach Risikomustern.",
    "docs/api-reference.md (3 062 Zeilen) wurde nicht Zeile für Zeile gelesen, sondern gezielt an den Stellen, die Altbefunde nennen.",

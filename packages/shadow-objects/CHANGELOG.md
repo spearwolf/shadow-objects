@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 > **Next release: minor.** The package is below `1.0.0`, so the accumulated breaking
-> changes below bump the minor position — `0.33.0` → `0.34.0`. Fifty-eight changes reach existing
+> changes below bump the minor position — `0.33.0` → `0.34.0`. Sixty changes reach existing
 > consumers: both runtime dependencies take a major step and carry behaviour changes of their
 > own; the emitted declarations carry `| undefined` where a value can be missing, so a
 > build with `strictNullChecks` sees new errors; `RemoteWorkerEnv` rejects with
@@ -204,7 +204,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > `undefined`; and `RemoteWorkerEnv.timeouts`, `RemoteWorkerEnv.logger` and `ShadowEnv.logger` are
 > getters without setters, so an assignment to one of them from JavaScript that bypasses the type
 > layer throws a `TypeError` in strict mode, and the three names are absent from
-> `Object.keys(env)`, from a `{...env}` spread and from `JSON.stringify(env)`.
+> `Object.keys(env)`, from a `{...env}` spread and from `JSON.stringify(env)`;
+> and `Kernel.logger` is a getter without a setter for the same reason, as is the `logger` slot
+> of `<shae-ent>`, `<shae-prop>` and `<shae-worker>` — public on the last of the three,
+> `protected` on the other two, where a subclass that declares a `logger` field of its own now
+> shadows the getter or throws, depending on how its class fields are compiled, and wants
+> another name for it.
 > Everything else in this section is additive or a bugfix.
 
 ### ⚠️ Breaking Changes
