@@ -24,6 +24,12 @@ export class ThreeRenderView {
 
     const renderView = createSignal();
 
+    // The renderer that made the view `renderView` holds. A view belongs to one renderer: made by
+    // it, drawn by it, handed back to it. The renderer in reach can be replaced by another without
+    // falling to `null` in between -- a nearer provider of `ThreeMultiViewRendererContext` appearing
+    // while an outer one still stands -- and a held view says nothing about which one is under it.
+    let viewOwner;
+
     createEffect(() => {
       const canvasSize = getCanvasSize();
       if (canvasSize == null) return;
@@ -34,6 +40,7 @@ export class ThreeRenderView {
 
       if (multiViewRenderer == null) {
         if (view) {
+          viewOwner = undefined;
           renderView.set(undefined);
         }
         return;
@@ -41,8 +48,13 @@ export class ThreeRenderView {
 
       const [width, height] = canvasSize;
 
-      if (view == null) {
+      if (view == null || viewOwner !== multiViewRenderer) {
         view = multiViewRenderer.createView(width, height);
+        // The owner is set before the view is published, not after: `set()` runs the effect below
+        // synchronously and that one reads this variable, and this effect re-enters itself on the
+        // same `set()`. With the assignment the other way round it finds the renderer still foreign,
+        // makes another view, and keeps doing so until the effect depth guard stops it.
+        viewOwner = multiViewRenderer;
         renderView.set(view);
       } else {
         view.width = width;
@@ -50,20 +62,26 @@ export class ThreeRenderView {
       }
     });
 
-    // The cleanup below is the only place a view is handed back. It runs when the
-    // view signal changes and when the creation scope destroys the effects, and it
-    // carries both the view and the renderer in its closure, so it needs no
-    // context of its own. Nothing writes the view signal on teardown: an
-    // `undefined` from there would run the effect above once more while the
-    // renderer and size contexts are still standing, and it would take a view that
-    // is destroyed in the same breath.
+    // The cleanup below is the only place a view is handed back. It runs when the view signal
+    // changes and when the creation scope destroys the effects, and it carries both the view and
+    // the renderer that made it in its closure, so it needs no context of its own. Nothing writes
+    // the view signal on teardown: an `undefined` from there would run the effect above once more
+    // while the renderer and size contexts are still standing, and it would take a view that is
+    // destroyed in the same breath.
+    //
+    // The renderer comes from `viewOwner`, so this effect depends on the view signal and on nothing
+    // else. A second dependency would be read at a moment of its own: the effect above writes the
+    // view signal while a renderer change is still being handed out, so an effect reading both runs
+    // twice for one change, and the later run tears down the pairing the earlier one registered.
+    // Such a stray call does not go nowhere -- `destroyView()` deletes by view id and every renderer
+    // numbers its views from one, so it takes the namesake view of the renderer it was aimed at.
     createEffect(() => {
       const view = renderView.get();
-      const multiViewRenderer = getMultiViewRenderer();
+      const owner = viewOwner;
 
-      if (view && multiViewRenderer) {
+      if (view && owner) {
         return () => {
-          multiViewRenderer.destroyView(view);
+          owner.destroyView(view);
         };
       }
     });

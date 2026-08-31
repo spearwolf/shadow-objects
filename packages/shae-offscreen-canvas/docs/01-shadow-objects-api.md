@@ -144,4 +144,4 @@ The shadow object listens to the `onFrame` event of its entity at `Priority.Low`
 
 A render that fails is reported through the `ConsoleLogger` under the name `ThreeRenderView`, and costs no more than its own frame — the next frame renders again. A failure that repeats unchanged for the same view is reported once, not once per frame; a frame that comes back ends the report, and the next failure gets one of its own.
 
-The view goes back to the renderer through `destroyView()` exactly once — when the shadow object is torn down, and when the renderer leaves the context.
+The view goes back to the renderer through `destroyView()` exactly once — when the shadow object is torn down, when the renderer leaves the context, and when another renderer takes its place. On a takeover, the new view comes from the renderer that took over, and the old one goes back to the renderer that made it.

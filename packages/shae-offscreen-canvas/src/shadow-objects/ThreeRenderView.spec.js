@@ -51,6 +51,20 @@ class Host {
   }
 }
 
+/**
+ * A provider of `ThreeMultiViewRendererContext` and nothing else. On an entity between the host
+ * and the render view it makes the one situation the render view cannot otherwise be put in: the
+ * renderer in reach is replaced by another without falling to `undefined` in between, because a
+ * nearer provider takes the name over from the one above it.
+ */
+class RendererProvider {
+  static displayName = 'RendererProvider';
+
+  constructor({provideContext}) {
+    this.multiViewRenderer$ = provideContext(ThreeMultiViewRendererContext);
+  }
+}
+
 /** A `ThreeMultiViewRenderer` double: hands out views with sequential ids and records every call. */
 const makeMockRenderer = () => {
   let nextViewId = 1;
@@ -79,6 +93,7 @@ const makeEnv = () => {
   env.kernel.logger.enable = false;
   env.registry.define('Host', Host);
   env.registry.define('ThreeRenderView', ThreeRenderView);
+  env.registry.define('RendererProvider', RendererProvider);
   env.registry.define('Nothing', class Nothing {});
   return env;
 };
@@ -239,6 +254,50 @@ describe('ThreeRenderView', () => {
     expect(renderer.createView).toHaveBeenCalledTimes(1);
     expect(renderer.destroyView).toHaveBeenCalledTimes(1);
     expect(child.useContext(ThreeRenderViewContext)()).toBeUndefined();
+  });
+
+  it('takes a view of the renderer that takes over and gives the old one back to its maker', async () => {
+    env = makeEnv();
+    const hostUuid = crypto.randomUUID();
+    const providerUuid = crypto.randomUUID();
+    const childUuid = crypto.randomUUID();
+
+    env.kernel.createEntity(hostUuid, 'Host');
+    env.kernel.createEntity(providerUuid, 'RendererProvider', hostUuid);
+    env.kernel.createEntity(childUuid, 'ThreeRenderView', providerUuid);
+
+    const [host] = env.kernel.findShadowObjects(hostUuid);
+    const [provider] = env.kernel.findShadowObjects(providerUuid);
+    const child = env.kernel.getEntity(childUuid);
+
+    const outer = makeMockRenderer();
+    const nearer = makeMockRenderer();
+
+    host.multiViewRenderer$.set(outer);
+    host.imageBitmapRenderer$.set(makeMockImageBitmapRenderer());
+    host.canvasSize$.set([320, 240, 1]);
+    await settle();
+
+    const firstView = child.useContext(ThreeRenderViewContext)();
+    expect(outer.createView, 'the outer provider is the one in reach to begin with').toHaveBeenCalledTimes(1);
+
+    // The nearer provider takes the name over while the outer one still holds it: what the render
+    // view reads goes from one renderer to the other in one step, with no `undefined` in between.
+    provider.multiViewRenderer$.set(nearer);
+    await settle();
+
+    const secondView = child.useContext(ThreeRenderViewContext)();
+
+    expect(nearer.createView, 'the renderer that takes over makes the view').toHaveBeenCalledTimes(1);
+    expect(secondView).toBe(nearer.createView.mock.results[0].value);
+    expect(outer.destroyView, 'the view goes back to the renderer that made it').toHaveBeenCalledWith(firstView);
+    expect(nearer.destroyView, 'and not to the one that took over').not.toHaveBeenCalled();
+
+    emit(child, OnFrame, {});
+    await settle();
+
+    expect(nearer.renderView, 'the frames go to the new renderer, with a view it owns').toHaveBeenCalledWith(secondView);
+    expect(outer.renderView, 'and the renderer that left gets none').not.toHaveBeenCalled();
   });
 
   describe('rendering a frame', () => {
