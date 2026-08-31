@@ -459,6 +459,32 @@ describe('ComponentContext', () => {
       expect(ctx.getChildren(parent)).toEqual([]);
       expect(ctx.isRootComponent(child)).toBe(false);
     });
+
+    it('promotes nobody when the parent it is given is not the one holding the component', () => {
+      ctx = makeContext();
+      const parent = new ViewComponent('p', {context: ctx});
+      const stranger = new ViewComponent('s', {context: ctx});
+      const child = new ViewComponent('c', {context: ctx, parent});
+
+      ctx.removeFromParent(child, stranger);
+
+      expect(ctx.isRootComponent(child), 'a detachment that did not happen promotes nobody').toBe(false);
+      expect(ctx.isChildOf(child, parent), 'and the child stays in the list that holds it').toBe(true);
+    });
+  });
+
+  describe('moveToRoot', () => {
+    it('takes a component out of the list it stands in before making it a root', () => {
+      ctx = makeContext();
+      const parent = new ViewComponent('p', {context: ctx});
+      const child = new ViewComponent('c', {context: ctx, parent});
+
+      ctx.moveToRoot(child);
+
+      expect(ctx.isRootComponent(child), 'the component is a root').toBe(true);
+      expect(ctx.isChildOf(child, parent), 'and it stands in no children list any more').toBe(false);
+      expect(ctx.getChildren(parent), 'the parent has lost it').toEqual([]);
+    });
   });
 
   describe('properties', () => {

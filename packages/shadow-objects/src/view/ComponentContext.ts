@@ -390,19 +390,29 @@ export class ComponentContext {
     const childEntry = this.#entryOf(component);
     if (childEntry === undefined) return;
 
+    // the promotion follows the detachment: a parent that does not hold this uuid gives nothing
+    // up, and a component appended to the roots regardless would stand under the roots and in
+    // the children list of the parent that really holds it at the same time
     if (parentEntry.children.delete(component.uuid)) {
       childEntry.changes.setParent(undefined);
+      this.#appendToOrdered(childEntry.component, this.#rootComponents);
+      this.#viewInstances = undefined;
     }
-    this.#appendToOrdered(childEntry.component, this.#rootComponents);
-    this.#viewInstances = undefined;
   }
 
   moveToRoot(component: ViewComponent) {
     const childEntry = this.#entryOf(component);
-    if (childEntry !== undefined) {
-      childEntry.changes.setParent(undefined);
-      this.#appendToOrdered(childEntry.component, this.#rootComponents);
-    }
+    if (childEntry === undefined) return;
+
+    // the parent link names the list this uuid stands in, the way `changeOrder()` and
+    // `#deleteComponent()` read it; leaving it there would put the component under the roots
+    // and under a parent at once. The link itself is left alone -- clearing it is the business
+    // of `ViewComponent.removeFromParent()`, which is where the two are written together
+    const parentEntry = component.parent ? this.#entryOf(component.parent) : undefined;
+    parentEntry?.children.delete(component.uuid);
+
+    childEntry.changes.setParent(undefined);
+    this.#appendToOrdered(childEntry.component, this.#rootComponents);
     this.#viewInstances = undefined;
   }
 
