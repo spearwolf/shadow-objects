@@ -299,6 +299,23 @@ describe('ComponentContext', () => {
       expect(nulled.order).toBe(0);
       expect(childTokens(parent)).toEqual(['minus', 'nulled', 'plus']);
     });
+
+    it('inserts by order when the last uuid of the list has no component behind it any more', () => {
+      ctx = makeContext();
+      const parent = new ViewComponent('p', {context: ctx});
+      new ViewComponent('a', {context: ctx, parent, order: 10});
+
+      // A uuid with no entry behind it, at the end of the list: `addToChildren()` writes the uuid into
+      // the children list without the child's own parent link following along, so the removal of its
+      // entry finds no list to take the uuid out of and leaves this one naming it.
+      const stray = new ViewComponent('stray', {context: ctx, order: 99});
+      ctx.addToChildren(parent, stray);
+      ctx.removeSubTree(stray.uuid);
+
+      new ViewComponent('front', {context: ctx, parent, order: 1});
+
+      expect(childTokens(parent), 'a uuid that answers nothing decides no place').toEqual(['front', 'a']);
+    });
   });
 
   describe('ordered insertion (root components)', () => {

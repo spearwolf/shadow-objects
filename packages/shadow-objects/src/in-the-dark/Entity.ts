@@ -360,7 +360,8 @@ export class Entity {
   removeChild(child: Entity) {
     // The identity decides here, not the uuid: `indexOf` answers -1 for an entity this list
     // does not hold, and a `splice(-1, 1)` on that answer would cut the last child out
-    // instead of none. `ComponentContext.removeFromParent()` reads its index the same way.
+    // instead of none. The ordered uuid lists of `ComponentContext` carry the same guard where
+    // they cut a uuid out.
     const idx = this.#children.indexOf(child);
     if (idx !== -1) {
       this.#childrenUuids.delete(child.uuid);
