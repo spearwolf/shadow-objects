@@ -320,6 +320,24 @@ describe('Entity', () => {
     });
   });
 
+  describe('properties', () => {
+    it('sets a property that an entry names without a value', () => {
+      const kernel = makeKernel();
+      const uuid = generateUUID();
+
+      kernel.createEntity(uuid, 'entity');
+      const entity = kernel.getEntity(uuid);
+
+      entity.setProperties([['bare']]);
+
+      expect(entity.propKeys(), 'the key is there').toContain('bare');
+      expect(entity.getProperty('bare'), 'and the value is not').toBeUndefined();
+      expect(entity.propKeys(), 'a key nothing named is not').not.toContain('never');
+
+      kernel.destroy();
+    });
+  });
+
   describe('truthy property cache', () => {
     it('reports a property that setProperty() made truthy', () => {
       const kernel = makeKernel();

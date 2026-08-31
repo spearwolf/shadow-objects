@@ -24,9 +24,11 @@ export interface IComponentEvent {
  * value; an entry that names only the key counts as set, without carrying a value — the
  * Entity behind it reads the property as `undefined`.
  *
- * Nothing in this package writes the one-element form: it is a tolerance on the way in, for a
- * Change Trail a caller assembles itself. `Kernel.createEntity()` and `Kernel.changeProperties()`
- * are the two entrances that read it.
+ * The one-element form is written by `ViewComponent.setPropertyWithoutValue()`, which goes through
+ * `ComponentContext` into the bookkeeping of `ComponentChanges`; `setProperty(name, undefined)`
+ * stands beside it and is a removal. It also arrives from outside, in a Change Trail a caller
+ * assembles itself — `Kernel.createEntity()` and `Kernel.changeProperties()` are the two entrances
+ * that read it.
  */
 export type ComponentPropertiesType = ([string] | [string, unknown])[];
 

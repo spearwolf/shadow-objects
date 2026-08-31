@@ -380,6 +380,7 @@ const vc = new ViewComponent('my-token', { context: ctx, order: 0 });
 vc.setProperty('score', 1000);            // returns true when the value changed
 vc.setProperty('pos', newPos, (a, b) => a.equals(b)); // custom equality
 vc.setProperty('score', undefined);       // same as removeProperty('score')
+vc.setPropertyWithoutValue('score');      // sets the key and no value — not a removal
 vc.removeProperty('score');
 vc.dispatchShadowObjectsEvent('jump', { force: 5.0 });
 
@@ -396,7 +397,7 @@ vc.context = ctx;          // revives the component under the same uuid
 | After `destroy()` | Behaviour |
 |---|---|
 | `token`, `order` | Assignment updates the local value, nothing is sent |
-| `setProperty`, `removeProperty`, `dispatchShadowObjectsEvent`, `removeFromParent` | Ignored |
+| `setProperty`, `setPropertyWithoutValue`, `removeProperty`, `dispatchShadowObjectsEvent`, `removeFromParent` | Ignored |
 | `destroy` | Nothing left to detach, it announces `ViewComponent.Destroyed` again, and it takes off whatever lies on the component |
 | `dispatchEvent` | Only listeners registered after the `destroy()` fire, children are not traversed |
 | `addChild`, `parent = …` | Throws an error with `name === 'ViewComponentError'` (the class is not exported) |

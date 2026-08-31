@@ -4116,6 +4116,27 @@ describe('Kernel', () => {
 
       kernel.destroy();
     });
+
+    it('applies a property entry that names only its key', () => {
+      const kernel = new Kernel(new Registry());
+      const uuid = generateUUID();
+
+      kernel.run({
+        changeTrail: [
+          {type: ComponentChangeType.CreateEntities, uuid, token: 'node', properties: [['bare']]},
+          {type: ComponentChangeType.ChangeProperties, uuid, properties: [['second']]},
+        ],
+      });
+
+      const entity = kernel.getEntity(uuid);
+
+      expect(entity.propKeys()).toContain('bare');
+      expect(entity.propKeys()).toContain('second');
+      expect(entity.getProperty('bare')).toBeUndefined();
+      expect(entity.getProperty('second')).toBeUndefined();
+
+      kernel.destroy();
+    });
   });
 
   describe('traverseLevelOrderBFS', () => {

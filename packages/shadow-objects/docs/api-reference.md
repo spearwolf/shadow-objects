@@ -779,7 +779,7 @@ component.setProperty('score', 1000);
 component.setProperty('position', newPos, (a, b) => a.equals(b));
 ```
 
-Setting a property to `undefined` is equivalent to `removeProperty(name)`.
+Setting a property to `undefined` is equivalent to `removeProperty(name)`. The other thing — a key that is set and carries no value — is `setPropertyWithoutValue(name)` below.
 
 #### `removeProperty(name)`
 
@@ -787,6 +787,14 @@ Removes a property. The change is batched and sent to the Shadow Environment.
 
 ```typescript
 component.removeProperty('score');
+```
+
+#### `setPropertyWithoutValue(name): boolean`
+
+Marks a property as set without giving it a value. The key is there, no value stands behind it: the Entity reads the property as `undefined` and has `name` among its property keys. The change trail carries an entry for it that names only the key. Returns `true` if this differs from the last value written to a change trail, `false` if the write was a no-op.
+
+```typescript
+component.setPropertyWithoutValue('highlighted');
 ```
 
 #### `addChild(child)`
@@ -905,7 +913,7 @@ After `destroy()` the component is detached from its `ComponentContext`: it no l
 | Operation | Behaviour while destroyed |
 | :--- | :--- |
 | `token`, `order` | Assignment updates the local value, nothing is sent |
-| `setProperty`, `removeProperty` | Ignored. `setProperty` returns `false` |
+| `setProperty`, `setPropertyWithoutValue`, `removeProperty` | Ignored. `setProperty` and `setPropertyWithoutValue` return `false` |
 | `dispatchShadowObjectsEvent` | Ignored |
 | `dispatchEvent` | Notifies the listeners registered since the `destroy()`, children are not traversed |
 | `removeFromParent` | Ignored |
@@ -1060,10 +1068,11 @@ A method that takes a `ViewComponent` acts on the entry that belongs to that ins
 | Method | Description |
 | :--- | :--- |
 | `setProperty(component, propKey, value, isEqual?)` | Write a property. Returns `true` when the value differs from the last one written to a change trail, and `false` for an instance that does not own its entry. An `isEqual` function is remembered for that key; omitting it forgets a previously registered one. |
+| `setPropertyWithoutValue(component, propKey)` | Mark a property as set without giving it a value; it travels as an entry that names only the key. Returns `true` when this differs from the last value written to a change trail, and `false` for an instance that does not own its entry. A previously registered `isEqual` function for that key is forgotten. |
 | `removeProperty(component, propKey)` | Remove a property. Ignored for an instance that does not own its entry. |
 | `transferPropertiesTo(component, target)` | Hand the properties this context holds for `component` over to the context it has just joined. |
 
-`transferPropertiesTo()` is why a namespace change carries the properties along. The `ViewComponent` `context` setter calls it after the join, so the values land in the same `CreateEntities` change as the token and the order. Each value is written first and its equality function registered afterwards -- the other way round, the target would be asked whether the incoming value equals the `undefined` it still holds, and a function that says yes would drop the property instead of carrying it over. The properties are copied, not moved; what stays behind goes down with the entity in this context.
+`transferPropertiesTo()` is why a namespace change carries the properties along. The `ViewComponent` `context` setter calls it after the join, so the values land in the same `CreateEntities` change as the token and the order. Each value is written first and its equality function registered afterwards -- the other way round, the target would be asked whether the incoming value equals the `undefined` it still holds, and a function that says yes would drop the property instead of carrying it over. A property that is set without a value arrives as one, not as the value `undefined`, which the target would read as a removal. The properties are copied, not moved; what stays behind goes down with the entity in this context.
 
 #### Events
 
@@ -1084,7 +1093,23 @@ A method that takes a `ViewComponent` acts on the entry that belongs to that ins
 | :--- | :--- |
 | `buildChangeTrails(commit = true)` | The changes since the previous call, as a `ChangeTrailType`. Returns an empty array when the context holds no components. With `commit` it also counts the trail as applied and writes the Component Memory; with `commit = false` it does neither, and `commitChangeTrail()` settles the trail afterwards. It runs a pending re-request round before it reads anything, so the call can move entities in the hierarchy — and the trail it hands back carries the result. |
 | `commitChangeTrail(appliedCount, changeTrail?)` | Fold the first `appliedCount` entries of the trail built last into the state the next trail is diffed against, and write them to the Component Memory. Everything behind that line stays pending and goes out again with the next trail. `changeTrail`, when given, is the trail this call settles -- the call is ignored unless it is the one the context built last. |
-| `reCreateChanges()` | Rebuild every component from the Component Memory, so that the next trail re-creates all of them. This is how a fresh proxy is brought up to the state the view is already in -- and the only kind of environment it belongs to: one that still holds the entities refuses every re-created `CreateEntities` it is sent, with an `EntityUuidInUseError`. |
+| `reCreateChanges()` | Rebuild every component from the Component Memory, so that the next trail re-creates all of them. What the memory holds without a value is rebuilt without one. This is how a fresh proxy is brought up to the state the view is already in -- and the only kind of environment it belongs to: one that still holds the entities refuses every re-created `CreateEntities` it is sent, with an `EntityUuidInUseError`. |
+| `hasComponentState(uuid)` | Whether the Component Memory holds a state for `uuid` -- the state `reCreateChanges()` would rebuild that component from. |
+| `getComponentState(uuid)` | The `ComponentState` the Component Memory holds for `uuid`, or `undefined` where it holds none. A snapshot: the record behind it is rewritten in place as trails come in, so the object and the property list you get back are your own. The property values in it are the ones the memory holds. |
+
+`ComponentState` is exported from `@spearwolf/shadow-objects` as a type. It is the state one component was last known to be in, and it carries exactly what a `CreateEntities` entry needs to build that component again:
+
+| Field | Type | Meaning |
+| :--- | :--- | :--- |
+| `token` | `string` | The token, `'#void'` for a component that was never given one. |
+| `parentUuid` | `string \| undefined` | The uuid of the parent, `undefined` for a root component. |
+| `order` | `number \| undefined` | The sort order among the siblings, `0` for a component that was never given one. |
+| `properties` | `ComponentPropertiesType \| undefined` | The properties, `undefined` where the component holds none. A property that is set without a value stands in it as a one-element entry. |
+| `autoDestructionOnParentRemoval` | `boolean \| undefined` | Whether the entity goes down with its parent. |
+
+`token`, `parentUuid`, `order` and `properties` are keys on the snapshot whether they carry a value or not: a field with nothing in it reads as `undefined`, and `'parentUuid' in state` says yes either way. `autoDestructionOnParentRemoval` is the one that is missing outright unless it is `true`.
+
+The memory moves under several hands, and a snapshot describes the moment it was taken: `commitChangeTrail()` folds a settled trail into it, `buildChangeTrails()` does the same for the trail it builds unless it is told not to commit, `reCreateChanges()` writes the trail it builds and empties the memory afterwards, and `clear()` empties it outright. Take the snapshot again to see the state after any of those.
 
 A change trail returned by `buildChangeTrails()` is a snapshot: nothing in the library writes to it again, not even the property tuples of its entries. This holds for anything derived from it too, including the value `ShadowEnv.syncWait()` resolves with and the payloads of `ShadowEnv.AfterSync` and `ShadowEnv.SyncFailed`.
 

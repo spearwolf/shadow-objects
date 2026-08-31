@@ -281,6 +281,17 @@ export class ViewComponent {
     return this.#context?.setProperty(this, name, value, isEqual) ?? false;
   }
 
+  /**
+   * Mark a property as set without giving it a value. The entity holds the key and reads it as
+   * `undefined`; {@link ViewComponent.setProperty} with `undefined` removes it instead.
+   *
+   * @returns `true` if this differs from the last value written to the change trail.
+   *   A destroyed component always returns `false`.
+   */
+  setPropertyWithoutValue(name: string): boolean {
+    return this.#context?.setPropertyWithoutValue(this, name) ?? false;
+  }
+
   removeProperty(name: string) {
     this.#context?.removeProperty(this, name);
   }

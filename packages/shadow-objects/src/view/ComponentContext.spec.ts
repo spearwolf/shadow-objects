@@ -486,6 +486,33 @@ describe('ComponentContext', () => {
 
       expect(first).toEqual([{type: ComponentChangeType.CreateEntities, uuid: a.uuid, token: 'a', properties: [['foo', 'bar']]}]);
     });
+
+    it('sends a property set without a value as the bare key', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx});
+
+      a.setPropertyWithoutValue('foo');
+
+      expect(ctx.buildChangeTrails()).toEqual([
+        {type: ComponentChangeType.CreateEntities, uuid: a.uuid, token: 'a', properties: [['foo']]},
+      ]);
+    });
+
+    it('carries a property set without a value into the context a component joins', () => {
+      ctx = makeContext();
+      const other = makeContext();
+      const a = new ViewComponent('a', {context: ctx});
+      a.setPropertyWithoutValue('foo');
+      ctx.buildChangeTrails();
+
+      a.context = other;
+
+      expect(other.buildChangeTrails()).toEqual([
+        {type: ComponentChangeType.CreateEntities, uuid: a.uuid, token: 'a', properties: [['foo']]},
+      ]);
+
+      other.dispose();
+    });
   });
 
   describe('clear', () => {
@@ -835,6 +862,37 @@ describe('ComponentContext', () => {
     });
   });
 
+  describe('the component memory', () => {
+    it('answers whether the memory holds a state for a uuid', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx});
+
+      expect(ctx.hasComponentState(a.uuid)).toBe(false);
+
+      ctx.buildChangeTrails();
+
+      expect(ctx.hasComponentState(a.uuid)).toBe(true);
+      expect(ctx.getComponentState(a.uuid)?.token).toBe('a');
+    });
+
+    it('hands out a snapshot of the component state, not the record', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx});
+      a.setProperty('foo', 'bar');
+      ctx.buildChangeTrails();
+
+      // three things are copied, and each of them can be lost on its own: the state object,
+      // the property list, and the tuples in it
+      const snapshot = ctx.getComponentState(a.uuid)!;
+      snapshot.token = 'overwritten';
+      snapshot.properties![0]![1] = 'overwritten';
+      snapshot.properties!.length = 0;
+
+      expect(ctx.getComponentState(a.uuid)?.properties, 'the list and its tuples').toEqual([['foo', 'bar']]);
+      expect(ctx.getComponentState(a.uuid)?.token, 'and the state object around them').toBe('a');
+    });
+  });
+
   describe('reCreateChanges', () => {
     it('restores the order of a component that was re-parented without an order change', () => {
       ctx = makeContext();
@@ -884,6 +942,27 @@ describe('ComponentContext', () => {
 
       expect(() => ctx.reCreateChanges()).not.toThrow();
       expect(ctx.buildChangeTrails()).toHaveLength(1);
+    });
+
+    it('restores a property that was set without a value', () => {
+      ctx = makeContext();
+      const a = new ViewComponent('a', {context: ctx});
+      a.setPropertyWithoutValue('bare');
+      a.setProperty('value', 1);
+      ctx.buildChangeTrails();
+
+      expect(ctx.getComponentState(a.uuid)?.properties, 'the memory keeps the bare key').toEqual([['bare'], ['value', 1]]);
+
+      ctx.reCreateChanges();
+
+      expect(ctx.buildChangeTrails()).toEqual([
+        {
+          type: ComponentChangeType.CreateEntities,
+          uuid: a.uuid,
+          token: 'a',
+          properties: [['bare'], ['value', 1]],
+        },
+      ]);
     });
   });
 

@@ -5,8 +5,8 @@ import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {MicrotaskCollector} from '../utils/MicrotaskCollector.js';
 import {runGuarded} from '../utils/runGuarded.js';
 import {toNamespace} from '../utils/toNamespace.js';
-import {ComponentChanges} from './ComponentChanges.js';
-import {ComponentMemory} from './ComponentMemory.js';
+import {ComponentChanges, PropertyWithoutValue} from './ComponentChanges.js';
+import {ComponentMemory, type ComponentState} from './ComponentMemory.js';
 import type {ViewComponent} from './ViewComponent.js';
 
 interface ViewInstance {
@@ -428,6 +428,28 @@ export class ComponentContext {
     return false;
   }
 
+  /**
+   * Mark `propKey` on `component` as set without giving it a value: the change trail carries
+   * an entry that names only the key, and the entity behind it reads the property as
+   * `undefined` with the key in place. {@link ComponentContext.setProperty} with `undefined`
+   * is the other thing — a removal.
+   *
+   * An equality rule registered for the key is forgotten, the way it is for a
+   * {@link ComponentContext.setProperty} that comes without one: there is no value here for a
+   * rule to compare.
+   *
+   * @returns `true` when this differs from the last value written to a change trail, and
+   *   `false` for an instance that does not own its entry
+   */
+  setPropertyWithoutValue(component: ViewComponent, propKey: string): boolean {
+    const vi = this.#entryOf(component);
+    if (vi != null) {
+      vi.propIsEqual?.delete(propKey);
+      return vi.changes.setPropertyWithoutValue(propKey);
+    }
+    return false;
+  }
+
   removeProperty(component: ViewComponent, propKey: string) {
     this.#entryOf(component)?.changes.removeProperty(propKey);
   }
@@ -452,6 +474,9 @@ export class ComponentContext {
    * and it compares with it when it rebuilds a component from the memory. A later
    * {@link ComponentContext.setProperty} does not consult it — it uses its own argument, or none.
    *
+   * A property that is set without a value goes over as one: handing it on as the value
+   * `undefined` would have the target read it as a removal, and the key would not arrive.
+   *
    * Built like {@link ComponentChanges.transferEventsTo}, with one difference: the properties are
    * copied, not moved. What stays behind goes down with the entity in this context.
    */
@@ -460,7 +485,11 @@ export class ComponentContext {
     if (vi === undefined) return;
 
     for (const [key, value] of vi.changes.getProperties()) {
-      target.setProperty(component, key, value);
+      if (value === PropertyWithoutValue) {
+        target.setPropertyWithoutValue(component, key);
+      } else {
+        target.setProperty(component, key, value);
+      }
 
       const isEqual = vi.propIsEqual?.get(key);
       if (isEqual != null) {
@@ -796,6 +825,40 @@ export class ComponentContext {
   }
 
   /**
+   * Whether the Component Memory holds a state for `uuid` — the state
+   * {@link ComponentContext.reCreateChanges} would rebuild that component from.
+   */
+  hasComponentState(uuid: string): boolean {
+    return this.#componentMemory.hasComponentState(uuid);
+  }
+
+  /**
+   * The state the Component Memory holds for `uuid`, or `undefined` where it holds none.
+   *
+   * A snapshot, not the record: the property list of the record is rewritten in place as
+   * trails come in, so a caller holding on to it would be reading a moving value — or
+   * writing one. What it is a snapshot of is the memory at the moment of the call, and the
+   * memory moves under several hands: {@link ComponentContext.commitChangeTrail} folds a
+   * settled trail into it, {@link ComponentContext.buildChangeTrails} does the same for the
+   * trail it builds unless it is told not to commit, {@link ComponentContext.reCreateChanges}
+   * writes the trail it builds and empties the memory afterwards, and
+   * {@link ComponentContext.clear} empties it outright. A snapshot taken before any of those
+   * describes a state that is over; take it again to see the current one.
+   *
+   * This is the window a test or a diagnosis needs, and the one that leaves the context as it
+   * found it — reading the same thing out of {@link ComponentContext.reCreateChanges} costs a
+   * rebuild of every component in the namespace.
+   */
+  getComponentState(uuid: string): ComponentState | undefined {
+    const state = this.#componentMemory.getComponentState(uuid);
+    if (state === undefined) return undefined;
+    return {
+      ...state,
+      properties: state.properties?.map((entry) => (entry.length === 1 ? [entry[0]] : [entry[0], entry[1]])),
+    };
+  }
+
+  /**
    * Resets the internal component change states so that all view components are regenerated with the next change trail.
    * The outstanding events are taken over.
    *
@@ -823,8 +886,16 @@ export class ComponentContext {
         changes.create(cMem.token, cMem.parentUuid, cMem.order, cMem.autoDestructionOnParentRemoval);
 
         if (cMem.properties) {
-          for (const [key, value] of cMem.properties) {
-            changes.changeProperty(key, value, c.propIsEqual?.get(key));
+          for (const entry of cMem.properties) {
+            const key = entry[0];
+            // the arity decides: a one-element entry is a property that is set without a value, and
+            // reading it as `[key, undefined]` would hand a removal to a component that has nothing
+            // to remove -- the key would fall out of the rebuild without a word
+            if (entry.length === 1) {
+              changes.setPropertyWithoutValue(key);
+            } else {
+              changes.changeProperty(key, entry[1], c.propIsEqual?.get(key));
+            }
           }
         }
 

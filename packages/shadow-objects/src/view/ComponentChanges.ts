@@ -16,6 +16,19 @@ import {appendToEnd, removeFrom} from '../utils/array-utils.js';
 const ROOT = '#root';
 
 /**
+ * The value a property carries in this bookkeeping when it is set without one — the third form
+ * of {@link ComponentPropertiesType}, which travels as a one-element `[key]`. `undefined`
+ * cannot say it: that is what a removal reads as, and the two have to stay apart all the way
+ * to the entry.
+ *
+ * It never leaves the View Layer. A change trail runs through `structuredClone()` on its way
+ * to a worker, and a symbol on that wire is a `DataCloneError` — so every method that builds
+ * an entry turns it back into the one-element form, and the one reader outside this class,
+ * `ComponentContext.transferPropertiesTo()`, tests for it before it hands a value on.
+ */
+export const PropertyWithoutValue = Symbol('shadow-objects/property-without-value');
+
+/**
  * Tracks one component's outstanding changes between two change trails as four written ↔
  * pending pairs: `#token`/`#nextToken`, `#parentUuid`/`#nextParentUuid`, `#order`/`#nextOrder`
  * and `#properties`/`#nextProperties`. The `make*` methods read the pending half and leave it
@@ -181,7 +194,16 @@ export class ComponentChanges {
    * @returns `true` if the value differs from the last value this component asked for
    */
   changeProperty<T = unknown>(key: string, value: T, isEqual?: (a: T, b: T) => boolean): boolean {
-    const equals = (a: T, b: T) => (isEqual == null ? a === b : isEqual(a, b));
+    const equals = (a: T, b: T) =>
+      // a registered rule compares values, and the marker is not one -- handed to it, a rule
+      // would be asked about a property it never saw, and one that reaches into its arguments
+      // throws on a symbol. Where either side is the marker the only question left is whether
+      // it is still the same third form, and identity answers that.
+      (a as unknown) === PropertyWithoutValue || (b as unknown) === PropertyWithoutValue
+        ? (a as unknown) === (b as unknown)
+        : isEqual == null
+          ? a === b
+          : isEqual(a, b);
 
     const isQueued = this.#propsChangeOrder.includes(key);
     const isTravelling = this.#travellingProperties?.has(key) ?? false;
@@ -220,6 +242,17 @@ export class ComponentChanges {
     return valueChanged;
   }
 
+  /**
+   * Mark `key` as set without giving it a value: the next trail carries an entry that names
+   * only the key. A later {@link ComponentChanges.changeProperty} replaces it with a value,
+   * and {@link ComponentChanges.removeProperty} takes it away like any other property.
+   *
+   * @returns `true` if this differs from the last value this component asked for
+   */
+  setPropertyWithoutValue(key: string): boolean {
+    return this.changeProperty(key, PropertyWithoutValue as unknown);
+  }
+
   removeProperty(key: string) {
     const isQueued = this.#propsChangeOrder.includes(key);
 
@@ -246,7 +279,8 @@ export class ComponentChanges {
    * trail — `#properties` is only written forward while a trail is being built
    * ({@link ComponentChanges.makeCreateEntityChange}, {@link ComponentChanges.makeChangePropertyChange}).
    * A key whose accrued value is `undefined` and a key queued for change without an accrued value
-   * are both removals, and neither appears in the result.
+   * are both removals, and neither appears in the result. A key that is set without a value stands
+   * in the result with {@link PropertyWithoutValue}.
    */
   getProperties(): Map<string, unknown> {
     const properties = new Map(this.#properties);
@@ -350,11 +384,18 @@ export class ComponentChanges {
     }
 
     if (this.#nextProperties.size > 0) {
-      // a create carries only the keys that have a value; where the filter leaves nothing, the
-      // field stays off the entry — an absent `properties` and an empty one say the same thing,
-      // and the shorter one is what travels. The note is taken either way: it records what this
-      // entry carries, and an entry with no property is travelling with none
-      const properties = Array.from(this.#nextProperties.entries()).filter(([, value]) => value !== undefined);
+      // a create carries only the keys that have a value or are set without one; where nothing
+      // is left, the field stays off the entry — an absent `properties` and an empty one say
+      // the same thing, and the shorter one is what travels. The note is taken either way: it
+      // records what this entry carries, and an entry with no property is travelling with none
+      const properties: ComponentPropertiesType = [];
+      for (const [key, value] of this.#nextProperties) {
+        if (value === PropertyWithoutValue) {
+          properties.push([key]);
+        } else if (value !== undefined) {
+          properties.push([key, value]);
+        }
+      }
       this.#noteTravellingProperties(properties);
       if (properties.length > 0) {
         entry.properties = properties;
@@ -411,8 +452,12 @@ export class ComponentChanges {
 
   makeChangePropertyChange(): IPropertiesChange {
     // a key without a pending value is a removal, and so is a pending value of `undefined` --
-    // `get()` answers the same for both, which is what the receiving side reads them as
-    const properties = this.#propsChangeOrder.map((key) => [key, this.#nextProperties.get(key)] as [string, unknown]);
+    // `get()` answers the same for both, which is what the receiving side reads them as. A key
+    // set without a value is the third form and travels as the bare key
+    const properties: ComponentPropertiesType = this.#propsChangeOrder.map((key) => {
+      const value = this.#nextProperties.get(key);
+      return value === PropertyWithoutValue ? [key] : [key, value];
+    });
 
     this.#noteTravellingProperties(properties);
 
@@ -425,7 +470,10 @@ export class ComponentChanges {
 
   /** Records the keys of an entry that is going out, so a later change knows the written half is behind. */
   #noteTravellingProperties(properties: ComponentPropertiesType): void {
-    this.#travellingProperties = new Map(properties.map(([key, value]) => [key, value]));
+    // the arity carries the meaning on the wire, the marker carries it in here
+    this.#travellingProperties = new Map(
+      properties.map((entry) => [entry[0], entry.length === 1 ? PropertyWithoutValue : entry[1]]),
+    );
   }
 
   /**
@@ -522,7 +570,12 @@ export class ComponentChanges {
   }
 
   #commitProperties(properties: ComponentPropertiesType | undefined): void {
-    for (const [key, value] of properties ?? []) {
+    for (const entry of properties ?? []) {
+      const key = entry[0];
+      // an entry that names only the key is the third form and not a removal: the written
+      // half has to hold it, or the next diff reads the key as one that was never set
+      const value = entry.length === 1 ? PropertyWithoutValue : entry[1];
+
       if (value === undefined) {
         this.#properties.delete(key);
       } else {

@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 import {ChangeTrailPhase, ComponentChangeType, VoidToken} from '../constants.js';
 import type {IComponentChangeType} from '../types.js';
 import {ComponentChanges} from './ComponentChanges.js';
@@ -453,6 +453,81 @@ describe('ComponentChanges', () => {
 
       changes.removeProperty('a');
       expect(buildTrail(changes)).toEqual([]);
+    });
+
+    it('emits a property set without a value as the bare key', () => {
+      const changes = created();
+
+      changes.setPropertyWithoutValue('a');
+
+      expect(flushTrail(changes)).toEqual([{type: ComponentChangeType.ChangeProperties, uuid: UUID, properties: [['a']]}]);
+    });
+
+    it('keeps a property set without a value apart from a removed one', () => {
+      const changes = created();
+      changes.changeProperty('gone', 1);
+      flushTrail(changes);
+
+      changes.setPropertyWithoutValue('bare');
+      changes.changeProperty('gone', undefined);
+
+      expect(buildTrail(changes)).toEqual([
+        {
+          type: ComponentChangeType.ChangeProperties,
+          uuid: UUID,
+          properties: [['bare'], ['gone', undefined]],
+        },
+      ]);
+    });
+
+    it('carries a property set without a value in the create entry', () => {
+      const changes = new ComponentChanges(UUID);
+      changes.create('a');
+
+      changes.setPropertyWithoutValue('bare');
+      changes.changeProperty('value', 1);
+
+      expect(buildTrail(changes)).toEqual([
+        {
+          type: ComponentChangeType.CreateEntities,
+          uuid: UUID,
+          token: 'a',
+          properties: [['bare'], ['value', 1]],
+        },
+      ]);
+    });
+
+    it('leaves a property set without a value alone when it is set again', () => {
+      const changes = created();
+      changes.setPropertyWithoutValue('a');
+      flushTrail(changes);
+
+      expect(changes.setPropertyWithoutValue('a')).toBe(false);
+      expect(buildTrail(changes)).toEqual([]);
+    });
+
+    it('removes a property that was set without a value', () => {
+      const changes = created();
+      changes.setPropertyWithoutValue('a');
+      flushTrail(changes);
+
+      changes.removeProperty('a');
+
+      expect(buildTrail(changes)).toEqual([
+        {type: ComponentChangeType.ChangeProperties, uuid: UUID, properties: [['a', undefined]]},
+      ]);
+    });
+
+    it('does not ask a registered equality rule about a property that has no value', () => {
+      const changes = created();
+      changes.setPropertyWithoutValue('a');
+      flushTrail(changes);
+
+      const isEqual = vi.fn(() => false);
+      changes.changeProperty('a', 1, isEqual);
+
+      expect(isEqual, 'a rule is never handed the marker').not.toHaveBeenCalled();
+      expect(buildTrail(changes)).toEqual([{type: ComponentChangeType.ChangeProperties, uuid: UUID, properties: [['a', 1]]}]);
     });
   });
 
