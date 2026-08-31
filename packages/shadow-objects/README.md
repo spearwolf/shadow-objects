@@ -14,6 +14,8 @@ Entities are lightweight nodes in a tree. Shadow Objects are ECS components that
 npm install @spearwolf/shadow-objects
 ```
 
+Exactly one copy of `@spearwolf/signalize` and one of `@spearwolf/eventize` may stand in the dependency tree. Both key their marker slots with realm-wide symbols, so two majors of either share one slot per object and fail at the boundary between them. You do not have to install signalize for this: the reactivity primitives reach a Shadow Object as arguments — `createSignal`, `createEffect` and `createMemo` come in through the creation API, and nothing here asks you to import them yourself. eventize is the other way round: its surface is reached through that package's free functions — `on`, `once`, `off`, `emit` — imported from it directly, so code that imports those functions, in the view or in a Shadow Object, needs eventize in its own `dependencies`, at the range declared in this package's `dependencies`. Whoever does put signalize next to this package takes the version declared in its `dependencies`; the `latest` tag of signalize points at the 0.x line for as long as 1.0 is in beta, and that line is disjoint from the version declared here, so a plain `npm install @spearwolf/signalize` is the way to end up with two copies. `npm ls @spearwolf/signalize` — or `pnpm why @spearwolf/signalize` — says whether it stayed at one.
+
 ## Quick Example
 
 ```html

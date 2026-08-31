@@ -19,6 +19,21 @@ and loads it statically, so `three` belongs in the tree even for an
 application that only uses `Canvas2D` or `CanvasBitmapRenderer`. The required
 range is `>=0.180.0`.
 
+The same one-copy rule holds for `@spearwolf/signalize` and
+`@spearwolf/eventize`, for a different reason: both key their marker slots with
+realm-wide symbols, so two majors of either share one slot per object and fail
+at the boundary between them. This package declares both in its own
+`dependencies`, and those are the ranges that count. signalize needs no line of
+its own -- the reactivity primitives reach a Shadow Object as arguments. eventize
+does, as soon as your code imports one of its free functions -- in the view or in
+a Shadow Object -- because that surface is reached through them directly, and
+under an isolated `node_modules` a transitive package is not a resolvable import
+path. Install it against the range declared here. The sharp edge is a direct
+`npm install @spearwolf/signalize`: its `latest` tag points at the 0.x line for
+as long as 1.0 is in beta, and that line is disjoint from the range declared
+here. `npm ls @spearwolf/signalize` or `pnpm why @spearwolf/signalize` says
+whether it stayed at one copy.
+
 ## Usage Example
 
 ```html

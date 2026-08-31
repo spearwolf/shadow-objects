@@ -157,7 +157,7 @@ Context values reach their readers a microtask after they are written, and they 
 
 ### 3. Reactivity Primitives
 
-The framework re-exports reactivity primitives via [@spearwolf/signalize](https://github.com/spearwolf/signalize). These are the building blocks of your logic.
+These are the building blocks of your logic. They originate in [@spearwolf/signalize](https://github.com/spearwolf/signalize) and reach a Shadow Object as arguments of the creation API — this package binds the signalize types, it exports none of its functions, so at runtime there is nothing to import from here and no signalize install to make next to it. Binding is not re-exporting, though: naming one of those types yourself — annotating a variable as `Signal<number>`, say — is an import from signalize, and TypeScript wants it installed for that. Putting signalize into your own dependencies as well comes with a rule attached, and it is under [Installation](../README.md#installation).
 
 #### `createSignal(initialValue)`
 
