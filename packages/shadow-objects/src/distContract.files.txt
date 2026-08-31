@@ -40,6 +40,10 @@ src/elements/ShaeEntElement.d.ts
 src/elements/ShaeEntElement.d.ts.map
 src/elements/ShaeEntElement.js
 src/elements/ShaeEntElement.js.map
+src/elements/ShaeLifecycleElement.d.ts
+src/elements/ShaeLifecycleElement.d.ts.map
+src/elements/ShaeLifecycleElement.js
+src/elements/ShaeLifecycleElement.js.map
 src/elements/ShaePropElement.d.ts
 src/elements/ShaePropElement.d.ts.map
 src/elements/ShaePropElement.js

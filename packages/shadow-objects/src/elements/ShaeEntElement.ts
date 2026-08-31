@@ -396,10 +396,10 @@ export class ShaeEntElement extends ShaeElement {
 
   override connectedCallback() {
     // the whole body outside any reactive context of the caller, for the reason spelled out in
-    // `ShaeElement.connectedCallback`: an `append()` inside a foreign effect would otherwise own
-    // every subscription taken up here. `#setupViewComponentEffect()` carries that just as much as
-    // `restore()` does — it subscribes to `componentContext$` on every single connect. Nesting is
-    // fine: `super.connectedCallback()` opens a frame of its own inside this one
+    // `ShaeLifecycleElement.connectedCallback`: an `append()` inside a foreign effect would
+    // otherwise own every subscription taken up here. `#setupViewComponentEffect()` carries that
+    // just as much as `restore()` does — it subscribes to `componentContext$` on every single
+    // connect. Nesting is fine: `super.connectedCallback()` opens a frame of its own inside this one
     hibernate(() => {
       super.connectedCallback();
 

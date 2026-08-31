@@ -2476,7 +2476,7 @@ five apply per element to `bool[]` and `boolean[]`.
 | `shouldTrim` | Whether string values are trimmed, read-only. The inverse of the `no-trim` attribute. |
 | `entNode` | The host entity, get and set. Writing it binds the property to that entity by hand — the next lookup decides again from where the element stands. |
 | `viewComponent` | The `ViewComponent` of the host entity, read-only. Follows `entNode` and is `undefined` without a host. |
-| `isShaePropElement` | `true`. This element does not extend `ShaeElement`, so there is no `isShaeElement` and no `ns` on it. |
+| `isShaePropElement` | `true`. This element does not extend `ShaeElement`, so there is no `isShaeElement` and no `ns` on it. The lifecycle base below that layer, `ShaeLifecycleElement`, it does share with `<shae-ent>` and `<shae-worker>`. |
 | `destroy()` | Releases every subscription this element holds. Called by the element itself one microtask after it leaves the tree, unless it is back in the tree by then. It counts once: every call after the first changes nothing. Reversible — see below. |
 | `isDestroyed` | Read-only: whether the element is released right now. Back to `false` the moment it reconnects. |
 | `ShaePropElement.observedAttributes` | Static: `name`, `value`, `type`, `no-trim`. |
@@ -2489,18 +2489,21 @@ and does nothing outside it. The Custom Elements callbacks —
 `connectedCallback`, `disconnectedCallback`, `attributeChangedCallback` — are implemented; a
 subclass that overrides one has to call `super`.
 
-`teardown()` and `restore()` are `protected` and carry the lifecycle here exactly as they do on
-`ShaeElement`, which this element does not extend. A subclass that holds subscriptions of its own
-has to use both or lose them: `teardown()` is the overridable half of `destroy()` — release what the
-subclass holds and call `super.teardown()` last — and `restore()` takes the same subscriptions up
-again after `super.restore()`. There is nothing to write back out to an attribute here, unlike
-`<shae-ent>`: this element re-reads its own attributes on every connect. `restore()` runs from
-`connectedCallback`, on the first connect as well as on a return after a release; a subclass
-constructor takes no subscriptions up. Overriding `destroy()` itself is possible but rarely right:
-the guard that makes the teardown run once, and run once even when releasing something calls back
-into the element, lives there. A subclass that overrides `teardown()` without overriding `restore()`
-works exactly once — after the first release its own subscriptions are gone for the life of the
-element, with nothing reported.
+`teardown()` and `restore()` are `protected` and carry the lifecycle here, and it is literally the
+same lifecycle the two other elements carry: `ShaeLifecycleElement` is the base of all three, and
+this element extends it directly instead of going through `ShaeElement`. That base is not exported
+from the package entry point — it stands in the published file list and in the emitted declarations,
+but `import {…} from '@spearwolf/shadow-objects'` does not reach it. A subclass that holds
+subscriptions of its own has to use both or lose them: `teardown()` is the overridable half of
+`destroy()` — release what the subclass holds and call `super.teardown()` last — and `restore()`
+takes the same subscriptions up again after `super.restore()`. There is nothing to write back out to
+an attribute here, unlike `<shae-ent>`: this element re-reads its own attributes on every connect.
+`restore()` runs from `connectedCallback`, on the first connect as well as on a return after a
+release; a subclass constructor takes no subscriptions up. Overriding `destroy()` itself is possible
+but rarely right: the guard that makes the teardown run once, and run once even when releasing
+something calls back into the element, lives there. A subclass that overrides `teardown()` without
+overriding `restore()` works exactly once — after the first release its own subscriptions are gone
+for the life of the element, with nothing reported.
 
 #### Leaving the Tree and Binding Again
 

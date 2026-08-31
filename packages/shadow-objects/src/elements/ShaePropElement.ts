@@ -4,11 +4,10 @@ import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {MicrotaskGate} from '../utils/MicrotaskGate.js';
 import type {ViewComponent} from '../view/ViewComponent.js';
 import {ATTR_NAME, ATTR_NO_TRIM, ATTR_TYPE, ATTR_VALUE, ReRequestEntHostEventName} from './constants.js';
-import {DeferredTeardown} from './deferredTeardown.js';
-import {ensureDisplayContentsRule} from './displayContentsRule.js';
 import {propValueConverters} from './propValueConverters.js';
 import {requestEntAncestor} from './requestEntAncestor.js';
 import type {ShaeEntElement} from './ShaeEntElement.js';
+import {ShaeLifecycleElement} from './ShaeLifecycleElement.js';
 
 /**
  * How many `<shae-prop>` elements declare a given name on a given view component right now.
@@ -50,10 +49,12 @@ const removeDeclarant = (vc: ViewComponent, name: string): boolean => {
 /**
  * Sets a property on the entity above it.
  *
- * Unlike `<shae-ent>` and `<shae-worker>`, this element does not extend `ShaeElement` and has
- * no namespace of its own. `ShaeElement` exists for elements that pick an environment: their
- * `ns` attribute names the one they live in, and what they do goes there by default —
- * `ShaeElement.syncShadowObjectsOf()` is the explicit way to reach a different one, as
+ * Unlike `<shae-ent>` and `<shae-worker>`, this element does not extend `ShaeElement` and has no
+ * namespace of its own. It shares their lifecycle: `ShaeLifecycleElement` is the base of all three,
+ * and `destroy()`, `isDestroyed`, `restore()` and `teardown()` mean the same thing on every one of
+ * them. What it does not share is the layer above it. `ShaeElement` exists for elements that pick
+ * an environment: their `ns` attribute names the one they live in, and what they do goes there by
+ * default — `ShaeElement.syncShadowObjectsOf()` is the explicit way to reach a different one, as
  * `<shae-ent>` does on a namespace change. A property picks nothing. It belongs to the closest
  * entity above it in the flattened tree, whatever namespace that entity happens to be in —
  * proximity decides, not membership. An `ns` on a `<shae-prop>` would therefore be an attribute
@@ -74,7 +75,7 @@ const removeDeclarant = (vc: ViewComponent, name: string): boolean => {
  * `answer` and `ns`, never a flag. A `<shae-prop>` never answers a host request because it never
  * listens for one, not because its marker reads differently.
  */
-export class ShaePropElement extends HTMLElement {
+export class ShaePropElement extends ShaeLifecycleElement {
   static observedAttributes = [ATTR_NAME, ATTR_VALUE, ATTR_TYPE, ATTR_NO_TRIM];
 
   readonly isShaePropElement = true;
@@ -94,20 +95,6 @@ export class ShaePropElement extends HTMLElement {
   protected get logger(): ConsoleLogger {
     return this.#logger;
   }
-
-  #destroyed = false;
-
-  /**
-   * Whether this element is listening right now.
-   *
-   * Its own field beside `#destroyed`, and the two must not be folded together: they disagree for a
-   * freshly built element, which is listening to nothing and has been torn down by nobody. One
-   * field would make `isDestroyed` report `true` for such an element — see `ShaeElement`, where the
-   * same pair carries the same reasoning.
-   */
-  #subscribed = false;
-
-  readonly #teardown = new DeferredTeardown(() => this.destroy());
 
   /** Binds this element to the entity above it, and carries that entity's component through. */
   #hostBinding?: (() => void) | undefined;
@@ -132,11 +119,6 @@ export class ShaePropElement extends HTMLElement {
       this.#findEntNode();
     }
   });
-
-  /** Whether this element has been torn down. */
-  get isDestroyed(): boolean {
-    return this.#destroyed;
-  }
 
   get name(): string | undefined {
     return this.name$.value;
@@ -299,11 +281,7 @@ export class ShaePropElement extends HTMLElement {
   }
 
   /**
-   * Take the subscriptions up. The counterpart to {@link ShaePropElement.teardown}.
-   *
-   * Called from `connectedCallback` and from nowhere else: on the first connect, where this element
-   * has never listened to anything, and again for one that comes back after a teardown.
-   * `<shae-ent>` carries the same pair of methods — see `ShaeElement`.
+   * Take this element's own subscriptions up. Its half of {@link ShaeLifecycleElement.restore}.
    *
    * There is nothing to catch up on here, unlike `<shae-ent>`: `connectedCallback` reads `value`,
    * `name`, `type` and `no-trim` off the attributes and looks the host up again straight after
@@ -311,36 +289,19 @@ export class ShaePropElement extends HTMLElement {
    * `prop.value` or `prop.entNode` is replaced by what the tree and the markup say. That is this
    * element's rule in and out of a teardown alike — a `<shae-prop>` reads its position on every
    * connect — and the documentation states it as the difference it is.
-   *
-   * A subclass overrides this, calls `super.restore()` and takes its own subscriptions up
-   * afterwards. Every subscription released in {@link ShaePropElement.teardown} has to come back
-   * here, or it is gone for the rest of the element's life without a word.
    */
-  protected restore(): void {
+  protected override restore(): void {
+    super.restore();
+
     this.#subscribe();
   }
 
-  connectedCallback() {
+  override connectedCallback() {
     // the whole body outside any reactive context of the caller, for the reason spelled out in
-    // `ShaeElement.connectedCallback`: an `append()` inside a foreign effect would otherwise own
-    // the effects taken up here, and that effect's next run would release them
+    // `ShaeLifecycleElement.connectedCallback`: an `append()` inside a foreign effect would
+    // otherwise own the effects taken up here, and that effect's next run would release them
     hibernate(() => {
-      // first, before anything reads or writes: being in the tree is the condition the deferred
-      // teardown waits on, so arriving here calls a booked teardown off
-      this.#teardown.cancel();
-
-      // an element that is not listening takes its subscriptions up: the one that has never
-      // listened yet and the one whose teardown ran are the same case. The signals stood untouched
-      // either way, so this is a subscribe and never a rebuild
-      this.#destroyed = false;
-      if (!this.#subscribed) {
-        this.#subscribed = true;
-        this.restore();
-      }
-
-      // called by hand because this class extends `HTMLElement` directly: it shares no base with
-      // `<shae-ent>` and `<shae-worker>`, so it cannot inherit the installation
-      ensureDisplayContentsRule(this.getRootNode(), this.localName);
+      super.connectedCallback();
 
       batch(() => {
         this.#findEntNode();
@@ -372,7 +333,7 @@ export class ShaePropElement extends HTMLElement {
     }
   }
 
-  disconnectedCallback() {
+  override disconnectedCallback() {
     this.#stopListeningForHostChanges();
     this.#disconnectFromEntNode();
 
@@ -381,44 +342,17 @@ export class ShaePropElement extends HTMLElement {
     // second, the teardown runs second, so the unbinding still reaches a subscription that is on
     // and the property is taken off the entity it left. The other way round the write would arrive
     // after the release and reach nobody
-    this.#teardown.schedule();
+    super.disconnectedCallback();
   }
 
   /**
-   * Let go of everything this element listens to, and leave what it is made of standing.
-   *
-   * Called for an element that has left the tree and stayed out, and callable by hand for one
-   * whose end is known earlier. Every call after the first finds nothing left to do.
-   *
-   * The signals are not destroyed — they carry this element's state across a teardown, and
-   * {@link ShaePropElement.restore} subscribes to them again on the way back in.
-   */
-  destroy(): void {
-    if (this.#destroyed) return;
-    // the flag falls in front of the work, and that is the whole reason this method is not the one
-    // a subclass overrides: releasing what an element holds can call back into it, and a flag that
-    // only fell at the end would let the second call run the whole teardown a second time.
-    // `teardown()` is the extension point, and it runs with the flag already down and
-    // `isDestroyed` already `true`
-    this.#destroyed = true;
-    this.#subscribed = false;
-
-    this.teardown();
-  }
-
-  /**
-   * Release what this element holds. The overridable half of {@link ShaePropElement.destroy}.
-   *
-   * A subclass releases its own subscriptions and calls `super.teardown()` last, so the element
-   * comes apart from the outside in. Whatever is released here has to be taken up again in
-   * {@link ShaePropElement.restore} — the two are one pair, and a subscription missing from either
-   * side is a leak or a silently dead element.
+   * Release this element's own subscriptions. Its half of {@link ShaeLifecycleElement.teardown}.
    *
    * The `link()` between the host's `viewComponent$` and this element's own needs no line of its
    * own: it is built in the cleanup path of the `entNode$` subscription, and taking that
    * subscription off runs the cleanup that destroys it.
    */
-  protected teardown(): void {
+  protected override teardown(): void {
     this.#stopListeningForHostChanges();
 
     this.#hostBinding?.();
@@ -432,6 +366,8 @@ export class ShaePropElement extends HTMLElement {
 
     this.#convertValue?.destroy();
     this.#convertValue = undefined;
+
+    super.teardown();
   }
 
   // Determines the host from where the element stands right now. The request runs *without* a

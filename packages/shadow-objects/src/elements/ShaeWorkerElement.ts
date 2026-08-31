@@ -258,7 +258,7 @@ export class ShaeWorkerElement extends ShaeElement {
 
   override connectedCallback() {
     // the whole body outside any reactive context of the caller — same reason as in
-    // `ShaeElement.connectedCallback`, and the frames nest without trouble
+    // `ShaeLifecycleElement.connectedCallback`, and the frames nest without trouble
     hibernate(() => {
       // this element does not come back, and the refusal has to stand in front of `super`: the base
       // takes an element's subscriptions up there, and for a torn-down one there is nothing to take
@@ -360,11 +360,12 @@ export class ShaeWorkerElement extends ShaeElement {
    * Tear this element down — for good.
    *
    * The effects and signals below belong to the element alone, so the element is what decides
-   * whether they have already been released; the guard for that sits in `ShaeElement.destroy()`,
-   * which has already set the flag by the time this runs. Here that matters more than anywhere
-   * else: `shadowEnv.destroy()` dispatches a `contextlost` `CustomEvent` on this element on its
-   * way out, and a listener on it that reaches back into `destroy()` finds the flag down and turns
-   * around instead of tearing the same environment down a second time.
+   * whether they have already been released; the guard for that sits in
+   * `ShaeLifecycleElement.destroy()`, which has already set the flag by the time this runs. Here
+   * that matters more than anywhere else: `shadowEnv.destroy()` dispatches a `contextlost`
+   * `CustomEvent` on this element on its way out, and a listener on it that reaches back into
+   * `destroy()` finds the flag down and turns around instead of tearing the same environment down
+   * a second time.
    *
    * Unlike `<shae-ent>` and `<shae-prop>`, this teardown is final: it destroys the signals and
    * takes the environment down with them, and neither comes back. `connectedCallback` turns a

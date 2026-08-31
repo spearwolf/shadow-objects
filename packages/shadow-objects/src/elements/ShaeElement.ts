@@ -8,8 +8,7 @@ import {runGuarded} from '../utils/runGuarded.js';
 import {toNamespace} from '../utils/toNamespace.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
 import {ATTR_NS} from './constants.js';
-import {DeferredTeardown} from './deferredTeardown.js';
-import {ensureDisplayContentsRule} from './displayContentsRule.js';
+import {ShaeLifecycleElement} from './ShaeLifecycleElement.js';
 
 const updateNamespace = (el: HTMLElement, ns: Signal<NamespaceType>) => {
   ns.set(readNamespaceAttribute(el));
@@ -38,29 +37,12 @@ const syncShadowObjects = (ns: NamespaceType) => {
 /**
  * The base of the custom elements that pick an environment through their `ns` attribute.
  *
- * The subscriptions of such an element begin at its first connect, not at its construction. That is
- * what makes an element that is built and never used collectable at all: signalize registers every
- * effect and every `onChange` handler under a signal id in a module-level queue, so an element that
- * subscribed in its constructor would hang there for the lifetime of the page, however little the
- * application ever did with it. What the constructor does instead is read attributes into signals,
- * which nobody is listening to yet.
- *
- * An element that leaves the tree and stays out is torn down: every effect, every `onChange`
- * subscription and every link it holds comes off, and with them the last thing on the module level
- * that pointed at it. The decision waits one microtask, so a move inside a single task — every
- * re-render is one — costs the element nothing.
- *
- * What the element carries as state it keeps. Its signals are not destroyed: they hold their
- * identity and their values, a write between the teardown and a return lands in the value, and a
- * return into the tree subscribes to them again through {@link ShaeElement.restore}. Destroying
- * them would make the teardown one-way for no gain — a destroyed signal cannot be revived, and it
- * is not what holds the element anyway.
- *
- * A subclass whose teardown *is* final refuses the return in its own `connectedCallback` — see
- * `ShaeWorkerElement`, whose teardown takes an environment with it that cannot be rebuilt. For such
- * an element {@link ShaeElement.restore} runs exactly once, on the first connect.
+ * What it adds to {@link ShaeLifecycleElement} is the namespace: the `ns` attribute, the signal
+ * behind it, the reflection back onto the attribute, and the two ways to hand an environment on to
+ * the next sync. When such an element starts listening and when it lets go is the base's answer,
+ * and it is the same answer `<shae-prop>` gets, which shares that base without this layer.
  */
-export class ShaeElement extends HTMLElement {
+export class ShaeElement extends ShaeLifecycleElement {
   static observedAttributes = [ATTR_NS];
 
   readonly isShaeElement = true;
@@ -85,28 +67,8 @@ export class ShaeElement extends HTMLElement {
   /** Attribute writes that came in before the first connect, the latest one per attribute. */
   #pendingReflections?: Map<string, () => void> | undefined;
 
-  #destroyed = false;
-
-  /**
-   * Whether this element is listening right now.
-   *
-   * A separate field from `#destroyed`, and they must not be folded into one: the two disagree for
-   * a freshly built element, which is listening to nothing and has been torn down by nobody. Read
-   * off a single field, that element would have to report `isDestroyed === true` — which is a lie
-   * the whole public surface would then carry: `destroy()` would find nothing to do, and the
-   * documented promise that a new element reads `false` would be gone.
-   */
-  #subscribed = false;
-
-  readonly #teardown = new DeferredTeardown(() => this.destroy());
-
   /** Takes the namespace reflection off again. */
   #nsReflection?: (() => void) | undefined;
-
-  /** Whether this element has been torn down. */
-  get isDestroyed(): boolean {
-    return this.#destroyed;
-  }
 
   constructor() {
     super();
@@ -142,12 +104,8 @@ export class ShaeElement extends HTMLElement {
   }
 
   /**
-   * Take the subscriptions up, and catch up on what changed while nothing was listening.
-   *
-   * Called from `connectedCallback` and from nowhere else — a constructor in particular, where the
-   * subclass fields these subscriptions read are not there yet. It runs at the first connect, where
-   * the element has never listened to anything, and again for one that comes back after a teardown;
-   * the two are the same job, and the element between them is in the same state either way.
+   * Take the namespace subscription up, and catch up on what changed while nothing was listening.
+   * The namespace half of {@link ShaeLifecycleElement.restore}.
    *
    * The catch-up is the half that is easy to leave out and expensive to miss. A released element
    * still takes writes — the signals are alive — but nothing carries them onto the attributes, so
@@ -155,13 +113,10 @@ export class ShaeElement extends HTMLElement {
    * attribute again: without it, the attribute read on the way in would push the *old* value back
    * into the signal and the write would be lost without a word. At the first connect the same
    * write is what carries the normalisation of the constructor's attribute read onto the attribute.
-   *
-   * A subclass overrides this, calls `super.restore()`, takes its own subscriptions up and catches
-   * up on its own signals in the same way. Every subscription this element loses in
-   * {@link ShaeElement.destroy} has to come back here — one that does not is gone for the rest of
-   * the element's life, silently.
    */
-  protected restore(): void {
+  protected override restore(): void {
+    super.restore();
+
     this.#subscribe();
     this.#reflectNamespace(this.ns$.value);
   }
@@ -196,29 +151,12 @@ export class ShaeElement extends HTMLElement {
     }
   }
 
-  connectedCallback() {
-    // The whole body runs outside whatever reactive context the caller is in. An `append()` is an
-    // ordinary call, and it can perfectly well stand inside a `createEffect()` of the application:
-    // a new effect and an `onChange()` hang themselves on the effect that is running at the time,
-    // so every subscription taken up below would become a child of that foreign effect, and its
-    // next run would release them all. The element would go quiet with `isDestroyed` still reading
-    // `false` and nothing said. `hibernate()` clears the effect stack for the duration, so the
-    // subscriptions belong to the element and come off where the element decides.
+  override connectedCallback() {
+    // the whole body outside whatever reactive context the caller is in, for the reason spelled out
+    // in `ShaeLifecycleElement.connectedCallback`. Nesting is fine: `super.connectedCallback()`
+    // opens a frame of its own inside this one
     hibernate(() => {
-      // first, before anything reads or writes: being in the tree is the condition the deferred
-      // teardown waits on, so arriving here calls a booked teardown off
-      this.#teardown.cancel();
-
-      // an element that is not listening takes its subscriptions up: the one that has never
-      // listened yet and the one whose teardown ran are the same case. The signals stood untouched
-      // either way, so this is a subscribe and never a rebuild
-      this.#destroyed = false;
-      if (!this.#subscribed) {
-        this.#subscribed = true;
-        this.restore();
-      }
-
-      ensureDisplayContentsRule(this.getRootNode(), this.localName);
+      super.connectedCallback();
 
       // the gate is "has been connected once", not "is connected now": what is held back is only
       // what accrues before the very first connect — the reflections `restore()` just wrote among
@@ -239,46 +177,18 @@ export class ShaeElement extends HTMLElement {
     });
   }
 
-  disconnectedCallback(): void {
-    this.#teardown.schedule();
-  }
-
   /**
-   * Tear this element down: let go of everything that listens, and keep everything that is state.
-   *
-   * Called for an element that has left the tree and stayed out, and callable by hand for one
-   * whose end is known earlier. Every call after the first finds nothing left to do.
-   *
-   * The guard and the flag live here, in front of the work, and that is the whole reason this
-   * method is not the one a subclass overrides: releasing what an element holds can call back into
-   * it — an environment being torn down dispatches a DOM event on its way out, and a listener on
-   * that event can reach `destroy()` again — and a flag that only fell at the end would let the
-   * second call run the whole teardown a second time. {@link ShaeElement.teardown} is the
-   * extension point; it runs with the flag already down and `isDestroyed` already `true`.
-   */
-  destroy(): void {
-    if (this.#destroyed) return;
-    this.#destroyed = true;
-    this.#subscribed = false;
-
-    this.teardown();
-  }
-
-  /**
-   * Release what this element holds. The overridable half of {@link ShaeElement.destroy}.
-   *
-   * A subclass releases its own subscriptions and calls `super.teardown()` last, so the element
-   * comes apart from the outside in. Whatever is released here has to be taken up again in
-   * {@link ShaeElement.restore} — the two are one pair, and a subscription missing from either
-   * side is a leak or a silently dead element.
+   * Release the namespace reflection. The namespace half of {@link ShaeLifecycleElement.teardown}.
    *
    * `#pendingReflections` is left alone on purpose: it holds every write parked before the
    * element's first connect, and that connect is what drains it — a `destroy()` reached first
    * leaves the map standing for whichever connect comes next.
    */
-  protected teardown(): void {
+  protected override teardown(): void {
     this.#nsReflection?.();
     this.#nsReflection = undefined;
+
+    super.teardown();
   }
 
   attributeChangedCallback(name: string) {
