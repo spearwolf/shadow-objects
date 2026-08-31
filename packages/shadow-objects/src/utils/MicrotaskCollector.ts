@@ -22,11 +22,11 @@ type AddArgs<K, V> = undefined extends V ? [key: K, value?: V] : [key: K, value:
  * Every delivery a site makes runs under `runGuarded()`. Entries that arrived in the same task are
  * independent of one another, and one that fails costs itself and nothing behind it -- the promise
  * `docs/api-reference.md` already spells out for context values. What counts as one delivery is
- * the site's to say: {@link Entity} delivers per entry, {@link ComponentContext} groups its senders
+ * the site's to say: `Entity` delivers per entry, `ComponentContext` groups its senders
  * into rounds first and delivers per round.
  *
- * For a booking that has to be callable off again, see {@link DeferredTeardown}; for a single
- * deferred action without a batch, {@link MicrotaskGate}.
+ * For a booking that has to be callable off again, see `DeferredTeardown`; for a single
+ * deferred action without a batch, `MicrotaskGate`.
  */
 export class MicrotaskCollector<K, V = undefined> {
   #entries = new Map<K, V>();

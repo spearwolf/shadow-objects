@@ -1022,7 +1022,7 @@ export class ComponentContext {
    * produces empty change trails, and rejects any component that tries to join it. Calling
    * it more than once is a no-op.
    *
-   * A {@link ShadowEnv} bound to this context keeps its reference; destroy the environment
+   * A `ShadowEnv` bound to this context keeps its reference; destroy the environment
    * first if you want the namespace released on both sides.
    */
   dispose() {

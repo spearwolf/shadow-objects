@@ -10,8 +10,8 @@ export interface IShadowObjectEnvProxy {
    * Hand a change trail to the Shadow Environment behind this proxy.
    *
    * An implementation that can say how far the Kernel got before it stopped rejects with a
-   * {@link ChangeTrailRefusedError}: its `appliedCount` names the length of the prefix the Kernel
-   * applied, and {@link ShadowEnv} folds exactly that prefix into its bookkeeping and sends the
+   * `ChangeTrailRefusedError`: its `appliedCount` names the length of the prefix the Kernel
+   * applied, and `ShadowEnv` folds exactly that prefix into its bookkeeping and sends the
    * rest again with the next trail.
    *
    * Every other reason is read as "the whole trail counts as applied" -- a confirmation window
@@ -23,7 +23,7 @@ export interface IShadowObjectEnvProxy {
    *
    * @param waitForConfirmation whether the caller waits for the environment to confirm the trail.
    *   A proxy that can only report a refusal on the confirmed route says nothing about a trail
-   *   sent without it -- {@link RemoteWorkerEnv} is one of those.
+   *   sent without it -- `RemoteWorkerEnv` is one of those.
    */
   applyChangeTrail(data: ChangeTrailType, waitForConfirmation: boolean): Promise<void>;
 
@@ -31,7 +31,7 @@ export interface IShadowObjectEnvProxy {
 
   /**
    * Called with a message on its way out of the Shadow Environment.
-   * {@link ShadowEnv} installs it on every proxy it is given and takes it back off a proxy
+   * `ShadowEnv` installs it on every proxy it is given and takes it back off a proxy
    * it lets go -- one microtask after that proxy's `destroy()` has returned, so that what an
    * `onDestroy` hands to the view during the teardown still arrives.
    */
@@ -39,7 +39,7 @@ export interface IShadowObjectEnvProxy {
 
   /**
    * Called when the proxy has irrecoverably lost the environment it stands for.
-   * {@link ShadowEnv} installs it on every proxy it is given and takes it back off a proxy
+   * `ShadowEnv` installs it on every proxy it is given and takes it back off a proxy
    * it lets go, the moment that proxy's `destroy()` has returned; an implementation
    * that cannot fail simply never calls it.
    */

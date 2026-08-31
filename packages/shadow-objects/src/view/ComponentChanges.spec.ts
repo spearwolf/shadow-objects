@@ -5,7 +5,7 @@ import {ComponentChanges} from './ComponentChanges.js';
 
 const UUID = 'c-1';
 
-/** Runs the three trail phases in the same order as {@link ComponentContext.buildChangeTrails}. */
+/** Runs the three trail phases in the same order as `ComponentContext.buildChangeTrails`. */
 function buildTrail(changes: ComponentChanges): IComponentChangeType[] {
   const trail: IComponentChangeType[] = [];
   changes.buildChangeTrail(trail, ChangeTrailPhase.StructuralChanges);

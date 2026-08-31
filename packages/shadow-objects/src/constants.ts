@@ -21,7 +21,7 @@ export const GlobalNS: NamespaceType = Symbol.for('ShadowObjectsGlobalNS');
 export const VoidToken = '#void';
 
 /**
- * The event is dispatched by {@link ComponentContext.reCreateChanges} and forwarded to all {@link ViewComponent}.
+ * The event is dispatched by `ComponentContext.reCreateChanges` and forwarded to all `ViewComponent`.
  * The event itself has no other data.
  */
 export const ContextLost = 'contextLost';

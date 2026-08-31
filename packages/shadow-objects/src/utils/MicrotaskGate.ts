@@ -6,7 +6,7 @@
  *
  * No batch and no guard: there is one action, so there are no neighbours a failure could cost --
  * what it throws goes where an uncaught microtask goes. A gate that carries entries is
- * {@link MicrotaskCollector}, a booking that can be called off again is {@link DeferredTeardown}.
+ * `MicrotaskCollector`, a booking that can be called off again is `DeferredTeardown`.
  */
 export class MicrotaskGate {
   #scheduled = false;

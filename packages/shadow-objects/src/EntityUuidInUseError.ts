@@ -8,7 +8,7 @@
  * The uuid is free again once `Kernel.destroyEntity()` has been through: whoever wants an entity
  * built anew under the same uuid destroys the one that stands first.
  *
- * In a change trail this is the reason underneath a {@link ChangeTrailRefusedError}: the trail is
+ * In a change trail this is the reason underneath a `ChangeTrailRefusedError`: the trail is
  * refused at that entry, and `appliedCount` names the prefix the Kernel did apply.
  */
 export class EntityUuidInUseError extends Error {

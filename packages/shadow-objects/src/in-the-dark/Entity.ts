@@ -606,7 +606,7 @@ export class Entity {
   }
 
   /**
-   * The counterpart of {@link attachContextProvider} for the global context of `name`.
+   * The counterpart of {@link Entity.attachContextProvider} for the global context of `name`.
    *
    * Within one entity the situation is the same one: every provider feeds the single signal this
    * entity contributes to the kernel-wide chain of that name, and a release hands the name back to a
