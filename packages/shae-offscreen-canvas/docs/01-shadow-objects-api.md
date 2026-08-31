@@ -142,4 +142,6 @@ The renderer is not part of the entity: it has to be in reach through the contex
 
 The shadow object listens to the `onFrame` event of its entity at `Priority.Low`, so that a shadow object setting `scene` and `camera` for this frame has run before it. It renders the view, transfers the resulting [ImageBitmap](https://developer.mozilla.org/en-US/docs/Web/API/ImageBitmap) into the `ImageBitmapRenderingContext` and closes it. A frame the renderer answers with no image transfers nothing. One frame per view is in flight at a time: a frame that arrives while the render of the previous one is still open passes without rendering.
 
+A render that fails is reported through the `ConsoleLogger` under the name `ThreeRenderView`, and costs no more than its own frame — the next frame renders again. A failure that repeats unchanged for the same view is reported once, not once per frame; a frame that comes back ends the report, and the next failure gets one of its own.
+
 The view goes back to the renderer through `destroyView()` exactly once — when the shadow object is torn down, and when the renderer leaves the context.

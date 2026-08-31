@@ -89,6 +89,8 @@ describe('ThreeRenderView', () => {
   afterEach(() => {
     env?.destroy();
     env = undefined;
+    // the console spies of the failure cases below belong to their case, not to the file
+    vi.restoreAllMocks();
   });
 
   const setup = () => {
@@ -359,17 +361,63 @@ describe('ThreeRenderView', () => {
 
     it('takes the next frame after one whose render failed', async () => {
       const {child, renderer} = await setupRendering();
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
       renderer.renderView.mockRejectedValueOnce(new Error('the render failed'));
 
-      // the rejection leaves the async listener unhandled; captured so it does not surface as a
-      // file-level note with no failing assertion attached
-      await captureUncaught(() => emit(child, OnFrame, {}));
+      emit(child, OnFrame, {});
+      await settle();
 
       emit(child, OnFrame, {});
       await settle();
 
       expect(renderer.renderView).toHaveBeenCalledTimes(2);
+    });
+
+    it('reports a failed render instead of letting the rejection escape', async () => {
+      const {child, renderer} = await setupRendering();
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      renderer.renderView.mockRejectedValueOnce(new Error('the render failed'));
+
+      const escaped = await captureUncaught(() => emit(child, OnFrame, {}));
+
+      expect(escaped, 'the rejection stays inside the listener').toEqual([]);
+      expect(consoleError, 'and the failure is reported').toHaveBeenCalledTimes(1);
+    });
+
+    it('reports a render that keeps failing the same way once, not once per frame', async () => {
+      const {child, renderer} = await setupRendering();
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      renderer.renderView.mockRejectedValue(new Error('the render failed'));
+
+      for (let frame = 0; frame < 3; frame++) {
+        emit(child, OnFrame, {});
+        await settle();
+      }
+
+      expect(renderer.renderView, 'every frame still takes its turn').toHaveBeenCalledTimes(3);
+      expect(consoleError, 'and one report carries all three').toHaveBeenCalledTimes(1);
+    });
+
+    it('reports again after a frame that came back', async () => {
+      const {child, renderer} = await setupRendering();
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      renderer.renderView.mockRejectedValueOnce(new Error('the render failed'));
+      emit(child, OnFrame, {});
+      await settle();
+
+      // the mock answers with a resolved promise again, which is its default
+      emit(child, OnFrame, {});
+      await settle();
+
+      renderer.renderView.mockRejectedValueOnce(new Error('the render failed'));
+      emit(child, OnFrame, {});
+      await settle();
+
+      expect(consoleError, 'a failure behind a frame that came back is its own episode').toHaveBeenCalledTimes(2);
     });
   });
 });
