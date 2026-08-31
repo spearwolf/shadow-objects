@@ -1,3 +1,5 @@
+import type {WorkerReplyType} from './constants.js';
+
 /**
  * The reason a reply from the worker did not arrive in time.
  *
@@ -16,12 +18,12 @@
  */
 export class WorkerTimeoutError extends Error {
   /** the type of the message that did not arrive */
-  readonly messageType: string;
+  readonly messageType: WorkerReplyType;
 
   /** how many milliseconds were waited for it */
   readonly timeout: number;
 
-  constructor(messageType: string, timeout: number) {
+  constructor(messageType: WorkerReplyType, timeout: number) {
     super(`no ${messageType} message arrived from the worker within ${timeout}ms`);
     this.name = 'WorkerTimeoutError';
     this.messageType = messageType;

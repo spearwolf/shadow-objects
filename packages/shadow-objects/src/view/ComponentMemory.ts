@@ -14,7 +14,7 @@ import {applyPropsChanges} from '../utils/props-utils.js';
 export interface ComponentState {
   token: string;
   parentUuid?: string | undefined;
-  order?: number;
+  order: number;
   properties?: ComponentPropertiesType | undefined;
   autoDestructionOnParentRemoval?: boolean;
 }

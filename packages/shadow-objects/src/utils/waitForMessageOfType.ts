@@ -1,3 +1,4 @@
+import type {WorkerReplyType} from '../constants.js';
 import {WorkerTimeoutError} from '../WorkerTimeoutError.js';
 import {isReadableMessageData} from '../worker/MessageRouter.js';
 
@@ -21,11 +22,11 @@ export const isTimeout = (value: unknown): value is number =>
  * so that a caller does not sit out the timeout waiting for a reply that can no
  * longer arrive.
  */
-export const waitForMessageOfType = (
+export const waitForMessageOfType = <T = unknown>(
   worker: Worker,
-  type: string,
+  type: WorkerReplyType,
   timeout = 1000,
-  guard?: (data: any) => boolean,
+  guard?: (data: T) => boolean,
   signal?: AbortSignal,
 ) =>
   new Promise<void>((resolve, reject) => {
@@ -43,7 +44,7 @@ export const waitForMessageOfType = (
       return;
     }
 
-    let timeoutId: number;
+    let timeoutId: ReturnType<typeof setTimeout>;
     let listener: (event: MessageEvent) => void;
 
     const cleanup = () => {
@@ -63,7 +64,7 @@ export const waitForMessageOfType = (
       timeoutId = setTimeout(() => {
         cleanup();
         reject(new WorkerTimeoutError(type, timeout));
-      }, timeout) as any;
+      }, timeout);
     }
 
     listener = (event) => {

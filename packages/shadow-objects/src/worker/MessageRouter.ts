@@ -21,6 +21,15 @@ interface ConfigurePayloadData {
 }
 
 /**
+ * The teardown request carries nothing but its own type: there is no field a sender could vary,
+ * and the router reads none. Named all the same -- the three routes then read alike, and a
+ * payload that says which message it is says more than one that says nothing at all.
+ */
+interface DestroyPayloadData {
+  type: typeof Destroy;
+}
+
+/**
  * A payload this side can read is an object: every branch below takes a `type` off it and
  * then reads further fields. `null`, `undefined`, a number or a string come from someone who
  * does not speak this protocol, and reading through them takes the whole worker down over one
@@ -198,7 +207,7 @@ export class MessageRouter {
     }
   }
 
-  #onDestroy(data: any) {
+  #onDestroy(data: DestroyPayloadData) {
     this.logger.debug('on destroy', data);
 
     // `route()` is the barrier, so this runs once: every later message, a second destroy included,

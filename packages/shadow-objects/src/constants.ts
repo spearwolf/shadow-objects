@@ -36,6 +36,14 @@ export const ImportedModule = 'importedModule';
 export const Destroyed = 'destroyed';
 
 /**
+ * The four replies a `RemoteWorkerEnv` waits for, each behind a deadline of its own: the `Loaded`
+ * greeting of the load handshake, the `ImportedModule` answer to an `importScript()`, the
+ * `AppliedChangeTrail` confirmation of a change trail sent with `waitForConfirmation`, and the
+ * `Destroyed` receipt of a teardown. A `switch` over the four is exhaustive.
+ */
+export type WorkerReplyType = typeof Loaded | typeof AppliedChangeTrail | typeof ImportedModule | typeof Destroyed;
+
+/**
  * The `messageToView` event is fired when the kernel receives a message from an entity (to its view component counterpart)
  */
 export const MessageToView = 'messageToView';

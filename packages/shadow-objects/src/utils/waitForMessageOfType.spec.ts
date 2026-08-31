@@ -1,4 +1,5 @@
 import {describe, expect, it, vi} from 'vitest';
+import {Loaded} from '../constants.js';
 import {WorkerTimeoutError} from '../WorkerTimeoutError.js';
 import {waitForMessageOfType} from './waitForMessageOfType.js';
 
@@ -34,21 +35,21 @@ class FakeWorker {
 describe('waitForMessageOfType', () => {
   it('resolves on the awaited type', async () => {
     const worker = new FakeWorker();
-    const promise = waitForMessageOfType(worker as unknown as Worker, 'ready');
+    const promise = waitForMessageOfType(worker as unknown as Worker, Loaded);
 
-    worker.reply({type: 'ready'});
+    worker.reply({type: Loaded});
 
     await expect(promise).resolves.toBeUndefined();
   });
 
   it('discards a payload it cannot read', async () => {
     const worker = new FakeWorker();
-    const promise = waitForMessageOfType(worker as unknown as Worker, 'ready');
+    const promise = waitForMessageOfType(worker as unknown as Worker, Loaded);
 
     expect(() => worker.reply(null)).not.toThrow();
     expect(() => worker.reply(undefined)).not.toThrow();
 
-    worker.reply({type: 'ready'});
+    worker.reply({type: Loaded});
 
     await expect(promise).resolves.toBeUndefined();
   });
@@ -56,7 +57,7 @@ describe('waitForMessageOfType', () => {
   it('ignores a primitive payload', async () => {
     const worker = new FakeWorker();
     let resolved = false;
-    const promise = waitForMessageOfType(worker as unknown as Worker, 'ready').then((value) => {
+    const promise = waitForMessageOfType(worker as unknown as Worker, Loaded).then((value) => {
       resolved = true;
       return value;
     });
@@ -68,7 +69,7 @@ describe('waitForMessageOfType', () => {
     await Promise.resolve();
     expect(resolved).toBe(false);
 
-    worker.reply({type: 'ready'});
+    worker.reply({type: Loaded});
 
     await expect(promise).resolves.toBeUndefined();
   });
@@ -79,7 +80,7 @@ describe('waitForMessageOfType', () => {
 
       const worker = new FakeWorker();
       // caught through `then`, not awaited: a wait that never runs out would hang the whole run
-      const settled = waitForMessageOfType(worker as unknown as Worker, 'ready', 1234).then(
+      const settled = waitForMessageOfType(worker as unknown as Worker, Loaded, 1234).then(
         () => undefined,
         (reason: unknown) => reason,
       );
@@ -88,7 +89,7 @@ describe('waitForMessageOfType', () => {
 
       const reason = await settled;
       expect(reason, 'the deadline has a class of its own').toBeInstanceOf(WorkerTimeoutError);
-      expect((reason as WorkerTimeoutError).messageType, 'and names the reply that stayed out').toBe('ready');
+      expect((reason as WorkerTimeoutError).messageType, 'and names the reply that stayed out').toBe(Loaded);
       expect((reason as WorkerTimeoutError).timeout, 'and the number it waited').toBe(1234);
     } finally {
       vi.useRealTimers();
@@ -106,7 +107,7 @@ describe('waitForMessageOfType', () => {
         vi.useFakeTimers();
 
         const worker = new FakeWorker();
-        const settled = waitForMessageOfType(worker as unknown as Worker, 'ready', timeout).then(
+        const settled = waitForMessageOfType(worker as unknown as Worker, Loaded, timeout).then(
           () => undefined,
           (reason: unknown) => reason,
         );
@@ -127,7 +128,7 @@ describe('waitForMessageOfType', () => {
         vi.useFakeTimers();
 
         const worker = new FakeWorker();
-        const settled = waitForMessageOfType(worker as unknown as Worker, 'ready', 0);
+        const settled = waitForMessageOfType(worker as unknown as Worker, Loaded, 0);
         let resolved = false;
         settled.then(() => {
           resolved = true;
@@ -136,7 +137,7 @@ describe('waitForMessageOfType', () => {
         await vi.advanceTimersByTimeAsync(10_000_000);
         expect(resolved).toBe(false);
 
-        worker.reply({type: 'ready'});
+        worker.reply({type: Loaded});
         await expect(settled).resolves.toBeUndefined();
       } finally {
         vi.useRealTimers();
@@ -148,7 +149,7 @@ describe('waitForMessageOfType', () => {
         vi.useFakeTimers();
 
         const worker = new FakeWorker();
-        const settled = waitForMessageOfType(worker as unknown as Worker, 'ready', Infinity);
+        const settled = waitForMessageOfType(worker as unknown as Worker, Loaded, Infinity);
         let resolved = false;
         settled.then(() => {
           resolved = true;
@@ -157,7 +158,7 @@ describe('waitForMessageOfType', () => {
         await vi.advanceTimersByTimeAsync(10_000_000);
         expect(resolved).toBe(false);
 
-        worker.reply({type: 'ready'});
+        worker.reply({type: Loaded});
         await expect(settled).resolves.toBeUndefined();
       } finally {
         vi.useRealTimers();

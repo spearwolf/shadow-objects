@@ -508,7 +508,7 @@ export class ShadowObjectCreationScope {
     return true;
   }
 
-  useProperty<T = any>(name: string, options?: SignalValueOptions<T> | CompareFunc<T | undefined>): SignalReader<Maybe<T>> {
+  useProperty<T = unknown>(name: string, options?: SignalValueOptions<T> | CompareFunc<T | undefined>): SignalReader<Maybe<T>> {
     if (this.#refuseAfterTearDown('useProperty')) return inertSignal().get;
 
     this.#reportDeprecatedIsEqualOption(options, 'useProperty');
@@ -534,7 +534,7 @@ export class ShadowObjectCreationScope {
     const result = {} as {[K in keyof T]: SignalReader<Maybe<T[K]>>};
     for (const key in props) {
       if (Object.hasOwn(props, key)) {
-        result[key] = this.useProperty(props[key]);
+        result[key] = this.useProperty<T[typeof key]>(props[key]);
       }
     }
     return result;

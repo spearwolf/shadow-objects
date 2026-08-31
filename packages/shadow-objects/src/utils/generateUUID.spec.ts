@@ -18,6 +18,17 @@ describe('generateUUID', () => {
     vi.resetModules();
   });
 
+  it('hands back the template-literal form, not a bare string', async () => {
+    vi.stubGlobal('crypto', {randomUUID: () => '00000000-0000-4000-8000-000000000000'});
+
+    const {generateUUID} = await importFresh();
+    // The annotation is the guard: the shape rides on inference alone, and a later annotation or a
+    // rewrite that widens the return to `string` has to get past this line first.
+    const uuid: `${string}-${string}-${string}-${string}-${string}` = generateUUID();
+
+    expect(uuid).toMatch(UUID_V4);
+  });
+
   it('asks crypto.randomUUID first', async () => {
     const randomUUID = vi.fn(() => '00000000-0000-4000-8000-000000000000');
     const getRandomValues = vi.fn();

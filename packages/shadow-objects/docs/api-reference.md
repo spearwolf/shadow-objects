@@ -1103,11 +1103,11 @@ A method that takes a `ViewComponent` acts on the entry that belongs to that ins
 | :--- | :--- | :--- |
 | `token` | `string` | The token, `'#void'` for a component that was never given one. |
 | `parentUuid` | `string \| undefined` | The uuid of the parent, `undefined` for a root component. |
-| `order` | `number \| undefined` | The sort order among the siblings, `0` for a component that was never given one. |
+| `order` | `number` | The sort order among the siblings, `0` for a component that was never given one. |
 | `properties` | `ComponentPropertiesType \| undefined` | The properties, `undefined` where the component holds none. A property that is set without a value stands in it as a one-element entry. |
 | `autoDestructionOnParentRemoval` | `boolean \| undefined` | Whether the entity goes down with its parent. |
 
-`token`, `parentUuid`, `order` and `properties` are keys on the snapshot whether they carry a value or not: a field with nothing in it reads as `undefined`, and `'parentUuid' in state` says yes either way. `autoDestructionOnParentRemoval` is the one that is missing outright unless it is `true`.
+`token`, `parentUuid` and `properties` are keys on the snapshot whether they carry a value or not: a field with nothing in it reads as `undefined`, and `'parentUuid' in state` says yes either way. `order` is a key on the snapshot too, and always carries a number. `autoDestructionOnParentRemoval` is the one that is missing outright unless it is `true`.
 
 The memory moves under several hands, and a snapshot describes the moment it was taken: `commitChangeTrail()` folds a settled trail into it, `buildChangeTrails()` does the same for the trail it builds unless it is told not to commit, `reCreateChanges()` writes the trail it builds and empties the memory afterwards, and `clear()` empties it outright. Take the snapshot again to see the state after any of those.
 
@@ -1687,8 +1687,10 @@ The reason a reply from the worker did not arrive in time. Exported from
 
 | Member | Type | Description |
 | :--- | :--- | :--- |
-| `messageType` | `string` | The type of the message that did not arrive, spelled as it travels: `'loaded'` for the load handshake of `start()`, `'importedModule'` for an `importScript()`, `'appliedChangeTrail'` for a change trail sent with a confirmation, `'destroyed'` for the acknowledgement of a teardown. |
+| `messageType` | `WorkerReplyType` | The type of the message that did not arrive, spelled as it travels: `'loaded'` for the load handshake of `start()`, `'importedModule'` for an `importScript()`, `'appliedChangeTrail'` for a change trail sent with a confirmation, `'destroyed'` for the acknowledgement of a teardown. |
 | `timeout` | `number` | How many milliseconds were waited for it. A diagnosis therefore knows which of the four values was in force without reaching for `env.timeouts`. |
+
+`WorkerReplyType` is exported from `@spearwolf/shadow-objects` as well, so a `switch` over the four cases can be exhaustive.
 
 ```typescript
 import { WorkerTimeoutError } from '@spearwolf/shadow-objects';
@@ -1952,7 +1954,7 @@ teardown takes the environment with it, so there is nothing to return to.
 | `logger` | The `ConsoleLogger` this element reports through, read-only. The slot is a getter without a setter, so `el.logger = …` throws a `TypeError` in strict mode and does nothing outside it. |
 | `autostart` | Whether the element may start on connect. Writable, defaults to `true`; the `no-autostart` attribute is the declarative half of the same decision. |
 | `shouldAutostart` | Read-only: `autostart` and the `no-autostart` attribute taken together. This is what the element asks when it connects. |
-| `autoSync` | The current `auto-sync` value. **Writing takes strings only:** any other value is read as a flag — a truthy one becomes `"frame"`, a falsy one `"no"`. `el.autoSync = 30` therefore syncs every frame, while `auto-sync="30"` is a 30-millisecond interval. Every value other than the frame default is reflected into the attribute; the frame default is written only when the attribute is already there. |
+| `autoSync` | Accepts `string \| boolean \| number`. The current `auto-sync` value. **Writing takes strings only:** any other value is read as a flag — a truthy one becomes `"frame"`, a falsy one `"no"`. `el.autoSync = 30` therefore syncs every frame, while `auto-sync="30"` is a 30-millisecond interval. Every value other than the frame default is reflected into the attribute; the frame default is written only when the attribute is already there. |
 | `frameLoop` | The [`FrameLoop`](#frameloop) driving the frame-based sync, taken on first read. There is one per module instance — every element that reads it from the same copy of the package gets the same instance, while a second copy on the page drives a loop of its own; see [Shared Registries](./concepts.md#shared-registries). |
 | `ns` | The namespace, get and set, inherited from `ShaeElement`. Writing trims the value and reflects it back into the `ns` attribute; an empty value removes the attribute and returns the element to the Global Context. |
 | `isShaeWorkerElement` | `true`. `isShaeElement` is `true` as well, inherited from `ShaeElement`. |

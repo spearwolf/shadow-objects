@@ -224,7 +224,7 @@ export class ShaeWorkerElement extends ShaeElement {
     return this.autoSync$.value;
   }
 
-  set autoSync(val: any) {
+  set autoSync(val: string | boolean | number) {
     this.autoSync$.set(normaliseAutoSync(val));
   }
 
@@ -308,7 +308,7 @@ export class ShaeWorkerElement extends ShaeElement {
     }
 
     if (name === ATTR_AUTO_SYNC) {
-      this.autoSync = this.hasAttribute(ATTR_AUTO_SYNC) ? this.getAttribute(ATTR_AUTO_SYNC) : true;
+      this.autoSync = this.getAttribute(ATTR_AUTO_SYNC) ?? true;
     }
 
     if (name === ATTR_SRC) {

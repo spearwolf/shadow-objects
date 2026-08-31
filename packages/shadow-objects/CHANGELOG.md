@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 > **Next release: minor.** The package is below `1.0.0`, so the accumulated breaking
-> changes below bump the minor position — `0.33.0` → `0.34.0`. Sixty-one changes reach existing
+> changes below bump the minor position — `0.33.0` → `0.34.0`. Sixty-two changes reach existing
 > consumers: both runtime dependencies take a major step and carry behaviour changes of their
 > own; the emitted declarations carry `| undefined` where a value can be missing, so a
 > build with `strictNullChecks` sees new errors; `RemoteWorkerEnv` rejects with
@@ -217,6 +217,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > And `ConsoleLogger.debug()`, `.info()` and `.warn()` each check their own level's getter before
 > printing, so an ungated call to one of them stays off the console while the matching switch is
 > off, where it used to print regardless — `error()` asks no getter and keeps printing unconditionally.
+> And `ShaeWorkerElement.autoSync`'s setter narrows from `any` to `string | boolean | number`, so an
+> assignment of any other shape, one that used to compile, no longer does.
 > Everything else in this section is additive or a bugfix.
 
 ### ⚠️ Breaking Changes
@@ -435,6 +437,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Types (public API):** `MessageToViewEvent.transferables` is declared `Transferable[] | undefined` and `EntityApi.parent` is declared `EntityApi | undefined`. A consumer compiling with `exactOptionalPropertyTypes` may now assign `undefined` to either field directly, where every other configuration already treated the two forms as the same type. No break.
 - **Types (public API):** `MessageToViewEvent.traverseChildren`, `ComponentState.parentUuid` and `.properties`, `IShadowObjectEnvProxy.onMessageToView` and `.onProxyFailed` are declared with `| undefined`, and the `ViewComponent` constructor's options object accepts `undefined` for each of `parent`, `order`, `context`, `uuid` and `autoDestructionOnParentRemoval`. A consumer compiling with `exactOptionalPropertyTypes` may now assign `undefined` to any of these fields directly — for the constructor, an options object built from values that may be missing is now typeable — where every other configuration already treated the two forms as the same type. No break.
 - **Types (public API):** the `ViewComponent` constructor declares both call forms it accepts — `new ViewComponent(token?, parent?)` and `new ViewComponent(token?, options?)` — and `token` is optional in both, as the `token` setter has always taken `string | undefined`. A component passed in place of the options object is read as the parent instead of being resolved structurally against the options type, where the compiler used to read `uuid`, `order` and `context` off it and report a meaning the constructor never had. A call without a token needs no cast: the token lands on `VoidToken` (`'#void'`). No runtime behaviour changes.
+- **Types (public API):** `WorkerTimeoutError.messageType` is declared `WorkerReplyType`, the union of the four constants a `RemoteWorkerEnv` waits a reply for, exported from the package. Reading the field type-checks the same way; a `switch` over it can now be exhaustive; a `WorkerTimeoutError` built with a string that is not one of the four no longer type-checks.
+- **Types (public API):** `ShaeWorkerElement.autoSync`'s setter is declared `string | boolean | number`. Behaviour is unchanged — a string is the value, anything else is read as a flag — but an assignment of any other shape no longer type-checks.
+- **Types (public API):** `ComponentState.order` is declared `number`. Every write path already set it; the `undefined` the type promised never arrived, and a reader loses a branch that was already dead.
+- **Types:** four internal declarations name the type the project already has for them: `useProperty()` on `ShadowObjectCreationScope` is declared `<T = unknown>`, matching `ShadowObjectCreationAPI`; the transfer line in `cloneChangeTrail()` passes `TransferablesType` on without a cast; `MessageRouter` names the destroy payload like its two neighbors; and `waitForMessageOfType()` takes one of the four reply constants, is generic over its guard's payload, and declares its timer handle as the return type of `setTimeout`. None of these are re-exported from `index.ts` or reachable through the `exports` map.
 
 
 ### Dependencies
