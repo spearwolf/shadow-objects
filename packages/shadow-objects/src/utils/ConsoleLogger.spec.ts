@@ -1,5 +1,5 @@
-import {afterEach, describe, expect, it} from 'vitest';
-import {ConsoleLogger, type ConsoleLoggerControl} from './ConsoleLogger.js';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {ConsoleLogger, type ConsoleLoggerConfig, type ConsoleLoggerControl} from './ConsoleLogger.js';
 
 // The handle is reached through this module-local cast rather than `globalThis.ConsoleLogger`
 // directly: the type is not ambient (see the comment on `gGlobalSlots` in ConsoleLogger.ts),
@@ -67,6 +67,84 @@ describe('ConsoleLogger', () => {
         consoleLoggerHandle().debug = before;
         localStorage.removeItem('ConsoleLogger.debug');
       }
+    });
+  });
+
+  describe('the switches of a level', () => {
+    let snapshot: ConsoleLoggerConfig;
+
+    beforeEach(() => {
+      snapshot = {...ConsoleLogger.sharedConfig};
+    });
+
+    afterEach(() => {
+      Object.assign(ConsoleLogger.sharedConfig, snapshot);
+      vi.restoreAllMocks();
+    });
+
+    it('keeps a debug line off the console while the shared debug switch is off', () => {
+      const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+      ConsoleLogger.sharedConfig.enable = true;
+      ConsoleLogger.sharedConfig.debug = false;
+
+      new ConsoleLogger('switch-namespace').debug('nobody asked for this');
+
+      expect(debug).not.toHaveBeenCalled();
+    });
+
+    it('keeps an info line off the console while the shared info switch is off', () => {
+      const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+      ConsoleLogger.sharedConfig.enable = true;
+      ConsoleLogger.sharedConfig.info = false;
+
+      new ConsoleLogger('switch-namespace').info('nobody asked for this');
+
+      expect(info).not.toHaveBeenCalled();
+    });
+
+    it('keeps a warn line off the console while the shared warn switch is off', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      ConsoleLogger.sharedConfig.enable = true;
+      ConsoleLogger.sharedConfig.warn = false;
+
+      new ConsoleLogger('switch-namespace').warn('nobody asked for this');
+
+      expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('prints an error report while every switch is off', () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      ConsoleLogger.sharedConfig.enable = false;
+      ConsoleLogger.sharedConfig.debug = false;
+      ConsoleLogger.sharedConfig.info = false;
+      ConsoleLogger.sharedConfig.warn = false;
+
+      new ConsoleLogger('switch-namespace').error('this one always arrives');
+
+      expect(error).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps every level but the error report off the console while the instance is disabled', () => {
+      const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+      const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      ConsoleLogger.sharedConfig.enable = true;
+      ConsoleLogger.sharedConfig.debug = true;
+      ConsoleLogger.sharedConfig.info = true;
+      ConsoleLogger.sharedConfig.warn = true;
+
+      const logger = new ConsoleLogger('switch-namespace');
+      logger.enable = false;
+      logger.debug('nobody asked for this');
+      logger.info('nobody asked for this');
+      logger.warn('nobody asked for this');
+      logger.error('this one always arrives');
+
+      expect(debug).not.toHaveBeenCalled();
+      expect(info).not.toHaveBeenCalled();
+      expect(warn).not.toHaveBeenCalled();
+      expect(error).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -17,13 +17,11 @@ export async function importModule(
   upgradeEntities = true,
 ): Promise<void> {
   if (importedModules.has(module)) {
-    // Gated behind `isWarn`, unlike the reports of the creation API: a module two `extends` chains
+    // `warn`, not `error`, unlike the reports of the creation API: a module two `extends` chains
     // have in common is a shape of the module graph and not a mistake, so this line only tells
     // during development. See the table of call against getter under "Console Logger" in
     // `docs/api-reference.md`.
-    if (kernel.logger.isWarn) {
-      kernel.logger.warn('importModule: skipping already imported module', module);
-    }
+    kernel.logger.warn('importModule: skipping already imported module', module);
     return;
   } else {
     importedModules.add(module);

@@ -310,9 +310,7 @@ export class Kernel {
    * @throws {ChangeTrailRefusedError} if any entry, or any effect the batch deferred, threw
    */
   run(event: SyncEvent): void {
-    if (this.logger.isDebug) {
-      this.logger.debug('sync', event);
-    }
+    this.logger.debug('sync', event);
 
     let appliedCount = 0;
 
@@ -573,9 +571,7 @@ export class Kernel {
     // The root set and the traversal cache follow the three writes above: each of them reports to
     // `noteEntityTreeChange()` from inside the entity, on this route as on any other.
 
-    if (this.logger.isDebug) {
-      this.logger.debug('entity.onParentChanged', {uuid, parentUuid, order: nextOrder, entity: e});
-    }
+    this.logger.debug('entity.onParentChanged', {uuid, parentUuid, order: nextOrder, entity: e});
 
     // The notification is the last thing this method does, and it goes out while the caller is
     // still inside the call: the entity is fully placed by now, and an entity that is destroyed

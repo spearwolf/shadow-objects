@@ -16,7 +16,7 @@ import {
   WorkerLoadTimeout,
 } from '../constants.js';
 import type {ChangeTrailType, ISendEvents, IUpdateOrderChange} from '../types.js';
-import {CONSOLE_LOGGER, CONSOLE_LOGGER_STORAGE} from '../utils/ConsoleLogger.js';
+import {CONSOLE_LOGGER, CONSOLE_LOGGER_STORAGE, ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {WorkerTimeoutError} from '../WorkerTimeoutError.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
 import {RemoteWorkerEnv, type RemoteWorkerEnvOptions, WorkerReportedError} from './RemoteWorkerEnv.js';
@@ -585,10 +585,17 @@ describe('RemoteWorkerEnv', () => {
     // On the fake timers: `startEnv()` gets through on microtasks alone, the load handshake needs
     // no real timer of its own.
     it('terminates the worker and reports it when the teardown is never acknowledged', async () => {
+      // `warn` asks the shared switches, and this file never touches `ConsoleLogger.sharedConfig`
+      // elsewhere -- the case sets its own and restores them, rather than relying on the test
+      // server's bind address to happen to be a loopback one
+      const enableBefore = ConsoleLogger.sharedConfig.enable;
+      const warnBefore = ConsoleLogger.sharedConfig.warn;
       try {
         // inside the try, so that a throw anywhere below still gives the real timers back --
         // fake ones left standing would hang `flushMicrotasks()` in every case after this one
         vi.useFakeTimers();
+        ConsoleLogger.sharedConfig.enable = true;
+        ConsoleLogger.sharedConfig.warn = true;
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
         const {env, worker} = await startEnv();
@@ -603,6 +610,8 @@ describe('RemoteWorkerEnv', () => {
       } finally {
         vi.restoreAllMocks();
         vi.useRealTimers();
+        ConsoleLogger.sharedConfig.enable = enableBefore;
+        ConsoleLogger.sharedConfig.warn = warnBefore;
       }
     });
   });
@@ -910,21 +919,21 @@ describe('RemoteWorkerEnv', () => {
     it('starts when the stored worker config is not readable as JSON', async () => {
       const key = `${CONSOLE_LOGGER}.RemoteWorkerEnv.workerConfig`;
       localStorage.setItem(key, '{"debug": true');
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       try {
         const {env, worker} = await startEnv();
 
         expect(worker.posted[0].type, 'the worker is configured before the handshake').toBe(CONSOLE_LOGGER);
         expect(worker.posted[0].config.debug, 'an unusable value counts as no config at all').toBe(false);
         expect(
-          warn.mock.calls.some((args) => args.some((arg) => typeof arg === 'string' && arg.includes(key))),
-          'the warning names the storage key',
+          error.mock.calls.some((args) => args.some((arg) => typeof arg === 'string' && arg.includes(key))),
+          'the error report names the storage key',
         ).toBe(true);
 
         env.destroy();
         worker.reply({type: Destroyed});
       } finally {
-        warn.mockRestore();
+        error.mockRestore();
         localStorage.removeItem(key);
       }
     });
@@ -946,20 +955,20 @@ describe('RemoteWorkerEnv', () => {
       referenceWorker.reply({type: Destroyed});
 
       localStorage.setItem(key, stored);
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       try {
         const {env, worker} = await startEnv();
 
         expect(worker.posted[0].config, 'contributes nothing beyond the shared config').toEqual(baseline);
         expect(
-          warn.mock.calls.some((args) => args.some((arg) => typeof arg === 'string' && arg.includes(key))),
-          'the warning names the storage key',
+          error.mock.calls.some((args) => args.some((arg) => typeof arg === 'string' && arg.includes(key))),
+          'the error report names the storage key',
         ).toBe(true);
 
         env.destroy();
         worker.reply({type: Destroyed});
       } finally {
-        warn.mockRestore();
+        error.mockRestore();
         localStorage.removeItem(key);
       }
     });

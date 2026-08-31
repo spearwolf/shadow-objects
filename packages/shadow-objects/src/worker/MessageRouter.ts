@@ -102,9 +102,7 @@ export class MessageRouter {
     const data = event.data;
 
     if (!isReadableMessageData(data)) {
-      if (this.logger.isDebug) {
-        this.logger.debug('discarding a message it cannot read', data);
-      }
+      this.logger.debug('discarding a message it cannot read', data);
       return;
     }
 
@@ -113,9 +111,7 @@ export class MessageRouter {
     // meets the same barrier: the confirmation belongs to the destroy that was answered, and the
     // one waiter there is settled on it.
     if (this.#isDestroyed) {
-      if (this.logger.isDebug) {
-        this.logger.debug('discarding a message that arrived after the teardown', data.type);
-      }
+      this.logger.debug('discarding a message that arrived after the teardown', data.type);
       return;
     }
 
@@ -133,9 +129,7 @@ export class MessageRouter {
         break;
 
       default:
-        if (this.logger.isWarn) {
-          this.logger.warn('unknown message', data.type ?? data);
-        }
+        this.logger.warn('unknown message', data.type ?? data);
     }
   }
 
@@ -154,9 +148,7 @@ export class MessageRouter {
       // the import outlived a teardown that happened while it was in flight: registering it now
       // would fill a kernel that is already down
       if (this.#isDestroyed) {
-        if (this.logger.isDebug) {
-          this.logger.debug('discarding a module that arrived after the teardown', url);
-        }
+        this.logger.debug('discarding a module that arrived after the teardown', url);
         return;
       }
 
@@ -207,9 +199,7 @@ export class MessageRouter {
   }
 
   #onDestroy(data: any) {
-    if (this.logger.isDebug) {
-      this.logger.debug('on destroy', data);
-    }
+    this.logger.debug('on destroy', data);
 
     // `route()` is the barrier, so this runs once: every later message, a second destroy included,
     // is discarded before it gets here.

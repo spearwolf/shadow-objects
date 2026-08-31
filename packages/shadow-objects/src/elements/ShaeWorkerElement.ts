@@ -244,9 +244,7 @@ export class ShaeWorkerElement extends ShaeElement {
       throw new Error('src is blank');
     }
     const shadowEnv = await this.shadowEnv.ready();
-    if (this.logger.isInfo) {
-      this.logger.info('shadowEnv importScript:', src, {shadowEnv});
-    }
+    this.logger.info('shadowEnv importScript:', src, {shadowEnv});
     // ready() only vouches for the proxy at the moment it resolves; a teardown can slip in
     // between that microtask and this line
     const envProxy = shadowEnv.envProxy;
@@ -393,9 +391,7 @@ export class ShaeWorkerElement extends ShaeElement {
         let delay;
 
         if (['true', 'yes', 'on', 'frame', 'auto-sync'].includes(autoSync)) {
-          if (this.logger.isDebug) {
-            this.logger.debug('auto-sync', autoSync, this);
-          }
+          this.logger.debug('auto-sync', autoSync, this);
           this.frameLoop.start(this);
           return () => {
             this.frameLoop.stop(this);
@@ -404,7 +400,7 @@ export class ShaeWorkerElement extends ShaeElement {
           const fps = parseInt(autoSync, 10);
           if (fps > 0) {
             delay = Math.floor(1000 / fps);
-          } else if (this.logger.isWarn) {
+          } else {
             this.logger.warn(`invalid auto-sync value: ${autoSync}`);
           }
         } else {
@@ -418,16 +414,14 @@ export class ShaeWorkerElement extends ShaeElement {
         }
 
         if (delay !== undefined && delay > 0) {
-          if (this.logger.isDebug) {
-            this.logger.debug('auto-sync interval (ms)', delay, this);
-          }
+          this.logger.debug('auto-sync interval (ms)', delay, this);
           const id = setInterval(() => {
             this.syncShadowObjects();
           }, delay);
           return () => {
             clearInterval(id);
           };
-        } else if (this.logger.isDebug) {
+        } else {
           this.logger.debug('auto-sync off', this);
         }
       }
@@ -451,10 +445,9 @@ export class ShaeWorkerElement extends ShaeElement {
    * propagating them synchronously, so a `try`/`catch` around the write would catch nothing. The
    * refusal writes the attribute back through `reflectAttribute`, the one path this element uses
    * to write its own attributes from inside, and reports the refusal separately through the
-   * `ConsoleLogger`. `logger.error` and not `logger.warn`: there is no `isError` getter to check
-   * before calling it, so the call always prints; a `warn` call on this element is checked
-   * against `isWarn` first, which is off outside `localhost`, and a refusal that goes silent
-   * there is exactly what this call needs to avoid.
+   * `ConsoleLogger`. `logger.error` and not `logger.warn`: `logger.error` always prints, where
+   * `logger.warn` is gated behind `isWarn`, which is off outside `localhost`, and a refusal that
+   * goes silent there is exactly what this call needs to avoid.
    *
    * The write back re-enters `attributeChangedCallback` once, where the attribute now matches
    * the effective state and the check below returns before logging again. On an element built

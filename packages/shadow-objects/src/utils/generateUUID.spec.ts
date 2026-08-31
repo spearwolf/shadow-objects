@@ -38,18 +38,18 @@ describe('generateUUID', () => {
       return bytes;
     });
     vi.stubGlobal('crypto', {getRandomValues});
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const {generateUUID} = await importFresh();
 
     // the bytes 0x00..0x0f, with the version nibble stamped into byte 6 and the variant into byte 8
     expect(generateUUID()).toBe('00010203-0405-4607-8809-0a0b0c0d0e0f');
     expect(getRandomValues, 'the second source is the one that answered').toHaveBeenCalledTimes(1);
-    expect(warn, 'the console announcement belongs to the last source only').not.toHaveBeenCalled();
+    expect(error, 'the console announcement belongs to the last source only').not.toHaveBeenCalled();
   });
 
   it('says once that a realm without Web Crypto falls to Math.random', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     vi.stubGlobal('crypto', undefined);
 
     const {generateUUID} = await importFresh();
@@ -59,7 +59,7 @@ describe('generateUUID', () => {
       expect(uuid, 'the last source answers in the canonical form too').toMatch(UUID_V4);
     }
     expect(new Set(uuids).size, 'three calls, three uuids').toBe(3);
-    expect(warn, 'the realm is announced once, not once per uuid').toHaveBeenCalledTimes(1);
-    expect(warn.mock.calls[0]!.join(' ')).toContain('Math.random()');
+    expect(error, 'the realm is announced once, not once per uuid').toHaveBeenCalledTimes(1);
+    expect(error.mock.calls[0]!.join(' ')).toContain('Math.random()');
   });
 });

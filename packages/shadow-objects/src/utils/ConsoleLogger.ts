@@ -305,17 +305,22 @@ export class ConsoleLogger {
   }
 
   debug(...args: any[]) {
+    if (!this.isDebug) return;
     this.#print('debug', ConsoleLogger.sharedStyles.debug, args);
   }
 
   info(...args: any[]) {
+    if (!this.isInfo) return;
     this.#print('info', ConsoleLogger.sharedStyles.info, args);
   }
 
   warn(...args: any[]) {
+    if (!this.isWarn) return;
     this.#print('warn', ConsoleLogger.sharedStyles.warn, args);
   }
 
+  // An error report names a fault in the calling code, and its author has to see it wherever
+  // the application runs -- not only on a loopback host, so `error()` asks no getter.
   error(...args: any[]) {
     this.#print('error', ConsoleLogger.sharedStyles.error, args);
   }

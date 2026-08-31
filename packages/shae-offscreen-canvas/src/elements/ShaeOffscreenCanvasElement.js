@@ -131,9 +131,7 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
         });
 
         const unsubscribeContextlost = on(vc, ContextLost, () => {
-          if (this.logger.isWarn) {
-            this.logger.warn('ContextLost', this);
-          }
+          this.logger.warn('ContextLost', this);
           this.#reCreateCanvas();
           this.#transferCanvasToShadows();
         });
@@ -294,16 +292,12 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
       this.#lastPixelRatio = pixelRatio;
 
       if (fps !== this.#lastFps) {
-        if (this.logger.isInfo) {
-          this.logger.info('fps changed to', fps);
-        }
+        this.logger.info('fps changed to', fps);
         this.#lastFps = fps;
       }
 
       if (pixelZoom !== this.#lastPixelZoom) {
-        if (this.logger.isInfo) {
-          this.logger.info('pixelZoom changed to', pixelZoom);
-        }
+        this.logger.info('pixelZoom changed to', pixelZoom);
 
         this.#lastPixelZoom = pixelZoom;
 

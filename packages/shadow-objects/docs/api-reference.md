@@ -2096,10 +2096,10 @@ for subclasses, and so is `logger`, a `ConsoleLogger` in the namespace `ShaeEntE
 subclass reads and does not replace — the slot is a getter without a setter, so an assignment
 throws a `TypeError` in strict mode and does nothing outside it. See
 [Console Logger](#console-logger) for `ConsoleLogger.ShaeEntElement.enable`. That switch decides
-the `isDebug`, `isInfo` and `isWarn` getters on this element's own logger, not the `debug`, `info`
-and `warn` calls themselves, which print whatever a caller passes to them regardless; `error` has
-no such getter on any `ConsoleLogger` instance either, so a report at that level — the refused join
-below among them — reaches the console whatever the switch says. The Custom Elements callbacks —
+the `debug`, `info` and `warn` calls of this element's own logger, each through the `isDebug`,
+`isInfo` and `isWarn` getter it asks itself; `error` has no such getter on any `ConsoleLogger`
+instance, so a report at that level — the refused join below among them — reaches the console
+whatever the switch says. The Custom Elements callbacks —
 `connectedCallback`, `disconnectedCallback`, `attributeChangedCallback` — are implemented; a
 subclass that overrides one has to call `super`.
 
@@ -3248,14 +3248,17 @@ import { ConsoleLogger } from '@spearwolf/shadow-objects/ConsoleLogger.js';
 ConsoleLogger.sharedConfig.enable = true;
 ConsoleLogger.sharedConfig.debug = true;
 
+kernel.logger.debug('entity graph', kernel.getEntityGraph());
+
+// the getter still pays off where assembling the call's own arguments costs something:
 if (kernel.logger.isDebug) {
   kernel.logger.debug('entity graph', kernel.getEntityGraph());
 }
 ```
 
-**The getters are the caller's job.** `logger.debug(...)` prints unconditionally -- it does not consult `isDebug` itself. Ask first, as the Kernel does, or the message goes to the console whatever the switches say.
+**Each method asks its own getter.** `logger.debug(...)` checks `isDebug` itself before printing, and the same holds for `info` and `warn` against their own getter -- a call left unguarded stays silent exactly when the switch is off. The getters stay public for the one case that still needs them: an argument list whose assembly itself costs something, which the message would otherwise pay for even while the switch is off.
 
-| Call | Ask first | What that getter combines |
+| Call | Asks | What that getter combines |
 | :--- | :--- | :--- |
 | `logger.debug(...)` | `isDebug` | instance `enable` · `sharedConfig.enable` · `sharedConfig.debug` |
 | `logger.info(...)` | `isInfo` | instance `enable` · `sharedConfig.enable` · `sharedConfig.info` |
@@ -3268,7 +3271,7 @@ In the browser this is reachable without a rebuild: on first use the logger inst
 
 `ConsoleLogger.<namespace>.enable` is the instance `enable` of the table above, for one logger -- a `Kernel`, a `ShadowEnv` or an element's own -- read on construction from the storage of the host directly (there is no handle for a per-namespace flag). Turning it off takes that logger's `isDebug`, `isInfo` and `isWarn` to `false`, the same thing the shared switches also reach; it changes nothing that prints unconditionally, this library's own error reports included. It is read once and never written by the library. A worker thread has no storage of its own to set such a key in: `WorkerRuntime`, `MessageRouter` and the `Kernel` that runs there read the same kind of per-namespace key out of the configuration their host forwards -- see below for how it reaches them.
 
-The worker of a `RemoteWorkerEnv` is configured from the same origin: a JSON object stored under `ConsoleLogger.RemoteWorkerEnv.workerConfig` is merged on top of the shared config when the worker starts, so the second thread can be made talkative without touching the code that spawns it. The key is read, not trusted -- a value that does not parse to a plain JSON object counts as no config at all, and the key is named once through `remoteEnv.logger.warn`, which asks no getter and so hangs on no switch, the per-namespace one included. That forwarded configuration reaches the `WorkerRuntime` and `MessageRouter` loggers of the worker thread: both read the same `ConsoleLogger.sharedConfig`, gate their debug and warn lines behind it the way every other logger in this library does, and leave their error reports ungated. The shared switches of a thread take a config that arrives after a logger has been built; a logger's own `<namespace>.enable` is read once, on construction -- a logger built ahead of this configuration message keeps the default for that flag for the rest of the thread. The per-namespace switches travel inside the same JSON object, each as a key named after its logger -- `MessageRouter.enable`, `WorkerRuntime.enable`, `Kernel.enable` -- rather than under a separate one, and without the `ConsoleLogger.` prefix a real storage needs: `localStorage.setItem('ConsoleLogger.RemoteWorkerEnv.workerConfig', '{"MessageRouter.enable": false}')` keeps the debug and warn lines of the worker's `MessageRouter` off the console; its error reports print whatever the switches say.
+The worker of a `RemoteWorkerEnv` is configured from the same origin: a JSON object stored under `ConsoleLogger.RemoteWorkerEnv.workerConfig` is merged on top of the shared config when the worker starts, so the second thread can be made talkative without touching the code that spawns it. The key is read, not trusted -- a value that does not parse to a plain JSON object counts as no config at all, and the key is named once through `remoteEnv.logger.error`, which is this library's one ungated level and so hangs on no switch, the per-namespace one included. That forwarded configuration reaches the `WorkerRuntime` and `MessageRouter` loggers of the worker thread: both read the same `ConsoleLogger.sharedConfig`, and their debug and warn lines gate themselves behind it the way every other logger in this library does, while their error reports stay ungated. The shared switches of a thread take a config that arrives after a logger has been built; a logger's own `<namespace>.enable` is read once, on construction -- a logger built ahead of this configuration message keeps the default for that flag for the rest of the thread. The per-namespace switches travel inside the same JSON object, each as a key named after its logger -- `MessageRouter.enable`, `WorkerRuntime.enable`, `Kernel.enable` -- rather than under a separate one, and without the `ConsoleLogger.` prefix a real storage needs: `localStorage.setItem('ConsoleLogger.RemoteWorkerEnv.workerConfig', '{"MessageRouter.enable": false}')` keeps the debug and warn lines of the worker's `MessageRouter` off the console; its error reports print whatever the switches say.
 
 #### Entity Graph Inspection
 

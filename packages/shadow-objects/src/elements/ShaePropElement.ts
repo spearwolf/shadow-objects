@@ -241,12 +241,10 @@ export class ShaePropElement extends HTMLElement {
         if (name) {
           const value = this.valueOut$.get();
 
-          if (this.logger.isDebug) {
-            this.logger.debug(`[${this.name}] view-component set-property`, name, value, vc.uuid, {
-              viewComponent: vc,
-              shaeProp: this,
-            });
-          }
+          this.logger.debug(`[${this.name}] view-component set-property`, name, value, vc.uuid, {
+            viewComponent: vc,
+            shaeProp: this,
+          });
 
           vc.setProperty(name, value);
 
@@ -466,11 +464,9 @@ export class ShaePropElement extends HTMLElement {
     // right afterwards.
     if (found == null && this.isConnected && !this.#reportedMissingHost) {
       this.#reportedMissingHost = true;
-      if (this.logger.isWarn) {
-        this.logger.warn(`[${this.name}] no entity above this element, the property is set nowhere`, {
-          shaeProp: this,
-        });
-      }
+      this.logger.warn(`[${this.name}] no entity above this element, the property is set nowhere`, {
+        shaeProp: this,
+      });
     }
 
     this.#listenForHostChanges();
@@ -538,11 +534,9 @@ export class ShaePropElement extends HTMLElement {
   #readTypeAttribute = () => {
     let type = this.getAttribute(ATTR_TYPE)?.trim().toLowerCase();
     if (type && !propValueConverters.has(type)) {
-      if (this.logger.isWarn) {
-        this.logger.warn(`[${this.name}] unknown type "${type}"`, {
-          shaeProp: this,
-        });
-      }
+      this.logger.warn(`[${this.name}] unknown type "${type}"`, {
+        shaeProp: this,
+      });
       type = undefined;
     }
     this.type$.set(type);

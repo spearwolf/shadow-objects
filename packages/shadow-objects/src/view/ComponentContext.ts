@@ -750,9 +750,7 @@ export class ComponentContext {
       // settle once this one has taken the diff. It falls back on the optimistic reading --
       // everything it carried counts as applied -- rather than on a state in which two trails
       // claim the same entries.
-      if (this.#logger.isDebug) {
-        this.#logger.debug('committing an open change trail because a second one is being built', this.#uncommittedTrail.entries);
-      }
+      this.#logger.debug('committing an open change trail because a second one is being built', this.#uncommittedTrail.entries);
       this.commitChangeTrail(this.#uncommittedTrail.entries.length);
     }
 

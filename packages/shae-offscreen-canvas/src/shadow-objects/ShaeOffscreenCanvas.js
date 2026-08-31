@@ -125,26 +125,20 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
     if (this.canvasRequested || this.dispatchMessageToView == null) return;
 
     this.canvasRequested = true;
-    if (this.logger.isDebug) {
-      this.logger.debug('request offscreen-canvas', this);
-    }
+    this.logger.debug('request offscreen-canvas', this);
     this.dispatchMessageToView(RequestOffscreenCanvas);
   }
 
   [onViewEvent](type, data) {
     switch (type) {
       case OffscreenCanvas:
-        if (this.logger.isDebug) {
-          this.logger.debug('received offscreen-canvas', this);
-        }
+        this.logger.debug('received offscreen-canvas', this);
         this.canvasRequested = false;
         this.canvas = data.canvas;
         break;
 
       default:
-        if (this.logger.isWarn) {
-          this.logger.warn('unhandled view event, type=', type, 'data=', data, 'self=', this);
-        }
+        this.logger.warn('unhandled view event, type=', type, 'data=', data, 'self=', this);
     }
   }
 
@@ -169,9 +163,7 @@ export class ShaeOffscreenCanvas extends ShadowObjectBase {
 
     if (now - this.fpsCounterTime >= SHOW_FPS_COUNTER_INTERVAL_SECONDS) {
       this.fpsCounterTime = now;
-      if (this.logger.isInfo) {
-        this.logger.info('fpsCounter=', Math.round(this.fpsCounter / SHOW_FPS_COUNTER_INTERVAL_SECONDS));
-      }
+      this.logger.info('fpsCounter=', Math.round(this.fpsCounter / SHOW_FPS_COUNTER_INTERVAL_SECONDS));
       this.fpsCounter = 0;
     }
   }

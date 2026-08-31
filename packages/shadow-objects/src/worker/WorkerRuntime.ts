@@ -43,26 +43,20 @@ export class WorkerRuntime {
     // read before a router exists, so the check belongs here as well: a payload this side
     // cannot read would end the worker before anything of it is even built
     if (!isReadableMessageData(data)) {
-      if (this.logger.isDebug) {
-        this.logger.debug('discarding a message it cannot read', data);
-      }
+      this.logger.debug('discarding a message it cannot read', data);
       return;
     }
 
     // the router that answered the destroy is released below, so without this the next message
     // would build a fresh one -- an untorn kernel behind the barrier the destroy just raised
     if (this.#isDestroyed) {
-      if (this.logger.isDebug) {
-        this.logger.debug('discarding a message that arrived after the teardown', data.type);
-      }
+      this.logger.debug('discarding a message that arrived after the teardown', data.type);
       return;
     }
 
     if (data.type === CONSOLE_LOGGER) {
       setConsoleLoggerStorage(data.config);
-      if (this.logger.isDebug) {
-        this.logger.debug('console-logger config installed', data.config);
-      }
+      this.logger.debug('console-logger config installed', data.config);
       return;
     }
 

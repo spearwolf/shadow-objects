@@ -92,9 +92,9 @@ describe('WorkerRuntime', () => {
 
     runtime.onmessage(message({type: CONSOLE_LOGGER, config: {debug: true}}));
 
-    // A subset match, not `toEqual`: reading `this.logger.isDebug` right after installing the
-    // config builds the runtime's own `ConsoleLogger`, and where that is the very first one built
-    // in the process -- the case a real worker with no `localStorage` is always in -- `loadConfig()`
+    // A subset match, not `toEqual`: the `logger.debug(…)` call right after installing the config
+    // builds the runtime's own `ConsoleLogger`, and where that is the very first one built in the
+    // process -- the case a real worker with no `localStorage` is always in -- `loadConfig()`
     // merges the shared defaults into this same slot on top of what was just installed
     // (`ConsoleLogger.ts`'s no-`localStorage` branch). What matters here is that the installed
     // value survives that merge, not the exact shape of the object it ends up sitting in.

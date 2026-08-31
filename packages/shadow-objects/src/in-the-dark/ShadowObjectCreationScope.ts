@@ -255,9 +255,7 @@ export class ShadowObjectCreationScope {
     this.#releaseScope = releaseScope;
     this.#forgetShadowObject = forgetShadowObject;
 
-    if (this.#logger.isInfo) {
-      this.#logger.info('create shadow-object', this.#displayName, {shadowObject, entity: this.#entity});
-    }
+    this.#logger.info('create shadow-object', this.#displayName, {shadowObject, entity: this.#entity});
 
     this.#unsubscribeFromEntityDestroy = once(this.#entity, onDestroy, Priority.Low, () => {
       this.tearDown();
@@ -311,7 +309,7 @@ export class ShadowObjectCreationScope {
 
     // Without a shadow-object there is nothing to report here: none ever came to be, because the
     // constructor threw before it could.
-    if (this.#logger.isInfo && this.#shadowObject !== undefined) {
+    if (this.#shadowObject !== undefined) {
       this.#logger.info('destroy shadow-object', this.#displayName, {shadowObject: this.#shadowObject, entity: this.#entity});
     }
 

@@ -163,13 +163,7 @@ export class ShadowEnv {
       if (this.#comCtx?.ns) {
         globalThis.__shadowEnvs ??= new Map();
         if (globalThis.__shadowEnvs.has(this.#comCtx.ns) && globalThis.__shadowEnvs.get(this.#comCtx.ns) !== this) {
-          if (this.logger.isWarn) {
-            this.logger.warn(
-              'overwrite a namespace already in use',
-              this.#comCtx.ns,
-              globalThis.__shadowEnvs.get(this.#comCtx.ns),
-            );
-          }
+          this.logger.warn('overwrite a namespace already in use', this.#comCtx.ns, globalThis.__shadowEnvs.get(this.#comCtx.ns));
         }
         globalThis.__shadowEnvs.set(this.#comCtx.ns, this);
       }
@@ -554,9 +548,7 @@ export class ShadowEnv {
   }
 
   #onMessageToView(event: Omit<MessageToViewEvent, 'transferables'>) {
-    if (this.logger.isDebug) {
-      this.logger.debug('onMessageToView', event.type, event.data);
-    }
+    this.logger.debug('onMessageToView', event.type, event.data);
     this.view?.dispatchMessage(event.uuid, event.type, event.data, event.traverseChildren);
   }
 

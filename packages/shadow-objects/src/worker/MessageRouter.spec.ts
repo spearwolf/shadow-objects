@@ -322,10 +322,10 @@ describe('MessageRouter', () => {
       expect(warn.mock.calls[0]![2]).toContain('importModule: skipping already imported module');
     });
 
-    // The skip line is the one report of this branch that asks a getter first, so a logger that is
-    // switched off silences it. The instance flag is enough for that -- `isWarn` combines it with
-    // the two shared switches -- and it stays inside this test, where a write to the shared config
-    // would reach every logger of the thread.
+    // `warn()` asks its own `isWarn` getter, so a logger that is switched off silences the
+    // skip line. The instance flag is enough for that -- `isWarn` combines it with the two shared
+    // switches -- and it stays inside this test, where a write to the shared config would reach
+    // every logger of the thread.
     it('keeps the skip of an already imported module behind the logger switch', async () => {
       const {kernel, posted, router} = setup();
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);

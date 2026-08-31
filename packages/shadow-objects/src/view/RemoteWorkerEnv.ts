@@ -283,9 +283,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     if (signal.aborted) throw signal.reason;
 
     if (this.#worker) {
-      if (this.logger.isWarn) {
-        this.logger.warn('already started');
-      }
+      this.logger.warn('already started');
 
       return this.workerLoaded.then((): void => {
         if (this.isDestroyed) {
@@ -523,7 +521,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   private readonly onMessageFromWorker = (event: MessageEvent): void => {
     if (event.data?.type === MessageToView) {
       (this as IShadowObjectEnvProxy).onMessageToView?.(event.data.data);
-    } else if (this.logger.isDebug) {
+    } else {
       this.logger.debug('message from worker', event);
     }
   };
@@ -545,9 +543,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     const storageKey = consoleLoggerConfigKey(configKey);
     const workerConfig = this.readWorkerConfig(configKey, storageKey);
 
-    if (this.logger.isInfo) {
-      this.logger.info('load console-logger worker config', {storageKey, workerConfig});
-    }
+    this.logger.info('load console-logger worker config', {storageKey, workerConfig});
 
     worker.postMessage({
       type: CONSOLE_LOGGER,
@@ -574,14 +570,14 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
     try {
       parsed = JSON.parse(stored);
     } catch (error) {
-      // ungated, like the error reports above: whoever writes this key wants the worker to talk,
-      // and a silent fallback would send them looking for the reason inside the worker
-      this.logger.warn(`ignoring the unreadable console-logger worker config at "${storageKey}"`, stored, error);
+      // error, not warn: whoever writes this key wants the worker to talk, and a silent
+      // fallback would send them looking for the reason inside the worker
+      this.logger.error(`ignoring the unreadable console-logger worker config at "${storageKey}"`, stored, error);
       return {};
     }
 
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      this.logger.warn(`ignoring the console-logger worker config at "${storageKey}": expected a JSON object`, stored);
+      this.logger.error(`ignoring the console-logger worker config at "${storageKey}": expected a JSON object`, stored);
       return {};
     }
 

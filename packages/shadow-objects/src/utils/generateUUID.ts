@@ -34,7 +34,12 @@ const mathRandomBytes = (): Uint8Array => {
     mathRandomAnnounced = true;
     // Once per realm, not once per uuid: an application that makes thousands of them would
     // bury its console, and what is reported is a property of the realm, not of the call.
-    new ConsoleLogger('generateUUID').warn(
+    //
+    // Through `error` and not `warn`: `logger.error` always prints, where `logger.warn` is
+    // gated behind `isWarn`, which is off outside `localhost`. Which source a realm offers is
+    // a property of the host the application is served from, so this line has to arrive there
+    // -- a loopback host is the one place where it does not matter.
+    new ConsoleLogger('generateUUID').error(
       'no Web Crypto API in this realm: entity uuids come from Math.random() and are not unguessable',
     );
   }
