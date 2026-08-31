@@ -16,11 +16,11 @@ catalogs:
       specifier: ^1.62.1
       version: 1.62.1
     '@spearwolf/eventize':
-      specifier: ^6.0.0
-      version: 6.0.0
+      specifier: ^6.2.0
+      version: 6.2.0
     '@spearwolf/signalize':
-      specifier: 1.0.0-beta.0
-      version: 1.0.0-beta.0
+      specifier: 1.0.0-beta.1
+      version: 1.0.0-beta.1
     '@types/node':
       specifier: ^24.10.12
       version: 24.13.3
@@ -133,10 +133,10 @@ importers:
     dependencies:
       '@spearwolf/eventize':
         specifier: 'catalog:'
-        version: 6.0.0
+        version: 6.2.0
       '@spearwolf/signalize':
         specifier: 'catalog:'
-        version: 1.0.0-beta.0(@spearwolf/eventize@6.0.0)
+        version: 1.0.0-beta.1(@spearwolf/eventize@6.2.0)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -149,7 +149,7 @@ importers:
     dependencies:
       '@spearwolf/eventize':
         specifier: 'catalog:'
-        version: 6.0.0
+        version: 6.2.0
       '@spearwolf/shadow-objects':
         specifier: workspace:*
         version: link:../shadow-objects
@@ -174,7 +174,7 @@ importers:
     dependencies:
       '@spearwolf/eventize':
         specifier: 'catalog:'
-        version: 6.0.0
+        version: 6.2.0
       '@spearwolf/shadow-objects':
         specifier: workspace:*
         version: link:../shadow-objects
@@ -211,13 +211,13 @@ importers:
     dependencies:
       '@spearwolf/eventize':
         specifier: 'catalog:'
-        version: 6.0.0
+        version: 6.2.0
       '@spearwolf/shadow-objects':
         specifier: workspace:*
         version: link:../shadow-objects
       '@spearwolf/signalize':
         specifier: 'catalog:'
-        version: 1.0.0-beta.0(@spearwolf/eventize@6.0.0)
+        version: 1.0.0-beta.1(@spearwolf/eventize@6.2.0)
     devDependencies:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
@@ -664,12 +664,12 @@ packages:
   '@sinonjs/samsam@10.0.2':
     resolution: {integrity: sha512-8lVwD1Df1BmzoaOLhMcGGcz/Jyr5QY2KSB75/YK1QgKzoabTeLdIVyhXNZK9ojfSKSdirbXqdbsXXqP9/Ve8+A==}
 
-  '@spearwolf/eventize@6.0.0':
-    resolution: {integrity: sha512-7mIk5S3IdILBBk91NvhN7Vvh7x23B++3j+N1ZYoGgtP6i8vEMVN5FS2qEJrmsp57SI2V/3nGhx8fGWG/oTS14A==}
+  '@spearwolf/eventize@6.2.0':
+    resolution: {integrity: sha512-Tqc90j9w87+4HlOEnmNApT/6eyy+laXKRG+C/ZQJeCDb8T3kPSnTIwA/Uet3RM+qeYOw5kq/ZMqb5AYkIN3mzw==}
     engines: {node: '>=18.16'}
 
-  '@spearwolf/signalize@1.0.0-beta.0':
-    resolution: {integrity: sha512-iTRQRjZWnO5OHiBKXGvGlLe3B3aMr2xjZaBQRiOoG6OeIYaBMKzWQtUhK/1HWTsqVvQOAnFMtYEl9GOMngwdoA==}
+  '@spearwolf/signalize@1.0.0-beta.1':
+    resolution: {integrity: sha512-KsvtIsh9XtAsWWzSRfup0PXd8Rk/LN+EvdavQmA2I95/SHWa2neq4YvIiYEyjVqXaEk3KQ3AGc7kdNuOxZCppQ==}
     engines: {node: '>=22'}
     peerDependencies:
       '@spearwolf/eventize': ^6.0.0
@@ -1761,11 +1761,11 @@ snapshots:
       '@sinonjs/commons': 3.0.1
       type-detect: 4.1.0
 
-  '@spearwolf/eventize@6.0.0': {}
+  '@spearwolf/eventize@6.2.0': {}
 
-  '@spearwolf/signalize@1.0.0-beta.0(@spearwolf/eventize@6.0.0)':
+  '@spearwolf/signalize@1.0.0-beta.1(@spearwolf/eventize@6.2.0)':
     dependencies:
-      '@spearwolf/eventize': 6.0.0
+      '@spearwolf/eventize': 6.2.0
 
   '@standard-schema/spec@1.1.0': {}
 

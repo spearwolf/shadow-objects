@@ -27,8 +27,8 @@ catalog:
   # (`Symbol.for('eventize')`, the `@spearwolf/signalize/` keys) are realm-wide,
   # so two majors of either in one tree share a slot and throw at the boundary.
   # Keep the ranges pinned to one major each and check `pnpm why` after a bump.
-  '@spearwolf/eventize': ^6.0.0
-  '@spearwolf/signalize': 1.0.0-beta.0
+  '@spearwolf/eventize': ^6.2.0
+  '@spearwolf/signalize': 1.0.0-beta.1
   three: ^0.185.1
 
   # --- typescript ---
@@ -105,3 +105,13 @@ catalog:
 catalogs:
   peer:
     three: '>=0.180.0'
+
+# `minimumReleaseAge` (1 day, pnpm >=11 default) exists to keep a freshly
+# compromised third-party release out of the tree. The @spearwolf packages
+# are first-party — published from this account, reviewed here — so the
+# cooling-off buys nothing and only blocks the install. Written by pnpm on
+# install; the entries are version-exact and can go once the releases are a
+# day old.
+minimumReleaseAgeExclude:
+  - '@spearwolf/eventize@6.2.0'
+  - '@spearwolf/signalize@1.0.0-beta.1'

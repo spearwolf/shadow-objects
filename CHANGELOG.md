@@ -4,6 +4,13 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-08-31 — the reactivity pair moves to its current release
+
+`@spearwolf/eventize@6.2.0` and `@spearwolf/signalize@1.0.0-beta.1` are the current releases of the two libraries the reactivity of this workspace is built on. Both catalog entries move together, and one copy of each stands in the tree afterwards — `pnpm why -r` reports a single version of both across the workspace. What the versions mean for the published packages is in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md) and [`packages/shae-offscreen-canvas/CHANGELOG.md`](packages/shae-offscreen-canvas/CHANGELOG.md).
+
+- **`pnpm-workspace.yaml` catalog:** `@spearwolf/eventize` `^6.0.0` → `^6.2.0`, `@spearwolf/signalize` `1.0.0-beta.0` → `1.0.0-beta.1`. The eventize range widens with the release rather than staying on the major floor, so the published `dependencies` of both packages name the version whose API they are built against. The signalize entry stays version-exact — `^1.0.0-beta.1` would also admit `1.0.0` final, and a beta is not a range you want to drift inside. The comment above the pair still holds: signalize peers on `@spearwolf/eventize: ^6.0.0`, and `^6.2.0` sits inside it.
+- **`minimumReleaseAgeExclude`** holds `@spearwolf/eventize@6.2.0` and `@spearwolf/signalize@1.0.0-beta.1`. Both releases are younger than the one day pnpm 11 defaults `minimumReleaseAge` to, and the install refuses anything below the cutoff. The cooling-off exists to keep a freshly compromised third-party release out of the tree; the `@spearwolf` packages are published from this account and reviewed here, so it buys nothing and only blocks the install. pnpm writes the entries itself and they are version-exact, so they go with the next install once the releases have aged past the cutoff.
+
 ## 2026-08-27 — the build-system design spec is marked as history
 
 - **`docs/superpowers/specs/2026-05-09-build-system-renewal-design.md`:** carries the status "Historical" with the date it was archived, in place of "Approved (in-flight)". The document designs the library build on tsdown; the build that exists is `packages/shadow-objects/build.mjs` on esbuild, and tsdown appears in no other file of the repository. Its tooling table, its directory tree and its phasing stay as they were written — they are the plan of that day, and the header now says so, names `CLAUDE.md` as the source for the toolchain as it stands, and gives the one line that went another way. A document that announces itself as in-flight and designs a build nobody uses costs its reader more than no document would.
