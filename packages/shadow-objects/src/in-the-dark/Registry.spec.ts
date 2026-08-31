@@ -28,7 +28,7 @@ describe('Registry', () => {
     registry.appendRoute('@x', ['xyz', 'abc']);
     registry.appendRoute('@y', ['abc']);
 
-    expect(Array.from(registry.findTokensByRoute('foo', new Set('x'))).sort()).toEqual(['abc', 'bar', 'foo', 'plah', 'xyz']);
+    expect(Array.from(registry.findTokensByRoute('foo', new Set(['x']))).sort()).toEqual(['abc', 'bar', 'foo', 'plah', 'xyz']);
   });
 
   it('prop based routings - advanced', () => {

@@ -1172,7 +1172,7 @@ describe('Entity', () => {
       // three signals of its own (`inherited`, `provide`, `context`).
       child.useContext('ctx');
 
-      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const errors = vi.spyOn(kernel.logger, 'error').mockImplementation(() => {});
       const originalDestroy = Signal.prototype.destroy;
       Signal.prototype.destroy = function destroyFails() {
         throw new Error('signal destroy fails');
@@ -1188,11 +1188,16 @@ describe('Entity', () => {
       expect(child.parent, 'the parent link is released regardless of the failing signals').toBeUndefined();
       // Four of the seven context-loop steps reach a `Signal.destroy()` call: `valuePath.dispose()`
       // through `value$`, then `inherited`, `provide` and `context` directly. `context.set()`,
-      // `unsubscribePathValue()` and `unsubscribeFromParent()` never call it, so the patch fires once
-      // per failing step rather than once for the whole release.
-      expect(consoleError, 'every failing step is reported on its own').toHaveBeenCalledTimes(4);
+      // `unsubscribePathValue()` and `unsubscribeFromParent()` never call it.
+      const steps = errors.mock.calls.map(([message]) => message).sort();
+      expect(steps, 'every failing step is reported by its own name').toEqual([
+        'entity teardown step failed (context signal):',
+        'entity teardown step failed (context value path):',
+        'entity teardown step failed (inherited context signal):',
+        'entity teardown step failed (provided context signal):',
+      ]);
 
-      consoleError.mockRestore();
+      errors.mockRestore();
       kernel.destroy();
     });
 

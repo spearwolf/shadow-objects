@@ -454,20 +454,28 @@ describe('ViewComponent', () => {
       expect(c.isDestroyed).toBe(false);
     });
 
-    it('ignores a token change', () => {
+    it('keeps a token change to itself', () => {
       const c = makeDestroyed();
       expect(() => {
         c.token = 'other';
       }).not.toThrow();
       expect(c.token).toBe('other');
+      expect(
+        ctx.buildChangeTrails().some((e) => e.type === ComponentChangeType.ChangeToken),
+        'the context hears nothing of it',
+      ).toBe(false);
     });
 
-    it('ignores an order change', () => {
+    it('keeps an order change to itself', () => {
       const c = makeDestroyed();
       expect(() => {
         c.order = 5;
       }).not.toThrow();
       expect(c.order).toBe(5);
+      expect(
+        ctx.buildChangeTrails().some((e) => e.type === ComponentChangeType.UpdateOrder),
+        'the context hears nothing of it',
+      ).toBe(false);
     });
 
     it('ignores setProperty and reports that nothing was written', () => {

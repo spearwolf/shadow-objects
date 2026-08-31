@@ -116,7 +116,7 @@ describe('props-utils', () => {
       expect(applyPropsChanges(curProps, [['foo']])).toEqual([['foo']]);
     });
 
-    it('reads a bare key the same way with and without curProps', () => {
+    it('reads a bare key the same way with an empty curProps list and without one', () => {
       const changes: ComponentPropertiesType = [['foo'], ['bar', 2]];
       expect(applyPropsChanges([], changes)).toEqual(applyPropsChanges(undefined, changes));
     });
