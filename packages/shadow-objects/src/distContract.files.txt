@@ -64,6 +64,14 @@ src/elements/events.d.ts
 src/elements/events.d.ts.map
 src/elements/events.js
 src/elements/events.js.map
+src/elements/forwardCustomEvents.d.ts
+src/elements/forwardCustomEvents.d.ts.map
+src/elements/forwardCustomEvents.js
+src/elements/forwardCustomEvents.js.map
+src/elements/hostedSlots.d.ts
+src/elements/hostedSlots.d.ts.map
+src/elements/hostedSlots.js
+src/elements/hostedSlots.js.map
 src/elements/propValueConverters.d.ts
 src/elements/propValueConverters.d.ts.map
 src/elements/propValueConverters.js
