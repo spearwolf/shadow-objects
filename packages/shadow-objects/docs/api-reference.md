@@ -2882,13 +2882,23 @@ traversal order are all released, whatever a teardown callback along the way thr
 keeping the Kernel past its `destroy()` — the `kernel` of a `LocalShadowObjectEnv`, for
 instance — keeps an empty one.
 
+One microtask after the teardown, the Kernel takes every `on()` subscription off itself. That is
+late enough for a message an `onDestroy` callback hands to a microtask through the creation API's
+`dispatchMessageToView` to still reach its listeners — the queue is served in the order it filled,
+so that message runs ahead of the unsubscribe. Anything dispatched after it reaches nobody. The
+Kernel instance is not sealed forever by this: an `on()` registered once that microtask has run
+stands. One registered in the window between `destroy()` returning and that microtask —
+`on(localEnv.kernel, …)` reached right after `localEnv.destroy()`, for a `LocalShadowObjectEnv`
+instance — is taken off silently along with everything else, because the collective form the
+teardown uses removes a subscription regardless of when it was added.
+
 - **Signature:** `destroy(): void`
 
 ### Kernel Events
 
 | Event | Description |
 | :--- | :--- |
-| `MessageToView` | Emitted when a Shadow Object calls `dispatchMessageToView`. |
+| `MessageToView` | Emitted when a Shadow Object calls `dispatchMessageToView`. Every subscription on the Kernel, this one included, ends with `destroy()`, one microtask later. |
 
 ```typescript
 import { on } from '@spearwolf/eventize';

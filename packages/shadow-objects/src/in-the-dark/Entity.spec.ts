@@ -603,6 +603,38 @@ describe('Entity', () => {
     });
   });
 
+  describe('removeChild', () => {
+    it('leaves the children alone when the entity it is given is not among them', () => {
+      const kernel = makeKernel();
+      const other = makeKernel();
+      const [parentUuid, firstUuid, lastUuid] = [generateUUID(), generateUUID(), generateUUID()];
+
+      kernel.createEntity(parentUuid, 'parent');
+      kernel.createEntity(firstUuid, 'child', parentUuid);
+      kernel.createEntity(lastUuid, 'child', parentUuid);
+
+      // Two entities under one uuid: a kernel refuses a second one of its own, so the namesake
+      // comes from a second kernel. It is what tells the two guards apart -- the uuid says this
+      // parent holds the child, the identity says it does not.
+      other.createEntity(firstUuid, 'child');
+      const namesake = other.getEntity(firstUuid);
+
+      const parent = kernel.getEntity(parentUuid);
+      parent.removeChild(namesake);
+
+      expect(
+        parent.children.map((child) => child.uuid),
+        'no child leaves for an entity this parent does not hold',
+      ).toEqual([firstUuid, lastUuid]);
+      expect(() => parent.addChild(kernel.getEntity(firstUuid)), 'and the parent still knows the uuid it holds').toThrow(
+        /already exists/,
+      );
+
+      other.destroy();
+      kernel.destroy();
+    });
+  });
+
   describe('cycles in the entity tree', () => {
     it('refuses the entity itself as its own parent', () => {
       const kernel = makeKernel();

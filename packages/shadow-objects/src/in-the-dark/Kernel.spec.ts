@@ -4407,6 +4407,70 @@ describe('Kernel', () => {
         true,
       );
     });
+
+    it('still delivers the message a destroy callback sends towards the view', async () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      @ShadowObject({registry, token: 'farewell'})
+      class Farewell implements OnDestroy {
+        dispatchMessageToView: ShadowObjectCreationAPI['dispatchMessageToView'];
+        constructor({dispatchMessageToView}: ShadowObjectCreationAPI) {
+          this.dispatchMessageToView = dispatchMessageToView;
+        }
+
+        [onDestroy]() {
+          this.dispatchMessageToView('farewell');
+        }
+      }
+      expect(Farewell).toBeDefined();
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'farewell');
+
+      const seen: string[] = [];
+      on(kernel, MessageToView, (message: MessageToViewEvent) => seen.push(message.type));
+
+      kernel.destroy();
+
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+      expect(seen, 'what an onDestroy hands to a microtask still reaches the listeners').toEqual(['farewell']);
+    });
+
+    it('takes its own subscriptions off once the queued messages are through', async () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      const seen: string[] = [];
+      on(kernel, MessageToView, (message: MessageToViewEvent) => seen.push(message.type));
+
+      kernel.destroy();
+
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+      expect(getSubscriptionCount(kernel), 'a destroyed kernel holds no listener of its own').toBe(0);
+
+      kernel.dispatchMessageToView({uuid: generateUUID(), type: 'after'});
+
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+      expect(seen, 'and a message dispatched afterwards reaches nobody').toEqual([]);
+    });
+
+    it('takes off a listener registered in the window before the unsubscribe microtask has run', async () => {
+      const kernel = new Kernel(new Registry());
+
+      kernel.destroy();
+
+      on(kernel, MessageToView, () => {});
+
+      expect(getSubscriptionCount(kernel), 'the registration in the window lands like any other').toBe(1);
+
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+      expect(getSubscriptionCount(kernel), 'gone once the microtask has run, same as one registered before destroy()').toBe(0);
+    });
   });
 
   describe('cycles in the entity tree', () => {

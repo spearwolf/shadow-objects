@@ -358,9 +358,13 @@ export class Entity {
   }
 
   removeChild(child: Entity) {
-    if (this.#childrenUuids.has(child.uuid)) {
+    // The identity decides here, not the uuid: `indexOf` answers -1 for an entity this list
+    // does not hold, and a `splice(-1, 1)` on that answer would cut the last child out
+    // instead of none. `ComponentContext.removeFromParent()` reads its index the same way.
+    const idx = this.#children.indexOf(child);
+    if (idx !== -1) {
       this.#childrenUuids.delete(child.uuid);
-      this.#children.splice(this.#children.indexOf(child), 1);
+      this.#children.splice(idx, 1);
     }
   }
 

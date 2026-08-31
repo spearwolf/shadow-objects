@@ -998,5 +998,15 @@ export class Kernel {
       ctx.dispose();
     }
     this.#rootContexts.clear();
+
+    // One microtask later, not on this line: `dispatchMessageToView()` hands every message to a
+    // microtask, and the teardown above queues its own -- what a shadow-object sends towards the
+    // view from its `onDestroy`, which the creation API is open for. The queue is served in the
+    // order it was filled, so those messages run ahead of this and reach their listeners, and
+    // everything dispatched after them reaches nobody. What the kernel then holds is no
+    // subscription that could keep it, or a listener, alive.
+    queueMicrotask(() => {
+      off(this);
+    });
   }
 }
