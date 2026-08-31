@@ -34,10 +34,11 @@ export const forwardCustomEventsFrom = (
   target: EventTarget,
   filter: Set<string> | boolean,
 ): (() => void) | undefined => {
-  // Make sure we are patching the instance method, not the prototype
-  const originalDispatchEvent = Object.hasOwn(vc, 'dispatchEvent') ? Object.getPrototypeOf(vc).dispatchEvent : vc.dispatchEvent;
-
   if (!filter || isEmptyFilter(filter)) return;
+
+  // the patch goes on the instance, so a component that already carries one shadows the very
+  // method the new patch has to call through to: that original sits on the prototype
+  const originalDispatchEvent = Object.hasOwn(vc, 'dispatchEvent') ? Object.getPrototypeOf(vc).dispatchEvent : vc.dispatchEvent;
 
   const allowedTypes = filter instanceof Set ? filter : undefined;
 
