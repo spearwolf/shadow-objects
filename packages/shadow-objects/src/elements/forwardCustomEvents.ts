@@ -74,8 +74,9 @@ export const forwardCustomEventsFrom = (
 
   return () => {
     if (Object.hasOwn(vc, 'dispatchEvent') && vc.dispatchEvent === newDispatch) {
-      // the property lives on the instance (defineProperty above), the method it shadows lives on
-      // the prototype: deleting the own property restores the original, it does not remove the method
+      // the property lives on the instance (defineProperty above), the method it shadows lives
+      // on the prototype: deleting the own property restores the original, it does not remove
+      // the method
       delete (vc as {dispatchEvent?: ViewComponent['dispatchEvent']}).dispatchEvent;
     }
   };

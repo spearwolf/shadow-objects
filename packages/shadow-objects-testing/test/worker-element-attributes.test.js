@@ -26,10 +26,10 @@ let previousLoggerEnable;
 let previousLoggerWarn;
 
 before(() => {
-  // `warn` is gated behind `ConsoleLogger.sharedConfig.enable`, which defaults to
-  // `location.host.startsWith('localhost')` — true under the Vitest browser provider, but a
-  // silent dependency on the dev server's bind address. Set both explicitly instead of relying
-  // on it, and restore afterwards.
+  // `warn` is gated behind `ConsoleLogger.sharedConfig.enable`, which defaults to whether
+  // `location.hostname` is one of `localhost`, `127.0.0.1`, `::1` and `[::1]` — true under the
+  // Vitest browser provider, but a silent dependency on the dev server's bind address. Set both
+  // explicitly instead of relying on it, and restore afterwards.
   previousLoggerEnable = ConsoleLogger.sharedConfig.enable;
   previousLoggerWarn = ConsoleLogger.sharedConfig.warn;
   ConsoleLogger.sharedConfig.enable = true;

@@ -198,7 +198,7 @@ export class ShaeElement extends ShaeLifecycleElement {
   }
 
   /**
-   * Hand the environment of this element's namespace on to the next `sync()` -- the unconfirmed
+   * Hand the environment of this element's namespace on to the next `sync()` — the unconfirmed
    * path.
    *
    * Over a worker it learns nothing of a confirmation the Shadow Environment refused, and no

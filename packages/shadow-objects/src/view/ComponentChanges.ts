@@ -42,11 +42,12 @@ export const PropertyWithoutValue = Symbol('shadow-objects/property-without-valu
  * what lets a partly applied trail leave the rest of the component untouched.
  *
  * The create/destroy counts behind {@link ComponentChanges.isCreated} and {@link
- * ComponentChanges.isDestroyed} belong to the uuid, not to a {@link ViewComponent} instance. They
- * carry the rule {@link ComponentContext.addComponent} keeps: a uuid names one component of a
- * {@link ComponentContext} at a time, so a later component takes this bookkeeping over only once its predecessor
- * has counted its own `destroy()`. A count pair that outlives its component therefore describes an
- * entity, and the successor on that uuid continues the same entity rather than starting a second.
+ * ComponentChanges.isDestroyed} belong to the uuid, not to a `ViewComponent` instance. They
+ * carry the rule `ComponentContext.addComponent` keeps: a uuid names one component of a
+ * `ComponentContext` at a time, so a later component takes this bookkeeping over only once
+ * its predecessor has counted its own `destroy()`. A count pair that outlives its component
+ * therefore describes an entity, and the successor on that uuid continues the same entity
+ * rather than starting a second.
  */
 export class ComponentChanges {
   readonly #uuid: string;
@@ -126,7 +127,7 @@ export class ComponentChanges {
    * Drop every pending value without writing any of them forward.
    *
    * This is the way out for a component whose bookkeeping is about to be replaced wholesale —
-   * {@link ComponentContext.reCreateChanges} does exactly that. A trail that has gone out is
+   * `ComponentContext.reCreateChanges` does exactly that. A trail that has gone out is
    * settled with {@link ComponentChanges.commitChange} instead.
    */
   clear() {
@@ -289,10 +290,11 @@ export class ComponentChanges {
    *
    * The overlay is what makes the result the current state instead of the state of the last
    * trail — `#properties` is only written forward while a trail is being built
-   * ({@link ComponentChanges.makeCreateEntityChange}, {@link ComponentChanges.makeChangePropertyChange}).
-   * A key whose accrued value is `undefined` and a key queued for change without an accrued value
-   * are both removals, and neither appears in the result. A key that is set without a value stands
-   * in the result with {@link PropertyWithoutValue}.
+   * ({@link ComponentChanges.makeCreateEntityChange},
+   * {@link ComponentChanges.makeChangePropertyChange}). A key whose accrued value is `undefined`
+   * and a key queued for change without an accrued value are both removals, and neither appears
+   * in the result. A key that is set without a value stands in the result with
+   * {@link PropertyWithoutValue}.
    */
   getProperties(): Map<string, unknown> {
     const properties = new Map(this.#properties);
@@ -480,7 +482,10 @@ export class ComponentChanges {
     };
   }
 
-  /** Records the keys of an entry that is going out, so a later change knows the written half is behind. */
+  /**
+   * Records the keys of an entry that is going out, so a later change knows the written half
+   * is behind.
+   */
   #noteTravellingProperties(properties: ComponentPropertiesType): void {
     // the arity carries the meaning on the wire, the marker carries it in here
     this.#travellingProperties = new Map(
