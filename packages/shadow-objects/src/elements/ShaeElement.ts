@@ -30,7 +30,7 @@ const syncCollector = new MicrotaskCollector<NamespaceType>((namespaces) => {
   }
 });
 
-const syncShadowObjects = (ns: NamespaceType) => {
+const collectForSync = (ns: NamespaceType) => {
   syncCollector.add(ns);
 };
 
@@ -206,7 +206,7 @@ export class ShaeElement extends ShaeLifecycleElement {
    * `syncWait()` from their own loop.
    */
   syncShadowObjects() {
-    syncShadowObjects(this.ns);
+    collectForSync(this.ns);
   }
 
   /**
@@ -216,6 +216,6 @@ export class ShaeElement extends ShaeLifecycleElement {
    * waiting for it, and `this.ns` no longer points at it.
    */
   protected syncShadowObjectsOf(ns: NamespaceType) {
-    syncShadowObjects(ns);
+    collectForSync(ns);
   }
 }

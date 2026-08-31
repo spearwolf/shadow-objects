@@ -11,6 +11,7 @@ import {
   ATTR_NS,
   ATTR_TOKEN,
   ATTR_VALUE,
+  ReRequestEntHostEventName,
   SHAE_ENT,
   SHAE_PROP,
   SHAE_WORKER,
@@ -299,6 +300,43 @@ describe('element reachability', () => {
     // pretending to be the one it was
     expect(worker.isDestroyed).toBe(true);
   });
+
+  it('leaves a destroyed but still connected <shae-prop> alone when a booked host lookup comes due', async () => {
+    const ent = document.createElement(SHAE_ENT) as ShaeEntElement;
+    const prop = document.createElement(SHAE_PROP) as ShaePropElement;
+    prop.setAttribute('name', 'foo');
+
+    // `ent` connects first and on its own: happy-dom fires a batch-connected subtree's
+    // `connectedCallback`s child-before-parent, the reverse of the tree order real browsers use,
+    // so appending both in one call would have `prop` ask before `ent` is there to answer. Adding
+    // `prop` as a second step, once `ent` already listens, keeps the case about the gate below and
+    // off an environment quirk neither side of it is written to depend on.
+    document.body.append(ent);
+    ent.append(prop);
+
+    expect(prop.entNode, 'the element found its host on connect').toBe(ent);
+
+    // books a round on the gate: the re-request channel reaches this element over a listener
+    // that sits on the host for as long as the host answers for it
+    ent.dispatchEvent(new CustomEvent(ReRequestEntHostEventName, {detail: {requester: ent}}));
+
+    // destroyed by hand while it is still in the document — the case `isConnected` alone does
+    // not separate. The write straight after says what the teardown left behind: no host
+    prop.destroy();
+    prop.entNode = undefined;
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(prop.entNode, 'the round came due on a destroyed element and did nothing').toBeUndefined();
+
+    // and it took no registration back on the way: a second re-request would only reach this
+    // element over a listener the teardown took off, and a lookup that ran would have put one back
+    ent.dispatchEvent(new CustomEvent(ReRequestEntHostEventName, {detail: {requester: ent}}));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(prop.entNode, 'and it is still listening on nothing').toBeUndefined();
+  });
+
   it('holds what was written to a torn-down <shae-ent>, in the signal and on the attribute', async () => {
     const ent = document.createElement(SHAE_ENT) as ShaeEntElement;
     ent.setAttribute(ATTR_TOKEN, 'before');

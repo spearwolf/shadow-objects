@@ -114,8 +114,19 @@ export class ShaePropElement extends ShaeLifecycleElement {
   /** The node this element listens on for a re-request of the host, so the listener can come off the same one. */
   #reRequestHostTarget?: EventTarget | undefined;
 
+  // Two terms, and they answer two different questions. `isConnected` separates an element in
+  // the tree from one on its way out: a round booked before the departure has nothing left to
+  // say about a position the element no longer holds. `isDestroyed` separates one that is
+  // listening from one that was ended by hand and is still standing where it was — a lookup
+  // running there would write `entNode$` and register the re-request listener again that the
+  // teardown just took off, and the element would be listening after it let go of everything.
+  // The flag is up before `teardown()` runs, so a round that comes due afterwards reads the
+  // state the element is actually in.
+  //
+  // The test stands here and not in the gate: a `MicrotaskGate` has no way to call a booking
+  // off, and that is the whole of what tells it apart from `DeferredTeardown`.
   readonly #hostLookup = new MicrotaskGate(() => {
-    if (this.isConnected) {
+    if (this.isConnected && !this.isDestroyed) {
       this.#findEntNode();
     }
   });
