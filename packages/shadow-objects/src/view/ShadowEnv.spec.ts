@@ -370,6 +370,28 @@ describe('ShadowEnv', () => {
       env.destroy();
     });
 
+    it('delivers SyncFailed to the listeners behind the one that throws', async () => {
+      const reason = new Error('the environment refused the trail');
+      const {env} = await makeEnv(reason);
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      const behind = vi.fn();
+      on(env, ShadowEnv.SyncFailed, () => {
+        throw new Error('a consumer that cannot cope');
+      });
+      on(env, ShadowEnv.SyncFailed, behind);
+
+      new ViewComponent('test', {context: env.view});
+
+      await expect(withTimeout(env.syncWait())).rejects.toBe(reason);
+
+      expect(behind).toHaveBeenCalledTimes(1);
+      expect(error).toHaveBeenCalled();
+
+      error.mockRestore();
+      env.destroy();
+    });
+
     it('settles syncWait() even when a SyncFailed listener throws', async () => {
       const reason = new Error('the environment refused the trail');
       const {env} = await makeEnv(reason);
@@ -442,6 +464,27 @@ describe('ShadowEnv', () => {
 
       expect(seen?.map((entry) => entry.uuid)).toEqual(['b']);
 
+      env.destroy();
+    });
+
+    it('delivers AfterSync to the listeners behind the one that throws', async () => {
+      const {env} = await makeEnv();
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      const behind = vi.fn();
+      on(env, ShadowEnv.AfterSync, () => {
+        throw new Error('a consumer that cannot cope');
+      });
+      on(env, ShadowEnv.AfterSync, behind);
+
+      new ViewComponent('test', {context: env.view});
+
+      await expect(withTimeout(env.syncWait())).resolves.toHaveLength(1);
+
+      expect(behind).toHaveBeenCalledTimes(1);
+      expect(error).toHaveBeenCalled();
+
+      error.mockRestore();
       env.destroy();
     });
 
@@ -897,6 +940,25 @@ describe('ShadowEnv', () => {
 
       expect(env.isReady).toBe(false);
       expect(contextLostSpy).toHaveBeenCalledTimes(1);
+
+      env.destroy();
+    });
+
+    it('delivers ProxyFailed to the listeners behind the one that throws', async () => {
+      const {env, proxy} = await makeEnv();
+
+      const behind = vi.fn();
+      on(env, ShadowEnv.ProxyFailed, () => {
+        throw new Error('a consumer that cannot cope');
+      });
+      on(env, ShadowEnv.ProxyFailed, behind);
+
+      // the throw still travels on to whoever reported the failure — only the listeners
+      // behind it are no longer part of the price
+      expect(() => proxy.fail(new Error('the worker went away'))).toThrow('a consumer that cannot cope');
+
+      expect(behind).toHaveBeenCalledTimes(1);
+      expect(env.isReady).toBe(false);
 
       env.destroy();
     });

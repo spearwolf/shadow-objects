@@ -333,7 +333,7 @@ describe('shae-ent and the peer re-request round', () => {
     ).to.deep.equal([{type: ComponentChangeType.SetParent, uuid: kid.viewComponent.uuid, parentUuid: mid.viewComponent.uuid}]);
   });
 
-  it('a round whose receiver throws costs the rest of that round and no other round', async () => {
+  it('a round whose receiver throws is delivered in full all the same', async () => {
     const ns = 'peer-round-throwing-receiver';
     const container = connectedContainer();
     container.innerHTML =
@@ -349,26 +349,18 @@ describe('shae-ent and the peer re-request round', () => {
 
     const messages = countMessages(ComponentContext.get(ns));
 
-    // a message goes out over eventize, which delivers synchronously and hands what a listener
-    // throws straight back to the round that is being delivered
+    // every message goes out under a guarded dispatch, so what a receiver throws is reported by
+    // eventize and reaches neither the round it belongs to nor the rounds behind it
     on(a1.viewComponent, ComponentContext.ReRequestParent, () => {
       throw new Error('a receiver of the first round failed');
     });
 
-    const reports = [];
-    const consoleError = console.error;
-    console.error = (...args) => reports.push(args);
+    // two senders under two different parents, so the task collects two rounds: one over the
+    // children of a, one over the children of b
+    a.insertAdjacentHTML('beforeend', `<shae-ent id="pr8-a2" ns="${ns}" token="late"></shae-ent>`);
+    b.insertAdjacentHTML('beforeend', `<shae-ent id="pr8-b2" ns="${ns}" token="late"></shae-ent>`);
 
-    try {
-      // two senders under two different parents, so the task collects two rounds: one over the
-      // children of a, one over the children of b
-      a.insertAdjacentHTML('beforeend', `<shae-ent id="pr8-a2" ns="${ns}" token="late"></shae-ent>`);
-      b.insertAdjacentHTML('beforeend', `<shae-ent id="pr8-b2" ns="${ns}" token="late"></shae-ent>`);
-
-      await nextTask();
-    } finally {
-      console.error = consoleError;
-    }
+    await nextTask();
 
     const a2 = container.querySelector('#pr8-a2');
     const b2 = container.querySelector('#pr8-b2');
@@ -378,15 +370,12 @@ describe('shae-ent and the peer re-request round', () => {
     );
     expect(
       messages.of(ComponentContext.ReRequestParent, a2.viewComponent.uuid),
-      'and what its failure costs is the rest of its own round',
-    ).to.equal(0);
+      'and its failure costs the receiver behind it nothing',
+    ).to.equal(1);
 
     expect(
       [b1, b2].map((el) => messages.of(ComponentContext.ReRequestParent, el.viewComponent.uuid)),
       'the round waiting behind it is delivered in full',
     ).to.deep.equal([1, 1]);
-
-    expect(reports.length, 'the failure is reported once').to.equal(1);
-    expect(reports[0].join(' '), 'and the report names the candidate set it belonged to').to.contain(a.viewComponent.uuid);
   });
 });

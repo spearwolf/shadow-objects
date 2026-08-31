@@ -1,4 +1,4 @@
-import {emit, off, once, retain} from '@spearwolf/eventize';
+import {emitStrict, once, retain} from '@spearwolf/eventize';
 import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {
   AppliedChangeTrail,
@@ -484,65 +484,39 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   }
 
   /**
-   * Announces the completed handshake to the consumers -- and makes sure it stays announceable.
-   * The same recovery as {@link RemoteWorkerEnv.announceFailure}, and needed more sharply here:
-   * `workerLoaded` reads the retained value, so an environment that never stored it leaves every
-   * later read of that promise waiting for a failure or a teardown instead of resolving. The emit
-   * runs from a microtask, where a throw has no caller left to reach and would surface as an
-   * unhandled error.
+   * Announces the completed handshake to the consumers.
    *
-   * One cost is specific to this event: a `workerLoaded` promise that was already handed out and
-   * is waiting behind the throwing listener loses its subscription to the sweep, and stays pending
-   * until the environment fails or is torn down. Reading `workerLoaded` again gets the replay.
+   * `emitStrict()` rather than `emit()`, and the retain policy is what decides it. `workerLoaded`
+   * reads the retained value, and eventize writes that value only once the dispatch has run
+   * through: under the plain dispatch a single listener that throws would take the replay for
+   * every later subscriber with it, and every later read of `workerLoaded` would wait for a
+   * failure or a teardown instead of resolving. The guarded dispatch serves every listener and
+   * writes the retained value, because the event was delivered.
+   *
+   * What the listeners threw arrives here afterwards -- one of them unchanged, several as an
+   * `AggregateError` in dispatch order -- and is reported. It goes no further: this runs from a
+   * microtask, where a throw has no caller left to reach and would surface as an unhandled error.
    */
   private announceLoaded(): void {
     try {
-      emit(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerLoaded, this);
-      return;
+      emitStrict(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerLoaded, this);
     } catch (error) {
-      this.logger.error('a workerLoaded listener threw; the ones behind it did not hear about the handshake', error);
-    }
-
-    try {
-      off(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerLoaded);
-      retain(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerLoaded);
-      emit(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerLoaded, this);
-    } catch (error) {
-      this.logger.error('the handshake could not be retained for later listeners', error);
+      this.logger.error('a workerLoaded listener threw', error);
     }
   }
 
   /**
-   * Announces the failure to the consumers -- and makes sure it stays announceable. eventize
-   * stores a retained value only after the dispatch has run through, so a listener that throws
-   * would take the replay for every later subscriber with it, and `WorkerFailed` is documented
-   * as retained. It is emitted exactly once per environment, so dropping the subscriptions of
-   * that name on the second pass costs nothing: no further one is ever sent. `off()` drops the
-   * retain policy along with the listeners, hence the `retain()` in between.
-   *
-   * What the recovery costs, for both events: the listeners standing behind the throwing one in
-   * the first pass never hear it. A listener subscribed to every event name survives the sweep,
-   * which reaches the subscriptions of this one name only, so it is served in the recovery pass.
-   * Whether that is its first serving or its second depends on its priority: eventize runs the
-   * named subscriptions ahead of the wildcard ones at equal priority, so at the default the throw
-   * ends the first pass before the wildcard is reached and it hears the event exactly once. Only a
-   * wildcard registered above the throwing listener runs ahead of it, and that one hears it twice.
+   * Announces the failure to the consumers. The same guarded dispatch as
+   * {@link RemoteWorkerEnv.announceLoaded}, for the same reason: `WorkerFailed` is documented as
+   * retained, and a consumer that subscribes only after the failure has to be able to hear about
+   * it. Every listener is served, the retained value is written, and whatever was thrown is
+   * reported here and reaches no caller.
    */
   private announceFailure(payload: WorkerFailedEvent): void {
     try {
-      emit(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerFailed, payload);
-      return;
+      emitStrict(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerFailed, payload);
     } catch (error) {
-      this.logger.error('a workerFailed listener threw; the ones behind it did not hear about the failure', error);
-    }
-
-    try {
-      off(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerFailed);
-      retain(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerFailed);
-      emit(this as RemoteWorkerEnv, RemoteWorkerEnv.WorkerFailed, payload);
-    } catch (error) {
-      // a listener subscribed to every event name survives the `off()` above and can throw again
-      this.logger.error('the failure could not be retained for later listeners', error);
+      this.logger.error('a workerFailed listener threw', error);
     }
   }
 

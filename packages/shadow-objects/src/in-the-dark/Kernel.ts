@@ -1,4 +1,4 @@
-import {emit, eventize, off, on} from '@spearwolf/eventize';
+import {emitSafe, emitStrict, eventize, off, on} from '@spearwolf/eventize';
 import {batch} from '@spearwolf/signalize';
 import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {ComponentChangeType, MessageToView} from '../constants.js';
@@ -498,18 +498,19 @@ export class Kernel {
       // every shadow-object has been told. Below them the kernel has nothing of its own on this
       // notification, so a listener on `Priority.Min` is the last one the delivery reaches, and it
       // reads an entity that still holds its properties and its contexts.
-      runGuarded(this.logger, () => emit(entity, onDestroy, entity), 'entity onDestroy notification failed:', entity.uuid);
+      // `emitStrict()` rather than `emit()`: the notification reaches every listener whatever the one
+      // before it did, and what they threw comes back here as one error or, from several of them, as an
+      // `AggregateError` in dispatch order. The guard around it turns that into the report this teardown
+      // owes -- with the uuid of the entity in it, which is why the guard stays rather than giving way to
+      // `emitSafe()` and its bare `console.warn`.
+      runGuarded(this.logger, () => emitStrict(entity, onDestroy, entity), 'entity onDestroy notification failed:', entity.uuid);
 
-      // The notification is one delivery, and it ends at the first listener that throws -- everything
-      // registered behind that listener is skipped, the creation scopes among them. They do not belong
-      // to whoever listens there, so the kernel tears them down itself once the delivery is over, and
-      // releases the entity behind them, each behind a guard of its own. Both are written to happen
-      // once: a scope that has torn down is no longer in `#shadowObjectScopes`, and the entity releases
-      // once, whoever calls it.
-      //
-      // This runs unconditionally rather than only after a caught throw, because a delivery can also
-      // fall short of its end without one -- a listener that unsubscribes the rest of them returns
-      // perfectly normally.
+      // The creation scopes listen on that notification at `Priority.Low`, and the guarded dispatch above
+      // is what gets them there. This loop is the backstop behind it, for the one way a delivery can still
+      // fall short of its end: a listener that unsubscribes the ones behind it and returns perfectly
+      // normally. The kernel tears down whatever is left and releases the entity behind it, each behind a
+      // guard of its own. Both are written to happen once: a scope that has torn down is no longer in
+      // `#shadowObjectScopes`, and the entity releases once, whoever calls it.
       for (const shadowObject of shadowObjects) {
         runGuarded(
           this.logger,
@@ -598,8 +599,10 @@ export class Kernel {
     // handler that throws is reported and costs nothing else -- and so is an error a Kernel call
     // the handler makes throws back into it, such as `createEntity()` refusing a uuid already in
     // use. Without it either throw would leave through `setParent()` and turn one bad handler into
-    // a refused change trail.
-    runGuarded(this.logger, () => emit(e, onParentChanged, e), 'entity onParentChanged notification failed:', uuid);
+    // a refused change trail. And, for the same reason, one bad handler does not cost the handlers
+    // behind it their notification either: the dispatch is `emitStrict()`, so every one of them
+    // hears about the new parent and the guard reports what they threw.
+    runGuarded(this.logger, () => emitStrict(e, onParentChanged, e), 'entity onParentChanged notification failed:', uuid);
   }
 
   updateOrder(uuid: string, order: number): void {
@@ -669,7 +672,11 @@ export class Kernel {
 
   dispatchMessageToView(message: MessageToViewEvent): void {
     queueMicrotask(() => {
-      emit(this as Kernel, MessageToView, message);
+      // `emitSafe()` because of the microtask: a throw from here has no caller left to reach and
+      // would surface as an unhandled error in the realm. Every listener is served and a failure
+      // is reported through `console.warn` -- the kernel has nothing to add to it, and nothing to
+      // do about it either.
+      emitSafe(this as Kernel, MessageToView, message);
     });
   }
 
@@ -908,8 +915,10 @@ export class Kernel {
    *
    * Each half stands behind a guard of its own rather than a shared one, because neither is allowed to
    * cost the other: a hook that throws still lets the event go out, and a listener that throws leaves
-   * the hook it came after untouched. Nothing is re-thrown -- the shadow-objects of one entity reach
-   * their end in one sweep, and a failure at one of them may not take the sweep with it. Reports are
+   * the hook it came after untouched. Within the event half the same rule holds one level down, through
+   * `emitStrict()`: a listener that throws costs no other listener its turn. Nothing is re-thrown -- the
+   * shadow-objects of one entity reach their end in one sweep, and a failure at one of them may not take
+   * the sweep with it. Reports are
    * keyed by the name the scope carries rather than the one the instance would give -- see
    * `ShadowObjectCreationScope.displayName` for where the two part ways.
    */
@@ -929,7 +938,7 @@ export class Kernel {
     // `on(otherShadowObject, onDestroy, …)` -- runs here.
     runGuarded(
       this.logger,
-      () => emit(shadowObject, onDestroy, entity),
+      () => emitStrict(shadowObject, onDestroy, entity),
       'shadow-object onDestroy notification failed:',
       displayName,
     );

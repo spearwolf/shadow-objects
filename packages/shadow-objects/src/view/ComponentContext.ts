@@ -671,9 +671,11 @@ export class ComponentContext {
     }
 
     // one hand-over is one round, not one message: a round over the roots leaves this method as a
-    // single call into dispatchReRequestParentRoots(), and every message goes out over eventize's
-    // synchronous emit(), which hands a listener's error straight back here. A round that fails
-    // costs the rest of itself and none of the rounds behind it.
+    // single call into dispatchReRequestParentRoots(). A receiver that throws costs nothing at all
+    // -- `ViewComponent.dispatchEvent()` delivers each message under a guarded dispatch, so the
+    // failure never reaches the round it belongs to. This guard is the backstop behind that, for
+    // the round itself rather than its receivers: what fails while a round is being assembled
+    // costs the rest of that round and none of the rounds behind it.
     for (const [parent, round] of rounds) {
       runGuarded(
         this.#logger,

@@ -1,4 +1,4 @@
-import {emit, eventize, getSubscriptionCount, type ListenerFuncType, off, on} from '@spearwolf/eventize';
+import {emitSafe, eventize, getSubscriptionCount, type ListenerFuncType, off, on} from '@spearwolf/eventize';
 
 let gUniqInstance: FrameLoop | null = null;
 
@@ -20,6 +20,11 @@ export interface FrameData {
  * A loop that emits a frame to all of its targets as long as at least one of them listens.
  *
  * While no target listens, the loop asks for no frames at all.
+ *
+ * A target that throws costs itself its frame and nothing else: the frame still reaches every
+ * other target, and the loop asks for the frame behind it. The failure is reported through
+ * `console.warn` and reaches no caller -- see `#onFrame()` for why this loop answers a failing
+ * target that way and not through the `ConsoleLogger` the rest of this package reports through.
  */
 export class FrameLoop {
   static OnFrame = Symbol('onFrame');
@@ -121,7 +126,19 @@ export class FrameLoop {
         deltaTime: (now - lastNow) / 1000,
       };
 
-      emit(this as FrameLoop, FrameLoop.OnFrame, frameData);
+      // `emitSafe()` rather than `emit()`, and the reason is the singleton above: one loop serves
+      // every target in the realm, so a target that throws may cost neither the targets behind it
+      // their frame nor the loop its next one. The plain dispatch would do both -- it ends at the
+      // first listener that throws and hands the error back to the `requestAnimationFrame()`
+      // callback, past the line below that asks for the frame after this one. `#rafID` is already
+      // back at 0 at that point, so nothing would ever ask again and the loop would stand still
+      // for the whole page without a word.
+      //
+      // What a target loses in exchange is the report: `emitSafe()` writes to `console.warn` and
+      // hands out no error. That is the right trade here. `FrameLoop` is a singleton with no
+      // `ConsoleLogger` of its own, and a frame target that throws does so at the frame rate --
+      // whichever channel carries it, the first report says everything the hundredth does.
+      emitSafe(this as FrameLoop, FrameLoop.OnFrame, frameData);
     }
 
     if (this.subscriptionCount > 0) {

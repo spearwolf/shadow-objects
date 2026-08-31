@@ -1,4 +1,4 @@
-import {emit, off, on, onceAsync, Priority, retain, retainClear} from '@spearwolf/eventize';
+import {emitStrict, off, on, onceAsync, Priority, retain, retainClear} from '@spearwolf/eventize';
 import {
   createEffect,
   createSignal,
@@ -133,13 +133,13 @@ export class ShadowEnv {
           // memory and re-creates nothing at all. Whoever swaps the view of a live environment
           // tears the proxy down with it.
           this.view!.reCreateChanges();
-          emit(self, ShadowEnv.ContextCreated, self);
+          this.#announceContext(ShadowEnv.ContextCreated, self);
           if (this.#syncAfterContextCreated) {
             this.#syncAfterContextCreated = false;
             this.#syncNow();
           }
           return () => {
-            emit(self, ShadowEnv.ContextLost, self);
+            this.#announceContext(ShadowEnv.ContextLost, self);
           };
         }
         // the two @signal accessors above create their signals during field initialization,
@@ -505,15 +505,34 @@ export class ShadowEnv {
   }
 
   /**
+   * Sends one of the two context events and keeps a listener that throws to itself.
+   *
+   * Both go out from inside the effect that watches `viewReady` and `proxyReady` -- `ContextLost`
+   * from its cleanup -- so a throw would leave through whatever signal write set that effect
+   * going, and reach code that has nothing to do with either event. `emitStrict()` serves every
+   * listener whatever the one before it did, and what they threw is reported here and travels no
+   * further.
+   */
+  #announceContext(eventName: string, self: ShadowEnv): void {
+    try {
+      emitStrict(self, eventName, self);
+    } catch (error) {
+      this.logger.error(`a ${eventName} listener threw`, error);
+    }
+  }
+
+  /**
    * Ends a synchronization cycle in exactly one of its two outcomes. A cycle the Shadow
    * Environment applied resolves {@link ShadowEnv.syncWait} and emits {@link ShadowEnv.AfterSync};
    * a cycle whose change trail it refused rejects and emits {@link ShadowEnv.SyncFailed}. Only a
    * listener that can tell the two apart can react to either, so no cycle ever sends both.
    *
    * The waiting caller is settled before the event goes out, and the emit is the last thing that
-   * happens. An eventize emit stops at the first listener that throws, and the application
-   * registers its listeners during setup -- ahead of whatever subscribes later -- so a settlement
-   * that travelled as a listener of its own would be a promise nobody ever settles. The throw ends
+   * happens: a settlement that travelled as a listener of its own would sit behind whatever the
+   * application registered during setup, and this method is the wrong place to make a promise
+   * depend on the order consumers subscribe in. The dispatch is `emitStrict()`, so every listener
+   * hears about the cycle whatever the one before it did, and what they threw arrives here
+   * afterwards -- one of them unchanged, several as an `AggregateError` in dispatch order. It ends
    * here as well: `#syncNow()` runs unawaited, and an error escaping it becomes an unhandled
    * rejection rather than a report anybody reads.
    *
@@ -524,13 +543,13 @@ export class ShadowEnv {
     try {
       if (failure) {
         cycle?.reject(failure.reason);
-        emit(this as ShadowEnv, ShadowEnv.SyncFailed, failure.reason, changeTrail, this as ShadowEnv);
+        emitStrict(this as ShadowEnv, ShadowEnv.SyncFailed, failure.reason, changeTrail, this as ShadowEnv);
       } else {
         cycle?.resolve(changeTrail);
-        emit(this as ShadowEnv, ShadowEnv.AfterSync, changeTrail);
+        emitStrict(this as ShadowEnv, ShadowEnv.AfterSync, changeTrail);
       }
     } catch (error) {
-      this.logger.error('a sync cycle listener threw; the ones behind it did not hear about the cycle', error);
+      this.logger.error('a sync cycle listener threw', error);
     }
   }
 
@@ -552,8 +571,11 @@ export class ShadowEnv {
     ++this.#proxyGeneration;
 
     try {
-      // the reason before the consequence: ContextLost follows from dropping proxyReady
-      emit(this as ShadowEnv, ShadowEnv.ProxyFailed, reason, this as ShadowEnv);
+      // the reason before the consequence: ContextLost follows from dropping proxyReady.
+      // `emitStrict()` so that one listener that cannot cope does not keep the rest from hearing
+      // that the environment is gone; what it threw travels on to the proxy that reported the
+      // failure, which is where this method has always put it.
+      emitStrict(this as ShadowEnv, ShadowEnv.ProxyFailed, reason, this as ShadowEnv);
     } finally {
       // in the `finally`, because losing the environment is not up for debate:
       // a listener that throws must not leave `isReady` claiming otherwise

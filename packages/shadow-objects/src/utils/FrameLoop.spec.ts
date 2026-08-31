@@ -327,6 +327,64 @@ describe('FrameLoop', () => {
     });
   });
 
+  describe('a target that throws', () => {
+    // The loop is a singleton per realm: `<shae-worker>` hangs its auto-sync on it and
+    // `<shae-offscreen-canvas>` its rendering. A frame delivered with the plain `emit()` ends at the
+    // first target that throws and carries the error into the `requestAnimationFrame()` callback,
+    // past the line that asks for the next frame — one bad target would freeze the page. These three
+    // cases hold the guarded delivery that answers it.
+    // What these cases do not assert is the report. eventize binds its `console.warn` reference when
+    // the module is evaluated, so a `vi.spyOn(console, 'warn')` in a case never sees the call. What
+    // the guarded delivery is here for is what still runs, and that is what is asserted.
+    it('delivers the frame to the targets behind the one that throws', () => {
+      const loop = new FrameLoop();
+      const seen: string[] = [];
+
+      startTracked(loop, () => {
+        seen.push('first');
+        throw new Error('a target that cannot cope');
+      });
+      startTracked(loop, () => {
+        seen.push('second');
+      });
+
+      runFrame(0);
+
+      expect(seen).toEqual(['first', 'second']);
+    });
+
+    it('asks for the next frame after a target threw', () => {
+      const loop = new FrameLoop();
+
+      startTracked(loop, () => {
+        throw new Error('a target that cannot cope');
+      });
+
+      const requestsBeforeTheFrame = requestCount;
+      runFrame(0);
+
+      // the frame that fired has to be replaced by a new one, or nothing ever asks again
+      expect(requestCount).toBe(requestsBeforeTheFrame + 1);
+      expect(pendingFrames.size).toBe(1);
+    });
+
+    it('keeps the throwing target subscribed and delivers the frame behind it', () => {
+      const loop = new FrameLoop();
+      let calls = 0;
+
+      startTracked(loop, () => {
+        calls += 1;
+        throw new Error('a target that cannot cope');
+      });
+
+      runFrame(0);
+      runFrame(100);
+
+      expect(calls).toBe(2);
+      expect(loop.subscriptionCount).toBe(1);
+    });
+  });
+
   describe('the shared loop', () => {
     it('FrameLoop.get() answers the same loop every time', () => {
       expect(FrameLoop.get()).toBe(FrameLoop.get());

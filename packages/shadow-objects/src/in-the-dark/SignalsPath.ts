@@ -1,4 +1,4 @@
-import {emit, off, retain, retainClear} from '@spearwolf/eventize';
+import {emitSafe, off, retain, retainClear} from '@spearwolf/eventize';
 import {
   createEffect,
   destroyObjectSignals,
@@ -28,7 +28,11 @@ export class SignalsPath {
     // the @signal accessor above creates this signal during field initialization,
     // so the lookup by that name always resolves once the constructor body runs
     this.value$ = findObjectSignalByName(this, VALUE)!;
-    this.value$.onChange((val) => emit(this as SignalsPath, VALUE, val));
+    // `emitSafe()`: this runs from a signal change callback, so a listener that throws would leave
+    // through whichever write moved the path and reach code that has nothing to do with this value.
+    // The retained value is written either way, because the event was delivered -- which matters
+    // here, since `Value` is retained and a later subscriber reads exactly that.
+    this.value$.onChange((val) => emitSafe(this as SignalsPath, VALUE, val));
 
     if (signals) {
       this.add(...signals);

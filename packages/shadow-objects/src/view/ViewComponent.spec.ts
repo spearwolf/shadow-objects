@@ -287,6 +287,33 @@ describe('ViewComponent', () => {
     expect(grandChild2Spy).toHaveBeenCalledWith({data: 123});
   });
 
+  // The delivery is a fan-out twice over: over the listeners of one component, and over the whole
+  // subtree. It carries everything the shadow environment sends to the view, and that channel has
+  // no caller left to catch a throw -- so one listener that cannot cope may cost neither the
+  // listeners behind it nor the components below it.
+  it('reaches the whole subtree even when a listener throws', () => {
+    const parent = new ViewComponent('parent');
+    const child = new ViewComponent('child', parent);
+    const grandChild = new ViewComponent('grandChild', child);
+
+    const behind = vi.fn();
+    const childSpy = vi.fn();
+    const grandChildSpy = vi.fn();
+
+    on(parent, 'testEvent', () => {
+      throw new Error('a consumer that cannot cope');
+    });
+    on(parent, 'testEvent', behind);
+    on(child, 'testEvent', childSpy);
+    on(grandChild, 'testEvent', grandChildSpy);
+
+    expect(() => parent.dispatchEvent('testEvent', {data: 123}, true)).not.toThrow();
+
+    expect(behind).toHaveBeenCalledTimes(1);
+    expect(childSpy).toHaveBeenCalledTimes(1);
+    expect(grandChildSpy).toHaveBeenCalledTimes(1);
+  });
+
   describe('cycle protection', () => {
     it('rejects a component as its own child', () => {
       const a = new ViewComponent('a');
@@ -508,6 +535,31 @@ describe('ViewComponent', () => {
       c.dispatchEvent(ViewComponent.Destroyed, undefined, false);
 
       expect(seen).toEqual([true]);
+    });
+
+    // The announcement is a guarded dispatch: the `off()` that takes the subscriptions off stands
+    // directly behind it, and under the plain `emit()` one listener that throws would carry the
+    // error out of `destroy()` and take that line with it -- the component would end its life
+    // holding every subscription it was supposed to be rid of.
+    it('goes silent even when a Destroyed listener throws', () => {
+      const c = new ViewComponent('test');
+
+      const behind = vi.fn();
+      const stillListening = vi.fn();
+      on(c, ViewComponent.Destroyed, () => {
+        throw new Error('a consumer that cannot cope');
+      });
+      on(c, ViewComponent.Destroyed, behind);
+      on(c, 'testEvent', stillListening);
+
+      ctx.buildChangeTrails();
+
+      expect(() => c.destroy()).not.toThrow();
+
+      expect(behind, 'the listener behind the failing one still hears it').toHaveBeenCalledTimes(1);
+
+      c.dispatchEvent('testEvent', 1, false);
+      expect(stillListening, 'the subscriptions came off all the same').not.toHaveBeenCalled();
     });
 
     it('announces it again on a second destroy()', () => {

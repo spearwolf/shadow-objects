@@ -17,7 +17,7 @@ import type {IComponentChangeType, ICreateEntitiesChange, ShadowObjectCreationAP
 import {generateUUID} from '../utils/generateUUID.js';
 import {ComponentChanges} from '../view/ComponentChanges.js';
 import type {Entity} from './Entity.js';
-import {type OnCreate, type OnDestroy, onCreate, onDestroy, onParentChanged} from './events.js';
+import {type OnCreate, type OnDestroy, onCreate, onDestroy, onParentChanged, onViewEvent} from './events.js';
 import {Kernel, type MessageToViewEvent} from './Kernel.js';
 import {Registry} from './Registry.js';
 import {ShadowObject, shadowObjects} from './ShadowObject.js';
@@ -3333,6 +3333,105 @@ describe('Kernel', () => {
 
         kernel.destroy();
       });
+    });
+  });
+
+  // Every notification the kernel fans out goes through the guarded dispatch, so one listener that
+  // cannot cope costs no other listener its turn. What it threw is reported through the kernel's
+  // logger with the uuid of the entity, and reaches no caller -- neither the teardown, which has no
+  // caller left to decide anything, nor the change trail, which must not be refused over a listener.
+  describe('a notification listener that throws', () => {
+    it('delivers the entity onDestroy notification to the listeners behind it', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'node');
+      const entity = kernel.getEntity(uuid);
+
+      const behind = vi.fn();
+      on(entity, onDestroy, () => {
+        throw new Error('a listener that cannot cope');
+      });
+      on(entity, onDestroy, behind);
+
+      expect(() => kernel.destroyEntity(uuid)).not.toThrow();
+
+      expect(behind).toHaveBeenCalledTimes(1);
+      expect(consoleError).toHaveBeenCalled();
+
+      consoleError.mockRestore();
+      kernel.destroy();
+    });
+
+    it('delivers the onParentChanged notification to the listeners behind it', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const parentUuid = generateUUID();
+      const childUuid = generateUUID();
+      kernel.createEntity(parentUuid, 'node');
+      kernel.createEntity(childUuid, 'node');
+      const child = kernel.getEntity(childUuid);
+
+      const behind = vi.fn();
+      on(child, onParentChanged, () => {
+        throw new Error('a listener that cannot cope');
+      });
+      on(child, onParentChanged, behind);
+
+      expect(() => kernel.setParent(childUuid, parentUuid)).not.toThrow();
+
+      expect(behind).toHaveBeenCalledTimes(1);
+      expect(child.parent?.uuid).toBe(parentUuid);
+      expect(consoleError).toHaveBeenCalled();
+
+      consoleError.mockRestore();
+      kernel.destroy();
+    });
+
+    it('delivers a view event to the listeners behind it and keeps the change trail', () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'node');
+      const entity = kernel.getEntity(uuid);
+
+      const seen: string[] = [];
+      on(entity, onViewEvent, (type: string) => {
+        seen.push(`throws:${type}`);
+        throw new Error('a listener that cannot cope');
+      });
+      on(entity, onViewEvent, (type: string) => {
+        seen.push(`behind:${type}`);
+      });
+
+      // the delivery sits on a building path: unguarded, one listener would refuse the whole trail
+      expect(() =>
+        kernel.run({
+          changeTrail: [
+            {
+              type: ComponentChangeType.SendEvents,
+              uuid,
+              events: [
+                {type: 'a', data: undefined},
+                {type: 'b', data: undefined},
+              ],
+            },
+          ],
+        }),
+      ).not.toThrow();
+
+      // the listener behind the failing one is served, and so is the event behind the failing one
+      expect(seen).toEqual(['throws:a', 'behind:a', 'throws:b', 'behind:b']);
+      expect(consoleError).toHaveBeenCalled();
+
+      consoleError.mockRestore();
+      kernel.destroy();
     });
   });
 

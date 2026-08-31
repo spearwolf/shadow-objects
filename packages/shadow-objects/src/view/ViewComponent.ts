@@ -1,4 +1,4 @@
-import {emit, eventize, off} from '@spearwolf/eventize';
+import {emitSafe, eventize, off} from '@spearwolf/eventize';
 import {VoidToken} from '../constants.js';
 import {generateUUID} from '../utils/generateUUID.js';
 import {ComponentContext, ComponentContextDisposedError} from './ComponentContext.js';
@@ -44,9 +44,13 @@ export class ViewComponent {
    * `dispatchEvent` — hears it here and can set that up again on the same component; a context
    * that takes the component back in (`vc.context = ctx`) revives it under the same uuid.
    *
-   * It travels via `emit()` rather than {@link ViewComponent#dispatchEvent}, so an own
-   * `dispatchEvent` an integration installed does not see it and cannot carry it further. Leaving
-   * a context says nothing: `vc.context = null` detaches the component and keeps everything on it.
+   * It goes out directly on the component rather than through {@link ViewComponent#dispatchEvent},
+   * so an own `dispatchEvent` an integration installed does not see it and cannot carry it further.
+   * Leaving a context says nothing: `vc.context = null` detaches the component and keeps everything
+   * on it.
+   *
+   * A listener that throws is reported through `console.warn` and costs neither the listeners
+   * behind it their turn nor the component the rest of its teardown.
    *
    * Not to be confused with the `Destroyed` exported at the top level of the package: that one is
    * `'destroyed'` and belongs to the worker channel, this one is `'view-component-destroyed'`.
@@ -286,7 +290,13 @@ export class ViewComponent {
   }
 
   dispatchEvent(type: string, data: unknown, traverseChildren: boolean) {
-    emit(this as ViewComponent, type, data);
+    // `emitSafe()`: this is the delivery path of everything the shadow environment sends to the
+    // view, and it is a fan-out twice over -- over the listeners of one component, and, with
+    // `traverseChildren`, over a whole subtree. Under the plain dispatch one listener that throws
+    // would end the delivery and cut off every component below it, and the error would leave
+    // through the message channel that has no caller left to catch it. A failure is reported
+    // through `console.warn` and costs only itself.
+    emitSafe(this as ViewComponent, type, data);
 
     if (traverseChildren) {
       for (const child of this.#context?.getChildren(this) ?? []) {
@@ -333,8 +343,11 @@ export class ViewComponent {
     }
 
     // last, and before the subscriptions come off: the component is in its final shape by now, and
-    // whoever hears this still hears it
-    emit(this as ViewComponent, ViewComponent.Destroyed);
+    // whoever hears this still hears it. Guarded, because the line below is the point of the whole
+    // method: under the plain dispatch a listener that throws would leave through `destroy()` and
+    // take the `off()` with it, and the component would end its life holding every subscription it
+    // was supposed to be rid of.
+    emitSafe(this as ViewComponent, ViewComponent.Destroyed);
 
     off(this);
   }

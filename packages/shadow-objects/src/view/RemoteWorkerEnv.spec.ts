@@ -240,9 +240,10 @@ describe('RemoteWorkerEnv', () => {
       expect(worker.terminateCount).toBe(1);
     });
 
-    // eventize puts the value into the keeper only after the dispatch has run through, so a
-    // listener that throws would take the replay for every later subscriber with it -- and
-    // `WorkerFailed` is documented as retained (`docs/api-reference.md`, RemoteWorkerEnv events)
+    // eventize puts the value into the keeper only after the dispatch has run through, so under the
+    // plain `emit()` a listener that throws would take the replay for every later subscriber with
+    // it -- and `WorkerFailed` is documented as retained (`docs/api-reference.md`, RemoteWorkerEnv
+    // events). The guarded dispatch serves every listener, so the value is written.
     it('replays workerFailed to a later listener even when the first one throws', async () => {
       const {env, worker} = await startEnv();
 
@@ -257,6 +258,26 @@ describe('RemoteWorkerEnv', () => {
 
       expect(late, 'the retained failure is still there for whoever comes after').toHaveBeenCalledTimes(1);
       expect(late.mock.calls[0]![0].reason.name).toBe('WorkerFailedError');
+    });
+
+    it('delivers workerFailed to the listeners behind the one that throws', async () => {
+      const {env, worker} = await startEnv();
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      const behind = vi.fn();
+      on(env, 'workerFailed', () => {
+        throw new Error('a consumer that cannot cope');
+      });
+      on(env, 'workerFailed', behind);
+
+      expect(() => worker.fail('kaboom')).not.toThrow();
+
+      // exactly once: the announcement is one delivery, not a first pass and a recovery behind it
+      expect(behind).toHaveBeenCalledTimes(1);
+      expect(behind.mock.calls[0]![0].reason.name).toBe('WorkerFailedError');
+      expect(error).toHaveBeenCalled();
+
+      error.mockRestore();
     });
 
     it('rejects calls issued after the failure right away', async () => {
@@ -315,6 +336,58 @@ describe('RemoteWorkerEnv', () => {
       // the promise is built on that same replay
       await expect(withTimeout(env.workerLoaded)).resolves.toBe(env);
 
+      env.destroy();
+      worker.reply({type: Destroyed});
+    });
+
+    it('delivers workerLoaded to the listeners behind the one that throws', async () => {
+      const env = new RemoteWorkerEnv();
+      const started = env.start();
+      const worker = workers.at(-1)!;
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      const behind = vi.fn();
+      on(env, RemoteWorkerEnv.WorkerLoaded, () => {
+        throw new Error('a consumer that cannot cope');
+      });
+      on(env, RemoteWorkerEnv.WorkerLoaded, behind);
+
+      worker.reply({type: Loaded});
+      await started;
+      await flushMicrotasks();
+
+      expect(behind).toHaveBeenCalledTimes(1);
+      expect(behind.mock.calls[0]![0]).toBe(env);
+      expect(error).toHaveBeenCalled();
+
+      error.mockRestore();
+      env.destroy();
+      worker.reply({type: Destroyed});
+    });
+
+    // a `workerLoaded` promise waits on a `once()` of this very event. Standing behind a throwing
+    // listener used to cost it its turn -- the delivery ended above it, and the sweep that
+    // re-announced the handshake took its subscription with it, leaving the promise pending until
+    // the environment failed or was torn down. Every listener is served now, that one included.
+    it('settles a workerLoaded promise that was handed out behind a throwing listener', async () => {
+      const env = new RemoteWorkerEnv();
+      const started = env.start();
+      const worker = workers.at(-1)!;
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      on(env, RemoteWorkerEnv.WorkerLoaded, () => {
+        throw new Error('a consumer that cannot cope');
+      });
+
+      // handed out after the throwing listener, so its own subscription stands below it
+      const pending = env.workerLoaded;
+
+      worker.reply({type: Loaded});
+      await started;
+
+      await expect(withTimeout(pending)).resolves.toBe(env);
+
+      error.mockRestore();
       env.destroy();
       worker.reply({type: Destroyed});
     });

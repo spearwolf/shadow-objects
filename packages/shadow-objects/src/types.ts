@@ -185,6 +185,10 @@ export interface ShadowObjectCreationAPI {
   /**
    * Emit an event on the *entity* associated with this shadow object.
    *
+   * A listener that throws ends the delivery where it stands and the error reaches this call. That
+   * is deliberate, and it is the one dispatch in the library that works this way: the listeners
+   * belong to whoever emits here, so a failure is its own bug and belongs where it happened.
+   *
    * @param eventNames - The name(s) of the event(s) to emit.
    * @param eventArgs - Arguments to pass to the event listeners.
    */

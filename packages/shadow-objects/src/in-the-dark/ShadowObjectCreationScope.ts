@@ -765,6 +765,13 @@ export class ShadowObjectCreationScope {
     return this.#trackSubscription(unsubscribe);
   }
 
+  /**
+   * The plain `emit()`, deliberately, where every notification the framework sends out of its own
+   * accord runs on the guarded dispatch. This one is outbound and belongs to the Shadow Object: it
+   * owns the listeners, a throw from one of them is its own bug, and letting it surface where it
+   * happened is the fastest way to find it. A listener that needs a policy of its own carries a
+   * `try`/`catch` in its own body, which is where that decision belongs.
+   */
   emit(...args: any[]): void {
     if (this.#refuseAfterTearDown('emit')) return;
 

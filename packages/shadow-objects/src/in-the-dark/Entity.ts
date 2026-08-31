@@ -1,4 +1,4 @@
-import {emit, off, on, once, Priority} from '@spearwolf/eventize';
+import {emitStrict, off, on, once, Priority} from '@spearwolf/eventize';
 import {
   batch,
   createSignal,
@@ -447,11 +447,28 @@ export class Entity {
     this.#kernel.dispatchMessageToView({uuid: this.#uuid, type, data, transferables, traverseChildren});
   }
 
+  /**
+   * Hands the events the view sent to whoever listens on this entity, one delivery per event.
+   *
+   * Each delivery is guarded, and the reason is where this call sits: the kernel makes it from
+   * inside a change trail, on a path that builds. Unguarded, a single shadow-object that cannot cope
+   * with a single view event would leave through `Kernel.run()` and refuse the whole trail -- the
+   * same argument that puts a guard around the `onParentChanged` notification, which is a delivery
+   * on a building path as well. The guard is per event, so one that fails costs neither the events
+   * behind it nor the caller anything; `emitStrict()` inside it makes the same promise one level
+   * down, to the listeners of one event.
+   */
   dispatchViewEvents(events: IComponentEvent[]) {
     for (const {type, data} of events) {
-      // the concrete class is needed here: eventize cannot reduce its emitter conditional
-      // (`NonTypedEmitter<this>`) over the polymorphic `this` type, and no overload then matches
-      emit(this as Entity, onViewEvent, type, data);
+      runGuarded(
+        this.#kernel.logger,
+        // the concrete class is needed here: eventize cannot reduce its emitter conditional
+        // (`NonTypedEmitter<this>`) over the polymorphic `this` type, and no overload then matches
+        () => emitStrict(this as Entity, onViewEvent, type, data),
+        'entity view event delivery failed:',
+        type,
+        this.#uuid,
+      );
     }
   }
 

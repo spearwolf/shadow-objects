@@ -288,6 +288,12 @@ To receive events dispatched from the DOM (View Layer), listen to the special `o
 - **Signature:** `onViewEvent(callback: (type: string, data: unknown) => any): void`
 - **Returns:** nothing. Unlike `on()` there is no unsubscribe function — the listener ends with the Shadow Object.
 
+A callback that throws costs itself and nothing else. The delivery reaches every other listener on
+the Entity, the events behind it in the same Change Trail entry are delivered too, and the Change
+Trail is not refused over it: the failure is reported through the `ConsoleLogger`, named by the event
+type and the UUID of the Entity, and reaches no caller. This is the same guard the `onParentChanged`
+notification carries, and for the same reason — see [Two error contracts](#two-error-contracts).
+
 ```typescript
 import type { ShadowObjectCreationAPI } from "@spearwolf/shadow-objects";
 import { onViewEvent as viewEvent } from "@spearwolf/shadow-objects/shadow-objects.js";
@@ -317,6 +323,13 @@ Same as `on`, including the unsubscribe function it returns, but the listener is
 Emits an event on the entity associated with the current shadow object. This is the preferred way to communicate with other Shadow Objects on the same Entity or signal state changes.
 
 - **Signature:** `emit(eventNames: string | symbol | (string|symbol)[], ...eventArgs: any[]): void`
+
+A listener that throws ends the delivery where it stands, and the error reaches this call. That is
+the one dispatch in the library that behaves this way, and it is deliberate: the listeners belong to
+whoever emits here, so a failure is that code's own bug and belongs where it happened. Everything the
+framework sends out of its own accord runs on the guarded dispatch instead — see
+[Two error contracts](#two-error-contracts). A listener that needs a policy of its own carries a
+`try`/`catch` in its own body; that decision belongs at the site that owns it.
 
 ```typescript
 export function PlayerLogic({ emit, on }: ShadowObjectCreationAPI) {
@@ -407,7 +420,7 @@ A callback that throws does not stop what comes after it: the remaining `onDestr
 
 A listener sitting on the Entity itself is held to the same contract, wherever in the delivery it stands — registered through `on(onDestroy, …)` / `once(onDestroy, …)` on the creation API, at whatever priority that call passes through to the Entity, or put on the Entity from the outside ahead of that, `Priority.Max` included, where a child with `autoDestructionOnParentRemoval` registers: a throw from it costs no Shadow Object of that Entity the cleanups it registered through `onDestroy(callback)`, and costs the Entity neither its properties nor its contexts nor its subscriptions. Such a listener is only ever reached on the first path, because a destroyed Entity is the only occasion on which that notification is sent. The Kernel runs the creation scopes and the Entity's own release itself once the Entity-wide notification is through, however that notification ended. The Entity does not listen on its own notification, so the whole priority ladder belongs to whoever registers there: a listener at `Priority.Min` — `-Infinity`, the lowest eventize has — is the last one the delivery reaches, and the Entity still holds its properties and its contexts when it runs. A subscription taken through the creation API is the one place where a low priority does not pay off, and not because of the ladder: it belongs to the creation scope that handed it out, and that scope tears down at `Priority.Low` and releases everything it handed out, so the delivery never reaches a creation-API subscription registered below `Priority.Low`.
 
-What a throw there does cost is the listeners registered behind it on the same Entity: the notification is a single delivery, and a delivery ends where a listener throws. The error is reported through the `ConsoleLogger`. The Kernel's own bookkeeping is untouched either way: the Entity is out of the Kernel when `destroyEntity()` returns, whatever ran or failed along the way, and the call hands nothing on to its caller.
+A throw there costs the listeners registered behind it on the same Entity nothing: the notification reaches every one of them whatever the one before it did, and the errors are collected and reported through the `ConsoleLogger` once the delivery is through -- one of them unchanged, several as an `AggregateError` in dispatch order. The Kernel's own bookkeeping is untouched either way: the Entity is out of the Kernel when `destroyEntity()` returns, whatever ran or failed along the way, and the call hands nothing on to its caller.
 
 - **Signature:** `onDestroy(fn: () => void): void`
 
@@ -822,6 +835,8 @@ child.isChildOf(parent);     // true right after parent.addChild(child)
 
 Delivers an event to this component's own listeners, and with `traverseChildren` to all its descendants as well. This stays in the View Layer -- use `dispatchShadowObjectsEvent()` to reach a Shadow Object. It is the method the framework itself uses to hand a message coming back from the Shadow Environment to a component.
 
+A listener that throws costs itself and nothing else: the listeners behind it on the same component are served, and with `traverseChildren` the whole subtree below it is reached all the same. The failure is reported through `console.warn` by eventize and reaches no caller -- the message channel this method serves has none left to catch it. That holds for every path that leads here, `ComponentContext.dispatchMessage()`, `broadcastEvent()` and the peer re-request rounds included.
+
 ```typescript
 component.dispatchEvent('reset', { hard: true }, true); // this component and every descendant
 ```
@@ -847,6 +862,8 @@ const unsubscribe = on(component, 'msg-from-shadow', (data) => {
 
 unsubscribe();      // or off(component, 'msg-from-shadow')
 ```
+
+A `ViewComponent.Destroyed` listener that throws costs itself and nothing else either: the listeners behind it hear the announcement, and the component goes silent as it should -- the subscriptions come off whatever a listener did.
 
 `destroy()` takes every `on()` and `once()` subscription off the component: a listener registered before the call hears no later `dispatchEvent()`, and the unsubscribe function it returned has nothing left to do. A listener registered afterwards is heard as usual -- the call takes off what lies on the component in that moment, it does not seal it, so a component revived through `context` needs its subscriptions again. A promise from `onceAsync()` stays outside this and settles only when the event it waits for arrives. Leaving a context is no teardown in this sense: `vc.context = otherCtx` and `vc.context = null` keep both the subscriptions and an own `dispatchEvent`. The teardown announces itself on the component immediately before it takes anything off -- `ViewComponent.Destroyed`, see the table below.
 
@@ -1253,11 +1270,17 @@ on(env, ShadowEnv.AfterSync, (changeTrail) => {
 });
 ```
 
-A listener that throws ends the run of its event where it stands, and the listeners behind it hear
-nothing -- the same as everywhere else in the library. What such a listener cannot do is derail the
-cycle it was told about: `syncWait()` is settled before either event goes out, so a promise waiting
-on that cycle never depends on the listeners getting through, and the throw is reported through the
-`ConsoleLogger` instead of escaping as an unhandled rejection.
+A listener that throws costs itself and nothing else: every one of these five events is delivered to
+every listener whatever the one before it did, and what the failing ones threw is reported through
+the `ConsoleLogger` -- one error, or an `AggregateError` in dispatch order where several of them
+failed. Such a listener cannot derail the cycle it was told about either: `syncWait()` is settled
+before `AfterSync` or `SyncFailed` goes out, so a promise waiting on that cycle never depends on the
+listeners getting through.
+
+`ProxyFailed` is the one that does hand the error on, after every listener has run: it travels to
+whichever proxy reported the failure, because losing the environment is the proxy's own business.
+The state is settled first -- `isReady` is `false` and `ContextLost` has gone out -- so no listener
+can leave the environment claiming to be ready.
 
 Recovery from a `ProxyFailed` is a new proxy: `env.envProxy = new RemoteWorkerEnv()`. The setter starts it, and once it is ready the view re-creates its pending changes from the Component Memory. The next `sync()` therefore restores every entity in the new environment -- token, parent, order and properties -- so the application does not have to rebuild its `ViewComponent`s or its markup.
 
@@ -1593,8 +1616,8 @@ that quietly means something else than it says is turned away rather than honour
 
 | Event | Description |
 | :--- | :--- |
-| `RemoteWorkerEnv.WorkerLoaded` | Fired when the worker has completed its handshake. Receives the environment. Retained, so a late listener still gets it. A listener that throws ends the run where it stands -- the listeners behind it hear nothing -- but the retained value survives that, so whoever subscribes afterwards still gets it. A `workerLoaded` promise that was waiting behind the throwing listener is the exception: it stays pending until the environment fails or is torn down, and a fresh read of `workerLoaded` resolves from the retained value. |
-| `RemoteWorkerEnv.WorkerFailed` | Fired when the worker dies or sends something that cannot be deserialized. Receives a `WorkerFailedEvent`. Retained, so a late listener still gets it. A listener that throws ends the run where it stands -- the listeners behind it hear nothing -- but the retained value survives that, so whoever subscribes afterwards still gets it. |
+| `RemoteWorkerEnv.WorkerLoaded` | Fired when the worker has completed its handshake. Receives the environment. Retained, so a late listener still gets it. A listener that throws costs itself and nothing else: the listeners behind it are served, the retained value is written, and a `workerLoaded` promise waiting behind it resolves like any other. The failure is reported through the `ConsoleLogger` and reaches no caller -- the event goes out from a microtask, where there is none left. |
+| `RemoteWorkerEnv.WorkerFailed` | Fired when the worker dies or sends something that cannot be deserialized. Receives a `WorkerFailedEvent`. Retained, so a late listener still gets it. A listener that throws costs itself and nothing else, exactly as with `WorkerLoaded`, and is reported the same way. |
 
 Both events are put back when a listener throws, so a consumer subscribing later still gets them. Two things that recovery costs are worth knowing before you subscribe. The listeners registered behind the throwing one never hear that event. And a listener subscribed to every event name -- an eventize wildcard subscription -- survives the sweep the recovery makes, because that sweep reaches the subscriptions of the one event name. At the default priority it hears the event exactly once, in the recovery: eventize serves the subscriptions of the name ahead of the wildcard ones, so the throw ends the first run before the wildcard is reached. A wildcard registered with a priority above the throwing listener runs ahead of it and hears the event twice.
 
@@ -1730,6 +1753,12 @@ class Renderer {
 ```
 
 `FrameLoop.OnFrame` is a `Symbol()`, not a `Symbol.for()`: subscribing through the global symbol registry with `Symbol.for('onFrame')` reaches nothing. Import the symbol from the class.
+
+A target that throws costs itself its frame and nothing else. The frame still reaches every other
+target, and the loop asks for the frame behind it -- which matters most on the shared loop, where
+`<shae-worker>` and `<shae-offscreen-canvas>` ride together and one target that cannot cope would
+otherwise stop the page. The failure is reported through `console.warn` by eventize and reaches no
+caller; the target keeps its subscription and is handed the next frame like any other.
 
 ### Frame data
 
@@ -2636,6 +2665,13 @@ Three places do not follow from the rough rule alone:
 - `onParentChanged` is a delivery on a building path and is guarded all the same. The parent link already stands when the notification goes out, and a listener cannot take it back; a throw from there would turn one bad listener into a refused Change Trail.
 - The way back of a building path follows the teardown contract. What fails while a failed creation or token change is being taken back is reported and never thrown again, because the caller is waiting for the error of the build itself.
 - The hand-over of an Entity Context value is guarded per reader — see [A `useContext` consumer that throws costs its own context value and no other](#a-usecontext-consumer-that-throws-costs-its-own-context-value-and-no-other).
+- The delivery of View Layer events runs on a building path and is guarded as well, per event — see [Listening to View Layer Events](#listening-to-view-layer-events).
+
+The guard sits at two levels, and both are needed. Around a step, so that a step that fails costs no
+other step; and inside the notification that step sends, so that a listener that fails costs no other
+listener. The second level is what makes the first one hold in practice: the creation scopes of an
+Entity listen on its own `onDestroy` notification, and a listener above them that ended the delivery
+would take their teardown with it.
 
 Every report goes through the [`ConsoleLogger`](#console-logger) under the namespace `Kernel`. `logger.error` sits behind no switch, so these reports stay visible off a loopback host, and each of them reads in the same order: the message, then what names the subject of the step, then the error.
 

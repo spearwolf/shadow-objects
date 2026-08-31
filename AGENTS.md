@@ -32,6 +32,18 @@ Uses Signals and Effects (via `@spearwolf/signalize`).
 - **Upstream (Events):** Shadow Object -> Entity -> Kernel -> View.
 - **Lateral (Context):** Hierarchical dependency injection (Provider/Consumer) between Entities.
 
+**Dispatching a notification.** Every fan-out the framework sends to code it does not own goes out
+through eventize's guarded dispatch, never the plain `emit()`: a listener that throws costs itself
+and nothing else. Which of the two applies follows from who reports the failure. Where the caller
+holds context worth naming — an entity uuid, the display name of a Shadow Object — it is
+`emitStrict()` inside a `runGuarded()`, so the failures come back and the report goes through the
+`ConsoleLogger` with that context. Where there is no logger and nothing to add (`FrameLoop`,
+`ViewComponent`, `SignalsPath`), it is `emitSafe()` and eventize's own `console.warn`. A plain
+`emit()` stays right for a Shadow Object's own outbound events, where the author owns every
+listener — the creation API's `emit()` is one. The choice is not free: eventize wires the guarded
+step in process-wide the first time either variant is called, and every `emit()` in that process
+pays for it. Paid once, it is paid for all of them.
+
 ## 3. Monorepo Structure
 
 | Package | npm name | Purpose |
