@@ -72,7 +72,7 @@ None open. The last one was the disabled `webkit` project; it is enabled and gre
 removal after `ready()`, and reads the result out of the worker's own kernel rather than off the
 change trail. The paths this axis was written for are exercised there:
 `ShaeEntElement.connectedCallback` → `#dispatchRequestParent` with a live parent,
-`#createParentObserver` / `onParentChanged` (`ShaeEntElement.ts`),
+`#observeParentNode` / `onParentChanged` (`ShaeEntElement.ts`),
 `ShaePropElement.#disconnectFromEntNode` with its one-microtask defer
 that keeps a move within the same tick from reading as a disconnect, and the remove-and-re-append
 flicker (DOM-8).

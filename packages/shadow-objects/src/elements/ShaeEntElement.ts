@@ -14,6 +14,7 @@ import {
 } from './constants.js';
 import {forwardCustomEventsFrom, isEmptyFilter, isSameFilter} from './forwardCustomEvents.js';
 import {HostedSlots} from './hostedSlots.js';
+import {stopWatchingForRemovalFrom, watchForRemovalFrom} from './parentRemoval.js';
 import {type EntAncestorRequest, requestEntAncestor} from './requestEntAncestor.js';
 import {ShaeElement} from './ShaeElement.js';
 
@@ -115,7 +116,8 @@ export class ShaeEntElement extends ShaeElement {
    */
   readonly #wasUpgradedInPlace = this.isConnected;
 
-  #parentObserver?: MutationObserver | undefined;
+  /** The node this element is watched on, for as long as it hangs in one. */
+  #observedParentNode?: Node | undefined;
 
   /**
    * Bumped whenever the subscriptions this element holds on its component have to be set up again.
@@ -463,32 +465,35 @@ export class ShaeEntElement extends ShaeElement {
       // --- hosted slots ---
       this.#hostedSlots.collect();
 
-      this.#createParentObserver();
+      this.#observeParentNode();
 
       // --- sync! ---
       this.syncShadowObjects();
     });
   }
 
-  #createParentObserver() {
-    this.#destroyParentObserver();
+  #observeParentNode() {
+    this.#unobserveParentNode();
     const parent = this.getParentNodeForObserver();
     if (parent) {
-      this.#parentObserver = new MutationObserver((mutations, _observer) => {
-        for (const {target, removedNodes} of mutations) {
-          if (target === parent) {
-            for (const node of removedNodes) {
-              if (node === this) {
-                this.#destroyParentObserver();
-                this.onParentChanged(this.getParentNodeForObserver(), parent);
-                break;
-              }
-            }
-          }
-        }
+      watchForRemovalFrom(parent, this, () => {
+        // the watch ended when it fired, and the field says so before anything else runs
+        this.#observedParentNode = undefined;
+        this.onParentChanged(this.getParentNodeForObserver(), parent);
       });
-      this.#parentObserver.observe(parent, {childList: true, subtree: false, attributes: false});
+      // set only once the registration has gone through: `watchForRemovalFrom` can run other
+      // watchers of this same parent synchronously before it gets here, and one of them is
+      // `onParentChanged` on some other element — a documented extension point, free to
+      // disconnect this element in turn. That disconnect would find this field already carrying
+      // `parent` were it set above, and unwatch a `this` the registration below has not added yet
+      this.#observedParentNode = parent;
     }
+  }
+
+  #unobserveParentNode() {
+    if (this.#observedParentNode == null) return;
+    stopWatchingForRemovalFrom(this.#observedParentNode, this);
+    this.#observedParentNode = undefined;
   }
 
   onParentChanged(_newParent: Node | undefined, _oldParent: Node) {
@@ -496,13 +501,8 @@ export class ShaeEntElement extends ShaeElement {
     this.#dispatchRequestParent();
     // the observation watches one specific parent node, so it has to travel with the element:
     // left at the old position it would report the next move of a node that is no longer here.
-    // The call is idempotent — #createParentObserver starts with #destroyParentObserver
-    this.#createParentObserver();
-  }
-
-  #destroyParentObserver() {
-    this.#parentObserver?.disconnect();
-    this.#parentObserver = undefined;
+    // The call is idempotent — #observeParentNode starts with #unobserveParentNode
+    this.#observeParentNode();
   }
 
   override attributeChangedCallback(name: string) {
@@ -517,7 +517,7 @@ export class ShaeEntElement extends ShaeElement {
   override disconnectedCallback() {
     this.#shadowRootHostNeedsUpdate = true;
 
-    this.#destroyParentObserver();
+    this.#unobserveParentNode();
 
     // an entity outside the tree answers for no slot any more, and its listeners must not outlive
     // what it is itself
@@ -592,7 +592,7 @@ export class ShaeEntElement extends ShaeElement {
     this.#tokenToViewComponent = undefined;
 
     this.#destroyViewComponentEffect();
-    this.#destroyParentObserver();
+    this.#unobserveParentNode();
     this.#hostedSlots.releaseAll();
     // the listener this element holds on its entity parent comes off with the binding. Along the
     // ordinary way out that has already happened in `disconnectedCallback`, and this call turns

@@ -76,6 +76,10 @@ src/elements/hostedSlots.d.ts
 src/elements/hostedSlots.d.ts.map
 src/elements/hostedSlots.js
 src/elements/hostedSlots.js.map
+src/elements/parentRemoval.d.ts
+src/elements/parentRemoval.d.ts.map
+src/elements/parentRemoval.js
+src/elements/parentRemoval.js.map
 src/elements/propValueConverters.d.ts
 src/elements/propValueConverters.d.ts.map
 src/elements/propValueConverters.js
