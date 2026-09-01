@@ -15,9 +15,9 @@ import {mount, unmountAll} from '../src/mount.js';
  * reproduce: custom element reactions in their specified order, `MutationObserver` timing against
  * `disconnectedCallback`, and `moveBefore` with its `connectedMoveCallback` opt-out.
  *
- * A custom element name can be defined only once per document, so the one case that needs its own
- * class brings its own name. Every case uses its own ids and its own namespaces, which keeps the
- * file independent of the order its cases run in.
+ * A custom element name can be defined only once per document, so the cases that need a class of
+ * their own bring their own names. Every case uses its own ids and its own namespaces, which
+ * keeps the file independent of the order its cases run in.
  *
  * Assertions go through `entParentNode?.id` and through a string derived from the entity tree
  * (`vc.parent === gp.viewComponent ? 'gp-n2' : null`), never through element identity: in the red
@@ -351,6 +351,151 @@ describe('shae-ent and a namespace change', () => {
     await nextTask();
 
     expect(mover.entParentNode?.id, 'and back again').to.equal('a-n9');
+  });
+
+  it('the parent observer follows an element moved while its own registration was running', async () => {
+    // A registration runs foreign code before it takes its own watcher: the records the parent has
+    // come due for are delivered first, and one of those watchers can be an `onParentChanged`
+    // override — a documented extension point. Here it answers with a `moveBefore`, the one move
+    // that runs no `connectedCallback` of its own, so the registration under way is the only thing
+    // left that can put the observation on the node the element ends up under
+    customElements.define(
+      'move-ent-n9b',
+      class extends ShaeEntElement {
+        connectedMoveCallback() {}
+      },
+    );
+    customElements.define(
+      'hand-ent-n9b',
+      class extends ShaeEntElement {
+        connectedMoveCallback() {}
+        onParentChanged(newParent, oldParent) {
+          this.whenParentChanged?.();
+          super.onParentChanged(newParent, oldParent);
+        }
+      },
+    );
+
+    const container = mount(
+      '<shae-ent id="from-n9b" token="from">' +
+        '<hand-ent-n9b id="hand-n9b" token="hand"></hand-ent-n9b>' +
+        '</shae-ent>' +
+        '<shae-ent id="to-n9b" token="to"></shae-ent>' +
+        '<shae-ent id="third-n9b" token="third"></shae-ent>',
+    );
+    await customElements.whenDefined('hand-ent-n9b');
+
+    const from = container.querySelector('#from-n9b');
+    const to = container.querySelector('#to-n9b');
+    const third = container.querySelector('#third-n9b');
+    const hand = container.querySelector('#hand-n9b');
+
+    const mover = document.createElement('move-ent-n9b');
+    mover.id = 'mover-n9b';
+    mover.setAttribute('token', 'mover');
+
+    hand.whenParentChanged = () => {
+      to.moveBefore(mover, null);
+    };
+
+    // arms the record: this takes `hand` out of the child list of `from` without running the
+    // lifecycle pair, so its watcher on `from` is still standing when the record comes due
+    to.moveBefore(hand, null);
+
+    // still the same task, so the record is still waiting — and this registration is what delivers
+    // it. The watcher above answers by moving this very element off the node it registers on
+    from.appendChild(mover);
+
+    expect(mover.parentNode?.id, 'the foreign watcher moved it during its own registration').to.equal('to-n9b');
+
+    await nextTask();
+
+    // where the element hangs is where its entity hangs. The move ran no lifecycle callback of its
+    // own, so the registration under way is also the only thing that can say the parent changed
+    expect(mover.entParentNode?.id, 'the entity followed the move it was never told about').to.equal('to-n9b');
+
+    // the move it has to report: nothing but the observation on `to` can reach it
+    third.moveBefore(mover, null);
+    await nextTask();
+
+    expect(mover.entParentNode?.id, 'and the observation came along to where it landed').to.equal('third-n9b');
+  });
+
+  it('a throwing override in the registration window costs the notification and nothing behind it', async () => {
+    // The parent change of this window is reported by the registration itself, and it reports it
+    // into `onParentChanged` — a documented extension point, which is foreign code. A throw from
+    // there is written to `console.error` and stops where it happened. What sits behind the
+    // notification is the rest of `connectedCallback`: an element whose override takes that with
+    // it hangs connected in the tree and was never synced into its environment
+    customElements.define(
+      'move-ent-n9c',
+      class extends ShaeEntElement {
+        syncCalls = 0;
+        connectedMoveCallback() {}
+        onParentChanged() {
+          this.syncCallsAtThrow = this.syncCalls;
+          throw new Error('this element refuses to hear about its parent');
+        }
+        syncShadowObjects() {
+          this.syncCalls += 1;
+          super.syncShadowObjects();
+        }
+      },
+    );
+    customElements.define(
+      'hand-ent-n9c',
+      class extends ShaeEntElement {
+        connectedMoveCallback() {}
+        onParentChanged(newParent, oldParent) {
+          this.whenParentChanged?.();
+          super.onParentChanged(newParent, oldParent);
+        }
+      },
+    );
+
+    const container = mount(
+      '<shae-ent id="from-n9c" token="from">' +
+        '<hand-ent-n9c id="hand-n9c" token="hand"></hand-ent-n9c>' +
+        '</shae-ent>' +
+        '<shae-ent id="to-n9c" token="to"></shae-ent>',
+    );
+    await customElements.whenDefined('hand-ent-n9c');
+
+    const from = container.querySelector('#from-n9c');
+    const to = container.querySelector('#to-n9c');
+    const hand = container.querySelector('#hand-n9c');
+
+    const mover = document.createElement('move-ent-n9c');
+    mover.id = 'mover-n9c';
+    mover.setAttribute('token', 'mover');
+
+    hand.whenParentChanged = () => {
+      to.moveBefore(mover, null);
+    };
+
+    // the same arrangement as the case above: this arms the record that the registration below
+    // delivers, and the watcher it reaches moves this element off the node it registers on
+    to.moveBefore(hand, null);
+
+    const reports = [];
+    const consoleError = console.error;
+    console.error = (...args) => reports.push(args);
+    try {
+      from.appendChild(mover);
+    } finally {
+      console.error = consoleError;
+    }
+
+    expect(mover.parentNode?.id, 'the foreign watcher moved it during its own registration').to.equal('to-n9c');
+    expect(
+      reports.map(([message]) => message),
+      'the throw is reported once and reaches no caller',
+    ).to.deep.equal(['a removal watcher failed:']);
+    // counted against the state the override saw, not against a fixed number: what this pins is
+    // that a sync happened behind the notification, and connectedCallback syncs on its way there
+    expect(mover.syncCalls, 'connectedCallback ran past the notification and synced the element').to.be.greaterThan(
+      mover.syncCallsAtThrow,
+    );
   });
 
   it('an ancestor without a view component settles instead of asking again and again', async () => {

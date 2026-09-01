@@ -2,6 +2,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import '../shae-ent.js';
 import {stopWatchingForRemovalFrom, watchForRemovalFrom} from './parentRemoval.js';
+import type {ShaeEntElement} from './ShaeEntElement.js';
 
 /** happy-dom delivers a `MutationObserver` callback on a microtask; a macrotask outlasts it too. */
 const waitForObserverCallback = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
@@ -275,5 +276,91 @@ describe('parentRemoval', () => {
     await waitForObserverCallback();
 
     expect(observerSpy).toHaveBeenCalledTimes(1);
+  });
+
+  // The registration of a `<shae-ent>` runs foreign code on its way through: `watchForRemovalFrom`
+  // dispatches the records this parent has come due for before it adds the new watcher, and a
+  // watcher is free to move elements around. These cases hold the element's own observation to the
+  // node it hangs on once that code has had its turn.
+  describe('a <shae-ent> whose registration runs a foreign watcher', () => {
+    /**
+     * Whether nothing is watched on `parent` any more — a fresh registration has to build an observer.
+     *
+     * The count it reads is a global one, and the registration it probes with delivers whatever
+     * `parent` has come due for: a watcher running from that delivery can build an observer on some
+     * other node and be counted here. The answer therefore holds as long as no record with a live
+     * watcher is outstanding on the node being asked about — which is the case in every `true` below,
+     * where that node carries no watcher left to run.
+     */
+    const nothingWatchedOn = (parent: Node): boolean => {
+      const probe = document.createElement('span');
+      parent.appendChild(probe);
+      const observersBefore = observerSpy.mock.calls.length;
+      watchForRemovalFrom(parent, probe, () => {});
+      const built = observerSpy.mock.calls.length > observersBefore;
+      stopWatchingForRemovalFrom(parent, probe);
+      probe.remove();
+      return built;
+    };
+
+    /**
+     * Leave `parent` with a record waiting for delivery and a watcher that runs `onDispatch` when
+     * it comes due — the next registration on this parent dispatches it before it gets to its own.
+     */
+    const armWatcherOn = (parent: Node, onDispatch: () => void): void => {
+      const trigger = document.createElement('span');
+      parent.appendChild(trigger);
+      watchForRemovalFrom(parent, trigger, onDispatch);
+      trigger.remove();
+    };
+
+    let from: HTMLElement;
+    let to: HTMLElement;
+    let ent: ShaeEntElement;
+    let parentChanges: Array<[Node | undefined, Node]>;
+
+    beforeEach(() => {
+      from = document.createElement('div');
+      to = document.createElement('div');
+      document.body.append(from, to);
+
+      ent = document.createElement('shae-ent') as ShaeEntElement;
+      parentChanges = [];
+      // the inherited method keeps running: it is what re-resolves the entity ancestor
+      const inherited = ent.onParentChanged.bind(ent);
+      ent.onParentChanged = (newParent, oldParent) => {
+        parentChanges.push([newParent, oldParent]);
+        inherited(newParent, oldParent);
+      };
+    });
+
+    it('hears no parent change for a move that carried its own reconnect', async () => {
+      armWatcherOn(from, () => to.appendChild(ent));
+
+      from.appendChild(ent);
+      expect(ent.parentNode).toBe(to);
+
+      await waitForObserverCallback();
+
+      expect(parentChanges).toEqual([]);
+    });
+
+    it('leaves nothing watched on the parent the foreign watcher moved it off', () => {
+      armWatcherOn(from, () => to.appendChild(ent));
+
+      from.appendChild(ent);
+
+      expect(nothingWatchedOn(from)).toBe(true);
+      expect(nothingWatchedOn(to)).toBe(false);
+    });
+
+    it('leaves nothing watched when the foreign watcher takes it out of the tree', () => {
+      armWatcherOn(from, () => ent.remove());
+
+      from.appendChild(ent);
+      expect(ent.parentNode).toBe(null);
+
+      expect(nothingWatchedOn(from)).toBe(true);
+    });
   });
 });

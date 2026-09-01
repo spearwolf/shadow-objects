@@ -489,12 +489,41 @@ export class ShaeEntElement extends ShaeElement {
         this.#observedParentNode = undefined;
         this.onParentChanged(this.getParentNodeForObserver(), parent);
       });
-      // set only once the registration has gone through: `watchForRemovalFrom` can run other
-      // watchers of this same parent synchronously before it gets here, and one of them is
-      // `onParentChanged` on some other element — a documented extension point, free to
-      // disconnect this element in turn. That disconnect would find this field already carrying
-      // `parent` were it set above, and unwatch a `this` the registration below has not added yet
-      this.#observedParentNode = parent;
+      // asked a second time rather than remembered from above: `watchForRemovalFrom` runs the
+      // watchers this parent has come due for before it adds its own, and one of them is
+      // `onParentChanged` on some other element — a documented extension point, free to move or
+      // disconnect this element in turn. The answer below says where the element hangs once that
+      // code has had its turn: the node just registered for, and the registration stands; anything
+      // else, and it belongs to a node the element has left and comes off again. Setting the field
+      // ahead of the registration would close this half and open the other one — a callback that
+      // disconnects the element would then unwatch a `this` nothing has added yet
+      const parentAfterRegistration = this.getParentNodeForObserver();
+      if (parentAfterRegistration === parent) {
+        this.#observedParentNode = parent;
+      } else {
+        stopWatchingForRemovalFrom(parent, this);
+        // the element left `parent`, and the watcher that would have reported that is the one just
+        // taken back — so this call owes the report. A move that carried the element's own
+        // `connectedCallback` with it has already re-resolved the parent and watched the node it
+        // landed on; an empty field is what says no such reaction ran, which is the case for a
+        // `moveBefore` on a subclass with an empty `connectedMoveCallback`, and then nothing else
+        // is left in a position to say it. `isConnected` because an element that ended up in a
+        // detached subtree announces itself again through `connectedCallback` when it is put back.
+        //
+        // The inherited implementation ends in `#observeParentNode()`, so this reaches itself:
+        // every further level needs a watcher on the new parent node that has come due and moves
+        // this very element, and with none running the answer above matches and the call ends
+        if (this.#observedParentNode == null && this.isConnected) {
+          // guarded like every other delivery to this extension point, and reported in the same
+          // words: which of the two paths carries the report is a detail of the registration
+          // window, and a subclass whose override throws reads one message either way
+          try {
+            this.onParentChanged(parentAfterRegistration, parent);
+          } catch (error) {
+            console.error('a removal watcher failed:', error);
+          }
+        }
+      }
     }
   }
 
