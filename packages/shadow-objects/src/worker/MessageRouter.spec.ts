@@ -96,8 +96,8 @@ describe('MessageRouter', () => {
       expect(posted.map((entry) => entry.message)).toEqual([{type: AppliedChangeTrail, serial: 42}]);
     });
 
-    // The confirmation hangs on the truthiness of `serial`. A missing key and an explicit
-    // `undefined` are the same thing to that check.
+    // A confirmation goes out where a serial asked for one. A missing key and an explicit
+    // `undefined` are the same thing to that question.
     it('applies a change trail that carries no serial without confirming it', () => {
       const {kernel, posted, router} = setup();
 
@@ -107,15 +107,17 @@ describe('MessageRouter', () => {
       expect(posted).toHaveLength(0);
     });
 
-    // The boundary of that truthiness check. It costs nothing in practice: the view side counts
-    // up from 1 with `++` (`view/RemoteWorkerEnv.ts`), so a serial of 0 never reaches the worker.
-    it('treats a serial of 0 like no serial at all', () => {
+    // Zero is a serial like any other. This library's view side counts up from 1
+    // (`view/RemoteWorkerEnv.ts`), but the wire is open to any implementation of the proxy
+    // contract, and one that starts at zero would otherwise sit out its confirmation window
+    // for a trail the Kernel applied cleanly.
+    it('confirms a change trail whose serial is 0', () => {
       const {kernel, posted, router} = setup();
 
       router.route(changeTrailMessage(0, createEntity('a')));
 
       expect(kernel.hasEntity('a')).toBe(true);
-      expect(posted).toHaveLength(0);
+      expect(posted.map((entry) => entry.message)).toEqual([{type: AppliedChangeTrail, serial: 0}]);
     });
 
     it('warns about a message type it does not know', () => {
@@ -428,6 +430,20 @@ describe('MessageRouter', () => {
       const call = error.mock.calls[0]!;
       expect(call[0]).toBe('%cMessageRouter');
       expect(call[2]).toBe('failed to apply change trail');
+    });
+
+    // The failing route answers the same question: a caller holding serial 0 is waiting for
+    // its rejection like any other.
+    it('confirms a failing change trail whose serial is 0', () => {
+      const {posted, router} = setup();
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      router.route(changeTrailMessage(0, setParent('a', 'ghost')));
+
+      expect(posted).toHaveLength(1);
+      expect(posted[0]!.message.type).toBe(AppliedChangeTrail);
+      expect(posted[0]!.message.serial).toBe(0);
+      expect(posted[0]!.message.error).toEqual(expect.stringMatching(/.+/));
     });
 
     // The name is what a caller on the view side reads to tell one refusal from another, so

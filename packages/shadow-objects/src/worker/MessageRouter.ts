@@ -184,11 +184,13 @@ export class MessageRouter {
     // One change trail, one confirmation -- and only where a serial asked for one. A caller
     // waiting on that serial decides between rejection and resolution on the first message it
     // sees, so a second one behind it would make the outcome a matter of order.
+    // A serial is either on the message or it is not; zero is a number like any other, and
+    // the sender that chose it is waiting for its answer.
     try {
       this.kernel.run(data);
     } catch (error) {
       this.logger.error('failed to apply change trail', error);
-      if (data.serial) {
+      if (data.serial != null) {
         const refusal = error instanceof ChangeTrailRefusedError ? error : undefined;
         this.postMessage({
           type: AppliedChangeTrail,
@@ -202,7 +204,7 @@ export class MessageRouter {
       return;
     }
 
-    if (data.serial) {
+    if (data.serial != null) {
       this.postMessage({type: AppliedChangeTrail, serial: data.serial} as AppliedChangeTrailEvent);
     }
   }
