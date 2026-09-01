@@ -248,6 +248,11 @@ and it stays torn down. The other two elements use the same two names for someth
 | `token` | string | Token matching a Registry entry. Optional; without it the entity carries `#void`. |
 | `ns` | string | Connect to a named Component Context. A change at runtime takes the entity **and its properties** into the other environment — see `docs/api-reference.md`, "Entity Hierarchy" |
 | `forward-custom-events` | absent, empty/whitespace, or comma-list | Re-dispatch Shadow Object events as DOM CustomEvents. Empty or whitespace-only: every event. A list: only the types it names. Absent, or a list with no entries: nothing. |
+| `auto-destruct` | truthy value | The Entity goes down with its parent Entity instead of being promoted to a root. Not observed: read once, when the element builds its `ViewComponent`. Read by the Kernel, not by the DOM — removing a subtree from the document does not cascade, see `docs/api-reference.md`, "`<shae-ent>`" |
+
+**Truthy value ≠ presence.** `auto-destruct` counts as set for `on`, `true`, `yes`, `local`, `1`
+(case-insensitive) or for the bare attribute — and as unset for everything else, `="false"` and
+`="0"` included.
 
 An entity takes its parent from its **own** namespace only; a `<shae-ent>` of another namespace in
 between is invisible to that binding and does not block it. A `<shae-prop>` binds by the opposite

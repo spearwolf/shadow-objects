@@ -332,6 +332,7 @@ Each `<shae-ent>` element maps to an entity (game object) in the Shadow Environm
 | `token` | The Token mapping to a Shadow Object in the Registry |
 | `ns` | Connect this entity to a named Component Context |
 | `forward-custom-events` | Re-dispatch Shadow Object events as DOM `CustomEvent`s (empty = all, or comma-separated list) |
+| `auto-destruct` | The Entity goes down with its parent Entity instead of being promoted to a root (truthy value, read once at build time) |
 
 Entities do not need to be inside the `<shae-worker>` in the DOM. They connect via the `ns` namespace. Nesting `<shae-ent>` elements creates a parent-child relationship in the Shadow Environment:
 

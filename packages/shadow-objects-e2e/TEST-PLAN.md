@@ -3,16 +3,15 @@
 Status: 2026-08-26. Analysis of the Playwright suite in this package, the gaps it leaves, and a
 ticket-ready list of test cases to close them.
 
-> **Where the suite stands.** 654 tests across Chromium, Firefox and WebKit — 218 per project,
-> eleven spec files over eleven pages. The harness fixes and the P1 blocks of every group below
+> **Where the suite stands.** 681 tests across Chromium, Firefox and WebKit — 227 per project,
+> twelve spec files over twelve pages. The harness fixes and the P1 blocks of every group below
 > are in place. No framework defect is open — [`KNOWN-DEFECTS.md`](KNOWN-DEFECTS.md) describes
 > the `knownFailures` mechanism that carries the next one.
 >
 > Still open, all P2/P3: MULTI-9 … MULTI-14, DOM-9 … DOM-12, UPG-6, ASYNC-8 (`src` change after
 > `start()`), ASYNC-10 … ASYNC-12 (worker termination, failing `importScript`, transferables),
-> SYNC-5 (`reCreateChanges()` after a refused trail). DOM-5 is not implementable from the DOM —
-> see the note at the end of `KNOWN-DEFECTS.md`. UPG-3 and UPG-8 are answered rather than open —
-> see §3.3.
+> SYNC-5 (`reCreateChanges()` after a refused trail). UPG-3 and UPG-8 are answered rather than
+> open — see §3.3.
 
 Scope: E2E only. This file names the pages, fixtures and assertions of the Playwright suite.
 
@@ -20,7 +19,7 @@ Scope: E2E only. This file names the pages, fixtures and assertions of the Playw
 
 ## 1. What exists today
 
-Eleven spec files, 218 registered test cases per project — 654 across Chromium, Firefox and WebKit. The specs
+Twelve spec files, 227 registered test cases per project — 681 across Chromium, Firefox and WebKit. The specs
 themselves contain almost no logic: they name a page and a list of ids, and `runPageTests` turns
 each id into one Playwright test that asserts `data-testresult="ok"` on the node the page wrote.
 All real assertions live in `src/*.js`.
@@ -35,6 +34,7 @@ All real assertions live in `src/*.js`.
 | `bundle.spec.ts` | `pages/bundle.html` | 13 | The single-file build: the load flag, the element definitions, the five-entity tree, the cross-namespace child that becomes a root, three property types, and a round-trip through the inlined worker (BUNDLE-1 … BUNDLE-4). |
 | `worker-failure.spec.ts` | `pages/worker-failure.html` | 13 | A worker that dies mid-run: `proxyfailed` and `contextlost` as DOM events, the failure reason, the destroyed proxy, a later call rejecting right away, and the recovery through a new proxy that re-creates the surviving entity. |
 | `sync-failure.spec.ts` | `pages/sync-failure.html` | 12 | A change trail the worker's kernel refuses: `syncfailed` as a DOM event carrying reason and trail, a rejecting `syncWait()`, no `AfterSync`, no proxy failure, the refused entry going out a second time, and a next cycle that round-trips again (SYNC-1 … SYNC-4, SYNC-6). |
+| `auto-destruct-dom.spec.ts` | `pages/auto-destruct-dom.html` | 9 | The same flag, declared in markup: `auto-destruct` on a `<shae-ent>` reaches the entity while its unflagged siblings and parents do not carry it, a DOM removal takes flagged and unflagged children alike, and a `kernel.destroyEntity()` cascades the flagged child while promoting the unflagged one (DOM-5). |
 | `auto-destruct.spec.ts` | `pages/auto-destruct.html` | 8 | `autoDestructionOnParentRemoval` cascade vs. promotion-to-root, over a real worker. |
 | `create-element.spec.ts` | `pages/create-element.html` | 8 | Both construction paths: markup the parser upgrades, and `document.createElement()` for all three tags — each element carries its marker, and an appended `<shae-ent>` gets its view component. |
 | `remote-worker-env.spec.ts` | `pages/remote-worker-env.html` | 7 | Programmatic `ShadowEnv` + `RemoteWorkerEnv`: `ready()`, `importScript()`, `isReady`, one `sync()`, one message worker → view. |
@@ -43,9 +43,10 @@ Two of the cases per page come from the harness rather than from the page: `runP
 registers `test suite setup`, and adds `no uncaught or logged errors` unless the page provokes an
 error on purpose (`worker-failure` and `sync-failure` do, so they carry only the first).
 
-`auto-destruct` is the scenario that reports through the kernel rather than the DOM: a fixture
-module (`public/mod-auto-destruct.js`) exercises kernel behaviour and reports a structured result
-back to the view, which the page then asserts in three separate checks. `dynamic-dom`,
+`auto-destruct` and `auto-destruct-dom` are the two scenarios that report through the kernel
+rather than the DOM: a fixture module (`public/mod-auto-destruct.js` and
+`public/mod-auto-destruct-dom.js`) exercises kernel behaviour and reports a structured result back
+to the view, which the page then asserts in separate checks. `dynamic-dom`, `auto-destruct-dom`,
 `upgrade-timing`, `multi-env` and `shae-worker` use the same shape for their snapshots.
 
 ### 1.1 Fixture code that is loaded but never asserted
@@ -221,7 +222,7 @@ changes and property values back to the view.
 | DOM-2 | P1 | Appending a subtree built with `innerHTML` in one step: all entities arrive, and every parent is created before its child. |
 | DOM-3 | P1 | Moving a live `<shae-ent>` to a different parent element re-parents the entity in the worker; it is not destroyed and recreated, and its properties survive. |
 | DOM-4 | P1 | `element.remove()` destroys the entity in the worker. |
-| DOM-5 | P1 | Removing a subtree root with `autoDestructionOnParentRemoval` set on children: flagged children cascade, unflagged ones are promoted to root. (The `auto-destruct` scenario, driven from the DOM instead of the kernel API.) |
+| DOM-5 | P1 | **Implemented** — `auto-destruct-dom-flag-arrived-from-markup`, `auto-destruct-dom-removal-takes-both-children`, `auto-destruct-dom-kernel-destroy-cascades-the-flagged-child`, `auto-destruct-dom-kernel-destroy-promotes-the-unflagged-child` on `pages/auto-destruct-dom.html`. `auto-destruct` in the markup carries `autoDestructionOnParentRemoval` into the entity. Removing a subtree root from the document takes every child with it, flagged or not — `ComponentContext.destroyComponent()` detaches a component's children before it destroys it, so the trail promotes them and each child element leaving the document destroys its own entity. The cascade is decided by a `kernel.destroyEntity()` inside the Shadow Environment: the flagged child goes down with its parent, the unflagged one becomes a root. |
 | DOM-6 | P2 | **Implemented** — `dynamic-dom-added-prop-*`, `dynamic-dom-changed-prop-*`, `dynamic-dom-removed-prop-*` on `pages/dynamic-dom.html`. Adding a `<shae-prop>` to a live `<shae-ent>` sets the property; removing it removes the property. |
 | DOM-7 | P2 | **Implemented** — `dynamic-dom-moved-prop-syncs`, `dynamic-dom-moved-prop-left-the-old-entity`, `dynamic-dom-moved-prop-arrived-at-the-new-entity`. Moving a `<shae-prop>` from one `<shae-ent>` to another within the same tick: the property leaves the first entity and lands on the second, and the deferred `#disconnectFromEntNode` does not drop it. |
 | DOM-8 | P2 | **Implemented** — `dynamic-dom-flicker-*` on `pages/dynamic-dom.html`. Remove and re-append the same `<shae-ent>` within one microtask: the entity stays live under the same parent, keeps its uuid, and keeps the property its `<shae-prop>` child declared. `<shae-ent>` promises no atomic move — these ids pin down what actually happens. |
@@ -305,7 +306,7 @@ itself carries no serial and would end the cycle as a success.
 | H-FIX-5 | P2 | **Implemented** — a `no uncaught or logged errors` case per page, with `allowConsoleErrors` for the three pages that provoke one (`tests/runPageTests.ts`). |
 | H-FIX-6 | P2 | **Implemented** — every result in `src/shae-worker.js` is awaited, and `watchCustomEvent` arms the listener separately from the wait so a cold worker start cannot eat the budget. |
 | H-FIX-7 | P3 | **Implemented** — both `contextCreated` ids are registered (`tests/shae-worker.spec.ts`: `worker0-env-contextCreated`, `worker1-env-contextCreated`). |
-| H-FIX-8 | P3 | **Implemented** — the `webkit` project is enabled. All 218 cases pass on it, so nothing about Custom Elements, Shadow DOM, slot projection or `transferControlToOffscreen` needed a WebKit branch. CI installs the browser alongside Chromium and Firefox. |
+| H-FIX-8 | P3 | **Implemented** — the `webkit` project is enabled. All 227 cases pass on it, so nothing about Custom Elements, Shadow DOM, slot projection or `transferControlToOffscreen` needed a WebKit branch. CI installs the browser alongside Chromium and Firefox. |
 
 ---
 

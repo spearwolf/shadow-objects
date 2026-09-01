@@ -20,6 +20,7 @@ for the mechanism to track framework defects as expected failures.
 | `remote-worker-env` | the programmatic `ShadowEnv` + `RemoteWorkerEnv` path |
 | `shae-worker` | `<shae-worker>` in remote and local flavour, context lifecycle events |
 | `auto-destruct` | `autoDestructionOnParentRemoval` cascade over a real worker |
+| `auto-destruct-dom` | the same flag, set from markup: what reaches the entity, what a DOM removal does, and what the kernel's cascade does |
 | `bundle` | the single-file build: entity tree, property type parsing, round-trip through the inlined worker |
 | `create-element` | both construction paths: parsed markup and `document.createElement` |
 | `worker-failure` | a worker that dies mid-run: proxy failure, lost context, recovery through a new proxy |

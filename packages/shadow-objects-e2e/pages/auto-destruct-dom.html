@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>auto-destruct-dom</title>
+  </head>
+  <body>
+    <shae-worker id="env" no-autostart auto-sync="no"></shae-worker>
+
+    <main>
+      <!-- Answers snapshot requests and destroys entities on demand. Never touched itself. -->
+      <shae-ent id="observer" token="observer"></shae-ent>
+
+      <!-- Two subtrees of the same shape, each with a flagged and an unflagged child. One is
+           taken apart by the kernel, the other by a DOM removal — the two occasions the flag
+           is read against. -->
+      <shae-ent id="kernel-doomed" token="tracked">
+        <shae-prop name="label" value="kernel-doomed"></shae-prop>
+        <shae-ent auto-destruct token="tracked"><shae-prop name="label" value="kernel-flagged"></shae-prop></shae-ent>
+        <shae-ent token="tracked"><shae-prop name="label" value="kernel-unflagged"></shae-prop></shae-ent>
+      </shae-ent>
+
+      <shae-ent id="dom-doomed" token="tracked">
+        <shae-prop name="label" value="dom-doomed"></shae-prop>
+        <shae-ent auto-destruct token="tracked"><shae-prop name="label" value="dom-flagged"></shae-prop></shae-ent>
+        <shae-ent token="tracked"><shae-prop name="label" value="dom-unflagged"></shae-prop></shae-ent>
+      </shae-ent>
+    </main>
+
+    <section id="tests"></section>
+
+    <script type="module" src="/src/auto-destruct-dom.js"></script>
+  </body>
+</html>

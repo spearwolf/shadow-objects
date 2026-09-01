@@ -4,8 +4,10 @@ import '@spearwolf/shadow-objects/shae-ent.js';
 import {mount, unmountAll} from '../src/mount.js';
 
 /**
- * `ShaeEntElement` reads `token`, `ns` and `forward-custom-events` from attributes and reflects
- * some of them back. This spec pins the attribute-to-property and property-to-attribute paths
+ * `ShaeEntElement` reads `token`, `ns`, `forward-custom-events` and `auto-destruct` from
+ * attributes. Reading and observing are two different sets: the first three are observed and some
+ * of them are reflected back, while `auto-destruct` is read once, where the element builds its
+ * `ViewComponent`. This spec pins the attribute-to-property and property-to-attribute paths
  * for `token` and `ns`, and the element lifecycle across attach/detach/reattach. It runs in real
  * Chromium — the Custom Elements upgrade order that these paths depend on is not something
  * happy-dom reproduces reliably.

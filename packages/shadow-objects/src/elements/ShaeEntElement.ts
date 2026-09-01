@@ -1,11 +1,13 @@
 import {on} from '@spearwolf/eventize';
 import {beQuiet, createEffect, createSignal, Effect, hibernate} from '@spearwolf/signalize';
 import {VoidToken} from '../constants.js';
+import {readBooleanAttribute} from '../utils/attr-utils.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {MicrotaskGate} from '../utils/MicrotaskGate.js';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {ViewComponent} from '../view/ViewComponent.js';
 import {
+  ATTR_AUTO_DESTRUCT,
   ATTR_FORWARD_CUSTOM_EVENTS,
   ATTR_TOKEN,
   RequestEntParentEventName,
@@ -345,7 +347,13 @@ export class ShaeEntElement extends ShaeElement {
       if (vc) {
         vc.context = context;
       } else if (context) {
-        vc = new ViewComponent(token ?? VoidToken, {context});
+        vc = new ViewComponent(token ?? VoidToken, {
+          context,
+          // read here and only here: the flag is immutable on a ViewComponent, so the moment the
+          // component is built is the only moment the attribute can still decide anything. That is
+          // also why it is not observed — a later write has nowhere to go
+          autoDestructionOnParentRemoval: readBooleanAttribute(this, ATTR_AUTO_DESTRUCT),
+        });
         this.viewComponent$.set(vc);
       }
     } catch (error) {

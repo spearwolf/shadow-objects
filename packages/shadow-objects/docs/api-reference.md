@@ -699,7 +699,7 @@ new ViewComponent(token?: string, options?: {
 | `parent` | (Optional) The parent `ViewComponent`. Must belong to the same context and must not be destroyed. |
 | `order` | (Optional) Initial sort order (number). Default is `0`. |
 | `uuid` | (Optional) Explicit unique identifier. If omitted, one is generated automatically. A uuid that a component of the target `ComponentContext` is holding is refused with a `ComponentUuidInUseError`; it is free again once its holder has left that `ComponentContext`. |
-| `autoDestructionOnParentRemoval` | (Optional) Whether the corresponding Entity is destroyed together with its parent. Default is `false`, which promotes the Entity to a root Entity instead. Immutable after creation. |
+| `autoDestructionOnParentRemoval` | (Optional) Whether the corresponding Entity is destroyed together with its parent. Default is `false`, which promotes the Entity to a root Entity instead. Immutable after creation. Set from markup with the [`auto-destruct`](#shae-ent) attribute of `<shae-ent>`. |
 
 A `ViewComponent` passed in place of `options` is read as `{parent: thatComponent}` -- a declared overload, and it takes nothing from the component but the parent: `uuid`, `order` and `context` come from their usual sources, never from it. It carries no `context` with it, so the new component joins the Default Global Context -- which makes the shorthand work only when the parent lives there too. A parent in a named context makes the constructor throw, because the child would be joining a different context than its parent:
 
@@ -2008,6 +2008,7 @@ Represents an Entity (game object) in the Shadow Environment. Corresponds to a `
 | `token` | The Token matching a registered Shadow Object constructor. Optional: an entity without one carries the void token `#void` and matches no Shadow Object. Removing the attribute takes the entity back to it. |
 | `ns` | The context this entity belongs to. Must match the `ns` on `<shae-worker>` when using named contexts. Can be changed at runtime, see [Entity Hierarchy](#entity-hierarchy). |
 | `forward-custom-events` | Re-dispatches events from the Shadow Object as DOM `CustomEvent`s on this element. Present with an empty or whitespace-only value: every event. A comma-separated list: only the types it names — `forward-custom-events="true"` forwards the type named `true` and nothing else. Absent, or a list that names no type: nothing is forwarded. |
+| `auto-destruct` | Whether this Entity goes down with its parent Entity instead of being promoted to a root. Read as a truthy value, not as a presence — see below. Reaches the Entity as the [`autoDestructionOnParentRemoval`](#viewcomponent) option of the `ViewComponent` this element builds. Default: absent, and the Entity is promoted. |
 
 ```html
 <shae-ent token="my-player"></shae-ent>
@@ -2022,6 +2023,22 @@ is read, and the trimmed value goes back onto the attribute: on a live element b
 reads `token="x"` once the element has connected, because connecting is where the element takes the
 reflection up and writes what its signals carry out to the attributes. Only before that first
 connect does the attribute still say what was written into it.
+
+**Truthy attributes are not presence attributes.** `auto-destruct` counts as set for `on`, `true`,
+`yes`, `local` or `1` (case-insensitive, surrounding whitespace ignored) or for the bare attribute,
+`auto-destruct` and `auto-destruct=""` alike; every other value counts as unset, so
+`auto-destruct="false"` and `auto-destruct="0"` promote the Entity. It is not observed and is read
+exactly once, when the element builds its `ViewComponent` — the flag is immutable on a component,
+so setting or removing the attribute afterwards changes nothing.
+
+**When the flag decides anything.** It is the Kernel that reads it, on an Entity whose parent
+Entity the Kernel destroys: a Shadow Object calling `kernel.destroyEntity()`, or the rollback of a
+creation that threw. Taking a `<shae-ent>` subtree out of the DOM is not such an occasion, whatever
+the flag says: `ComponentContext.destroyComponent()` detaches every child of a component before it
+destroys it, so the change trail promotes the children and then destroys the parent — and each
+child element that left the document along with it destroys its own Entity anyway. Set
+`auto-destruct` where the Entity tree is taken apart from inside the Shadow Environment, not to
+make a DOM removal cascade.
 
 **Forwarding events example:**
 
