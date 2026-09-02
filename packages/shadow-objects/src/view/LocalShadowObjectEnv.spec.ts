@@ -162,6 +162,65 @@ describe('LocalShadowObjectEnv', () => {
       env.destroy();
     });
 
+    // This is the path an `ArrayBuffer` or an `OffscreenCanvas` takes to reach the shadow-objects
+    // of a `LocalShadowObjectEnv`, and what an after-sync listener finds in the trail it is handed
+    // afterwards depends on it.
+    describe('a trail that carries transferables', () => {
+      it('clones the entry, transfers the buffer, and leaves the view side holding a detached one', () => {
+        const env = new LocalShadowObjectEnv();
+        const buffer = new ArrayBuffer(4);
+        new Uint8Array(buffer).set([1, 2, 3, 4]);
+        const uuid = 'transferred-trail';
+
+        void env.applyChangeTrail(
+          [
+            {
+              type: ComponentChangeType.CreateEntities,
+              uuid,
+              token: 'foo',
+              properties: [['payload', buffer]],
+              transferables: [buffer],
+            },
+          ],
+          false,
+        );
+
+        const received = env.kernel.getEntity(uuid).getProperty('payload') as ArrayBuffer;
+        expect(Array.from(new Uint8Array(received))).toEqual([1, 2, 3, 4]);
+        expect(received).not.toBe(buffer);
+        expect(buffer.byteLength, 'the view side is left holding a detached buffer').toBe(0);
+
+        env.destroy();
+      });
+
+      it('skips the clone and keeps the original buffer attached when structured clone is disabled', () => {
+        const env = new LocalShadowObjectEnv();
+        env.disableStructuredClone = true;
+        const buffer = new ArrayBuffer(4);
+        new Uint8Array(buffer).set([1, 2, 3, 4]);
+        const uuid = 'untransferred-trail';
+
+        void env.applyChangeTrail(
+          [
+            {
+              type: ComponentChangeType.CreateEntities,
+              uuid,
+              token: 'foo',
+              properties: [['payload', buffer]],
+              transferables: [buffer],
+            },
+          ],
+          false,
+        );
+
+        const received = env.kernel.getEntity(uuid).getProperty('payload') as ArrayBuffer;
+        expect(received).toBe(buffer);
+        expect(buffer.byteLength).toBe(4);
+
+        env.destroy();
+      });
+    });
+
     // What the documented recovery rests on: the components rebuilt from the Component Memory go
     // to an environment that holds none of their uuids. This is the whole claim, measured without
     // a worker in the way -- one and the same rebuilt trail against two kernels.

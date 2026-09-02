@@ -18,8 +18,9 @@ import {withSwallowedErrors} from '../src/withSwallowedErrors.js';
  */
 
 let nsCounter = 0;
-/** Every case that starts an environment gets its own namespace: two live environments sharing
- * one namespace log an "overwrite a namespace already in use" warning instead of staying isolated. */
+/** Every case that starts an environment gets its own namespace: two live environments
+ * sharing one namespace log an "overwrite a namespace already in use" warning instead of
+ * staying isolated. */
 const nextNs = () => `worker-element-attributes-${nsCounter++}`;
 
 let previousLoggerEnable;

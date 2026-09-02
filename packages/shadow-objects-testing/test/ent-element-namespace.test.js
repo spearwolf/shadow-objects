@@ -7,8 +7,9 @@ import '@spearwolf/shadow-objects/shae-worker.js';
 import {mount, unmountAll} from '../src/mount.js';
 
 /**
- * The namespace of a `<shae-ent>` can change while the element sits in the tree, and the change
- * moves the entity from one environment into another. This spec pins what happens to the parent
+ * How a `<shae-ent>`'s binding to its parent behaves under three kinds of disturbance: a
+ * namespace change that moves the entity between environments, a move within the tree, and an
+ * ancestor that cannot answer the parent request. This spec pins what happens to the parent
  * binding on the way: the element's own, and the one of every entity that hung on it.
  *
  * It runs in real Chromium, because every mechanism involved is one that happy-dom does not
@@ -228,38 +229,6 @@ describe('shae-ent and a namespace change', () => {
     expect(after[3], 'and the one that climbed up is appended behind them').to.equal(byId('kid-n7').uuid);
   });
 
-  it('an entity whose ancestor leaves the tree looks for a new one', async () => {
-    // the ancestor sits in a shadow root while the entity below it stays in the light DOM, so
-    // removing the ancestor takes the slot along and leaves the entity connected — no lifecycle
-    // callback runs on this side. The entity tree has let go by then (`ViewComponent.destroy()`
-    // promotes the children to roots) and the element side would be the only one still claiming a
-    // parent. The microtask in the parent effect is no way out either: it reads the signal
-    // `viewComponent$` of the ancestor, and leaving the tree does not move that signal
-    const container = mount(
-      '<shae-ent id="a-nx" token="a">' +
-        '<div id="host-nx">' +
-        '<shae-ent id="e-nx" token="e"></shae-ent>' +
-        '</div>' +
-        '</shae-ent>',
-    );
-    await customElements.whenDefined('shae-ent');
-
-    const host = container.querySelector('#host-nx');
-    host.attachShadow({mode: 'open'}).innerHTML = '<shae-ent id="x-nx" token="x"><slot></slot></shae-ent>';
-    await nextTask();
-
-    const a = container.querySelector('#a-nx');
-    const e = container.querySelector('#e-nx');
-
-    expect(e.entParentNode?.id, 'the projected entity binds to the element holding the slot').to.equal('x-nx');
-
-    host.shadowRoot.getElementById('x-nx').remove();
-    await nextTask();
-
-    expect(e.entParentNode?.id, 'the entity moves up to the ancestor that is still there').to.equal('a-nx');
-    expect(e.viewComponent.parent, 'and the entity tree says the same').to.equal(a.viewComponent);
-  });
-
   it('an element that gets its namespace before it enters the tree becomes an entity', async () => {
     await customElements.whenDefined('shae-ent');
 
@@ -308,20 +277,91 @@ describe('shae-ent and a namespace change', () => {
     expect(p.viewComponent.context, 'in the context of its new namespace').to.equal(ComponentContext.get('ns-n8b'));
     expect(ComponentContext.get('ns-n8b').traverseLevelOrderBFS(), 'which holds exactly this one entity').to.have.lengthOf(1);
   });
+});
+
+describe('shae-ent and a move between parents', () => {
+  // `moveBefore` is the only way this observer is ever reached. Over `append` and `remove` the
+  // element runs through `disconnectedCallback` first, which is a synchronous custom element
+  // reaction: it disconnects the observer and drops the records already queued. A subclass with
+  // `connectedMoveCallback` keeps that lifecycle pair from running, so the observer survives the
+  // move, reports it — and is the only thing that reports it
+  customElements.define(
+    'move-ent-n9',
+    class extends ShaeEntElement {
+      connectedMoveCallback() {}
+    },
+  );
+
+  // `moveBefore` is the only move that reaches the observer without a lifecycle callback of
+  // its own, and a reorder among siblings is the one that ends where it started: the record
+  // names the element as removed, and the node it hangs on once the record comes due is the
+  // node it was registered on
+  customElements.define(
+    'move-ent-n9d',
+    class extends ShaeEntElement {
+      parentChanges = [];
+      connectedMoveCallback() {}
+      onParentChanged(newParent, oldParent) {
+        this.parentChanges.push([newParent?.id, oldParent?.id]);
+        super.onParentChanged(newParent, oldParent);
+      }
+    },
+  );
+
+  // A registration runs foreign code before it takes its own watcher: the records the parent has
+  // come due for are delivered first, and one of those watchers can be an `onParentChanged`
+  // override — a documented extension point. Here it answers with a `moveBefore`, the one move
+  // that runs no `connectedCallback` of its own, so the registration under way is the only thing
+  // left that can put the observation on the node the element ends up under
+  customElements.define(
+    'move-ent-n9b',
+    class extends ShaeEntElement {
+      connectedMoveCallback() {}
+    },
+  );
+  customElements.define(
+    'hand-ent-n9b',
+    class extends ShaeEntElement {
+      connectedMoveCallback() {}
+      onParentChanged(newParent, oldParent) {
+        this.whenParentChanged?.();
+        super.onParentChanged(newParent, oldParent);
+      }
+    },
+  );
+
+  // The parent change of this window is reported by the registration itself, and it reports it
+  // into `onParentChanged` — a documented extension point, which is foreign code. A throw from
+  // there is written to `console.error` and stops where it happened. What sits behind the
+  // notification is the rest of `connectedCallback`: an element whose override takes that with
+  // it hangs connected in the tree and was never synced into its environment
+  customElements.define(
+    'move-ent-n9c',
+    class extends ShaeEntElement {
+      syncCalls = 0;
+      connectedMoveCallback() {}
+      onParentChanged() {
+        this.syncCallsAtThrow = this.syncCalls;
+        throw new Error('this element refuses to hear about its parent');
+      }
+      syncShadowObjects() {
+        this.syncCalls += 1;
+        super.syncShadowObjects();
+      }
+    },
+  );
+  customElements.define(
+    'hand-ent-n9c',
+    class extends ShaeEntElement {
+      connectedMoveCallback() {}
+      onParentChanged(newParent, oldParent) {
+        this.whenParentChanged?.();
+        super.onParentChanged(newParent, oldParent);
+      }
+    },
+  );
 
   it('the parent observer follows the element to its new parent', async () => {
-    // `moveBefore` is the only way this observer is ever reached. Over `append` and `remove` the
-    // element runs through `disconnectedCallback` first, which is a synchronous custom element
-    // reaction: it disconnects the observer and drops the records already queued. A subclass with
-    // `connectedMoveCallback` keeps that lifecycle pair from running, so the observer survives the
-    // move, reports it — and is the only thing that reports it
-    customElements.define(
-      'move-ent-n9',
-      class extends ShaeEntElement {
-        connectedMoveCallback() {}
-      },
-    );
-
     const container = mount(
       '<shae-ent id="a-n9" token="a">' +
         '<span id="pin-n9"></span>' +
@@ -354,22 +394,6 @@ describe('shae-ent and a namespace change', () => {
   });
 
   it('says nothing about a move that puts the element back under the node it came from', async () => {
-    // `moveBefore` is the only move that reaches the observer without a lifecycle callback of
-    // its own, and a reorder among siblings is the one that ends where it started: the record
-    // names the element as removed, and the node it hangs on once the record comes due is the
-    // node it was registered on
-    customElements.define(
-      'move-ent-n9d',
-      class extends ShaeEntElement {
-        parentChanges = [];
-        connectedMoveCallback() {}
-        onParentChanged(newParent, oldParent) {
-          this.parentChanges.push([newParent?.id, oldParent?.id]);
-          super.onParentChanged(newParent, oldParent);
-        }
-      },
-    );
-
     const container = mount(
       '<shae-ent id="a-n9d" token="a">' +
         '<span id="pin-n9d"></span>' +
@@ -399,28 +423,6 @@ describe('shae-ent and a namespace change', () => {
   });
 
   it('the parent observer follows an element moved while its own registration was running', async () => {
-    // A registration runs foreign code before it takes its own watcher: the records the parent has
-    // come due for are delivered first, and one of those watchers can be an `onParentChanged`
-    // override — a documented extension point. Here it answers with a `moveBefore`, the one move
-    // that runs no `connectedCallback` of its own, so the registration under way is the only thing
-    // left that can put the observation on the node the element ends up under
-    customElements.define(
-      'move-ent-n9b',
-      class extends ShaeEntElement {
-        connectedMoveCallback() {}
-      },
-    );
-    customElements.define(
-      'hand-ent-n9b',
-      class extends ShaeEntElement {
-        connectedMoveCallback() {}
-        onParentChanged(newParent, oldParent) {
-          this.whenParentChanged?.();
-          super.onParentChanged(newParent, oldParent);
-        }
-      },
-    );
-
     const container = mount(
       '<shae-ent id="from-n9b" token="from">' +
         '<hand-ent-n9b id="hand-n9b" token="hand"></hand-ent-n9b>' +
@@ -467,37 +469,6 @@ describe('shae-ent and a namespace change', () => {
   });
 
   it('a throwing override in the registration window costs the notification and nothing behind it', async () => {
-    // The parent change of this window is reported by the registration itself, and it reports it
-    // into `onParentChanged` — a documented extension point, which is foreign code. A throw from
-    // there is written to `console.error` and stops where it happened. What sits behind the
-    // notification is the rest of `connectedCallback`: an element whose override takes that with
-    // it hangs connected in the tree and was never synced into its environment
-    customElements.define(
-      'move-ent-n9c',
-      class extends ShaeEntElement {
-        syncCalls = 0;
-        connectedMoveCallback() {}
-        onParentChanged() {
-          this.syncCallsAtThrow = this.syncCalls;
-          throw new Error('this element refuses to hear about its parent');
-        }
-        syncShadowObjects() {
-          this.syncCalls += 1;
-          super.syncShadowObjects();
-        }
-      },
-    );
-    customElements.define(
-      'hand-ent-n9c',
-      class extends ShaeEntElement {
-        connectedMoveCallback() {}
-        onParentChanged(newParent, oldParent) {
-          this.whenParentChanged?.();
-          super.onParentChanged(newParent, oldParent);
-        }
-      },
-    );
-
     const container = mount(
       '<shae-ent id="from-n9c" token="from">' +
         '<hand-ent-n9c id="hand-n9c" token="hand"></hand-ent-n9c>' +
@@ -541,6 +512,40 @@ describe('shae-ent and a namespace change', () => {
     expect(mover.syncCalls, 'connectedCallback ran past the notification and synced the element').to.be.greaterThan(
       mover.syncCallsAtThrow,
     );
+  });
+});
+
+describe('shae-ent and an ancestor that cannot become the parent', () => {
+  it('an entity whose ancestor leaves the tree looks for a new one', async () => {
+    // the ancestor sits in a shadow root while the entity below it stays in the light DOM, so
+    // removing the ancestor takes the slot along and leaves the entity connected — no lifecycle
+    // callback runs on this side. The entity tree has let go by then (`ViewComponent.destroy()`
+    // promotes the children to roots) and the element side would be the only one still claiming a
+    // parent. The microtask in the parent effect is no way out either: it reads the signal
+    // `viewComponent$` of the ancestor, and leaving the tree does not move that signal
+    const container = mount(
+      '<shae-ent id="a-nx" token="a">' +
+        '<div id="host-nx">' +
+        '<shae-ent id="e-nx" token="e"></shae-ent>' +
+        '</div>' +
+        '</shae-ent>',
+    );
+    await customElements.whenDefined('shae-ent');
+
+    const host = container.querySelector('#host-nx');
+    host.attachShadow({mode: 'open'}).innerHTML = '<shae-ent id="x-nx" token="x"><slot></slot></shae-ent>';
+    await nextTask();
+
+    const a = container.querySelector('#a-nx');
+    const e = container.querySelector('#e-nx');
+
+    expect(e.entParentNode?.id, 'the projected entity binds to the element holding the slot').to.equal('x-nx');
+
+    host.shadowRoot.getElementById('x-nx').remove();
+    await nextTask();
+
+    expect(e.entParentNode?.id, 'the entity moves up to the ancestor that is still there').to.equal('a-nx');
+    expect(e.viewComponent.parent, 'and the entity tree says the same').to.equal(a.viewComponent);
   });
 
   it('an ancestor without a view component settles instead of asking again and again', async () => {

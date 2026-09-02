@@ -1,5 +1,5 @@
 import {emit, eventize, on} from '@spearwolf/eventize';
-import {createSignal, type Signal, value} from '@spearwolf/signalize';
+import {createSignal, type Signal, type SignalReader, value} from '@spearwolf/signalize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import type {ShadowObjectCreationAPI, ShadowObjectType} from '../types.js';
 import {generateUUID} from '../utils/generateUUID.js';
@@ -95,18 +95,23 @@ describe('ShadowObjectCreationScope', () => {
       const uuid = generateUUID();
       kernel.createEntity(uuid, 'deprecatedUseProperty', undefined, 0, [['bareCompareProp', 'first']]);
 
-      expect(errorSpy).toHaveBeenCalledTimes(1);
+      // Soft, from here through the rest of this `describe`: the report, its wording and the
+      // rewritten {compare} option are three independent halves of a case, and a failure on the
+      // first should not hide the other two.
+      expect.soft(errorSpy).toHaveBeenCalledTimes(1);
       // `ConsoleLogger` prints its namespace as a styled badge, so the wording of a report starts at
       // the third argument: `console.error('%c<namespace>', styles, ...args)`. The badge is what
       // tells a report through the logger apart from a raw call on the console.
-      const call = errorSpy.mock.calls[0]!;
-      expect(call[0]).toBe('%cKernel');
-      expect(call[2]).toBe(
-        '[shadow-objects] Deprecation Warning: The "isEqual" option of "useProperty()" is now passed as {compare} argument. Please update your code accordingly.',
-      );
+      const call = errorSpy.mock.calls[0];
+      expect.soft(call?.[0]).toBe('%cKernel');
+      expect
+        .soft(call?.[2])
+        .toBe(
+          '[shadow-objects] Deprecation Warning: The "isEqual" option of "useProperty()" is now passed as {compare} argument. Please update your code accordingly.',
+        );
 
       kernel.changeProperties(uuid, [['bareCompareProp', 'second']]);
-      expect(compare).toHaveBeenCalled();
+      expect.soft(compare).toHaveBeenCalled();
 
       errorSpy.mockRestore();
       kernel.destroy();
@@ -132,11 +137,13 @@ describe('ShadowObjectCreationScope', () => {
       const uuid = generateUUID();
       kernel.createEntity(uuid, 'deprecatedProvideContext');
 
-      expect(errorSpy).toHaveBeenCalledTimes(1);
-      expect(errorSpy.mock.calls[0]![2]).toBe(
-        '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideContext()" is now passed as {compare} argument. Please update your code accordingly.',
-      );
-      expect(value(provider!)).toBe('first');
+      expect.soft(errorSpy).toHaveBeenCalledTimes(1);
+      expect
+        .soft(errorSpy.mock.calls[0]?.[2])
+        .toBe(
+          '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideContext()" is now passed as {compare} argument. Please update your code accordingly.',
+        );
+      expect.soft(value(provider!)).toBe('first');
 
       kernel.changeToken(uuid, 'deprecatedProvideContextEmpty');
 
@@ -145,8 +152,8 @@ describe('ShadowObjectCreationScope', () => {
       // for a raw, unconverted function just the same (it has no `.clearOnDestroy` property
       // either), so the value assertion below would not by itself tell the rewritten options
       // object apart from no rewrite at all.
-      expect(compare).toHaveBeenCalled();
-      expect(value(provider!)).toBeUndefined();
+      expect.soft(compare).toHaveBeenCalled();
+      expect.soft(value(provider!)).toBeUndefined();
 
       errorSpy.mockRestore();
       kernel.destroy();
@@ -172,16 +179,18 @@ describe('ShadowObjectCreationScope', () => {
       const uuid = generateUUID();
       kernel.createEntity(uuid, 'deprecatedProvideGlobalContext');
 
-      expect(errorSpy).toHaveBeenCalledTimes(1);
-      expect(errorSpy.mock.calls[0]![2]).toBe(
-        '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideGlobalContext()" is now passed as {compare} argument. Please update your code accordingly.',
-      );
-      expect(value(provider!)).toBe('first');
+      expect.soft(errorSpy).toHaveBeenCalledTimes(1);
+      expect
+        .soft(errorSpy.mock.calls[0]?.[2])
+        .toBe(
+          '[shadow-objects] Deprecation Warning: The "isEqual" option of "provideGlobalContext()" is now passed as {compare} argument. Please update your code accordingly.',
+        );
+      expect.soft(value(provider!)).toBe('first');
 
       kernel.changeToken(uuid, 'deprecatedProvideGlobalContextEmpty');
 
-      expect(compare).toHaveBeenCalled();
-      expect(value(provider!)).toBeUndefined();
+      expect.soft(compare).toHaveBeenCalled();
+      expect.soft(value(provider!)).toBeUndefined();
 
       errorSpy.mockRestore();
       kernel.destroy();
@@ -221,22 +230,24 @@ describe('ShadowObjectCreationScope', () => {
       kernel.createEntity(parentUuid, 'deprecatedUseContextProvider');
       kernel.createEntity(childUuid, 'deprecatedUseContext', parentUuid);
 
-      expect(errorSpy).toHaveBeenCalledTimes(1);
-      expect(errorSpy.mock.calls[0]![2]).toBe(
-        '[shadow-objects] Deprecation Warning: The "isEqual" option of "useContext()" is now passed as {compare} argument. Please update your code accordingly.',
-      );
+      expect.soft(errorSpy).toHaveBeenCalledTimes(1);
+      expect
+        .soft(errorSpy.mock.calls[0]?.[2])
+        .toBe(
+          '[shadow-objects] Deprecation Warning: The "isEqual" option of "useContext()" is now passed as {compare} argument. Please update your code accordingly.',
+        );
 
       // A provider's write reaches the context signal of the entity below one microtask later, so
       // both reads here wait a turn: without the first wait the context is still `undefined`,
       // without the second it still holds 'first'.
       await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
-      expect(value(capturedContext!)).toBe('first');
+      expect.soft(value(capturedContext!)).toBe('first');
 
       sourceSignal.set('second');
       await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
 
-      expect(compare).toHaveBeenCalled();
-      expect(value(capturedContext!)).toBe('second');
+      expect.soft(compare).toHaveBeenCalled();
+      expect.soft(value(capturedContext!)).toBe('second');
 
       errorSpy.mockRestore();
       kernel.destroy();
@@ -276,24 +287,81 @@ describe('ShadowObjectCreationScope', () => {
       kernel.createEntity(parentUuid, 'deprecatedUseParentContextProvider');
       kernel.createEntity(childUuid, 'deprecatedUseParentContext', parentUuid);
 
-      expect(errorSpy).toHaveBeenCalledTimes(1);
-      expect(errorSpy.mock.calls[0]![2]).toBe(
-        '[shadow-objects] Deprecation Warning: The "isEqual" option of "useParentContext()" is now passed as {compare} argument. Please update your code accordingly.',
-      );
+      expect.soft(errorSpy).toHaveBeenCalledTimes(1);
+      expect
+        .soft(errorSpy.mock.calls[0]?.[2])
+        .toBe(
+          '[shadow-objects] Deprecation Warning: The "isEqual" option of "useParentContext()" is now passed as {compare} argument. Please update your code accordingly.',
+        );
 
       // A provider's write reaches the context signal of the entity below one microtask later, so
       // both reads here wait a turn: without the first wait the context is still `undefined`,
       // without the second it still holds 'first'.
       await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
-      expect(value(capturedParentContext!)).toBe('first');
+      expect.soft(value(capturedParentContext!)).toBe('first');
 
       sourceSignal.set('second');
       await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
 
-      expect(compare).toHaveBeenCalled();
-      expect(value(capturedParentContext!)).toBe('second');
+      expect.soft(compare).toHaveBeenCalled();
+      expect.soft(value(capturedParentContext!)).toBe('second');
 
       errorSpy.mockRestore();
+      kernel.destroy();
+    });
+  });
+
+  describe('one name across property, context and parent context', () => {
+    // The three cached readers share one body and differ only in the pair of maps each call
+    // hands it; nothing in the type system holds that pairing, because `Map`'s method parameters
+    // are bivariant. A crossed pair is observable only where one name is read over more than one
+    // of the three ways, which is what this case does.
+    it('reads the same name as a property, as a context and as a parent context, and gets three values', async () => {
+      const registry = new Registry();
+      const kernel = new Kernel(registry);
+
+      let readers:
+        | {
+            property: SignalReader<any>;
+            context: SignalReader<any>;
+            parentContext: SignalReader<any>;
+          }
+        | undefined;
+
+      @ShadowObject({registry, token: 'oneNameProvider'})
+      class OneNameProvider {
+        constructor({provideContext}: ShadowObjectCreationAPI) {
+          provideContext<string>('shared', 'from the parent');
+        }
+      }
+      expect(OneNameProvider).toBeDefined();
+
+      @ShadowObject({registry, token: 'oneNameReader'})
+      class OneNameReader {
+        constructor({provideContext, useProperty, useContext, useParentContext}: ShadowObjectCreationAPI) {
+          provideContext<string>('shared', 'from this entity');
+          readers = {
+            property: useProperty<string>('shared'),
+            context: useContext<string>('shared'),
+            parentContext: useParentContext<string>('shared'),
+          };
+        }
+      }
+      expect(OneNameReader).toBeDefined();
+
+      const parentUuid = generateUUID();
+      const childUuid = generateUUID();
+      kernel.createEntity(parentUuid, 'oneNameProvider');
+      kernel.createEntity(childUuid, 'oneNameReader', parentUuid, 0, [['shared', 'from the property']]);
+
+      // `useContext()` settles through a one-microtask collector, and the parent's own context
+      // signal settles the same way before the inherited link can carry it down.
+      await nextMicrotask();
+
+      expect(value(readers!.property)).toBe('from the property');
+      expect(value(readers!.context)).toBe('from this entity');
+      expect(value(readers!.parentContext)).toBe('from the parent');
+
       kernel.destroy();
     });
   });
