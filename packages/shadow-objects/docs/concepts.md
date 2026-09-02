@@ -53,8 +53,6 @@ Shadow Objects solves both cleanly:
 
 Shadow Objects separates your application into two layers: the **View Layer** (always on the main thread) and one or more **Shadow Environments** (main thread or web worker). They communicate by passing messages.
 
-![The View Layer and one Shadow Environment, side by side](./architecture@2x.png)
-
 ```
 View Layer (Main Thread)
   |

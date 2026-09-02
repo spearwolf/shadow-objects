@@ -4,7 +4,7 @@
 
 **A reactive Entity-Component-System (ECS) that moves your application logic out of the UI thread and into the shadows.**
 
-Shadow Objects separates your application logic from its presentation. It treats your UI (React, Vue, or plain DOM) merely as a *renderer*, while your actual state and business logic run in a dedicated "Shadow Environment" — either on the main thread or fully offloaded to a Web Worker. 
+Shadow Objects separates your application logic from its presentation. It treats your UI (React, Vue, or plain DOM) merely as a *renderer*, while your actual state and business logic run in a dedicated "Shadow Environment" — either on the main thread or fully offloaded to a Web Worker.
 
 If you've ever worked with a game engine, this will feel familiar: **Your UI is the renderer, Shadow Objects is the game world.**
 
@@ -276,7 +276,7 @@ Run these commands from the root directory:
 | :--- | :--- |
 | `pnpm cbt` | **Clean, Build, Test.** Runs a full cycle: clean, build, and test the entire workspace. |
 | `pnpm start` | Starts the **shae-offscreen-canvas** demo server. |
-| `pnpm test` | Runs all tests (Unit, Integration, E2E) across all packages. The two Node suites (`shadow-objects`, `shae-offscreen-canvas`) also write a v8 coverage report to `coverage/` in each package — no thresholds, the number is a map, not a gate. |
+| `pnpm test` | Runs all tests (Unit, Integration, E2E) across all packages. The three vitest suites (`shadow-objects`, `shadow-objects-testing`, `shae-offscreen-canvas`) each write a v8 coverage report to `coverage/` in their own package, and the run merges them into `coverage/` at the repository root — no thresholds, the number is a map, not a gate. |
 | `pnpm test:ci` | Runs tests excluding E2E (faster, for CI pipelines). |
 | `pnpm build` | Builds all packages. |
 | `pnpm lint` | Runs linter across the entire workspace. |

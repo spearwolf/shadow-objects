@@ -26,9 +26,11 @@ If you have not read it yet, the [project README](https://github.com/spearwolf/s
 | [cheat-sheet.md](./cheat-sheet.md) | One-page quick reference. Print it out. |
 | [best-practices.md](./best-practices.md) | Patterns from real-world projects: signals vs context, resource management, and more. |
 
-The diagram in [concepts.md](./concepts.md) is `architecture@2x.png`. Its editable source is
-`architecture.afdesign`, an Affinity Designer document -- whoever changes the diagram edits that
-file and exports the PNG again.
+`architecture@2x.png` is the architecture diagram, and no page embeds it: two of its labels run
+past the edge of the artboard and are cut off there. Its editable source is
+`architecture.afdesign`, an Affinity Designer document -- whoever fixes those labels edits that
+file, exports the PNG again, and puts the image under "The Big Picture" in
+[concepts.md](./concepts.md).
 
 ## Related Packages
 

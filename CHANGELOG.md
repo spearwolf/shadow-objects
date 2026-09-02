@@ -4,6 +4,13 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-09-02 — the build notes name how the worker is inlined, and the script table counts the coverage suites
+
+`CLAUDE.md` describes the bundle stage as the plugin performs it, and the root README's `pnpm test` row names the three vitest suites that write coverage and the merged report the run leaves at the repository root.
+
+- **`CLAUDE.md`:** the bundle stage says that `esbuild-plugin-inline-worker` bundles the worker in an esbuild pass of its own and embeds the result as a plain string literal, which becomes a `Blob` and an object URL when the worker is created.
+- **`README.md`:** the `pnpm test` row names all three vitest suites — `shadow-objects`, `shadow-objects-testing` and `shae-offscreen-canvas` — and the merged report under `coverage/` at the repository root.
+
 ## 2026-09-02 — the publish step calls npm with an argument array, and the ci script is named where it is reachable
 
 `scripts/publishNpmPkg.mjs` passes npm its arguments as an array instead of a command line assembled for a shell, and `CLAUDE.md` names `pnpm run ci` in the command table alongside the two script names pnpm claims for itself.
@@ -11,14 +18,13 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 - **`scripts/publishNpmPkg.mjs`:** `execFile` and `execFileSync` replace `exec` and `execSync`. The package name and the publish flags reach npm as separate arguments, so no character in them is read as shell syntax, and a failed lookup reports the spawn error when the child wrote nothing to stderr.
 - **`CLAUDE.md`:** the command table carries a row for `pnpm run ci`, and the pnpm section names `ci` and `update` as the two script names reachable only through `pnpm run`.
 
-## 2026-09-02 — the README image fits the width GitHub renders it at, and the architecture diagram has a place
+## 2026-09-02 — the README image fits the width GitHub renders it at, and the docs name the architecture diagram beside its editable source
 
-The infographic above the root README is sized and compressed for the width GitHub actually renders it at, and the core package's architecture diagram is embedded in its documentation, where a reader looking at "The Big Picture" sees it.
+The infographic above the root README is sized and compressed for the width GitHub actually renders it at, and the core package's documentation names the architecture diagram along with the Affinity Designer document it is exported from.
 
 - **`docs/what-is-shadow-objects.webp`:** 900 px wide at quality 80, 147,686 bytes — the width GitHub renders the README column at, with the infographic's text still legible. A `git clone` still fetches the earlier encoding along with the rest of the history; only the working tree gets lighter.
-- **`packages/shadow-objects/docs/concepts.md`:** `architecture@2x.png` is embedded under "The Big Picture", showing the View Layer and a Shadow Environment side by side.
 - **`packages/shadow-objects/docs/architecture.svg`:** removed. It names a font it does not embed, so a reader without that font sees the labels reflow and the frames break open — the PNG carries its text as pixels and renders the same everywhere.
-- **`packages/shadow-objects/docs/README.md`:** a sentence under "The Files" names `architecture@2x.png` as the diagram embedded in `concepts.md`, and `architecture.afdesign` as its editable source.
+- **`packages/shadow-objects/docs/README.md`:** a sentence under "The Files" names `architecture@2x.png` as the architecture diagram and `architecture.afdesign` as its editable source, and says that two of the diagram's labels run past the edge of the artboard.
 - **`README.md`:** the three bullets under "What's in the Box?" state what each part of the project is, without evaluative language attached.
 - **`packages/shadow-objects/docs/cheat-sheet.md`:** the `## FrameLoop` section gets the `---` separator every other section carries.
 
@@ -117,7 +123,7 @@ A scheduled workflow asks the registry once a week whether the dependency tree c
   longer lists `esbuild-plugin-inline-worker` among its devDependencies. Its build is a source
   distribution: `build.mjs` copies `README.md` and `src/` into `.npm-pkg`, and neither
   `vite.config.js` nor `vitest.config.ts` load a plugin. The catalog entry stays --
-  `packages/shadow-objects/build.mjs` uses the plugin for the inline base64 worker in the bundle.
+  `packages/shadow-objects/build.mjs` uses the plugin to inline the worker source into the bundle.
 - **`CLAUDE.md`:** the section about the changelogs names the three changelogs and no other
   document.
 

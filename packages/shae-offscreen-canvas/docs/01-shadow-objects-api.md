@@ -22,7 +22,7 @@ The shadow object handed out through the `ShaeOffscreenCanvas` context requests 
 
 #### local entity events
 
-The _ShaeOffscreenCanvas_ shadow object publishes the `onFrame` event to the entity and its children. 
+The _ShaeOffscreenCanvas_ shadow object publishes the `onFrame` event to the entity and its children.
 
 The `onFrame` event comes with a data object:
 
