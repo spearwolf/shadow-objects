@@ -40,6 +40,7 @@ Run from the repo root (turbo coordinates per-package scripts):
 | `pnpm coverage` | Merge the three vitest suites' raw v8 reports into `coverage/` at the repo root |
 | `pnpm lint` / `pnpm lint:fix` / `pnpm format` | Biome `check` / `check --write` / `format --write` |
 | `pnpm lint:ci` | Biome `check` with `--error-on-warnings` — exits 1 on any warning, unlike `pnpm lint` |
+| `pnpm lint:terms` | `node scripts/checkTerminology.mjs` — fails when the docs or a README use a term `AGENTS.md` §4 forbids; runs first in `pnpm run ci` |
 | `pnpm dev` (alias `pnpm start`) | Dev server for the `shae-offscreen-canvas` demo |
 | `pnpm clean` | `turbo run clean` (runs each package's own `clean` script — what it removes differs per package) + remove `dist/`, turbo cache at the root |
 | `pnpm make:todo` | Regenerate `TODO.md` from TODO comments — required if you add/change/remove a `TODO` |

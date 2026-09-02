@@ -100,6 +100,8 @@ Documentation that invents plausible-sounding names is the most dangerous kind. 
 
 **The word "context" means two unrelated things.** `ComponentContext` is the View-side registry of a namespace, i.e. the connection to an environment. `provideContext` / `useContext` are dependency injection along the entity tree. They never interact. Keep them apart at every occurrence: write `ComponentContext` in full, and say "Entity Context" for the other one.
 
+`pnpm lint:terms` checks the documentation against this section — every package's `docs/` directory and every `README.md`. Its list of terms lives in `scripts/checkTerminology.mjs`, so a row added to the table above belongs there as well, or nothing checks it. The list leaves out "screen" on purpose: the word is literal in a workspace that ships `shae-offscreen-canvas`, and only its use as an analogy is banned.
+
 ### Development Workflow
 - **TODOs:** If you add, modify, or delete a TODO comment, run `pnpm make:todo` to update `TODO.md`.
 - **This guide:** After a change to source files or docs, read this file again and bring it back in line — take out what no longer holds, add what is new.

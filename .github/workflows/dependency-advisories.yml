@@ -1,0 +1,44 @@
+name: Dependency Advisories
+
+# Asks the registry once a week whether anything in the dependency tree carries a
+# published advisory. Deliberately its own workflow and not a step in Continuous
+# Integration: an advisory in one of the 250-odd dev dependencies has nothing to do
+# with the change under review, and a pull request that turns red for it teaches
+# everyone to ignore red.
+#
+# The failing run is the notification. GitHub mails the repository owner when a
+# scheduled workflow fails on the default branch, and nothing else here reports.
+on:
+  schedule:
+    # Monday morning, off the top of the hour — scheduled runs queue behind everyone
+    # who asked for :00 and can be delayed a long way.
+    - cron: '17 6 * * 1'
+  # A weekly schedule cannot be tried out. This makes the workflow runnable on demand.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  advisories:
+    name: Report high-severity advisories
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      # No install step and no store cache: `pnpm audit` reads `pnpm-lock.yaml` and asks
+      # the registry about it, so the lockfile is all the job needs on disk.
+      #
+      # `--audit-level=high` gates the exit code and not only the output: a moderate
+      # advisory is printed and the run stays green. `--ignore-registry-errors` keeps a
+      # registry outage from raising a false alarm — this report is worth something only
+      # as long as a red run means an advisory.
+      - name: Audit the dependency tree
+        run: pnpm audit --audit-level=high --ignore-registry-errors

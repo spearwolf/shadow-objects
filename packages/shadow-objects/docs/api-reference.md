@@ -671,7 +671,7 @@ export const shadowObjects = {
 
 ## ViewComponent
 
-Represents a single node in the view hierarchy that maps to a Shadow Entity. Most developers use `<shae-ent>` instead, but `ViewComponent` is the right tool when integrating with non-DOM renderers (Canvas, WebGL, game engines) or custom framework bindings (React, Vue, Svelte).
+Represents a single node in the view hierarchy that maps to an Entity. Most developers use `<shae-ent>` instead, but `ViewComponent` is the right tool when integrating with non-DOM renderers (Canvas, WebGL, game engines) or custom framework bindings (React, Vue, Svelte).
 
 ```typescript
 import { ViewComponent } from '@spearwolf/shadow-objects';
@@ -942,13 +942,13 @@ Every other rejected join costs the component the `ComponentContext` it was leav
 
 ### Custom Integration Example
 
-Here is how you map a game engine object to a Shadow Entity manually:
+Here is how you map a game engine object to an Entity manually:
 
 ```typescript
 class GameEntity {
   constructor(game, token) {
     this.viewComponent = new ViewComponent(token, {
-      context: game.shadowContext,
+      context: game.componentContext,
     });
 
     this.viewComponent.setProperty('x', this.x);

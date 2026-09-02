@@ -4,6 +4,17 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-09-02 — a weekly advisory report, and a check that holds the binding terms
+
+A scheduled workflow asks the registry once a week whether the dependency tree carries a published advisory, and a script holds the documentation to the vocabulary `AGENTS.md` §4 binds.
+
+- **`.github/workflows/dependency-advisories.yml` (new):** runs `pnpm audit --audit-level=high --ignore-registry-errors` on a weekly schedule and on `workflow_dispatch`, separate from Continuous Integration. A failing scheduled run on the default branch is the notification — GitHub mails the repository owner.
+- **`scripts/checkTerminology.mjs` (new):** greps `README.md`, every package `README.md` and every package's `docs/**/*.md` for the banned analogies and superseded names from `AGENTS.md` §4, and exits 1 with file, line and term on a hit.
+- **`package.json`:** a `lint:terms` script runs the checker; `ci` runs it first, ahead of build, typecheck, test and lint.
+- **`packages/shadow-objects/docs/api-reference.md`:** the `ViewComponent` section and its integration example call the thing an Entity, and the example takes its `ComponentContext` from `game.componentContext`.
+- **`AGENTS.md`:** the Binding Terms section names `pnpm lint:terms` and where its term list lives, so a row added to the table gets a matching pattern.
+- **`CLAUDE.md`:** the command table lists `pnpm lint:terms`.
+
 ## 2026-09-02 — an unresolved version reference stops the build, and the publish step drops the .npmrc copy
 
 `scripts/makePackageJson.mjs` refuses to write a published `package.json` that still carries a `catalog:` or `workspace:` specifier, and each package's dist-contract spec holds that promise for its own manifest.
