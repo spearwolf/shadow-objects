@@ -20,7 +20,7 @@ npm install @spearwolf/shadow-objects
 pnpm add @spearwolf/shadow-objects
 ```
 
-That is the whole install for this guide. Reactivity arrives with the package and reaches a Shadow Object as arguments, so `@spearwolf/signalize` needs no line of its own — and if you want it in your own code too, read the single-copy rule under [Installation](../README.md#installation) first, because a second copy of it in the tree breaks at the boundary between the two.
+That is the whole install for this guide. Reactivity arrives with the package and reaches a Shadow Object as arguments, so `@spearwolf/signalize` needs no line of its own -- and if you want it in your own code too, read the single-copy rule under [Installation](../README.md#installation) first, because a second copy of it in the tree breaks at the boundary between the two.
 
 ## 2. Setting Up the View Layer
 

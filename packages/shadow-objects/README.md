@@ -14,7 +14,7 @@ Entities are lightweight nodes in a tree. Shadow Objects are ECS components that
 npm install @spearwolf/shadow-objects
 ```
 
-Exactly one copy of `@spearwolf/signalize` and one of `@spearwolf/eventize` may stand in the dependency tree. Both key their marker slots with realm-wide symbols, so two majors of either share one slot per object and fail at the boundary between them. You do not have to install signalize for this: the reactivity primitives reach a Shadow Object as arguments — `createSignal`, `createEffect` and `createMemo` come in through the creation API, and nothing here asks you to import them yourself. eventize is the other way round: its surface is reached through that package's free functions — `on`, `once`, `off`, `emit` — imported from it directly, so code that imports those functions, in the view or in a Shadow Object, needs eventize in its own `dependencies`, at the range declared in this package's `dependencies`. Whoever does put signalize next to this package takes the version declared in its `dependencies`; the `latest` tag of signalize points at the 0.x line for as long as 1.0 is in beta, and that line is disjoint from the version declared here, so a plain `npm install @spearwolf/signalize` is the way to end up with two copies. `npm ls @spearwolf/signalize` — or `pnpm why @spearwolf/signalize` — says whether it stayed at one.
+Exactly one copy of `@spearwolf/signalize` and one of `@spearwolf/eventize` may stand in the dependency tree. Both key their marker slots with realm-wide symbols, so two majors of either share one slot per object and fail at the boundary between them. You do not have to install signalize for this: the reactivity primitives reach a Shadow Object as arguments — `createSignal`, `createEffect` and `createMemo` come in through the creation API, and nothing here asks you to import them yourself. eventize is the other way round: its surface is reached through that package's free functions — `on`, `once`, `off`, `emit` — imported from it directly, so code that imports those functions, in the view or in a Shadow Object, needs eventize in your own manifest, at the range this package declares. Whoever does put signalize next to this package takes the version this package declares; the `latest` tag of signalize points at the 0.x line for as long as 1.0 is in beta, and that line is disjoint from the version declared here, so a plain `npm install @spearwolf/signalize` is the way to end up with two copies. `npm ls @spearwolf/signalize` — or `pnpm why @spearwolf/signalize` — says whether it stayed at one.
 
 ## Quick Example
 
@@ -87,7 +87,7 @@ than applied.
 `<shae-worker>` uses the same two names for something stronger. Its teardown takes the Shadow
 Environment with it, and an environment cannot be rebuilt — a released `<shae-worker>` stays
 released, and a new one is the way back. See the
-[API Reference](./docs/api-reference.md#web-components) for all three in detail.
+[API Reference](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/api-reference.md#web-components) for all three in detail.
 
 ## The Five Domains
 
@@ -99,7 +99,7 @@ released, and a new one is the way back. See the
 | 4 | **Composition** | Registry, token, routing | inside the environment |
 | 5 | **Shadow Object** | Application logic, reactivity, communication | inside the environment |
 
-Each domain, what it owns, what it must not touch, and the invariants that hold the whole thing together are written up in the [project README](https://github.com/spearwolf/shadow-objects#the-five-domains) and in [Concepts](./docs/concepts.md).
+Each domain, what it owns, what it must not touch, and the invariants that hold the whole thing together are written up in the [project README](https://github.com/spearwolf/shadow-objects#the-five-domains) and in [Concepts](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/concepts.md).
 
 ## Security
 
@@ -109,14 +109,14 @@ The `src` of a `<shae-worker>` is a module URL, resolved against the document an
 Content-Security-Policy: script-src 'self'; worker-src 'self' blob:
 ```
 
-Full detail — why `worker-src` needs `blob:` for the `@spearwolf/shadow-objects/bundle.js` entry point, and which response has to carry the header for every other one — is in the [API Reference](./docs/api-reference.md#security).
+Full detail — why `worker-src` needs `blob:` for the `@spearwolf/shadow-objects/bundle.js` entry point, and which response has to carry the header for every other one — is in the [API Reference](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/api-reference.md#security).
 
 ## Documentation
 
-- [Overview](./docs/README.md)
-- [Getting Started](./docs/getting-started.md)
-- [Concepts](./docs/concepts.md)
-- [Guides](./docs/guides.md)
-- [API Reference](./docs/api-reference.md)
-- [Cheat Sheet](./docs/cheat-sheet.md)
-- [Best Practices](./docs/best-practices.md)
+- [Overview](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/README.md)
+- [Getting Started](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/getting-started.md)
+- [Concepts](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/concepts.md)
+- [Guides](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/guides.md)
+- [API Reference](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/api-reference.md)
+- [Cheat Sheet](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/cheat-sheet.md)
+- [Best Practices](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/best-practices.md)

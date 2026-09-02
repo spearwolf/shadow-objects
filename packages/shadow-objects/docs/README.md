@@ -26,6 +26,10 @@ If you have not read it yet, the [project README](https://github.com/spearwolf/s
 | [cheat-sheet.md](./cheat-sheet.md) | One-page quick reference. Print it out. |
 | [best-practices.md](./best-practices.md) | Patterns from real-world projects: signals vs context, resource management, and more. |
 
+The diagram in [concepts.md](./concepts.md) is `architecture@2x.png`. Its editable source is
+`architecture.afdesign`, an Affinity Designer document -- whoever changes the diagram edits that
+file and exports the PNG again.
+
 ## Related Packages
 
 - [**@spearwolf/shae-offscreen-canvas**](../../shae-offscreen-canvas/README.md) -- Offscreen canvas integration for rendering in a worker alongside your Shadow Objects logic.

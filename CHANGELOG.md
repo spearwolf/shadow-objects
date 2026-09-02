@@ -4,6 +4,17 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-09-02 — the README image fits the width GitHub renders it at, and the architecture diagram has a place
+
+The infographic above the root README is sized and compressed for the width GitHub actually renders it at, and the core package's architecture diagram is embedded in its documentation, where a reader looking at "The Big Picture" sees it.
+
+- **`docs/what-is-shadow-objects.webp`:** 900 px wide at quality 80, 147,686 bytes — the width GitHub renders the README column at, with the infographic's text still legible. A `git clone` still fetches the earlier encoding along with the rest of the history; only the working tree gets lighter.
+- **`packages/shadow-objects/docs/concepts.md`:** `architecture@2x.png` is embedded under "The Big Picture", showing the View Layer and a Shadow Environment side by side.
+- **`packages/shadow-objects/docs/architecture.svg`:** removed. It names a font it does not embed, so a reader without that font sees the labels reflow and the frames break open — the PNG carries its text as pixels and renders the same everywhere.
+- **`packages/shadow-objects/docs/README.md`:** a sentence under "The Files" names `architecture@2x.png` as the diagram embedded in `concepts.md`, and `architecture.afdesign` as its editable source.
+- **`README.md`:** the three bullets under "What's in the Box?" state what each part of the project is, without evaluative language attached.
+- **`packages/shadow-objects/docs/cheat-sheet.md`:** the `## FrameLoop` section gets the `---` separator every other section carries.
+
 ## 2026-09-02 — a page names the console errors it provokes, and a refused local change has a case
 
 `runPageTests` takes a list of expected error patterns instead of a switch that waives the check

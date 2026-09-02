@@ -96,8 +96,8 @@ spreading the superclass's list loses `fps` and `pixel-zoom`.
 
 ## Documentation
 
-- [Package API](./docs/01-shadow-objects-api.md)
-- [Shadow Objects Core Docs](../shadow-objects/docs/README.md)
+- [Package API](https://github.com/spearwolf/shadow-objects/blob/main/packages/shae-offscreen-canvas/docs/01-shadow-objects-api.md)
+- [Shadow Objects Core Docs](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/README.md)
 
 ## Development
 

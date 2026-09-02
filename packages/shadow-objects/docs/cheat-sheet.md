@@ -232,7 +232,8 @@ ent.addEventListener('login-success', (e) => console.log(e.detail.user));
 | `load-timeout`, `configure-timeout`, `change-trail-timeout`, `destroy-timeout` | milliseconds | How long the worker environment waits for each of the four replies a worker owes it. Defaults: 60000 / 60000 / 5000 / 5000. A number from 1 to 2147483647 (close to 25 days), anything else is reported and the default stays. Not observed, read once when the environment is built; no effect under `local` |
 
 **Truthy value ≠ presence.** `local` and `no-autostart` count as set for `on`, `true`, `yes`,
-`local`, `1` (case-insensitive) or for the bare attribute — and as unset for everything else,
+`local`, `1` (case-insensitive, surrounding whitespace ignored) or for the bare attribute — a value of
+nothing but whitespace reads as the bare attribute — and as unset for everything else,
 `="false"` and `="0"` included. Of the boolean-looking attributes, only `no-structured-clone`
 asks for presence alone.
 
@@ -251,8 +252,9 @@ and it stays torn down. The other two elements use the same two names for someth
 | `auto-destruct` | truthy value | The Entity goes down with its parent Entity instead of being promoted to a root. Not observed: read once, when the element builds its `ViewComponent`. Read by the Kernel, not by the DOM — removing a subtree from the document does not cascade, see `docs/api-reference.md`, "`<shae-ent>`" |
 
 **Truthy value ≠ presence.** `auto-destruct` counts as set for `on`, `true`, `yes`, `local`, `1`
-(case-insensitive) or for the bare attribute — and as unset for everything else, `="false"` and
-`="0"` included.
+(case-insensitive, surrounding whitespace ignored) or for the bare attribute — a value of
+nothing but whitespace reads as the bare attribute — and as unset for everything else,
+`="false"` and `="0"` included.
 
 An entity takes its parent from its **own** namespace only; a `<shae-ent>` of another namespace in
 between is invisible to that binding and does not block it. A `<shae-prop>` binds by the opposite
@@ -289,8 +291,9 @@ the entities and properties below it, and it stays released until it has left an
 | `no-trim` | truthy value | Preserve whitespace in string values; `no-trim="false"` still trims. Without it `value="   "` trims down to `''`, and with `type="number"` that is `0` |
 
 **Truthy value ≠ presence.** `no-trim` counts as set for `on`, `true`, `yes`, `local`, `1`
-(case-insensitive) or for the bare attribute — and as unset for everything else, `="false"` and
-`="0"` included.
+(case-insensitive, surrounding whitespace ignored) or for the bare attribute — a value of
+nothing but whitespace reads as the bare attribute — and as unset for everything else,
+`="false"` and `="0"` included.
 
 The host is the closest entity above the element in the flattened tree — through shadow roots,
 along slot projections, across closed boundaries — regardless of its namespace. It is re-decided
@@ -503,6 +506,8 @@ kernel.createEntity('a-uuid', 'other-token');  // throws EntityUuidInUseError, t
                                                // entity keeps everything it has; the uuid is
                                                // free once destroyEntity('a-uuid') has been through
 ```
+
+---
 
 ## FrameLoop
 

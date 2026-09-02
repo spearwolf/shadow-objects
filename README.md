@@ -81,7 +81,7 @@ Full walkthrough: [getting-started.md](packages/shadow-objects/docs/getting-star
 
 ## 📦 What's in the Box? (Project Structure)
 
-The framework is strictly modularized into functional domains.
+The framework is split into functional domains.
 
 ### Core Runtimes
 *   **`packages/shadow-objects/src/in-the-dark/` (The Shadow Runtime):** The ECS heart. Contains the Kernel, Entity tree, Registry, Token-Routing, and SignalsPath. This is where your logic executes.
@@ -92,8 +92,8 @@ The framework is strictly modularized into functional domains.
 *   **`packages/shadow-objects/src/elements/` (Custom Elements):** The HTML bindings (`ShaeElement` base plus `<shae-ent>`, `<shae-prop>`, `<shae-worker>`). Lifecycle logic for the hard parts: re-parenting inside a single task, a namespace change that re-binds the entity, and a teardown that can be called off.
 
 ### Examples & Testing
-*   **`packages/shae-offscreen-canvas/`:** A reference implementation demonstrating heavy lifting! Runs `three.js` in a Worker, proving the power of Transferables and Namespaces.
-*   **`packages/shadow-objects-testing/` & `e2e`:** Massive test suite spanning unit tests (vitest), real DOM integration in Chromium, and E2E specs via Playwright.
+*   **`packages/shae-offscreen-canvas/`:** Runs `three.js` in a worker and renders onto an `OffscreenCanvas` — the worked example for Transferables and Namespaces.
+*   **`packages/shadow-objects-testing/` & `e2e`:** Three suites — vitest specs next to the source, DOM integration in real Chromium, and Playwright end-to-end specs.
 
 ---
 

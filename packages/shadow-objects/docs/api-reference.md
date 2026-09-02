@@ -1847,7 +1847,8 @@ The root of any Shadow Objects application. Initializes the Shadow Environment (
 
 **Truthy attributes are not presence attributes.** `local` and `no-autostart` read their value:
 the attribute counts as set when it carries `on`, `true`, `yes`, `local` or `1` (case-insensitive,
-surrounding whitespace ignored) — or when it stands there bare, `local` and `local=""` alike.
+surrounding whitespace ignored) — or when it stands there bare, `local`, `local=""` and
+`local="   "` alike, because a value of nothing but whitespace reads as the bare attribute.
 Every other value counts as unset, so `local="false"` stays in Worker mode and `no-autostart="0"`
 autostarts. `no-structured-clone` is the odd one out and asks only whether the attribute exists at
 all: `no-structured-clone="false"` disables `structuredClone` just as the bare attribute does.
@@ -2026,7 +2027,8 @@ connect does the attribute still say what was written into it.
 
 **Truthy attributes are not presence attributes.** `auto-destruct` counts as set for `on`, `true`,
 `yes`, `local` or `1` (case-insensitive, surrounding whitespace ignored) or for the bare attribute,
-`auto-destruct` and `auto-destruct=""` alike; every other value counts as unset, so
+`auto-destruct`, `auto-destruct=""` and `auto-destruct="   "` alike, because a value of
+nothing but whitespace reads as the bare attribute; every other value counts as unset, so
 `auto-destruct="false"` and `auto-destruct="0"` promote the Entity. It is not observed and is read
 exactly once, when the element builds its `ViewComponent` — the flag is immutable on a component,
 so setting or removing the attribute afterwards changes nothing.
