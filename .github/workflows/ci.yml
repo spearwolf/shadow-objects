@@ -58,6 +58,7 @@ jobs:
           path: |
             coverage/
             packages/shadow-objects/coverage/
+            packages/shadow-objects-testing/coverage/
             packages/shae-offscreen-canvas/coverage/
           if-no-files-found: ignore
           retention-days: 7

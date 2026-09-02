@@ -13,6 +13,8 @@
   "scripts": {
     "test": "vitest --run --coverage",
     "watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rimraf coverage",
     "update": "pnpm dlx npm-check --update"
   },
   "dependencies": {

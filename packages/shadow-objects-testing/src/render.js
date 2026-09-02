@@ -1,5 +1,6 @@
 import {ComponentContext} from '@spearwolf/shadow-objects';
 
+/** @param {string} html */
 export function render(html) {
   document.body.style.backgroundColor = '#212123';
 

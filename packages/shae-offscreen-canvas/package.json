@@ -45,6 +45,7 @@
     "build:copyFiles": "node ./build.mjs",
     "build:packageJson": "node ../../scripts/makePackageJson.mjs",
     "build": "pnpm clean && pnpm build:copyFiles && pnpm build:packageJson",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "clean": "rimraf .npm-pkg coverage",
     "publishNpmPkg": "node ../../scripts/publishNpmPkg.mjs .npm-pkg",
     "update": "pnpm dlx npm-check --update"

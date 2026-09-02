@@ -1,5 +1,6 @@
 import {ComponentContext} from '@spearwolf/shadow-objects';
 
+/** @type {HTMLDivElement[]} */
 const containers = [];
 
 /**
@@ -9,6 +10,8 @@ const containers = [];
  * fixture — nesting, attributes and ids included — and the elements upgrade the way the parser
  * produces them. `document.createElement` builds a live element just as well; the cases that
  * exercise that path build their elements themselves (`test/create-element.test.js`).
+ *
+ * @param {string} html
  */
 export function mount(html) {
   const container = document.createElement('div');

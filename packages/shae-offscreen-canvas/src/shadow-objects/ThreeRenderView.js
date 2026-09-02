@@ -133,7 +133,7 @@ export class ThreeRenderView {
             // context that is gone can come back, and a renderer that refuses this view can be
             // replaced -- so the next frame keeps its turn, and only the report is held to one
             // per failure.
-            const message = String(error?.message ?? error);
+            const message = String(/** @type {{message?: unknown}} */ (error)?.message ?? error);
 
             if (reportedFailure == null || reportedFailure.view !== view || reportedFailure.message !== message) {
               reportedFailure = {view, message};

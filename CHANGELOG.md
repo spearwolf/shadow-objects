@@ -4,6 +4,15 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-09-02 — every package is type-checked and cleaned, and the Node floor is one number
+
+`turbo run typecheck` covers all four workspace packages, and `pnpm clean` removes the `coverage/` directory in each of the three packages that writes one. The Node version floor is stated once and repeated identically everywhere it is repeated.
+
+- **`packages/shae-offscreen-canvas/tsconfig.json` (new):** checks `src/**` (excluding `*.spec.js`) as JavaScript with JSDoc annotations, under the root `tsconfig.json` with `noImplicitAny`, `strictNullChecks`, `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` turned off. The package ships no type annotations for its consumers — that stays out of scope — so this only catches a drift against `@spearwolf/shadow-objects` or `three` at review time. `package.json` gets a `typecheck` script; `src/elements/ShaeOffscreenCanvasElement.js` and `src/shadow-objects/ThreeRenderView.js` get JSDoc casts at the handful of spots the relaxed config still flags.
+- **`packages/shadow-objects-testing/tsconfig.json` (new):** checks `src/**` at the root's full strictness — the four helpers needed nine `@param`/`@type` annotations, nothing more. `test/**` stays unchecked; typing 30 files of Chai assertions against DOM elements is its own project. `package.json` gets `typecheck` and `clean` (`rimraf coverage`) scripts.
+- **`.nvmrc`, `mise.toml`:** both name `24.13.0`, matching `engines.node` in the root `package.json`, which stays the source of truth.
+- **`.github/workflows/ci.yml`:** the coverage upload step's `path:` list names all three vitest suites, `packages/shadow-objects-testing/coverage/` included.
+
 ## 2026-08-31 — the reactivity pair moves to its current release
 
 `@spearwolf/eventize@6.2.0` and `@spearwolf/signalize@1.0.0-beta.1` are the current releases of the two libraries the reactivity of this workspace is built on. Both catalog entries move together, and one copy of each stands in the tree afterwards — `pnpm why -r` reports a single version of both across the workspace. What the versions mean for the published packages is in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md) and [`packages/shae-offscreen-canvas/CHANGELOG.md`](packages/shae-offscreen-canvas/CHANGELOG.md).

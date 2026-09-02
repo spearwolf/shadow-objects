@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": ["src"],
+  "exclude": ["src/**/*.spec.js"],
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "checkJs": true,
+    "types": [],
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": false
+  }
+}

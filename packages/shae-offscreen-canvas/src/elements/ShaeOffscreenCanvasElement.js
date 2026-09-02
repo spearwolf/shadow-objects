@@ -122,8 +122,8 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
 
     // `appendChild()` moves the nodes of the fragment into the shadow root, so both references
     // stand on the elements this element works with from here on.
-    this.canvas = canvas;
-    this.shadowEntity = shadowEntity;
+    this.canvas = /** @type {HTMLCanvasElement} */ (canvas);
+    this.shadowEntity = /** @type {import('@spearwolf/shadow-objects').ShaeEntElement} */ (shadowEntity);
   }
 
   get viewComponent() {
@@ -375,7 +375,7 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
 
   #reCreateCanvas() {
     const frame = this.canvas.parentElement;
-    const canvas = this.canvas.cloneNode();
+    const canvas = /** @type {HTMLCanvasElement} */ (this.canvas.cloneNode());
 
     // Without unobserve() first, the outgoing node still delivers one last entry — with a 0x0
     // contentRect, ahead of the delivery for the replacement (measured in Chromium and Firefox).
