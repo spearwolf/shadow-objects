@@ -2309,10 +2309,13 @@ object created for it in the other environment starts from the state the view ho
 already dispatched do not travel: they are delivered in the environment they were addressed to,
 which is the one the entity still lives in at that moment.
 
-Everything else keeps the parent it resolved. One case is worth knowing: a move that leaves an
-element attached to the same parent node — a container inserted between it and its parent — goes
-unseen. A move that takes it out of its parent node is noticed, whether the element runs through
-disconnect and reconnect on the way or is watched across the move.
+Everything else keeps the parent it resolved. Two kinds of move leave it standing and are
+therefore not reported. One inserts a container between the element and the `<shae-ent>` it hangs
+on: the ascent still reaches the same entity, and nothing about the binding changes. The other is
+an atomic `moveBefore()` that reorders the element among its siblings: it ends under the node it
+began under, and that is the comparison behind `onParentChanged`, which therefore does not run. A
+move that ends under a different node is noticed, whether the element runs through disconnect and
+reconnect on the way or is watched across the move.
 
 #### Driving the Lookup by Hand
 

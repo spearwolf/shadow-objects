@@ -490,11 +490,21 @@ export class ShaeEntElement extends ShaeElement {
 
         const newParent = this.getParentNodeForObserver();
 
-        // an atomic move reports the removal even where it puts the element back under the node it
-        // came from — reordering among siblings is such a move, and nothing about the parent
+        // an atomic move reports the removal even where it puts the element back under the node
+        // it came from — reordering among siblings is such a move, and nothing about the parent
         // changed. A subclass reading the two arguments against each other would be told
-        // otherwise, so the report is left out. The watch fired and is gone all the same, and
-        // taking it out again is what stands in its place
+        // otherwise, so the report is left out, and with it the two things `onParentChanged` does
+        // before it watches again. Those drop the resolved entity ancestor and ask for it anew,
+        // and the ascent that answers begins at this element and passes the node it hangs on —
+        // this move leaves that node and everything above it where it stood, so the answer would
+        // be the one already held.
+        //
+        // The watch fired and is gone all the same, and taking it out again is what stands in its
+        // place. That call registers and returns: `watchForRemovalFrom` dispatches the records
+        // already due before it adds this element, and this element is not among the watchers it
+        // finds there — its entry came off when this callback fired. A watcher in that batch that
+        // moves the element somewhere else lands in the `else` further down, which says where the
+        // chain ends.
         if (newParent === parent) {
           this.#observeParentNode();
           return;
