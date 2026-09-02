@@ -96,15 +96,34 @@ export class ShaeOffscreenCanvasElement extends HTMLElement {
     const template = document.createElement('template');
     template.innerHTML = initialHTML;
 
+    // The two ids are the contract of `initialHTML`: the constructor dereferences both, and a
+    // reaction of a custom element is no place to find out that a node is missing -- the exception
+    // never reaches the caller from there. Naming what is absent points at the markup instead of
+    // at its consequence.
+    const canvas = template.content.getElementById(DISPLAY_ID);
+    const shadowEntity = template.content.getElementById(ENTITY_ID);
+
+    const missing = [];
+    if (canvas == null) missing.push(`"${DISPLAY_ID}"`);
+    if (shadowEntity == null) missing.push(`"${ENTITY_ID}"`);
+
+    if (missing.length > 0) {
+      throw new Error(
+        `ShaeOffscreenCanvasElement: initialHTML needs an element with id="${DISPLAY_ID}" and one with id="${ENTITY_ID}", missing: ${missing.join(', ')}`,
+      );
+    }
+
     const ns = this.#readNsAttr();
     if (ns) {
-      template.content.getElementById(ENTITY_ID).setAttribute(ATTR_NS, ns);
+      shadowEntity.setAttribute(ATTR_NS, ns);
     }
 
     this.shadow.appendChild(template.content);
 
-    this.canvas = this.shadow.getElementById(DISPLAY_ID);
-    this.shadowEntity = this.shadow.getElementById(ENTITY_ID);
+    // `appendChild()` moves the nodes of the fragment into the shadow root, so both references
+    // stand on the elements this element works with from here on.
+    this.canvas = canvas;
+    this.shadowEntity = shadowEntity;
   }
 
   get viewComponent() {

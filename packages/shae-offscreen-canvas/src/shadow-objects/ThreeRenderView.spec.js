@@ -330,6 +330,23 @@ describe('ThreeRenderView', () => {
       expect(image.close).toHaveBeenCalledTimes(1);
     });
 
+    it('closes the image when the transfer to the drawing context throws', async () => {
+      const {child, renderer, imageBitmapRenderer} = await setupRendering();
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      const image = {close: vi.fn()};
+      renderer.renderView.mockResolvedValueOnce(image);
+      imageBitmapRenderer.transferFromImageBitmap.mockImplementationOnce(() => {
+        throw new Error('the drawing context refused the image');
+      });
+
+      emit(child, OnFrame, {});
+      await settle();
+
+      expect(image.close, 'the image is freed whatever the transfer did').toHaveBeenCalledTimes(1);
+      expect(consoleError, 'and the failure is reported').toHaveBeenCalledTimes(1);
+    });
+
     it('does nothing without a view', async () => {
       const {host, child} = setup();
       const renderer = makeMockRenderer();

@@ -29,6 +29,9 @@
     },
     "./shadow-objects.js": {
       "default": "./src/shadow-objects.js"
+    },
+    "./ShaeOffscreenCanvasElement.js": {
+      "default": "./src/elements/ShaeOffscreenCanvasElement.js"
     }
   },
   "sideEffects": ["src/bundle.js", "src/shae-offscreen-canvas.js"],

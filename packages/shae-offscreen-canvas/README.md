@@ -57,6 +57,43 @@ The `src` attribute points to your shadow environment entry file -- the script t
 - **`fps`** -- the upper bound on the frame rate the element reports to its shadow object, as a whole number. Absent, it reports `60`. Present but unusable (not a number, or below `1`), it reports `0`.
 - **`pixel-zoom`** -- divides the pixel ratio the element reports, as a whole number, so a low-resolution canvas can be scaled up and rendered pixelated. Absent or unusable (not a number, or at or below `1`) falls back to `1`, at which point it has no effect.
 
+## Extending the element
+
+```js
+import {ShaeOffscreenCanvasElement} from '@spearwolf/shae-offscreen-canvas/ShaeOffscreenCanvasElement.js';
+```
+
+This entry point hands out the class and nothing else. The
+`customElements.define('shae-offscreen-canvas', …)` call lives in
+`@spearwolf/shae-offscreen-canvas/shae-offscreen-canvas.js`, the module the
+bundle entry point imports for its side effect.
+
+A subclass with its own template:
+
+```js
+class MyCanvas extends ShaeOffscreenCanvasElement {
+  constructor() {
+    super(myTemplate);
+  }
+}
+
+customElements.define('my-canvas', MyCanvas);
+```
+
+`super()` takes an `initialHTML` argument -- markup containing a
+`<canvas id="display">` and a `<shae-ent id="entity" token="ShaeOffscreenCanvas">`.
+Both ids are required; the constructor throws and names whichever is absent.
+The token on the entity element connects it to the shadow object this package
+registers under `./shadow-objects.js` -- a subclass that sets a different
+token trades in the shadow object on the other end.
+
+The namespace of the host element reaches the entity element through
+`setAttribute()`, so it applies even to a template without a placeholder for
+it.
+
+A subclass that declares its own `static observedAttributes` without
+spreading the superclass's list loses `fps` and `pixel-zoom`.
+
 ## Documentation
 
 - [Package API](./docs/01-shadow-objects-api.md)

@@ -112,12 +112,17 @@ export class ThreeRenderView {
         if (multiViewRenderer && getImageBitmapRenderer()) {
           frameInFlight = true;
 
+          // The image holds GPU memory until it is closed, and frames arrive at the rate of the loop.
+          // Freeing it in the `finally` covers both ends of a render: `close()` on a bitmap the transfer
+          // already took is defined to do nothing, and a transfer that throws -- the drawing context
+          // throws when its canvas has changed owner -- still gives the memory back.
+          let image;
+
           try {
-            const image = await multiViewRenderer.renderView(view);
+            image = await multiViewRenderer.renderView(view);
 
             if (image) {
               getImageBitmapRenderer()?.transferFromImageBitmap(image);
-              image.close();
             }
 
             reportedFailure = undefined;
@@ -135,6 +140,8 @@ export class ThreeRenderView {
               this.logger.error('rendering the view failed:', {viewId: view.viewId}, error);
             }
           } finally {
+            image?.close();
+
             // a render that failed frees the view for the next frame just as one that succeeded
             frameInFlight = false;
           }

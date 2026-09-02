@@ -91,6 +91,16 @@ describe('ShaeOffscreenCanvasElement', () => {
     expect(el.shadowEntity.getAttribute('ns')).toBe('my-namespace');
   });
 
+  it('rejects an initialHTML without the canvas element', () => {
+    expect(() => createWithNamespace('my-namespace', '<shae-ent id="entity" token="ShaeOffscreenCanvas"></shae-ent>')).toThrow(
+      /missing: "display"/,
+    );
+  });
+
+  it('rejects an initialHTML without the entity element', () => {
+    expect(() => createWithNamespace('my-namespace', '<canvas id="display"></canvas>')).toThrow(/missing: "entity"/);
+  });
+
   describe('the frame loop', () => {
     it('subscribes to the shared frame loop while it is in the document', () => {
       const el = createWithNamespace('');
