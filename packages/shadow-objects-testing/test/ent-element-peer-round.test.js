@@ -2,6 +2,7 @@ import {expect} from '@esm-bundle/chai';
 import {on} from '@spearwolf/eventize';
 import {ComponentChangeType, ComponentContext, ShaeEntElement} from '@spearwolf/shadow-objects';
 import '@spearwolf/shadow-objects/shae-ent.js';
+import {freshTag} from '../src/freshTag.js';
 import {unmountAll} from '../src/mount.js';
 import {withSwallowedErrors} from '../src/withSwallowedErrors.js';
 
@@ -19,8 +20,8 @@ import {withSwallowedErrors} from '../src/withSwallowedErrors.js';
  * leaves the elements reporting that they were not upgraded in place — the peer round does not
  * run for them at all.
  *
- * A custom element name can be defined only once per document, so the cases that register one
- * bring their own.
+ * A custom element name is registered once per document and the registration stands for the
+ * life of the page, so the cases that register one mint their name with `freshTag()`.
  */
 
 /** One task is long enough for the collected round and for slot assignment to be reported. */
@@ -124,12 +125,13 @@ describe('shae-ent and the peer re-request round', () => {
 
   it('an element that becomes an entity late takes the entity below it', async () => {
     const ns = 'peer-round-late';
+    const midTag = freshTag('pr-mid');
     const container = connectedContainer();
     container.innerHTML =
       `<shae-ent id="pr3-gp" ns="${ns}" token="gp">` +
-      `<pr3-mid id="pr3-mid" ns="${ns}" token="mid">` +
+      `<${midTag} id="pr3-mid" ns="${ns}" token="mid">` +
       `<shae-ent id="pr3-kid" ns="${ns}" token="kid"></shae-ent>` +
-      '</pr3-mid>' +
+      `</${midTag}>` +
       '</shae-ent>';
 
     await nextTask();
@@ -139,7 +141,7 @@ describe('shae-ent and the peer re-request round', () => {
 
     expect(kid.entParentNode?.id, 'while nothing sits in between, the kid binds to the outer entity').to.equal('pr3-gp');
 
-    customElements.define('pr3-mid', class extends ShaeEntElement {});
+    customElements.define(midTag, class extends ShaeEntElement {});
 
     await nextTask();
 
@@ -152,12 +154,13 @@ describe('shae-ent and the peer re-request round', () => {
 
   it('an entity arriving during a round gets a round of its own', async () => {
     const ns = 'peer-round-latecomer';
+    const midTag = freshTag('pr-mid');
     const container = connectedContainer();
     container.innerHTML =
       `<shae-ent id="pr4-gp" ns="${ns}" token="gp">` +
-      `<pr4-mid id="pr4-mid" ns="${ns}" token="mid">` +
+      `<${midTag} id="pr4-mid" ns="${ns}" token="mid">` +
       `<shae-ent id="pr4-kid" ns="${ns}" token="kid"></shae-ent>` +
-      '</pr4-mid>' +
+      `</${midTag}>` +
       '</shae-ent>';
 
     await nextTask();
@@ -174,7 +177,7 @@ describe('shae-ent and the peer re-request round', () => {
     on(kid.viewComponent, ComponentContext.ReRequestParent, () => {
       if (defined) return;
       defined = true;
-      customElements.define('pr4-mid', class extends ShaeEntElement {});
+      customElements.define(midTag, class extends ShaeEntElement {});
     });
 
     gp.insertAdjacentHTML('beforeend', `<shae-ent id="pr4-trigger" ns="${ns}" token="trigger"></shae-ent>`);
@@ -306,12 +309,13 @@ describe('shae-ent and the peer re-request round', () => {
 
   it('the change trail built right after a late definition carries the new parent', async () => {
     const ns = 'peer-round-trail';
+    const midTag = freshTag('pr-mid');
     const container = connectedContainer();
     container.innerHTML =
       `<shae-ent id="pr7-gp" ns="${ns}" token="gp">` +
-      `<pr7-mid id="pr7-mid" ns="${ns}" token="mid">` +
+      `<${midTag} id="pr7-mid" ns="${ns}" token="mid">` +
       `<shae-ent id="pr7-kid" ns="${ns}" token="kid"></shae-ent>` +
-      '</pr7-mid>' +
+      `</${midTag}>` +
       '</shae-ent>';
 
     await nextTask();
@@ -322,7 +326,7 @@ describe('shae-ent and the peer re-request round', () => {
     const mid = container.querySelector('#pr7-mid');
     const kid = container.querySelector('#pr7-kid');
 
-    customElements.define('pr7-mid', class extends ShaeEntElement {});
+    customElements.define(midTag, class extends ShaeEntElement {});
 
     // no await: the trail is built in the same task the definition ran in
     const trail = ctx.buildChangeTrails();

@@ -6,6 +6,7 @@ import '@spearwolf/shadow-objects/shae-prop.js';
 import '@spearwolf/shadow-objects/shae-worker.js';
 import sinon from 'sinon';
 import {findElementsById} from '../src/findElementsById.js';
+import {freshTag} from '../src/freshTag.js';
 import {mount, unmountAll} from '../src/mount.js';
 import {render} from '../src/render.js';
 
@@ -192,28 +193,30 @@ describe('shae-prop follows its host entity', () => {
   });
 
   it('finds a host whose element is defined after it', async () => {
+    const hostTag = freshTag('late-ent');
     const container = mount(`
-      <late-ent-h id="lh-host" token="host">
+      <${hostTag} id="lh-host" token="host">
         <shae-prop id="lh-prop" name="x" value="1"></shae-prop>
-      </late-ent-h>
+      </${hostTag}>
     `);
     await Promise.all(['shae-ent', 'shae-prop'].map((name) => customElements.whenDefined(name)));
 
     const prop = container.querySelector('#lh-prop');
 
-    customElements.define('late-ent-h', class extends ShaeEntElement {});
-    await customElements.whenDefined('late-ent-h');
+    customElements.define(hostTag, class extends ShaeEntElement {});
+    await customElements.whenDefined(hostTag);
     await nextTask();
 
     expect(prop.entNode?.id).to.equal('lh-host');
   });
 
   it('moves to an entity that upgrades between it and its current host', async () => {
+    const midTag = freshTag('late-ent');
     const container = mount(`
       <shae-ent id="mv-gp" token="gp">
-        <late-ent-m id="mv-mid" token="mid">
+        <${midTag} id="mv-mid" token="mid">
           <shae-prop id="mv-prop" name="x" value="1"></shae-prop>
-        </late-ent-m>
+        </${midTag}>
       </shae-ent>
     `);
     await Promise.all(['shae-ent', 'shae-prop'].map((name) => customElements.whenDefined(name)));
@@ -223,8 +226,8 @@ describe('shae-prop follows its host entity', () => {
     // the starting point, not a defect: the closer ancestor is not an entity yet
     expect(prop.entNode?.id, 'it starts at the only entity above it').to.equal('mv-gp');
 
-    customElements.define('late-ent-m', class extends ShaeEntElement {});
-    await customElements.whenDefined('late-ent-m');
+    customElements.define(midTag, class extends ShaeEntElement {});
+    await customElements.whenDefined(midTag);
     await nextTask();
 
     expect(prop.entNode?.id, 'and moves to the entity that arrived in between').to.equal('mv-mid');

@@ -756,7 +756,7 @@ describe('ShadowObjectCreationScope', () => {
       expect(errors, 'one line for useProperty, however many late calls it takes').toHaveBeenCalledTimes(1);
       // `ConsoleLogger` prints its namespace as a styled badge, so the wording of a report starts at
       // the third argument: `console.error('%c<namespace>', styles, ...args)`.
-      expect(errors.mock.calls[0]![2], 'and it names the member and the scope').toMatch(
+      expect(errors.mock.calls[0]?.[2], 'and it names the member and the scope').toMatch(
         /useProperty\(\).*"TestScope".*has torn down/,
       );
 

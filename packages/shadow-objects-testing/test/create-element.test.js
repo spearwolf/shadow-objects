@@ -3,6 +3,7 @@ import {ShaeEntElement} from '@spearwolf/shadow-objects';
 import '@spearwolf/shadow-objects/shae-ent.js';
 import '@spearwolf/shadow-objects/shae-prop.js';
 import '@spearwolf/shadow-objects/shae-worker.js';
+import {freshTag} from '../src/freshTag.js';
 import {mount, unmountAll} from '../src/mount.js';
 
 /**
@@ -31,15 +32,12 @@ const mountInShadowRoot = (html) => {
   return {host, shadowRoot};
 };
 
-let tagCounter = 0;
-
 /**
  * Registers a `ShaeEntElement` subclass under a tag name of its own — the extension point the
- * guides describe — and answers that name. A fresh name per call, because a definition cannot be
- * taken back.
+ * guides describe — and answers that name.
  */
 const defineEntSubclass = () => {
-  const tagName = `probe-ent-${++tagCounter}`;
+  const tagName = freshTag('probe-ent');
   customElements.define(tagName, class extends ShaeEntElement {});
   return tagName;
 };
@@ -49,7 +47,7 @@ const defineEntSubclass = () => {
  * element name alongside the mandatory hyphen — and answers that name.
  */
 const defineDottedEntSubclass = () => {
-  const tagName = `probe.ent-${++tagCounter}`;
+  const tagName = freshTag('probe.ent');
   customElements.define(tagName, class extends ShaeEntElement {});
   return tagName;
 };
