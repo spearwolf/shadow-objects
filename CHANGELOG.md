@@ -4,6 +4,19 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-09-02 — a page names the console errors it provokes, and a refused local change has a case
+
+`runPageTests` takes a list of expected error patterns instead of a switch that waives the check
+entirely, so a page that provokes a console error on purpose still fails on any other one, and
+`<shae-worker>` gets a case for the `local` attribute change it refuses against a running remote
+environment.
+
+- **`packages/shadow-objects-e2e/tests/runPageTests.ts`:** `expectedErrors?: (string | RegExp)[]` names the console errors a page is allowed to produce — a string matches as a substring, a `RegExp` runs through `test()` against the recorded line together with its `console.error: ` or `uncaught: ` origin tag. Any other error fails the case. The error case is registered for every page; its title stays `no uncaught or logged errors` where the list is empty and becomes `no unexpected console errors` otherwise, and a page that names patterns but records no error at all fails separately, so a list that no longer matches anything is caught rather than sitting there unused.
+- **`packages/shadow-objects-e2e/tests/sync-failure.spec.ts`, `tests/worker-failure.spec.ts`:** name the console errors their pages actually provoke via `expectedErrors`.
+- **`packages/shadow-objects-e2e/src/shae-worker.js`:** a new case sets `local` on the remote worker after its environment is built; the attribute change is refused, the attribute reverts and the environment stays remote — the console error this produces is declared in the spec.
+- **`packages/shadow-objects-e2e/tests/shae-worker.spec.ts`:** registers the two new ids and their `expectedErrors` entry.
+- **`packages/shadow-objects-e2e/TEST-PLAN.md`, `README.md`:** the case counts stand at 231 per project, 693 overall, and both describe the error-case mechanism and the new `shae-worker` case.
+
 ## 2026-09-02 — a weekly advisory report, and a check that holds the binding terms
 
 A scheduled workflow asks the registry once a week whether the dependency tree carries a published advisory, and a script holds the documentation to the vocabulary `AGENTS.md` §4 binds.

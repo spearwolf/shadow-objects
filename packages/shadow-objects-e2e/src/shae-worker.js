@@ -73,7 +73,7 @@ async function main() {
 
   // The four timeout attributes on the element, read once when the worker environment was built.
   // The optional chains are deliberate: this has to report false rather than throw, so that a
-  // page which does not carry the values keeps its "no uncaught or logged errors" guard green.
+  // page which does not carry the values keeps its "no unexpected console errors" guard green.
   testBooleanAction('worker0-timeouts-from-attributes', () => {
     const timeouts = shadowEnv0.envProxy?.timeouts;
     return (
@@ -267,5 +267,21 @@ async function main() {
       isoA,
       isoB,
     ].every((el) => el.viewComponent.parent?.uuid === workerParentUuid(el));
+  });
+
+  // --- worker0 | remote | refused local change --------------------------------------
+
+  // worker0 drives a remote environment; only the local branch of a running `<shae-worker>`
+  // takes the attribute back off, so this checks the branch that refuses it and logs the console
+  // error the spec declares in `expectedErrors`. The other branch belongs to a local element and
+  // is covered in the integration suite.
+
+  worker0.setAttribute('local', '');
+
+  testBooleanAction('shae-worker-refused-local-change-drops-the-attribute', () => !worker0.hasAttribute('local'));
+
+  testBooleanAction('shae-worker-refused-local-change-keeps-the-remote-env', () => {
+    const envProxy = shadowEnv0.envProxy;
+    return !envProxy.isLocalEnv && envProxy.kernel == null && shadowEnv0.isReady;
   });
 }

@@ -18,7 +18,7 @@ for the mechanism to track framework defects as expected failures.
 | `upgrade-timing` | markup parsed before the custom element definitions load |
 | `async-events` | message round-trips in both directions, `traverseChildren`, `forward-custom-events`, what `auto-sync` controls |
 | `remote-worker-env` | the programmatic `ShadowEnv` + `RemoteWorkerEnv` path |
-| `shae-worker` | `<shae-worker>` in remote and local flavour, context lifecycle events |
+| `shae-worker` | `<shae-worker>` in remote and local flavour, context lifecycle events, a `local` change against a running remote environment refused |
 | `auto-destruct` | `autoDestructionOnParentRemoval` cascade over a real worker |
 | `auto-destruct-dom` | the same flag, set from markup: what reaches the entity, what a DOM removal does, and what the kernel's cascade does |
 | `bundle` | the single-file build: entity tree, property type parsing, round-trip through the inlined worker |
@@ -32,7 +32,9 @@ Wrap the setup in `runTestSuite()` so a crash is reported with its stack instead
 record results with `testAsyncAction` / `testBooleanAction` / `testCustomEvent`, and register the
 ids in a spec with `runPageTests`. When asserting that something did *not* happen, put a
 round-trip through the worker in front of it as a barrier — a sync cycle alone only confirms the
-change trail went out, not that the answers came back.
+change trail went out, not that the answers came back. A page that provokes a console error on
+purpose names it in `expectedErrors` on its spec instead of turning the check off — every other
+error still fails the page.
 
 ## Prerequisites
 

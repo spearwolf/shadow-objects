@@ -3,7 +3,7 @@
 Status: 2026-08-26. Analysis of the Playwright suite in this package, the gaps it leaves, and a
 ticket-ready list of test cases to close them.
 
-> **Where the suite stands.** 681 tests across Chromium, Firefox and WebKit — 227 per project,
+> **Where the suite stands.** 693 tests across Chromium, Firefox and WebKit — 231 per project,
 > twelve spec files over twelve pages. The harness fixes and the P1 blocks of every group below
 > are in place. No framework defect is open — [`KNOWN-DEFECTS.md`](KNOWN-DEFECTS.md) describes
 > the `knownFailures` mechanism that carries the next one.
@@ -19,7 +19,7 @@ Scope: E2E only. This file names the pages, fixtures and assertions of the Playw
 
 ## 1. What exists today
 
-Twelve spec files, 227 registered test cases per project — 681 across Chromium, Firefox and WebKit. The specs
+Twelve spec files, 231 registered test cases per project — 693 across Chromium, Firefox and WebKit. The specs
 themselves contain almost no logic: they name a page and a list of ids, and `runPageTests` turns
 each id into one Playwright test that asserts `data-testresult="ok"` on the node the page wrote.
 All real assertions live in `src/*.js`.
@@ -28,26 +28,34 @@ All real assertions live in `src/*.js`.
 |---|---|---|---|
 | `dynamic-dom.spec.ts` | `pages/dynamic-dom.html` | 38 | Runtime mutations against a real worker: `appendChild`, a subtree assigned via `innerHTML`, a move, `remove()`, a subtree removal, a `<shae-prop>` added, changed, removed and moved between entities, and a remove-and-re-append inside one microtask (DOM-1 … DOM-4, DOM-6 … DOM-8). |
 | `multi-env.spec.ts` | `pages/multi-env.html` | 34 | Three environments side by side (two remote, one local): distinct instances and contexts, the same token in two namespaces, cross-namespace nesting, property isolation, simultaneous changes in one tick, a request answered only in its own namespace, and a `ns` change at runtime and back (MULTI-1 … MULTI-8). |
-| `shae-worker.spec.ts` | `pages/shae-worker.html` | 31 | `<shae-worker>` is defined; two workers (remote+autostart, local+no-autostart) report the right `ns`, the right env type, their `contextCreated` event and reach `ready()`; the remote one carries the four timeout attributes and its environment holds itself to them; both workers' kernels are asked for their entity graph and every parent-child relation, slot projection and namespace boundary in the tree is checked against it. |
+| `shae-worker.spec.ts` | `pages/shae-worker.html` | 33 | `<shae-worker>` is defined; two workers (remote+autostart, local+no-autostart) report the right `ns`, the right env type, their `contextCreated` event and reach `ready()`; the remote one carries the four timeout attributes and its environment holds itself to them; both workers' kernels are asked for their entity graph and every parent-child relation, slot projection and namespace boundary in the tree is checked against it; a `local` attribute change against the running remote environment is refused, the attribute goes back to what it was and the environment stays remote. |
 | `upgrade-timing.spec.ts` | `pages/upgrade-timing.html` | 28 | Markup parsed before the definitions, markup injected before them, elements added after them, and an element whose own definition arrives after the first sync — a `ShaeEntElement` subclass, a wrapper projecting through a `<slot>`, and a `<shae-prop>` following the entity that upgrades between it and its host (UPG-1, UPG-2, UPG-4, UPG-5, UPG-7, UPG-9). |
 | `async-events.spec.ts` | `pages/async-events.html` | 26 | `contextCreated` / `contextLost` as DOM CustomEvents, a property change echoed back as a message, `auto-sync` in its forms, a burst of changes coalescing into the final value, `traverseChildren` across the worker boundary, `forward-custom-events` with and without a filter list, and a change made while a cycle is in flight riding the cycle behind it (ASYNC-1, ASYNC-3 … ASYNC-7, ASYNC-9, ASYNC-13). |
 | `bundle.spec.ts` | `pages/bundle.html` | 13 | The single-file build: the load flag, the element definitions, the five-entity tree, the cross-namespace child that becomes a root, three property types, and a round-trip through the inlined worker (BUNDLE-1 … BUNDLE-4). |
-| `worker-failure.spec.ts` | `pages/worker-failure.html` | 13 | A worker that dies mid-run: `proxyfailed` and `contextlost` as DOM events, the failure reason, the destroyed proxy, a later call rejecting right away, and the recovery through a new proxy that re-creates the surviving entity. |
-| `sync-failure.spec.ts` | `pages/sync-failure.html` | 12 | A change trail the worker's kernel refuses: `syncfailed` as a DOM event carrying reason and trail, a rejecting `syncWait()`, no `AfterSync`, no proxy failure, the refused entry going out a second time, and a next cycle that round-trips again (SYNC-1 … SYNC-4, SYNC-6). |
+| `worker-failure.spec.ts` | `pages/worker-failure.html` | 14 | A worker that dies mid-run: `proxyfailed` and `contextlost` as DOM events, the failure reason, the destroyed proxy, a later call rejecting right away, and the recovery through a new proxy that re-creates the surviving entity. |
+| `sync-failure.spec.ts` | `pages/sync-failure.html` | 13 | A change trail the worker's kernel refuses: `syncfailed` as a DOM event carrying reason and trail, a rejecting `syncWait()`, no `AfterSync`, no proxy failure, the refused entry going out a second time, and a next cycle that round-trips again (SYNC-1 … SYNC-4, SYNC-6). |
 | `auto-destruct-dom.spec.ts` | `pages/auto-destruct-dom.html` | 9 | The same flag, declared in markup: `auto-destruct` on a `<shae-ent>` reaches the entity while its unflagged siblings and parents do not carry it, a DOM removal takes flagged and unflagged children alike, and a `kernel.destroyEntity()` cascades the flagged child while promoting the unflagged one (DOM-5). |
 | `auto-destruct.spec.ts` | `pages/auto-destruct.html` | 8 | `autoDestructionOnParentRemoval` cascade vs. promotion-to-root, over a real worker. |
 | `create-element.spec.ts` | `pages/create-element.html` | 8 | Both construction paths: markup the parser upgrades, and `document.createElement()` for all three tags — each element carries its marker, and an appended `<shae-ent>` gets its view component. |
 | `remote-worker-env.spec.ts` | `pages/remote-worker-env.html` | 7 | Programmatic `ShadowEnv` + `RemoteWorkerEnv`: `ready()`, `importScript()`, `isReady`, one `sync()`, one message worker → view. |
 
 Two of the cases per page come from the harness rather than from the page: `runPageTests` always
-registers `test suite setup`, and adds `no uncaught or logged errors` unless the page provokes an
-error on purpose (`worker-failure` and `sync-failure` do, so they carry only the first).
+registers `test suite setup` and a case over the errors the page recorded. A page that names no
+`expectedErrors` carries it as `no uncaught or logged errors`; a page that names its own in
+`tests/sync-failure.spec.ts`, `tests/worker-failure.spec.ts` or `tests/shae-worker.spec.ts` carries
+it as `no unexpected console errors`, which passes as long as every recorded error is covered by
+one of its entries and fails on the first one that is not.
 
 `auto-destruct` and `auto-destruct-dom` are the two scenarios that report through the kernel
 rather than the DOM: a fixture module (`public/mod-auto-destruct.js` and
 `public/mod-auto-destruct-dom.js`) exercises kernel behaviour and reports a structured result back
 to the view, which the page then asserts in separate checks. `dynamic-dom`, `auto-destruct-dom`,
-`upgrade-timing`, `multi-env` and `shae-worker` use the same shape for their snapshots.
+`upgrade-timing` and `shae-worker` use the same shape for their snapshots: a `requestSnapshot`
+message in, a `snapshot` reply out carrying a round number and every entity the kernel holds.
+`multi-env` answers a different question with a different shape: `public/mod-multi-env.js` replies
+to `requestReport` with `probeReport`, a probe object that describes itself — there the question is
+which namespace a value arrived in, not the shape of the tree, and a single entity's own report
+answers that.
 
 ### 1.1 Fixture code that is loaded but never asserted
 
@@ -253,7 +261,7 @@ any definition happens.
 | ID | Prio | Case |
 |---|---|---|
 | ASYNC-1 | P1 | Property change → shadow object reacts → `dispatchMessageToView` arrives at the view with the new value. (Activates the existing `fooEcho` path.) |
-| ASYNC-2 | P1 | View → shadow object: `dispatchShadowObjectsEvent` over a real worker reaches the shadow object. |
+| ASYNC-2 | P1 | **Implemented** — `async-broadcast-syncs`, `async-broadcast-reached-children`, `async-forwarded-event-arrives-as-dom-event` and `async-forwarded-event-carries-detail` on `pages/async-events.html`. `src/async-events.js:160` and `:179` both dispatch over `dispatchShadowObjectsEvent` against a real worker. There is no separate case for the plain delivery on its own: it is the first half of these four, and a case that checked only the delivery would check a real subset of what they already check. |
 | ASYNC-3 | P1 | `contextCreated` and `contextLost` CustomEvents fire on `<shae-worker>` in the right order. (`async-context-created-event`, `async-context-lost-event`; the two `contextCreated` ids on `shae-worker` cover the same event for two environments.) |
 | ASYNC-4 | P2 | `traverseChildren: true` delivers a message to a whole entity subtree across the worker boundary. |
 | ASYNC-5 | P2 | `forward-custom-events` re-emits shadow object events as DOM CustomEvents from `<shae-ent>`, over a real worker; the comma-separated filter form only lets listed types through. |
@@ -303,10 +311,10 @@ itself carries no serial and would end the cycle as a success.
 | H-FIX-2 | P1 | **Implemented** — `data-testoutput` is the failure message (`tests/runPageTests.ts`). |
 | H-FIX-3 | P1 | **Implemented** — `runTestSuite` writes the `data-testsuite` marker, and every spec waits for it first, so a setup crash fails as one clear case instead of a locator timeout per id (`tests/runPageTests.ts`, `loadPage`). |
 | H-FIX-4 | P2 | **Implemented** — `testAsyncAction` rejects with an `Error` carrying the test name and the deadline (`src/test-helpers/testAsyncAction.js`). |
-| H-FIX-5 | P2 | **Implemented** — a `no uncaught or logged errors` case per page, with `allowConsoleErrors` for the three pages that provoke one (`tests/runPageTests.ts`). |
+| H-FIX-5 | P2 | **Implemented** — a case over the errors every page recorded (`tests/runPageTests.ts`). `tests/sync-failure.spec.ts`, `tests/worker-failure.spec.ts` and `tests/shae-worker.spec.ts` name their own with `expectedErrors`; the case passes as long as every recorded error is covered by one of the page's entries, so a file name travels with a page that grows a fourth error case rather than a count that has to be aged again. |
 | H-FIX-6 | P2 | **Implemented** — every result in `src/shae-worker.js` is awaited, and `watchCustomEvent` arms the listener separately from the wait so a cold worker start cannot eat the budget. |
 | H-FIX-7 | P3 | **Implemented** — both `contextCreated` ids are registered (`tests/shae-worker.spec.ts`: `worker0-env-contextCreated`, `worker1-env-contextCreated`). |
-| H-FIX-8 | P3 | **Implemented** — the `webkit` project is enabled. All 227 cases pass on it, so nothing about Custom Elements, Shadow DOM, slot projection or `transferControlToOffscreen` needed a WebKit branch. CI installs the browser alongside Chromium and Firefox. |
+| H-FIX-8 | P3 | **Implemented** — the `webkit` project is enabled. Every case that passes on Chromium and Firefox passes on it too, so nothing about Custom Elements, Shadow DOM, slot projection or `transferControlToOffscreen` needed a WebKit branch. CI installs the browser alongside Chromium and Firefox. |
 
 ---
 

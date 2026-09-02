@@ -18,7 +18,15 @@ test.describe('sync-failure', () => {
       'sync-failure-environment-still-syncs',
     ],
     // the page has the worker's kernel refuse a change trail on purpose, and both sides put the
-    // failure on the record: the worker from its message router, the view from its environment
-    {allowConsoleErrors: true},
+    // failure on the record: the worker from its message router, the view from its environment.
+    // The wording after the reporter's name differs by engine — Firefox reduces an `Error`
+    // argument to its class name and drops the `%c` styling that Chromium and WebKit print — so
+    // the patterns hold to the part all three print.
+    {
+      expectedErrors: [
+        /^console\.error: .*MessageRouter.*failed to apply change trail/,
+        /^console\.error: .*ShadowEnv.*failed to apply change trail/,
+      ],
+    },
   );
 });

@@ -2,10 +2,16 @@ import {expect, type Page, test} from '@playwright/test';
 
 export interface PageTestsOptions {
   /**
-   * By default a page that logs to `console.error` or throws an uncaught exception fails an
-   * extra test. Set this for pages that provoke an error on purpose.
+   * Every recorded console error or uncaught exception must be covered by an entry here, or the
+   * extra test at the end of the page fails. A string matches as a substring, a `RegExp` runs
+   * through `test()` and must not carry the `g` flag — `lastIndex` would otherwise make a match
+   * depend on the order tests run in. Matching is against the recorded line together with its
+   * origin tag, `console.error: ` or `uncaught: `, so a pattern can say which of the two it means.
+   * An entry is a permission, not a requirement — which errors a page actually reports differs
+   * between engines (Chromium reports a worker's uncaught error to the environment only; Firefox
+   * and WebKit additionally raise it on the page).
    */
-  allowConsoleErrors?: boolean;
+  expectedErrors?: (string | RegExp)[];
 
   /** How long to wait for the page to finish its setup. */
   setupTimeout?: number;
@@ -36,7 +42,7 @@ export interface PageTestsOptions {
  * independent: one red result must not hide the ones behind it.
  */
 export function runPageTests(pageUrl: string, testIds: string[], options: PageTestsOptions = {}) {
-  const {allowConsoleErrors = false, setupTimeout = 15000, knownFailures = []} = options;
+  const {expectedErrors = [], setupTimeout = 15000, knownFailures = []} = options;
 
   interface LoadResult {
     errors: string[];
@@ -110,10 +116,30 @@ export function runPageTests(pageUrl: string, testIds: string[], options: PageTe
     });
   }
 
-  if (!allowConsoleErrors) {
-    test('no uncaught or logged errors', async ({page}) => {
-      const {errors} = await loadPage(page);
-      expect(errors, errors.join('\n')).toEqual([]);
-    });
-  }
+  const covers = (error: string, pattern: string | RegExp) =>
+    typeof pattern === 'string' ? error.includes(pattern) : pattern.test(error);
+
+  const errorsTitle = expectedErrors.length === 0 ? 'no uncaught or logged errors' : 'no unexpected console errors';
+
+  test(errorsTitle, async ({page}) => {
+    const {errors} = await loadPage(page);
+
+    const unexpected = errors.filter((error) => !expectedErrors.some((pattern) => covers(error, pattern)));
+
+    expect(
+      unexpected,
+      [
+        `${pageUrl} recorded errors that no entry in expectedErrors covers:`,
+        ...unexpected,
+        expectedErrors.length > 0 ? `expected: ${expectedErrors.map(String).join(' | ')}` : 'this page expects no errors',
+      ].join('\n'),
+    ).toEqual([]);
+
+    if (expectedErrors.length > 0) {
+      expect(
+        errors.length,
+        `${pageUrl} names expected errors but reported none — expectedErrors is stale: ${expectedErrors.map(String).join(' | ')}`,
+      ).toBeGreaterThan(0);
+    }
+  });
 }
