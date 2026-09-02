@@ -41,6 +41,8 @@ for (const [key, value] of Object.entries(packageJsonOverride)) {
   }
 }
 
+assertEveryVersionResolved(outPackageJson);
+
 const releasePackageJsonPath = path.resolve(packageRoot, 'package.json');
 console.log('Write to', releasePackageJsonPath);
 fs.writeFileSync(releasePackageJsonPath, JSON.stringify(outPackageJson, null, 2));
@@ -68,6 +70,26 @@ function resolveDependencies(dependenciesSection) {
       }
     }
   }
+}
+
+// Every `catalog:` and `workspace:` specifier is a pnpm-internal reference that resolves
+// inside this workspace and nowhere else. One that reaches a published manifest makes the
+// package uninstallable for everyone, and nothing downstream catches it: the publish step
+// reads an exit code, not a warning. So the write is the last gate, and it refuses.
+function assertEveryVersionResolved(pkgJson) {
+  const unresolved = [];
+  for (const section of ['dependencies', 'peerDependencies', 'optionalDependencies']) {
+    for (const [name, version] of Object.entries(pkgJson[section] ?? {})) {
+      if (typeof version === 'string' && /^(catalog|workspace):/.test(version)) {
+        unresolved.push(`  ${section}.${name}: ${version}`);
+      }
+    }
+  }
+  if (unresolved.length === 0) return;
+  console.error('Unresolved version references in the generated package.json:');
+  console.error(unresolved.join('\n'));
+  console.error('A consumer cannot install these. Check the catalog blocks in pnpm-workspace.yaml.');
+  process.exit(1);
 }
 
 function loadPnpmCatalog() {

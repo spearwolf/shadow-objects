@@ -77,7 +77,6 @@ function publishPackage(dryRun = DRY_RUN) {
 }
 
 function preparePackageRoot() {
-  copyFile(path.resolve(workspaceRoot, '.npmrc'), path.resolve(packageRoot, '.npmrc'));
   copyFile(path.resolve(workspaceRoot, 'LICENSE'), path.resolve(packageRoot, 'LICENSE'));
   copyFile(path.resolve(projectRoot, 'CHANGELOG.md'), path.resolve(packageRoot, 'CHANGELOG.md'));
 

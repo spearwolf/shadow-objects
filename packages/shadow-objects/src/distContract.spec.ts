@@ -96,6 +96,26 @@ describe('the dist layout of @spearwolf/shadow-objects', () => {
     expect(Object.keys(pkg.dependencies ?? {}).sort()).toEqual(expectedPackageJsonShape.dependencyNames);
   });
 
+  it('no shipped dependency range is an unresolved workspace reference', () => {
+    const pkg = JSON.parse(readFileSync(distPackageJsonPath, 'utf8'));
+
+    // The check above deliberately holds no version range, because a range moves on every
+    // release. The *form* of a range does not: `catalog:` and `workspace:` are pnpm-internal
+    // references that resolve inside this workspace and nowhere else. One of them surviving
+    // into the published manifest makes the package uninstallable for every consumer, so this
+    // is an expectation that stays true across releases.
+    const unresolved: string[] = [];
+    for (const section of ['dependencies', 'peerDependencies', 'optionalDependencies']) {
+      for (const [name, range] of Object.entries(pkg[section] ?? {})) {
+        if (typeof range === 'string' && /^(catalog|workspace):/.test(range)) {
+          unresolved.push(`${section}.${name}: ${range}`);
+        }
+      }
+    }
+
+    expect(unresolved).toEqual([]);
+  });
+
   it('every entry point in dist/package.json resolves to an existing file', () => {
     const pkg = JSON.parse(readFileSync(distPackageJsonPath, 'utf8'));
 

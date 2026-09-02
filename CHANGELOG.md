@@ -4,9 +4,18 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-09-02 — an unresolved version reference stops the build, and the publish step drops the .npmrc copy
+
+`scripts/makePackageJson.mjs` refuses to write a published `package.json` that still carries a `catalog:` or `workspace:` specifier, and each package's dist-contract spec holds that promise for its own manifest.
+
+- **`scripts/makePackageJson.mjs`:** a new `assertEveryVersionResolved()` runs after the `package.override.json` overrides are applied and before the file is written. Any `catalog:` or `workspace:` value left in `dependencies`, `peerDependencies` or `optionalDependencies` at that point prints the offending entries and exits with code 1 instead of writing the manifest. The existing `console.warn` calls that name the missing catalog entry stay — they carry detail the new check cannot reconstruct from the result alone.
+- **`packages/shadow-objects/src/distContract.spec.ts`, `packages/shae-offscreen-canvas/src/distContract.spec.js`:** a new case asserts that no `dependencies`, `peerDependencies` or `optionalDependencies` entry in the published manifest starts with `catalog:` or `workspace:`. The case checks the *form* of a range, not a concrete value, so it stays true across releases.
+- **`scripts/publishNpmPkg.mjs`:** `preparePackageRoot()` copies `LICENSE`, `CHANGELOG.md` and a `README` into the package root. Registry credentials reach the script exclusively through the environment — OIDC on a CI runner, `NODE_AUTH_TOKEN` or `NPM_TOKEN` locally — with no `.npmrc` file involved.
+- **`CLAUDE.md`:** the `pnpm 11 specifics` paragraph and the build-pipeline notes for `scripts/makePackageJson.mjs` say the above.
+
 ## 2026-09-02 — every package is type-checked and cleaned, and the Node floor is one number
 
-`turbo run typecheck` covers all four workspace packages, and `pnpm clean` removes the `coverage/` directory in each of the three packages that writes one. The Node version floor is stated once and repeated identically everywhere it is repeated.
+`turbo run typecheck` covers all four workspace packages, and `pnpm clean` removes the `coverage/` directory in each of the three packages that write one. The Node version floor is stated once and repeated identically everywhere it is repeated.
 
 - **`packages/shae-offscreen-canvas/tsconfig.json` (new):** checks `src/**` (excluding `*.spec.js`) as JavaScript with JSDoc annotations, under the root `tsconfig.json` with `noImplicitAny`, `strictNullChecks`, `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` turned off. The package ships no type annotations for its consumers — that stays out of scope — so this only catches a drift against `@spearwolf/shadow-objects` or `three` at review time. `package.json` gets a `typecheck` script; `src/elements/ShaeOffscreenCanvasElement.js` and `src/shadow-objects/ThreeRenderView.js` get JSDoc casts at the handful of spots the relaxed config still flags.
 - **`packages/shadow-objects-testing/tsconfig.json` (new):** checks `src/**` at the root's full strictness — the four helpers needed nine `@param`/`@type` annotations, nothing more. `test/**` stays unchecked; typing 30 files of Chai assertions against DOM elements is its own project. `package.json` gets `typecheck` and `clean` (`rimraf coverage`) scripts.
