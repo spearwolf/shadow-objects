@@ -1,4 +1,4 @@
-import {exec, execSync} from 'node:child_process';
+import {execFile, execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -33,7 +33,9 @@ if (pkgJson.version.endsWith('-dev')) {
   process.exit(0);
 }
 
-exec(`npm show ${pkgJson.name} versions --json`, (error, stdout, stderr) => {
+// npm receives its arguments as an array. No shell parses this call, so no character in the
+// package name can be read as syntax.
+execFile('npm', ['show', pkgJson.name, 'versions', '--json'], (error, stdout, stderr) => {
   if (!error) {
     const versions = JSON.parse(stdout);
     console.log('already published versions: ---');
@@ -49,7 +51,7 @@ exec(`npm show ${pkgJson.name} versions --json`, (error, stdout, stderr) => {
     console.log('oh it looks like this is the first time to publish the package :)');
     publishPackage();
   } else {
-    console.error(`exec() panic: ${stderr}`);
+    console.error(`npm show panic: ${stderr || error.message}`);
     process.exit(1);
   }
 });
@@ -71,7 +73,7 @@ function publishPackage(dryRun = DRY_RUN) {
 
   // Provenance attestations come for free with trusted publishing; npm generates them
   // without --provenance as long as the package.json carries a `repository` field.
-  execSync(`npm publish --access public${dryRun ? ' --dry-run' : ''}`, {cwd: packageRoot, stdio: 'inherit'});
+  execFileSync('npm', ['publish', '--access', 'public', ...(dryRun ? ['--dry-run'] : [])], {cwd: packageRoot, stdio: 'inherit'});
 
   process.exit(0);
 }

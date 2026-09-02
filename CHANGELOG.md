@@ -4,6 +4,13 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-09-02 — the publish step calls npm with an argument array, and the ci script is named where it is reachable
+
+`scripts/publishNpmPkg.mjs` passes npm its arguments as an array instead of a command line assembled for a shell, and `CLAUDE.md` names `pnpm run ci` in the command table alongside the two script names pnpm claims for itself.
+
+- **`scripts/publishNpmPkg.mjs`:** `execFile` and `execFileSync` replace `exec` and `execSync`. The package name and the publish flags reach npm as separate arguments, so no character in them is read as shell syntax, and a failed lookup reports the spawn error when the child wrote nothing to stderr.
+- **`CLAUDE.md`:** the command table carries a row for `pnpm run ci`, and the pnpm section names `ci` and `update` as the two script names reachable only through `pnpm run`.
+
 ## 2026-09-02 — the README image fits the width GitHub renders it at, and the architecture diagram has a place
 
 The infographic above the root README is sized and compressed for the width GitHub actually renders it at, and the core package's architecture diagram is embedded in its documentation, where a reader looking at "The Big Picture" sees it.
@@ -221,7 +228,7 @@ A scheduled workflow asks the registry once a week whether the dependency tree c
 - **`scripts/mergeCoverage.mjs`:** merges the raw v8 coverage of all three vitest suites
   (`packages/shadow-objects`, `packages/shadow-objects-testing`, `packages/shae-offscreen-canvas`)
   into a single report under `coverage/` in the repository root. `pnpm test`, `pnpm test:ci`,
-  `pnpm cbt` and `pnpm ci` run it right after the suites finish.
+  `pnpm cbt` and `pnpm run ci` run it right after the suites finish.
 - **`packages/shadow-objects-testing/vitest.config.ts`:** the suite now runs with `--coverage`.
   `@spearwolf/shadow-objects` is excluded from `optimizeDeps` so coverage attributes to
   individual modules instead of a pre-bundled dependency chunk, and `coverage.allowExternal`
@@ -642,7 +649,7 @@ The last three `Deployment` runs died after 25 seconds with `ENEEDAUTH`, so `@sp
 ## 2026-08-14 — strictNullChecks
 
 - **`tsconfig.json`:** `strictNullChecks` is `true`, alongside the other `strict`-family flags the file spells out.
-- **`packages/shadow-objects-e2e/package.json`:** new `typecheck` script. Its TypeScript sources and Playwright tests inherit the root config but had no task running `tsc` over them, so `pnpm typecheck` now covers both TypeScript packages instead of one, and `pnpm ci` runs the same check for the e2e package without pulling its Playwright suite into the `ci` job.
+- **`packages/shadow-objects-e2e/package.json`:** new `typecheck` script. Its TypeScript sources and Playwright tests inherit the root config but had no task running `tsc` over them, so `pnpm typecheck` now covers both TypeScript packages instead of one, and `pnpm run ci` runs the same check for the e2e package without pulling its Playwright suite into the `ci` job.
 - **`turbo.json`:** the `typecheck` task counts `test/**` and `tests/**` among its inputs — the e2e config type-checks its tests, and a change there has to invalidate the cache.
 - `shae-offscreen-canvas` and `shadow-objects-testing` needed no change: their sources are `.js`, pulled in via `allowJs` but not checked.
 
