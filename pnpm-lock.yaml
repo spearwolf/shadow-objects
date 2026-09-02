@@ -19,8 +19,8 @@ catalogs:
       specifier: ^6.2.0
       version: 6.2.0
     '@spearwolf/signalize':
-      specifier: 1.0.0-beta.1
-      version: 1.0.0-beta.1
+      specifier: ^1.0.0
+      version: 1.0.0
     '@types/node':
       specifier: ^24.10.12
       version: 24.13.3
@@ -136,7 +136,7 @@ importers:
         version: 6.2.0
       '@spearwolf/signalize':
         specifier: 'catalog:'
-        version: 1.0.0-beta.1(@spearwolf/eventize@6.2.0)
+        version: 1.0.0(@spearwolf/eventize@6.2.0)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -217,7 +217,7 @@ importers:
         version: link:../shadow-objects
       '@spearwolf/signalize':
         specifier: 'catalog:'
-        version: 1.0.0-beta.1(@spearwolf/eventize@6.2.0)
+        version: 1.0.0(@spearwolf/eventize@6.2.0)
     devDependencies:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
@@ -668,8 +668,8 @@ packages:
     resolution: {integrity: sha512-Tqc90j9w87+4HlOEnmNApT/6eyy+laXKRG+C/ZQJeCDb8T3kPSnTIwA/Uet3RM+qeYOw5kq/ZMqb5AYkIN3mzw==}
     engines: {node: '>=18.16'}
 
-  '@spearwolf/signalize@1.0.0-beta.1':
-    resolution: {integrity: sha512-KsvtIsh9XtAsWWzSRfup0PXd8Rk/LN+EvdavQmA2I95/SHWa2neq4YvIiYEyjVqXaEk3KQ3AGc7kdNuOxZCppQ==}
+  '@spearwolf/signalize@1.0.0':
+    resolution: {integrity: sha512-hZ5IN0GoU7XKO5OOzUXnscdKxZaEg1HJa6UUg02VQhtbAJa8qsODsAf5U8g9YtXl9d0TRLJ2a4gCzE2107NPQA==}
     engines: {node: '>=22'}
     peerDependencies:
       '@spearwolf/eventize': ^6.0.0
@@ -1763,7 +1763,7 @@ snapshots:
 
   '@spearwolf/eventize@6.2.0': {}
 
-  '@spearwolf/signalize@1.0.0-beta.1(@spearwolf/eventize@6.2.0)':
+  '@spearwolf/signalize@1.0.0(@spearwolf/eventize@6.2.0)':
     dependencies:
       '@spearwolf/eventize': 6.2.0
 

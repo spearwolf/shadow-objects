@@ -28,7 +28,7 @@ catalog:
   # so two majors of either in one tree share a slot and throw at the boundary.
   # Keep the ranges pinned to one major each and check `pnpm why` after a bump.
   '@spearwolf/eventize': ^6.2.0
-  '@spearwolf/signalize': 1.0.0-beta.1
+  '@spearwolf/signalize': ^1.0.0
   three: ^0.185.1
 
   # --- typescript ---
@@ -113,5 +113,4 @@ catalogs:
 # install; the entries are version-exact and can go once the releases are a
 # day old.
 minimumReleaseAgeExclude:
-  - '@spearwolf/eventize@6.2.0'
-  - '@spearwolf/signalize@1.0.0-beta.1'
+  - '@spearwolf/signalize@1.0.0'

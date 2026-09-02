@@ -28,10 +28,11 @@ its own -- the reactivity primitives reach a Shadow Object as arguments. eventiz
 does, as soon as your code imports one of its free functions -- in the view or in
 a Shadow Object -- because that surface is reached through them directly, and
 under an isolated `node_modules` a transitive package is not a resolvable import
-path. Install it against the range declared here. The sharp edge is a direct
-`npm install @spearwolf/signalize`: its `latest` tag points at the 0.x line for
-as long as 1.0 is in beta, and that line is disjoint from the range declared
-here. `npm ls @spearwolf/signalize` or `pnpm why @spearwolf/signalize` says
+path. Install it against the range declared here. A direct
+`npm install @spearwolf/signalize` lands inside the declared `^1.0.0` today,
+because that is where the `latest` tag of signalize sits -- and it stops landing
+there the day a signalize 2.0 takes the tag over, with nothing in your manifest
+changing. `npm ls @spearwolf/signalize` or `pnpm why @spearwolf/signalize` says
 whether it stayed at one copy.
 
 ## Usage Example

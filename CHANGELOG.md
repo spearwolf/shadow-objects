@@ -4,6 +4,14 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-09-02 — signalize leaves the beta, and its catalog entry becomes a range
+
+`@spearwolf/signalize@1.0.0` is out, and the version-exact pin the beta was held under ends with it. The entry is a `^1.0.0` range now, the way `@spearwolf/eventize` has been a `^6.2.0` range all along. eventize stays where it is — `6.2.0` is its current release, and signalize 1.0.0 peers on `^6.0.0`, so the pair still resolves to one copy of each. Verified with `pnpm why -r`: a single `@spearwolf/signalize@1.0.0` and a single `@spearwolf/eventize@6.2.0` across all five workspace projects. What the final release changes for the published packages is in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md) and [`packages/shae-offscreen-canvas/CHANGELOG.md`](packages/shae-offscreen-canvas/CHANGELOG.md).
+
+- **`pnpm-workspace.yaml` catalog:** `@spearwolf/signalize` `1.0.0-beta.1` → `^1.0.0`. The exact pin existed because `^1.0.0-beta.1` would have admitted the final release as well, and a beta is not a range to drift inside. That reason is spent: the final release is what the range now names, and a consumer of either published package follows the 1.x line from here.
+- **`minimumReleaseAgeExclude`** holds `@spearwolf/signalize@1.0.0` alone. The release is hours old and below the one-day cutoff pnpm 11 defaults `minimumReleaseAge` to; `@spearwolf/eventize@6.2.0` has aged past it since 2026-08-31 and its entry is gone. Both are first-party releases, published from this account, so the cooling-off buys nothing here and only blocks the install.
+- **Verified with `pnpm run ci`:** terminology check, build, typecheck, all suites except Playwright, merged coverage at 94.28 % statements, the e2e typecheck, and Biome with `--error-on-warnings`. `dist/bundle.js` comes out at 227.1 kB minified, 69.4 kB gzipped — 1.4 kB above the beta, which is recorded in the core package's changelog.
+
 ## 2026-09-02 — the build notes name how the worker is inlined, and the script table counts the coverage suites
 
 `CLAUDE.md` describes the bundle stage as the plugin performs it, and the root README's `pnpm test` row names the three vitest suites that write coverage and the merged report the run leaves at the repository root.
