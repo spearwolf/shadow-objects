@@ -487,7 +487,20 @@ export class ShaeEntElement extends ShaeElement {
       watchForRemovalFrom(parent, this, () => {
         // the watch ended when it fired, and the field says so before anything else runs
         this.#observedParentNode = undefined;
-        this.onParentChanged(this.getParentNodeForObserver(), parent);
+
+        const newParent = this.getParentNodeForObserver();
+
+        // an atomic move reports the removal even where it puts the element back under the node it
+        // came from — reordering among siblings is such a move, and nothing about the parent
+        // changed. A subclass reading the two arguments against each other would be told
+        // otherwise, so the report is left out. The watch fired and is gone all the same, and
+        // taking it out again is what stands in its place
+        if (newParent === parent) {
+          this.#observeParentNode();
+          return;
+        }
+
+        this.onParentChanged(newParent, parent);
       });
       // asked a second time rather than remembered from above: `watchForRemovalFrom` runs the
       // watchers this parent has come due for before it adds its own, and one of them is
@@ -575,8 +588,8 @@ export class ShaeEntElement extends ShaeElement {
     // this element holds. Leaving the context detaches the ViewComponent — it keeps everything on
     // it and can be taken back in — and promotes those entities to roots, so they have to look for
     // an ancestor again; this element is past answering by now, its listener came off a few lines
-    // above. An entity that leaves the tree
-    // along with this one is not affected: it turns the message down while disconnected
+    // above. An entity that leaves the tree along with this one is not affected: it turns the
+    // message down while disconnected
     const vc = this.viewComponent;
     if (vc != null) {
       this.componentContext?.dispatchReRequestParentChildren(vc);

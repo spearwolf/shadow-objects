@@ -321,7 +321,7 @@ export class ShadowObjectCreationScope {
     // may take a subscription or create a signal, which books back into the second. Each of them gets
     // its turn here, and the teardown ends when neither set has anything left to run. A pass skips
     // what has already run, so a callback that hands itself in again is not called twice; one that
-    // hands in a new callback every time does not terminate, and never did.
+    // hands in a new callback every time does not terminate.
     const alreadyRun = new Set<() => any>();
 
     const runCleanups = (callbacks: Set<() => any>, step: string): boolean => {

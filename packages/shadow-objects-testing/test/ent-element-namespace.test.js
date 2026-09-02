@@ -353,6 +353,51 @@ describe('shae-ent and a namespace change', () => {
     expect(mover.entParentNode?.id, 'and back again').to.equal('a-n9');
   });
 
+  it('says nothing about a move that puts the element back under the node it came from', async () => {
+    // `moveBefore` is the only move that reaches the observer without a lifecycle callback of
+    // its own, and a reorder among siblings is the one that ends where it started: the record
+    // names the element as removed, and the node it hangs on once the record comes due is the
+    // node it was registered on
+    customElements.define(
+      'move-ent-n9d',
+      class extends ShaeEntElement {
+        parentChanges = [];
+        connectedMoveCallback() {}
+        onParentChanged(newParent, oldParent) {
+          this.parentChanges.push([newParent?.id, oldParent?.id]);
+          super.onParentChanged(newParent, oldParent);
+        }
+      },
+    );
+
+    const container = mount(
+      '<shae-ent id="a-n9d" token="a">' +
+        '<span id="pin-n9d"></span>' +
+        '<move-ent-n9d id="mover-n9d" token="mover"></move-ent-n9d>' +
+        '</shae-ent>' +
+        '<shae-ent id="c-n9d" token="c"></shae-ent>',
+    );
+    await customElements.whenDefined('move-ent-n9d');
+
+    const a = container.querySelector('#a-n9d');
+    const c = container.querySelector('#c-n9d');
+    const mover = container.querySelector('#mover-n9d');
+
+    a.moveBefore(mover, container.querySelector('#pin-n9d'));
+    await nextTask();
+
+    expect(mover.parentChanges, 'a reorder among siblings is no parent change').to.deep.equal([]);
+    expect(mover.entParentNode?.id, 'and the element hangs where it hung').to.equal('a-n9d');
+
+    // the observation is what the suppressed report would otherwise have renewed — without it
+    // the next move goes unnoticed
+    c.moveBefore(mover, null);
+    await nextTask();
+
+    expect(mover.parentChanges, 'a move to another node is reported once').to.deep.equal([['c-n9d', 'a-n9d']]);
+    expect(mover.entParentNode?.id).to.equal('c-n9d');
+  });
+
   it('the parent observer follows an element moved while its own registration was running', async () => {
     // A registration runs foreign code before it takes its own watcher: the records the parent has
     // come due for are delivered first, and one of those watchers can be an `onParentChanged`

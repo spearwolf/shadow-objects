@@ -33,7 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > changes its `ns` at runtime takes its entity into the other environment and re-binds both its own
 > parent and the entities that hung on it, where the hierarchy used to stay as it was; a subclass
 > with `connectedMoveCallback` keeps being watched after the first `moveBefore()` instead of only
-> until it; an entity left behind when the element it hung on leaves the tree climbs to the next
+> until it, and hears nothing at all about a `moveBefore()` that puts it back under the node it
+> came from; an entity left behind when the element it hung on leaves the tree climbs to the next
 > ancestor instead of pointing at an element that is gone; an element whose `ns` was written
 > before it entered the tree becomes an entity
 > instead of staying inert, which adds entities an application never saw arrive; a `<shae-prop>`
@@ -317,6 +318,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Behavior (view):** a `CreateEntities` change trail entry leaves the `properties` field off where filtering its pending values for `undefined` leaves nothing — an absent field and an empty array say the same thing, and the entry now carries the shorter one. The case arises when a property is set back to `undefined` while the create entry that would carry it is still unconfirmed.
 - **Behavior (view):** `ShadowEnv.ns$` carries the namespace of the `ComponentContext` an environment observes. The `view` setter writes it, so it is the same name `ShadowEnv.get()` finds the environment under, unless another environment has since taken that namespace over; a `view` that moves to another namespace, is cleared, or goes with a `destroy()`, takes the signal along. A consumer that reads or builds an effect on this slot used to find `undefined` for the whole lifetime of an environment; it now reads the namespace, and a fresh one the moment `view` moves. Named in `docs/api-reference.md`.
 - **Behavior (logging):** the shared `ConsoleLogger.sharedConfig.enable` switch, which gates every `debug`, `info` and `warn` line the library reports on its own, turns on for a page whose hostname is exactly `localhost`, `127.0.0.1` or `[::1]` — a name that merely carries one of these as a prefix, such as `localhost.example.com`, does not match.
+- **Behavior (elements):** `<shae-ent>` reports a parent change only where the node it left and the node it landed on are two different nodes; an atomic `moveBefore()` that reorders the element within the same parent no longer reaches an `onParentChanged` override, and the observation of that parent node stands unchanged afterward.
 
 ### Bugfixes
 
