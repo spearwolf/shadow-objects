@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > Build-system, monorepo, lint/format, and dev-workflow changes that don't affect the shipped package are tracked in the top-level [`CHANGELOG.md`](https://github.com/spearwolf/shadow-objects/blob/main/CHANGELOG.md).
 
-## [Unreleased]
+## [0.34.0] - 2026-09-02
 
-> **Next release: minor.** The package is below `1.0.0`, so the accumulated breaking changes
+> **Minor, not major.** The package is below `1.0.0`, so the accumulated breaking changes
 > bump the minor position — `0.33.0` → `0.34.0`.
 
 ### What Changes for Existing Code
