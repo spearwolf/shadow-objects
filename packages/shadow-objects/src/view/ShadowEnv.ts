@@ -11,7 +11,7 @@ import {signal} from '@spearwolf/signalize/decorators';
 import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {GlobalNS} from '../constants.js';
 import {createViewSnapshot} from '../inspect/createViewSnapshot.js';
-import type {EnvSnapshot, InspectRequest} from '../inspect/types.js';
+import type {EnvSnapshot, InspectRequest, KernelSnapshot} from '../inspect/types.js';
 import type {MessageToViewEvent} from '../shadow-objects.js';
 import type {ChangeTrailType, NamespaceType} from '../types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
@@ -51,6 +51,23 @@ const namespaceAsString = (ns: NamespaceType | undefined): string =>
 
 const errorInfo = (error: unknown): {name: string; message: string} =>
   error instanceof Error ? {name: error.name, message: error.message} : {name: 'Error', message: String(error)};
+
+/**
+ * A promise that rejects with the signal's reason the moment it aborts, and the way to unhook it.
+ *
+ * The abort is raced rather than left to the callee: a proxy that takes the signal and ignores it
+ * would otherwise leave the caller pending for as long as it stays silent.
+ */
+const abortRace = (signal: AbortSignal): {promise: Promise<never>; dispose: () => void} => {
+  let onAbort!: () => void;
+  const promise = new Promise<never>((_, reject) => {
+    onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, {once: true});
+  });
+  // an abort that arrives between the race settling and the listener going is nobody's rejection
+  promise.catch(() => {});
+  return {promise, dispose: () => signal.removeEventListener('abort', onAbort)};
+};
 
 const proxyKind = (proxy: IShadowObjectEnvProxy | undefined): EnvSnapshot['kind'] => {
   if (proxy === undefined) return 'none';
@@ -406,7 +423,8 @@ export class ShadowEnv {
    * absent. Where both halves fail, `error` carries the View's reason. A proxy that is not ready yet
    * is not an error either: `state.proxyReady` says so, and `kernel` is simply absent. It rejects
    * only for a reason of the caller's: an aborted signal, or an environment that is destroyed
-   * before or while the proxy answers.
+   * before or while the proxy answers. The signal is raced here as well, so an abort settles the
+   * call whether or not the proxy honours the signal it was handed.
    *
    * A caller that wants the View and the Kernel to agree after its own change awaits
    * {@link ShadowEnv.syncWait} first; the View snapshot reads the committed Component Memory,
@@ -441,14 +459,21 @@ export class ShadowEnv {
       return snapshot;
     }
 
+    // the race is what settles a caller whose environment is destroyed, or whose signal aborts,
+    // while the proxy answers
+    const aborted = signal === undefined ? undefined : abortRace(signal);
+    const contenders: Promise<KernelSnapshot>[] = [proxy.inspect(request, signal), this.#destroyedSignal()];
+    if (aborted !== undefined) contenders.push(aborted.promise);
+
     try {
-      // the race is what settles a caller whose environment is destroyed while the proxy answers
-      snapshot.kernel = await Promise.race([proxy.inspect(request, signal), this.#destroyedSignal()]);
+      snapshot.kernel = await Promise.race(contenders);
     } catch (error) {
       if (this.#isDestroyed) throw new ShadowEnvDestroyedError();
       if (signal?.aborted) throw signal.reason;
       // a View that already failed keeps the field: it is the half the caller can still act on
       if (snapshot.error === undefined) snapshot.error = errorInfo(error);
+    } finally {
+      aborted?.dispose();
     }
 
     return snapshot;

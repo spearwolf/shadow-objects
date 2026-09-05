@@ -1779,6 +1779,21 @@ describe('ShadowEnv', () => {
       env.destroy();
     });
 
+    it('rejects with the reason of a signal aborted while the proxy is still answering', async () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get();
+      env.envProxy = fakeProxy({inspect: () => new Promise(() => {})});
+      await env.ready();
+
+      const controller = new AbortController();
+      const pending = env.inspect({}, controller.signal);
+      controller.abort(new Error('stop now'));
+
+      await expect(withTimeout(pending)).rejects.toThrow('stop now');
+
+      env.destroy();
+    });
+
     it('rejects when the environment is destroyed while the proxy is still answering', async () => {
       const env = new ShadowEnv();
       env.view = ComponentContext.get();
