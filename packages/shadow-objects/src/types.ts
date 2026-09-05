@@ -126,7 +126,8 @@ export interface InspectEvent {
  * The worker's answer to an {@link InspectEvent}: the snapshot, or the two fields of a throw that
  * survive structured cloning -- see {@link ImportedModuleEvent.errorName}. Exactly one of
  * `snapshot` and `error` is set by the router; a reply carrying neither is rejected by the view
- * side rather than read through.
+ * side rather than read through. `serial` is what the request carried; `RemoteWorkerEnv` always
+ * sends one, and matches the answer by it.
  */
 export interface InspectedEvent {
   type: typeof Inspected;

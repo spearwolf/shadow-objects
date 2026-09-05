@@ -163,6 +163,17 @@ describe('RemoteWorkerEnv', () => {
       await expectWorkerFailedRejection(pending);
     });
 
+    // the composite signal keeps the failure side: without it a caller that passed a signal
+    // would sit out its inspectTimeout on every worker crash
+    it('rejects a pending inspect that carries a caller signal when the worker fails', async () => {
+      const {env, worker} = await startEnv();
+
+      const pending = env.inspect({}, new AbortController().signal);
+      worker.fail();
+
+      await expectWorkerFailedRejection(pending);
+    });
+
     it('rejects a pending importScript instead of waiting for the configure timeout', async () => {
       const {env, worker} = await startEnv();
 
@@ -1309,7 +1320,7 @@ describe('RemoteWorkerEnv', () => {
       }
     });
 
-    // The rule is the same for all four keys, so one key stands in for them -- and it is the
+    // The rule is the same for all five keys, so one key stands in for them -- and it is the
     // teardown, because that is where a refused value has teeth: nothing but the timeout gets
     // the worker terminated once the acknowledgement stays away.
     it.each([0, Infinity, -1, NaN, 'nope'])('refuse %s and report it, and the constant stays', (value) => {
@@ -1368,7 +1379,7 @@ describe('RemoteWorkerEnv', () => {
   });
 
   describe('the property slots that hold no setter', () => {
-    it('refuses an assignment to timeouts and keeps the four values it resolved', () => {
+    it('refuses an assignment to timeouts and keeps the five values it resolved', () => {
       const env = new RemoteWorkerEnv({loadTimeout: 1234});
 
       expect(() => {
@@ -1377,6 +1388,7 @@ describe('RemoteWorkerEnv', () => {
           configureTimeout: 1,
           changeTrailTimeout: 1,
           destroyTimeout: 1,
+          inspectTimeout: 1,
         };
       }).toThrow(TypeError);
 

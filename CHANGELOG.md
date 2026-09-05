@@ -4,6 +4,13 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-09-05 — the e2e suite gains a page for inspecting a worker environment, and the integration suite one for a local one
+
+Phase 2 of the inspection proposal (`docs/proposals/web-mcp-shadow-envs.md`, §16) lands in `@spearwolf/shadow-objects`; what it changes for the package is in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md). The two private test packages grow with it.
+
+- **`packages/shadow-objects-e2e`:** `pages/inspect-worker-env.html` drives `ShadowEnv.inspect()` over a real worker in Chromium, Firefox and WebKit; `pages/shae-worker.html` carries the fifth timeout attribute, `inspect-timeout`. `TEST-PLAN.md` and `README.md`: the case counts stand at 247 per project, 741 overall.
+- **`packages/shadow-objects-testing`:** `test/inspect-local-env.test.js` inspects a local environment built from markup in real Chromium — `<shae-prop>` values, View/Kernel agreement, and the `element` selector paths.
+
 ## 2026-09-02 — signalize leaves the beta, and its catalog entry becomes a range
 
 `@spearwolf/signalize@1.0.0` is out, and the version-exact pin the beta was held under ends with it. The entry is a `^1.0.0` range now, the way `@spearwolf/eventize` has been a `^6.2.0` range all along. eventize stays where it is — `6.2.0` is its current release, and signalize 1.0.0 peers on `^6.0.0`, so the pair still resolves to one copy of each. Verified with `pnpm why -r`: a single `@spearwolf/signalize@1.0.0` and a single `@spearwolf/eventize@6.2.0` across all five workspace projects. What the final release changes for the published packages is in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md) and [`packages/shae-offscreen-canvas/CHANGELOG.md`](packages/shae-offscreen-canvas/CHANGELOG.md).

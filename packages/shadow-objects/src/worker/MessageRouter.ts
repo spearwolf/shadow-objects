@@ -32,7 +32,7 @@ interface ConfigurePayloadData {
 
 /**
  * The teardown request carries nothing but its own type: there is no field a sender could vary,
- * and the router reads none. Named all the same -- the three routes then read alike, and a
+ * and the router reads none. Named all the same -- the four routes then read alike, and a
  * payload that says which message it is says more than one that says nothing at all.
  */
 interface DestroyPayloadData {
@@ -59,7 +59,7 @@ export const isReadableMessageData = (data: unknown): boolean => typeof data ===
  * `message` and `name` can be getters of the thrown value's own making. A value that throws
  * from there -- an object whose `toString()` fails, one with no prototype at all -- must not
  * take the answer with it: the caller in the view is waiting on a reply, and without one it
- * sits out its `configureTimeout` or `changeTrailTimeout` and learns nothing about why.
+ * sits out its `configureTimeout`, `changeTrailTimeout` or `inspectTimeout` and learns nothing about why.
  */
 const describeError = (error: unknown): {error: string; errorName?: string} => {
   try {
@@ -68,8 +68,8 @@ const describeError = (error: unknown): {error: string; errorName?: string} => {
       : {error: String(error) || 'unknown error'};
   } catch {
     // No name goes with it: whatever the value would have said about itself is exactly what
-    // could not be read. The throw is already on the console -- both callers log it before
-    // they ask for a description.
+    // could not be read. The throw is already on the console -- every caller logs it before
+    // it asks for a description.
     return {error: 'an error that cannot be described'};
   }
 };

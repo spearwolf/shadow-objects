@@ -28,13 +28,13 @@ export const ContextLost = 'contextLost';
 
 export const Configure = 'configure';
 export const ChangeTrail = 'changeTrail';
+export const Inspect = 'inspect';
 export const Destroy = 'destroy';
 
 export const Loaded = 'loaded';
 export const AppliedChangeTrail = 'appliedChangeTrail';
 export const ImportedModule = 'importedModule';
 export const Destroyed = 'destroyed';
-export const Inspect = 'inspect';
 export const Inspected = 'inspected';
 
 /**
