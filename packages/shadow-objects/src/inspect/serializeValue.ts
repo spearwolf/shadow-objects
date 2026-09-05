@@ -38,8 +38,9 @@ const errorEntry = (error: unknown): SerializedValue => ({
 const TRUNCATED_KEY = '$truncated';
 
 /**
- * Turns any value into plain, JSON-safe data under a set of limits. Never throws: a getter that
- * throws while it is read becomes an error entry in place of the value.
+ * Turns any value into plain, JSON-safe data under a set of limits. Never throws, for any value: a
+ * getter that throws while it is read, a revoked proxy, a trap that refuses -- whatever inspecting a
+ * value costs, the throw becomes an error entry in place of the value.
  *
  * The rules and their order are the ones spec §7 lists. Cycles are detected along the current
  * path, so a sub-object shared between two keys appears twice rather than as `$circular`.
@@ -66,12 +67,23 @@ class Serializer {
       case 'symbol':
         return val.description === undefined ? {$type: 'symbol'} : {$type: 'symbol', description: val.description};
       case 'function':
-        if (isSignal(val)) return this.signal(val, depth, path);
-        return {$type: 'function', name: val.name};
+        // a hostile object answers `isSignal` and even `name` with a throw; the entry takes its place
+        try {
+          if (isSignal(val)) return this.signal(val, depth, path);
+          return {$type: 'function', name: val.name};
+        } catch (error) {
+          return errorEntry(error);
+        }
       case 'object':
         if (val === null) return null;
-        if (isSignal(val)) return this.signal(val, depth, path);
-        return this.object(val, depth, path);
+        // a revoked proxy, a throwing trap, an inherited getter -- anything a look at the value
+        // costs becomes the error entry in its place, so this function never throws
+        try {
+          if (isSignal(val)) return this.signal(val, depth, path);
+          return this.object(val, depth, path);
+        } catch (error) {
+          return errorEntry(error);
+        }
     }
   }
 
@@ -81,13 +93,21 @@ class Serializer {
   }
 
   private signal(sig: unknown, depth: number, path: Set<object>): SerializedValue {
-    let current: unknown;
+    // a signal holding itself, or a chain of signals closing on one, ends here instead of on the stack
+    if (path.has(sig as object)) return {$type: 'circular'};
+
+    path.add(sig as object);
     try {
-      current = readSignal(sig as Parameters<typeof readSignal>[0]);
-    } catch (error) {
-      return errorEntry(error);
+      let current: unknown;
+      try {
+        current = readSignal(sig as Parameters<typeof readSignal>[0]);
+      } catch (error) {
+        return errorEntry(error);
+      }
+      return {$type: 'signal', value: this.serialize(current, depth, path)};
+    } finally {
+      path.delete(sig as object);
     }
-    return {$type: 'signal', value: this.serialize(current, depth, path)};
   }
 
   private object(val: object, depth: number, path: Set<object>): SerializedValue {

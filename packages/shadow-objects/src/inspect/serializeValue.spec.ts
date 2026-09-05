@@ -107,6 +107,31 @@ describe('serializeValue', () => {
     expect(serializeValue(hostile)).toEqual({bad: {$type: 'object', class: 'Error', preview: {message: 'no'}}, good: 1});
   });
 
+  it('survives a revoked proxy and a throwing trap', () => {
+    const {proxy, revoke} = Proxy.revocable({a: 1}, {});
+    revoke();
+    expect(serializeValue({p: proxy})).toEqual({
+      p: {$type: 'object', class: 'Error', preview: {message: expect.stringContaining('revoked')}},
+    });
+
+    const noKeys = new Proxy(
+      {},
+      {
+        ownKeys() {
+          throw new Error('no keys');
+        },
+      },
+    );
+    expect(serializeValue({p: noKeys})).toEqual({p: {$type: 'object', class: 'Error', preview: {message: 'no keys'}}});
+  });
+
+  it('marks a signal that holds itself as circular', () => {
+    const sig = createSignal<unknown>();
+    sig.set(sig);
+    expect(serializeValue(sig)).toEqual({$type: 'signal', value: {$type: 'circular'}});
+    sig.destroy();
+  });
+
   it('ships the defaults of the proposal', () => {
     expect(SerializeDefaults).toEqual({maxDepth: 3, maxArrayLength: 20, maxObjectEntries: 30, maxStringLength: 200});
   });
