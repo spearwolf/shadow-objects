@@ -7,11 +7,13 @@ import {
   Destroy,
   Destroyed,
   ImportedModule,
+  Inspect,
+  Inspected,
   MessageToView,
 } from '../constants.js';
 import {Kernel} from '../in-the-dark/Kernel.js';
 import {Registry} from '../in-the-dark/Registry.js';
-import type {IComponentChangeType} from '../types.js';
+import type {IComponentChangeType, InspectedEvent} from '../types.js';
 import {ConsoleLogger, type ConsoleLoggerConfig} from '../utils/ConsoleLogger.js';
 import {MessageRouter} from './MessageRouter.js';
 
@@ -494,6 +496,75 @@ describe('MessageRouter', () => {
         appliedCount: 0,
       });
       expect(error).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('inspection', () => {
+    const inspectMessage = (serial: number, request: Record<string, unknown> = {}) => message({type: Inspect, serial, request});
+
+    it('answers an inspection with a snapshot of the kernel, under the serial it came in on', () => {
+      const {posted, router} = setup();
+
+      router.route(changeTrailMessage(1, createEntity('a', 'root'), createEntity('b', 'leaf'), setParent('b', 'a')));
+      router.route(inspectMessage(7, {include: ['props']}));
+
+      expect(posted).toHaveLength(2);
+      const reply = posted[1]!.message as InspectedEvent;
+      expect(reply.type).toBe(Inspected);
+      expect(reply.serial).toBe(7);
+      expect(reply.error).toBeUndefined();
+      expect(reply.snapshot?.thread, 'happy-dom has no WorkerGlobalScope').toBe('main');
+      expect(reply.snapshot?.counts).toEqual({entities: 2, roots: 1, shadowObjects: 0});
+      expect(reply.snapshot?.roots.map((node) => [node.uuid, node.token])).toEqual([['a', 'root']]);
+      expect(reply.snapshot?.roots[0]?.children?.map((node) => node.uuid)).toEqual(['b']);
+      expect(reply.snapshot?.roots[0]?.shadowObjects, 'the request asked for props only').toBeUndefined();
+      expect(reply.snapshot?.registry, 'and for no registry').toBeUndefined();
+      expect(JSON.parse(JSON.stringify(reply)), 'the answer is plain data').toEqual(reply);
+    });
+
+    // The same queue as the change trails, so the picture is of the kernel between two of them.
+    it('reflects every change trail routed before the request and none routed after it', () => {
+      const {posted, router} = setup();
+
+      router.route(changeTrailMessage(1, createEntity('before')));
+      router.route(inspectMessage(1));
+      router.route(changeTrailMessage(2, createEntity('after')));
+
+      const reply = posted[1]!.message as InspectedEvent;
+      expect(reply.type).toBe(Inspected);
+      expect(reply.snapshot?.roots.map((node) => node.uuid)).toEqual(['before']);
+    });
+
+    // Without an answer the caller sits out its inspectTimeout and learns nothing about why.
+    it('answers a builder that throws with the error, under the same serial', () => {
+      const {kernel, posted, router} = setup();
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      vi.spyOn(kernel, 'traverseLevelOrderBFS').mockImplementation(() => {
+        throw new RangeError('the kernel is in no state to be walked');
+      });
+
+      router.route(inspectMessage(3));
+
+      expect(posted.map((entry) => entry.message)).toEqual([
+        {type: Inspected, serial: 3, error: 'the kernel is in no state to be walked', errorName: 'RangeError'},
+      ]);
+      expect(error).toHaveBeenCalledTimes(1);
+      expect(error.mock.calls[0]![2]).toBe('failed to inspect the kernel');
+    });
+
+    it('discards an inspection that arrives after the destroy', () => {
+      const {posted, router} = setup();
+      const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
+      ConsoleLogger.sharedConfig.enable = true;
+      ConsoleLogger.sharedConfig.debug = true;
+
+      router.route(message({type: Destroy}));
+      router.route(inspectMessage(4));
+
+      expect(posted.map((entry) => entry.message)).toEqual([{type: Destroyed}]);
+      expect(debug.mock.calls.filter((call) => call[2] === 'discarding a message that arrived after the teardown')).toHaveLength(
+        1,
+      );
     });
   });
 

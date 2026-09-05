@@ -7,12 +7,22 @@ import {
   Destroy,
   Destroyed,
   ImportedModule,
+  Inspect,
+  Inspected,
   MessageToView,
   ShadowObjectsExport,
 } from '../constants.js';
 import {importModule, missingShadowObjectsExportMessage} from '../in-the-dark/importModule.js';
 import {Kernel, type MessageToViewEvent} from '../in-the-dark/Kernel.js';
-import type {AppliedChangeTrailEvent, ImportedModuleEvent, ShadowObjectsModule, SyncEvent} from '../types.js';
+import {createKernelSnapshot} from '../inspect/createKernelSnapshot.js';
+import type {
+  AppliedChangeTrailEvent,
+  ImportedModuleEvent,
+  InspectEvent,
+  InspectedEvent,
+  ShadowObjectsModule,
+  SyncEvent,
+} from '../types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {toUrlString} from '../utils/toUrlString.js';
 
@@ -133,6 +143,10 @@ export class MessageRouter {
         this.#onChangeTrail(data);
         break;
 
+      case Inspect:
+        this.#onInspect(data);
+        break;
+
       case Destroy:
         this.#onDestroy(data);
         break;
@@ -206,6 +220,24 @@ export class MessageRouter {
 
     if (data.serial != null) {
       this.postMessage({type: AppliedChangeTrail, serial: data.serial} as AppliedChangeTrailEvent);
+    }
+  }
+
+  /**
+   * An inspection runs through the same queue as the change trails, so the snapshot reflects every
+   * trail routed before the request and none routed after it -- the one ordering guarantee
+   * `ShadowEnv.inspect()` documents. It changes nothing and exists only for its answer, so unlike a
+   * change trail it is answered whether or not the serial names a waiter; and a builder that throws
+   * is answered too, with the two fields of the throw that survive the wire -- without a reply the
+   * caller would sit out its `inspectTimeout` and learn nothing about why.
+   */
+  #onInspect(data: InspectEvent) {
+    try {
+      const snapshot = createKernelSnapshot(this.kernel, data.request);
+      this.postMessage({type: Inspected, serial: data.serial, snapshot} as InspectedEvent);
+    } catch (error) {
+      this.logger.error('failed to inspect the kernel', error);
+      this.postMessage({type: Inspected, serial: data.serial, ...describeError(error)} as InspectedEvent);
     }
   }
 
