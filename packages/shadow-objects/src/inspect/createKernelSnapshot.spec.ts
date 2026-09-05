@@ -6,7 +6,7 @@ import {ShadowObject} from '../in-the-dark/ShadowObject.js';
 import type {ShadowObjectCreationAPI} from '../types.js';
 import {generateUUID} from '../utils/generateUUID.js';
 import {createKernelSnapshot} from './createKernelSnapshot.js';
-import type {EntityNodeSnapshot} from './types.js';
+import type {EntityFilter, EntityNodeSnapshot} from './types.js';
 
 const nextMicrotask = () => new Promise<void>((resolve) => queueMicrotask(() => resolve()));
 const settle = async () => {
@@ -302,5 +302,96 @@ describe('createKernelSnapshot', () => {
     const snapshot = createKernelSnapshot(kernel);
     expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot);
     kernel.destroy();
+  });
+
+  describe('search', () => {
+    it('lists every entity the filter matches, with its token path, and carries no tree', async () => {
+      const {kernel, uuids} = await makeScene();
+
+      const snapshot = createKernelSnapshot(kernel, {filter: {token: 'consumer'}});
+
+      expect(snapshot.roots).toEqual([]);
+      expect(snapshot.truncation).toBeUndefined();
+      expect(snapshot.counts.entities, 'the counts still describe the whole kernel').toBe(4);
+      expect(snapshot.search).toEqual({
+        total: 2,
+        matches: [
+          {uuid: uuids.child, token: 'consumer', path: ['provider', 'consumer']},
+          {uuid: uuids.grandchild, token: 'consumer', path: ['provider', 'consumer', 'consumer']},
+        ],
+      });
+
+      kernel.destroy();
+    });
+
+    it('matches on a property name, a shadow object, a context name, and all of them at once', async () => {
+      const {kernel, uuids} = await makeScene();
+      const found = (filter: EntityFilter) => createKernelSnapshot(kernel, {filter}).search?.matches.map((m) => m.uuid);
+
+      expect(found({propName: 'speed'})).toEqual([uuids.child]);
+      expect(found({shadowObject: 'Lonely'})).toEqual([uuids.lonely]);
+      expect(found({contextName: 'clock'}), 'a used global context counts').toEqual([uuids.lonely]);
+      expect(found({contextName: 'theme'}), 'provided and used alike').toEqual([uuids.root, uuids.child, uuids.grandchild]);
+      expect(found({token: 'consumer', contextName: 'theme', propName: 'speed'})).toEqual([uuids.child]);
+      expect(found({token: 'nobody'})).toEqual([]);
+      expect(found({}), 'an empty filter matches everything').toHaveLength(4);
+
+      kernel.destroy();
+    });
+
+    it('keeps the total past the limit and cuts the list', async () => {
+      const {kernel, uuids} = await makeScene();
+
+      const {search} = createKernelSnapshot(kernel, {filter: {token: 'consumer', limit: 1}});
+
+      expect(search).toEqual({total: 2, matches: [{uuid: uuids.child, token: 'consumer', path: ['provider', 'consumer']}]});
+
+      kernel.destroy();
+    });
+
+    it('ignores the walk limits and the include list', async () => {
+      const {kernel, uuids} = await makeScene();
+
+      const snapshot = createKernelSnapshot(kernel, {
+        filter: {propName: 'speed', shadowObject: 'Consumer', contextName: 'theme'},
+        maxDepth: 0,
+        maxNodes: 1,
+        include: [],
+        rootUuids: [uuids.lonely],
+      });
+
+      expect(snapshot.search).toEqual({
+        total: 1,
+        matches: [{uuid: uuids.child, token: 'consumer', path: ['provider', 'consumer']}],
+      });
+      expect(snapshot.truncation).toBeUndefined();
+      expect(snapshot.registry).toBeUndefined();
+
+      kernel.destroy();
+    });
+  });
+
+  describe('ancestors', () => {
+    it('names the chain above a requested root, top down', async () => {
+      const {kernel, uuids} = await makeScene();
+
+      const snapshot = createKernelSnapshot(kernel, {rootUuids: [uuids.grandchild]});
+
+      expect(snapshot.roots[0]?.ancestors).toEqual([
+        {uuid: uuids.root, token: 'provider'},
+        {uuid: uuids.child, token: 'consumer'},
+      ]);
+
+      kernel.destroy();
+    });
+
+    it('is empty for a requested root without a parent, and absent on a natural walk', async () => {
+      const {kernel, uuids} = await makeScene();
+
+      expect(createKernelSnapshot(kernel, {rootUuids: [uuids.root]}).roots[0]?.ancestors).toEqual([]);
+      expect(createKernelSnapshot(kernel).roots[0]?.ancestors).toBeUndefined();
+
+      kernel.destroy();
+    });
   });
 });

@@ -1,10 +1,11 @@
 import {resolveSerializeLimits} from './serializeValue.js';
-import type {InspectInclude, InspectRequest, SerializeLimits} from './types.js';
+import type {EntityFilter, InspectInclude, InspectRequest, SerializeLimits} from './types.js';
 
 export const InspectDefaults = Object.freeze({
   maxDepth: 4,
   maxDepthCap: 64,
   maxNodes: 250,
+  maxMatches: 50,
 });
 
 const AllIncludes: readonly InspectInclude[] = ['props', 'shadowObjects', 'contexts', 'registry'];
@@ -15,6 +16,16 @@ export interface NormalizedInspectRequest {
   maxDepth: number;
   maxNodes: number;
   limits: SerializeLimits;
+  filter: NormalizedEntityFilter | undefined;
+}
+
+/** A filter with every criterion present, `undefined` where the caller gave none, and the limit filled in. */
+export interface NormalizedEntityFilter {
+  token: string | undefined;
+  propName: string | undefined;
+  shadowObject: string | undefined;
+  contextName: string | undefined;
+  limit: number;
 }
 
 const clampDepth = (depth: number | undefined): number => {
@@ -29,6 +40,23 @@ const clampNodes = (nodes: number | undefined): number => {
   return Math.max(1, Math.floor(nodes));
 };
 
+const clampMatches = (limit: number | undefined): number => {
+  if (limit === undefined) return InspectDefaults.maxMatches;
+  if (!Number.isFinite(limit)) return Number.MAX_SAFE_INTEGER;
+  return Math.max(1, Math.floor(limit));
+};
+
+const normalizeFilter = (filter: EntityFilter | undefined): NormalizedEntityFilter | undefined =>
+  filter === undefined
+    ? undefined
+    : {
+        token: filter.token,
+        propName: filter.propName,
+        shadowObject: filter.shadowObject,
+        contextName: filter.contextName,
+        limit: clampMatches(filter.limit),
+      };
+
 /** Fills the defaults of spec §8.1 in and clamps what the caller gave. */
 export const normalizeInspectRequest = (request?: InspectRequest): NormalizedInspectRequest => ({
   include: new Set(request?.include ?? AllIncludes),
@@ -36,6 +64,7 @@ export const normalizeInspectRequest = (request?: InspectRequest): NormalizedIns
   maxDepth: clampDepth(request?.maxDepth),
   maxNodes: clampNodes(request?.maxNodes),
   limits: resolveSerializeLimits(request?.values),
+  filter: normalizeFilter(request?.filter),
 });
 
 /** Counts the nodes a walk may still emit. `take()` answers `false` once the budget is spent. */

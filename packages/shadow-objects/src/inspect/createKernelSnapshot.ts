@@ -3,13 +3,20 @@ import type {Entity} from '../in-the-dark/Entity.js';
 import type {Kernel} from '../in-the-dark/Kernel.js';
 import {Registry} from '../in-the-dark/Registry.js';
 import type {ShadowObjectDescription} from '../types.js';
-import {NodeBudget, type NormalizedInspectRequest, normalizeInspectRequest} from './normalizeInspectRequest.js';
+import {
+  NodeBudget,
+  type NormalizedEntityFilter,
+  type NormalizedInspectRequest,
+  normalizeInspectRequest,
+} from './normalizeInspectRequest.js';
 import {serializeValue} from './serializeValue.js';
 import type {
   ContextName,
   EntityContextSnapshot,
   EntityContextSource,
+  EntityMatch,
   EntityNodeSnapshot,
+  EntitySearchSnapshot,
   GlobalContextSnapshot,
   InspectRequest,
   KernelSnapshot,
@@ -61,19 +68,10 @@ class KernelSnapshotBuilder {
 
   build(): KernelSnapshot {
     const all = this.#kernel.traverseLevelOrderBFS();
-    const roots = this.#roots(all);
+    const {filter} = this.#req;
 
-    const nodes: EntityNodeSnapshot[] = [];
-    for (const root of roots) {
-      // a root reached through an earlier root's subtree (a back-edge into the root set) drops
-      // from the top level without a note, same as `getEntityGraph()`'s top-level `visited` check
-      if (this.#visited.has(root.uuid)) continue;
-      if (!this.#budget.take()) {
-        this.#noteBudget(undefined);
-        break;
-      }
-      nodes.push(this.#node(root, 0));
-    }
+    // a search reads every entity and ships none of the tree: the matches are the answer
+    const nodes = filter === undefined ? this.#walk(all) : [];
 
     const snapshot: KernelSnapshot = {
       takenAt: Date.now(),
@@ -91,8 +89,65 @@ class KernelSnapshotBuilder {
       snapshot.registry = {...this.#kernel.registry.describe(), isDefault: Registry.isDefault(this.#kernel.registry)};
     }
     if (this.#truncation.length > 0) snapshot.truncation = this.#truncation;
+    if (filter !== undefined) snapshot.search = this.#search(all, filter);
 
     return snapshot;
+  }
+
+  #walk(all: Entity[]): EntityNodeSnapshot[] {
+    const roots = this.#roots(all);
+    const named = this.#req.rootUuids !== undefined;
+
+    const nodes: EntityNodeSnapshot[] = [];
+    for (const root of roots) {
+      // a root reached through an earlier root's subtree (a back-edge into the root set) drops
+      // from the top level without a note, same as `getEntityGraph()`'s top-level `visited` check
+      if (this.#visited.has(root.uuid)) continue;
+      if (!this.#budget.take()) {
+        this.#noteBudget(undefined);
+        break;
+      }
+      const node = this.#node(root, 0);
+      // only a caller that named the root wants to know what is above it
+      if (named) node.ancestors = this.#ancestors(root);
+      nodes.push(node);
+    }
+    return nodes;
+  }
+
+  /** The chain above an entity, top down, without the entity itself. */
+  #ancestors(entity: Entity): {uuid: string; token: string}[] {
+    const chain: {uuid: string; token: string}[] = [];
+    // the parent chain is a chain: Entity.assertAttachableTo() refuses a parent that is a descendant
+    for (let ancestor = entity.parent; ancestor !== undefined; ancestor = ancestor.parent) {
+      chain.unshift({uuid: ancestor.uuid, token: this.#kernel.tokenOf(ancestor.uuid) ?? ''});
+    }
+    return chain;
+  }
+
+  #search(all: Entity[], filter: NormalizedEntityFilter): EntitySearchSnapshot {
+    const matches: EntityMatch[] = [];
+    let total = 0;
+    for (const entity of all) {
+      if (!this.#matches(entity, filter)) continue;
+      total++;
+      if (matches.length < filter.limit) {
+        const token = this.#kernel.tokenOf(entity.uuid) ?? '';
+        matches.push({uuid: entity.uuid, token, path: [...this.#ancestors(entity).map((a) => a.token), token]});
+      }
+    }
+    return {matches, total};
+  }
+
+  #matches(entity: Entity, filter: NormalizedEntityFilter): boolean {
+    const {token, propName, shadowObject, contextName} = filter;
+    if (token !== undefined && this.#kernel.tokenOf(entity.uuid) !== token) return false;
+    // a bare `useProperty()` call vivifies the signal without giving it a value -- that reader does
+    // not make the entity "carry" the property, so only a defined value counts as a match
+    if (propName !== undefined && !entity.propEntries().some(([key, val]) => key === propName && val !== undefined)) return false;
+    if (shadowObject !== undefined && !this.#describe(entity.uuid).some((d) => d.displayName === shadowObject)) return false;
+    if (contextName !== undefined && !entity.contextNames().includes(contextName)) return false;
+    return true;
   }
 
   #roots(all: Entity[]): Entity[] {

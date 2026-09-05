@@ -1461,12 +1461,13 @@ Over a worker the same call costs one round trip. The request travels to the wor
 | `maxDepth` | `4` | Tree depth below each root that is walked; a non-finite number reads as the cap, `64` |
 | `maxNodes` | `250` | Total nodes across the walk |
 | `values` | see below | `SerializeLimits` for every property and context value |
+| `filter` | none | Search instead of walk: `{token?, propName?, shadowObject?, contextName?, limit?}`. Every Entity that meets every given criterion is listed under `kernel.search`, and `roots` stays empty; `maxDepth`, `maxNodes` and `rootUuids` do not apply, `include` does not restrict what the search reads, and the View side ignores it. `limit` defaults to `50`; `total` counts every match regardless. A symbol context name cannot be named here |
 
-Both halves of the snapshot are cut by the same request. Where a limit cut the walk, `truncation` names the node and the reason (`'max-depth'`, `'max-nodes'`, `'unknown-root'`); `childCount` on a node whose `children` are absent still says how many there are, and `rootUuids` is the way to descend from there.
+Both halves of the snapshot are cut by the same request. Where a limit cut the walk, `truncation` names the node and the reason (`'max-depth'`, `'max-nodes'`, `'unknown-root'`); `childCount` on a node whose `children` are absent still says how many there are, and `rootUuids` is the way to descend from there. A node the request named in `rootUuids` carries `ancestors` -- the chain from the root down to its parent, top down, `[]` for a root -- so one call answers "where does this Entity sit"; a walk from the natural roots carries none.
 
 ##### `KernelSnapshot`
 
-`takenAt`, `thread` (`'main'` or `'worker'`), `counts`, `roots` (one `EntityNodeSnapshot` per Entity, the walk of [`getEntityGraph()`](#getentitygraph) with `omittedChildren` in the same shape), `globalContexts`, `registry` (the three maps with constructors reduced to display names, and `isDefault`), and `truncation`.
+`takenAt`, `thread` (`'main'` or `'worker'`), `counts`, `roots` (one `EntityNodeSnapshot` per Entity, the walk of [`getEntityGraph()`](#getentitygraph) with `omittedChildren` in the same shape), `globalContexts`, `registry` (the three maps with constructors reduced to display names, and `isDefault`), `truncation`, and -- when the request carried a `filter` -- `search`: `{matches: [{uuid, token, path}], total}`, where `path` is the token chain from the root down to the match, its own token last.
 
 An `EntityNodeSnapshot` carries `uuid`, `token`, `order`, `parentUuid`, `autoDestructionOnParentRemoval`, `childCount`, and per `include`:
 

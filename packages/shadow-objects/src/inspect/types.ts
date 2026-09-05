@@ -51,6 +51,44 @@ export interface InspectRequest {
   /** Total number of nodes across the walk. Default 250. */
   maxNodes?: number;
   values?: Partial<SerializeLimits>;
+  /**
+   * Search instead of walk: every Entity that meets the filter is listed under `search`, and
+   * `roots` stays empty. `maxDepth`, `maxNodes` and `rootUuids` do not apply to a search, and
+   * `include` does not restrict what it reads. The View side ignores it.
+   */
+  filter?: EntityFilter;
+}
+
+/**
+ * What an Entity has to meet to be listed by a search. Every given criterion must match; a filter
+ * without criteria matches every Entity. `contextName` takes a string name only -- a symbol name
+ * cannot be named from outside, and a symbol context is findable through the tree alone.
+ */
+export interface EntityFilter {
+  /** The Entity's token, exact. */
+  token?: string;
+  /** A property name the Entity carries. */
+  propName?: string;
+  /** The display name of a Shadow Object attached to the Entity. */
+  shadowObject?: string;
+  /** A string Entity Context name the Entity uses or provides. */
+  contextName?: string;
+  /** How many matches are carried. Default 50; `total` counts every match regardless. */
+  limit?: number;
+}
+
+export interface EntityMatch {
+  uuid: string;
+  token: string;
+  /** The token chain from the root down to this Entity, its own token last. */
+  path: string[];
+}
+
+/** The answer to a request that carried a `filter`. */
+export interface EntitySearchSnapshot {
+  matches: EntityMatch[];
+  /** How many Entities matched, before `limit`. */
+  total: number;
 }
 
 /** Where a limit of the request cut a walk short, and how to get the rest. */
@@ -126,6 +164,11 @@ export interface EntityNodeSnapshot {
   childCount: number;
   /** Same meaning and shape as in `getEntityGraph()`. */
   omittedChildren?: {uuid: string; reason: 'already-in-graph' | 'not-in-kernel'}[];
+  /**
+   * Set on a node the request named in `rootUuids`: the chain from the root down to this node's
+   * parent, top down, empty for a root. Absent on a walk from the natural roots.
+   */
+  ancestors?: {uuid: string; token: string}[];
 }
 
 export interface RegistrySnapshot extends RegistryDescription {
@@ -144,6 +187,8 @@ export interface KernelSnapshot {
   registry?: RegistrySnapshot;
   /** Set when a limit of the request cut the walk short. */
   truncation?: TruncationNote[];
+  /** Present when the request carried a `filter`; `roots` is empty then. */
+  search?: EntitySearchSnapshot;
 }
 
 // ---------------------------------------------------------------------------

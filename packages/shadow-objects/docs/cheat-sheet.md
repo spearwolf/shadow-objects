@@ -523,6 +523,10 @@ snapshot.kernel?.globalContexts;           // [{name, value, providers}]
 snapshot.kernel?.registry;                 // {tokens, routes, propRoutes, isDefault}
 snapshot.kernel?.truncation;               // where maxDepth / maxNodes cut the walk
 snapshot.kernel?.thread;                   // 'worker' when the picture was taken inside the worker
+const found = await env.inspect({filter: {token: 'enemy', propName: 'hp'}});
+found.kernel?.search;                      // {matches: [{uuid, token, path}], total} -- roots stay empty
+const one = await env.inspect({rootUuids: [uuid], maxDepth: 1});
+one.kernel?.roots[0]?.ancestors;           // [{uuid, token}] from the root down to the parent
 
 // inside the environment, without a ShadowEnv:
 import {createKernelSnapshot} from '@spearwolf/shadow-objects/shadow-objects.js';
