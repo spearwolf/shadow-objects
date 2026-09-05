@@ -30,7 +30,7 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
     // apart from any other instance — a custom registry handed to more than one environment is
     // cleared by the first one of them to be destroyed, same as the default registry would be
     // without this guard.
-    this.#usesDefaultRegistry = this.kernel.registry === Registry.get();
+    this.#usesDefaultRegistry = Registry.isDefault(this.kernel.registry);
 
     on(this.kernel, MessageToView, (message: MessageToViewEvent) => {
       const onMessageToView = (this as IShadowObjectEnvProxy).onMessageToView;

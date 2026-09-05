@@ -1,5 +1,6 @@
-import type {ShadowObjectConstructor} from '../types.js';
+import type {RegistryDescription, ShadowObjectConstructor} from '../types.js';
 import {appendTo} from '../utils/array-utils.js';
+import {getDisplayName} from './displayName.js';
 
 const toPropRoute = (route: string): undefined | {key: string; prop: string} => {
   const parts = route.split('@').map((part) => part.trim());
@@ -212,6 +213,37 @@ export class Registry {
 
   hasRoute(route: string): boolean {
     return this.#routes.has(route);
+  }
+
+  /** The three maps with constructors reduced to display names. Copies, in definition order. */
+  describe(): RegistryDescription {
+    const tokens: Record<string, string[]> = {};
+    for (const [token, constructors] of this.#registry) {
+      tokens[token] = constructors.map(getDisplayName);
+    }
+    const routes: Record<string, string[]> = {};
+    for (const [token, targets] of this.#routes) {
+      routes[token] = Array.from(targets);
+    }
+    const propRoutes: Record<string, string[]> = {};
+    for (const [key, targets] of this.#truthyPropRoutes) {
+      propRoutes[key] = Array.from(targets);
+    }
+    return {tokens, routes, propRoutes};
+  }
+
+  /** The tokens `construct` is defined under, in definition order. `[]` for a constructor this registry does not hold. */
+  tokensOf(construct: ShadowObjectConstructor): string[] {
+    const tokens: string[] = [];
+    for (const [token, constructors] of this.#registry) {
+      if (constructors.includes(construct)) tokens.push(token);
+    }
+    return tokens;
+  }
+
+  /** Whether `registry` is the default registry every environment of this thread shares. */
+  static isDefault(registry: Registry): boolean {
+    return registry === defaultRegistry;
   }
 
   clear() {

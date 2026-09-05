@@ -822,4 +822,41 @@ describe('ShadowObjectCreationScope', () => {
       kernel.destroy();
     });
   });
+
+  describe('describe()', () => {
+    it('lists the names the creation API was asked for, and empties them after the teardown', () => {
+      const {kernel, scope} = boundScope();
+      const api = scope.createAPI();
+      const sym = Symbol('global');
+
+      api.useProperty('x');
+      api.useProperty('x');
+      api.useContext('c');
+      api.useParentContext('pc');
+      api.provideContext('p');
+      api.provideGlobalContext(sym);
+
+      expect(scope.describe()).toEqual({
+        displayName: 'TestScope',
+        usesProperties: ['x'],
+        usesContexts: ['c'],
+        usesParentContexts: ['pc'],
+        providesContexts: ['p'],
+        providesGlobalContexts: [sym],
+      });
+
+      scope.tearDown();
+
+      expect(scope.describe(), 'a torn-down scope answers, with nothing in it').toEqual({
+        displayName: 'TestScope',
+        usesProperties: [],
+        usesContexts: [],
+        usesParentContexts: [],
+        providesContexts: [],
+        providesGlobalContexts: [],
+      });
+
+      kernel.destroy();
+    });
+  });
 });

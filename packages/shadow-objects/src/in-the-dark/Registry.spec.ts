@@ -187,4 +187,44 @@ describe('Registry', () => {
       expect(Array.from(registry.findTokensByRoute('foo', new Set(['x', 'y'])))).toEqual(['foo']);
     });
   });
+
+  describe('description', () => {
+    class A {}
+    // biome-ignore lint/complexity/noStaticOnlyClass: stands in for a Shadow Object constructor, whose `displayName` `describe()` reads off the class itself
+    class B {
+      static displayName = 'Bee';
+    }
+
+    it('reduces the three maps to names, in definition order', () => {
+      const registry = new Registry();
+      registry.define('t', A);
+      registry.define('t', B);
+      registry.define('u', A);
+      registry.appendRoute('t', ['u', 'v']);
+      registry.appendRoute('@x', ['u']);
+      registry.appendRoute('t@y', ['v']);
+
+      expect(registry.describe()).toEqual({
+        tokens: {t: ['A', 'Bee'], u: ['A']},
+        routes: {t: ['u', 'v']},
+        propRoutes: {x: ['u'], 't@y': ['v']},
+      });
+    });
+
+    it('finds the tokens a constructor is defined under', () => {
+      const registry = new Registry();
+      registry.define('t', A);
+      registry.define('u', A);
+      registry.define('u', B);
+
+      expect(registry.tokensOf(A)).toEqual(['t', 'u']);
+      expect(registry.tokensOf(B)).toEqual(['u']);
+      expect(registry.tokensOf(class C {})).toEqual([]);
+    });
+
+    it('tells the default registry from every other one', () => {
+      expect(Registry.isDefault(Registry.get())).toBe(true);
+      expect(Registry.isDefault(new Registry())).toBe(false);
+    });
+  });
 });

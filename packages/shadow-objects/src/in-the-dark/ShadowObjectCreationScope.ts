@@ -10,7 +10,14 @@ import {
   type Signal,
   type SignalReader,
 } from '@spearwolf/signalize';
-import type {Maybe, ProvideContextOptions, ShadowObjectCreationAPI, ShadowObjectType, SignalValueOptions} from '../types.js';
+import type {
+  Maybe,
+  ProvideContextOptions,
+  ShadowObjectCreationAPI,
+  ShadowObjectScopeDescription,
+  ShadowObjectType,
+  SignalValueOptions,
+} from '../types.js';
 import type {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {runGuarded} from '../utils/runGuarded.js';
 import {toMaybe} from '../utils/toMaybe.js';
@@ -176,6 +183,23 @@ export class ShadowObjectCreationScope {
       primary: this.#unsubscribePrimary.size,
       secondary: this.#unsubscribeSecondary.size,
       contextFeeds: this.#unsubscribeContextFeeds.size,
+    };
+  }
+
+  /**
+   * The names this scope handed readers and providers out for, by kind, plus the display name. Read
+   * off the private maps and nothing else: no reader is created, no late call is reported, and a
+   * scope past its teardown answers empty lists rather than a throw -- `tearDown()` clears the maps
+   * it reads.
+   */
+  describe(): ShadowObjectScopeDescription {
+    return {
+      displayName: this.#displayName,
+      usesProperties: Array.from(this.#propertyReaders.keys()),
+      usesContexts: Array.from(this.#contextReaders.keys()),
+      usesParentContexts: Array.from(this.#contextParentReaders.keys()),
+      providesContexts: Array.from(this.#contextProviders.keys()),
+      providesGlobalContexts: Array.from(this.#contextRootProviders.keys()),
     };
   }
 

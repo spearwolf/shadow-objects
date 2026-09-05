@@ -7,12 +7,15 @@ import type {
   ComponentPropertiesType,
   IComponentChangeType,
   IComponentEvent,
+  LifecycleHookName,
   ShadowObjectConstructor,
+  ShadowObjectDescription,
   ShadowObjectType,
   SyncEvent,
 } from '../types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {runGuarded} from '../utils/runGuarded.js';
+import {getDisplayName} from './displayName.js';
 import {Entity} from './Entity.js';
 import {type OnCreate, type OnDestroy, onCreate, onDestroy, onParentChanged, onViewEvent} from './events.js';
 import {Registry} from './Registry.js';
@@ -51,8 +54,6 @@ enum ShadowObjectAction {
   JustCreate,
   DestroyOnly,
 }
-
-const getDisplayName = (construct: ShadowObjectConstructor) => construct.displayName || construct.name;
 
 // The four lifecycle hooks are symbols, and a string key of the same name is never picked up by
 // eventize or by the direct calls in `#attachShadowObject()` -- a shadow-object that writes one as
@@ -880,6 +881,48 @@ export class Kernel {
     const {usedConstructors} = entry;
 
     return Array.from(new Set(Array.from(usedConstructors.values()).flatMap((objs) => Array.from(objs))));
+  }
+
+  /**
+   * One description per Shadow Object of the entity, in the order `findShadowObjects()` lists them:
+   * what the creation scope knows (display name, the five name lists), the tokens the constructor is
+   * defined under in this kernel's registry, and which of the four lifecycle hooks the instance
+   * implements. `[]` for a uuid the kernel does not hold. Reads only; a scope that is already gone
+   * contributes its display name and empty lists.
+   */
+  describeShadowObjects(uuid: string): ShadowObjectDescription[] {
+    const entry = this.#entities.get(uuid);
+    if (entry === undefined) return [];
+
+    const seen = new Set<object>();
+    const descriptions: ShadowObjectDescription[] = [];
+
+    for (const [construct, shadowObjects] of entry.usedConstructors) {
+      for (const shadowObject of shadowObjects) {
+        if (seen.has(shadowObject)) continue;
+        seen.add(shadowObject);
+
+        const scope = this.#shadowObjectScopes.get(shadowObject);
+        const hooks = LIFECYCLE_HOOKS.filter(([, symbol]) => typeof (shadowObject as any)[symbol] === 'function').map(
+          ([name]) => name as LifecycleHookName,
+        );
+
+        descriptions.push({
+          ...(scope?.describe() ?? {
+            displayName: getDisplayName(construct),
+            usesProperties: [],
+            usesContexts: [],
+            usesParentContexts: [],
+            providesContexts: [],
+            providesGlobalContexts: [],
+          }),
+          definedUnder: this.registry.tokensOf(construct),
+          hooks,
+        });
+      }
+    }
+
+    return descriptions;
   }
 
   #attachShadowObject(shadowObject: object, entity: Entity): void {
