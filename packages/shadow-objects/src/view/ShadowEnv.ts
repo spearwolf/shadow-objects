@@ -9,11 +9,15 @@ import {
 } from '@spearwolf/signalize';
 import {signal} from '@spearwolf/signalize/decorators';
 import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
+import {GlobalNS} from '../constants.js';
+import {createViewSnapshot} from '../inspect/createViewSnapshot.js';
+import type {EnvSnapshot, InspectRequest} from '../inspect/types.js';
 import type {MessageToViewEvent} from '../shadow-objects.js';
 import type {ChangeTrailType, NamespaceType} from '../types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {ComponentContext} from './ComponentContext.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
+import {RemoteWorkerEnv} from './RemoteWorkerEnv.js';
 
 declare global {
   var __shadowEnvs: Map<NamespaceType, ShadowEnv> | undefined;
@@ -42,6 +46,19 @@ type SyncCycle = {
   reject: (reason: unknown) => void;
 };
 
+const namespaceAsString = (ns: NamespaceType | undefined): string =>
+  typeof ns === 'symbol' ? (ns.description ?? String(ns)) : (ns ?? '');
+
+const errorInfo = (error: unknown): {name: string; message: string} =>
+  error instanceof Error ? {name: error.name, message: error.message} : {name: 'Error', message: String(error)};
+
+const proxyKind = (proxy: IShadowObjectEnvProxy | undefined): EnvSnapshot['kind'] => {
+  if (proxy === undefined) return 'none';
+  if ((proxy as {isLocalEnv?: unknown}).isLocalEnv === true) return 'local';
+  if (proxy instanceof RemoteWorkerEnv) return 'worker';
+  return 'custom';
+};
+
 export class ShadowEnv {
   static AfterSync = 'afterSync';
   static SyncFailed = 'syncFailed';
@@ -52,6 +69,17 @@ export class ShadowEnv {
   static get(ns: NamespaceType): ShadowEnv | undefined {
     if (ns == null) return undefined;
     return globalThis.__shadowEnvs?.get(ns);
+  }
+
+  /**
+   * Every environment that holds a namespace, in registration order, each described by
+   * {@link ShadowEnv.inspect}. One environment that cannot answer costs its own entry and not the
+   * list: the per-environment failures are reported under `error`. Rejects only for the caller's
+   * reasons -- an aborted signal.
+   */
+  static inspectAll(request: InspectRequest = {}, signal?: AbortSignal): Promise<EnvSnapshot[]> {
+    const envs = Array.from(globalThis.__shadowEnvs?.values() ?? []);
+    return Promise.all(envs.map((env) => env.inspect(request, signal)));
   }
 
   #comCtx?: ComponentContext | undefined;
@@ -357,6 +385,55 @@ export class ShadowEnv {
     this.#nextSyncCycle ??= this.#openSyncCycle();
 
     return this.#nextSyncCycle.promise;
+  }
+
+  /**
+   * Describe this environment: the View's component tree and, where the proxy is ready and
+   * implements `inspect`, the Kernel's Entity Tree behind it.
+   *
+   * Never rejects for a reason inside the environment -- a proxy that cannot answer, a Kernel that
+   * threw -- and reports those under `error` with `kernel` absent. A proxy that is not ready yet is
+   * not an error either: `state.proxyReady` says so, and `kernel` is simply absent. It rejects
+   * only for a reason of the caller's: an aborted signal, or an environment that is destroyed
+   * before or while the proxy answers.
+   *
+   * A caller that wants the View and the Kernel to agree after its own change awaits
+   * {@link ShadowEnv.syncWait} first; the View snapshot reads the committed Component Memory,
+   * not the pending changes.
+   */
+  async inspect(request: InspectRequest = {}, signal?: AbortSignal): Promise<EnvSnapshot> {
+    if (this.#isDestroyed) throw new ShadowEnvDestroyedError();
+    if (signal?.aborted) throw signal.reason;
+
+    const ns = this.#comCtx?.ns;
+    const proxy = this.#shaObjEnvProxy;
+
+    const snapshot: EnvSnapshot = {
+      namespace: namespaceAsString(ns),
+      isGlobalNamespace: ns === GlobalNS,
+      kind: proxyKind(proxy),
+      state: {viewReady: this.viewReady, proxyReady: this.proxyReady, isReady: this.isReady, isDestroyed: this.#isDestroyed},
+    };
+
+    if (this.#comCtx) snapshot.view = createViewSnapshot(this.#comCtx, request);
+
+    if (proxy === undefined || !this.proxyReady) return snapshot;
+
+    if (typeof proxy.inspect !== 'function') {
+      snapshot.error = {name: 'NotInspectable', message: 'the environment proxy does not implement inspect()'};
+      return snapshot;
+    }
+
+    try {
+      // the race is what settles a caller whose environment is destroyed while the proxy answers
+      snapshot.kernel = await Promise.race([proxy.inspect(request, signal), this.#destroyedSignal()]);
+    } catch (error) {
+      if (this.#isDestroyed) throw new ShadowEnvDestroyedError();
+      if (signal?.aborted) throw error;
+      snapshot.error = errorInfo(error);
+    }
+
+    return snapshot;
   }
 
   /**
