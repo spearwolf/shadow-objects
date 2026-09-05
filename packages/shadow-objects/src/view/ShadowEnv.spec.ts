@@ -5,6 +5,7 @@ import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {type OnCreate, type OnDestroy, onCreate, onDestroy} from '../in-the-dark/events.js';
 import {Registry} from '../in-the-dark/Registry.js';
 import {ShadowObject} from '../in-the-dark/ShadowObject.js';
+import type {EnvSnapshot} from '../inspect/types.js';
 import type {ChangeTrailType, NamespaceType, ShadowObjectCreationAPI} from '../types.js';
 import {ComponentContext} from './ComponentContext.js';
 import type {IShadowObjectEnvProxy} from './IShadowObjectEnvProxy.js';
@@ -1649,7 +1650,7 @@ describe('ShadowEnv', () => {
       env.destroy();
     });
 
-    it('carries the view and no kernel while the proxy is not ready', async () => {
+    it('carries the view and no kernel while it has no proxy', async () => {
       const env = new ShadowEnv();
       env.view = ComponentContext.get();
       const vc = new ViewComponent('foo');
@@ -1660,6 +1661,23 @@ describe('ShadowEnv', () => {
       expect(snapshot.isGlobalNamespace).toBe(true);
       expect(snapshot.kind).toBe('none');
       expect(snapshot.view?.roots.map((n) => n.uuid)).toEqual([vc.uuid]);
+      expect(snapshot.kernel).toBeUndefined();
+      expect(snapshot.error).toBeUndefined();
+
+      env.destroy();
+    });
+
+    it('carries the view and no kernel while the proxy is not ready', async () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get();
+      env.envProxy = fakeProxy({start: () => new Promise(() => {})});
+      new ViewComponent('foo');
+
+      const snapshot = await env.inspect();
+
+      expect(snapshot.kind).toBe('custom');
+      expect(snapshot.state.proxyReady).toBe(false);
+      expect(snapshot.view).toBeDefined();
       expect(snapshot.kernel).toBeUndefined();
       expect(snapshot.error).toBeUndefined();
 
@@ -1712,6 +1730,19 @@ describe('ShadowEnv', () => {
 
       expect(snapshot.kernel).toBeUndefined();
       expect(snapshot.error).toEqual({name: 'RangeError', message: 'too deep'});
+
+      env.destroy();
+    });
+
+    it('reports a proxy that rejects with something that is not an Error', async () => {
+      const env = new ShadowEnv();
+      env.view = ComponentContext.get();
+      env.envProxy = fakeProxy({inspect: () => Promise.reject('plain string')});
+      await env.ready();
+
+      const snapshot = await env.inspect();
+
+      expect(snapshot.error).toEqual({name: 'Error', message: 'plain string'});
 
       env.destroy();
     });
@@ -1775,6 +1806,39 @@ describe('ShadowEnv', () => {
       ComponentContext.get('inspect-b').dispose();
 
       expect((await ShadowEnv.inspectAll()).map((s) => s.namespace)).not.toContain('inspect-a');
+    });
+
+    it('lets an environment destroyed while it answers drop out of the list, not sink the call', async () => {
+      const c = new ShadowEnv();
+      c.view = ComponentContext.get('inspect-c');
+      c.envProxy = new LocalShadowObjectEnv();
+
+      const d = new ShadowEnv();
+      d.view = ComponentContext.get('inspect-d');
+      d.envProxy = {
+        start: () => Promise.resolve(),
+        importScript: () => Promise.resolve(),
+        applyChangeTrail: () => Promise.resolve(),
+        destroy: () => {},
+        inspect: () => new Promise(() => {}),
+      };
+
+      await Promise.all([c.ready(), d.ready()]);
+
+      const pending = ShadowEnv.inspectAll();
+      d.destroy();
+
+      const snapshots = (await withTimeout(pending)) as EnvSnapshot[];
+      const namespaces = snapshots.map((s) => s.namespace);
+
+      expect(namespaces).toContain('inspect-c');
+      expect(snapshots.find((s) => s.namespace === 'inspect-c')?.kernel).toBeDefined();
+      expect(namespaces).not.toContain('inspect-d');
+
+      c.destroy();
+      d.destroy();
+      ComponentContext.get('inspect-c').dispose();
+      ComponentContext.get('inspect-d').dispose();
     });
   });
 });

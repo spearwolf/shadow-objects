@@ -74,12 +74,22 @@ export class ShadowEnv {
   /**
    * Every environment that holds a namespace, in registration order, each described by
    * {@link ShadowEnv.inspect}. One environment that cannot answer costs its own entry and not the
-   * list: the per-environment failures are reported under `error`. Rejects only for the caller's
-   * reasons -- an aborted signal.
+   * list: the per-environment failures are reported under `error`, and an environment destroyed
+   * while it answers drops out of the list. Rejects only for the caller's reasons -- an aborted
+   * signal.
    */
-  static inspectAll(request: InspectRequest = {}, signal?: AbortSignal): Promise<EnvSnapshot[]> {
+  static async inspectAll(request: InspectRequest = {}, signal?: AbortSignal): Promise<EnvSnapshot[]> {
     const envs = Array.from(globalThis.__shadowEnvs?.values() ?? []);
-    return Promise.all(envs.map((env) => env.inspect(request, signal)));
+    const settled = await Promise.all(
+      envs.map((env) =>
+        env.inspect(request, signal).catch((error) => {
+          if (signal?.aborted) throw signal.reason;
+          if (error instanceof ShadowEnvDestroyedError) return undefined;
+          throw error;
+        }),
+      ),
+    );
+    return settled.filter((snapshot): snapshot is EnvSnapshot => snapshot !== undefined);
   }
 
   #comCtx?: ComponentContext | undefined;
@@ -429,7 +439,7 @@ export class ShadowEnv {
       snapshot.kernel = await Promise.race([proxy.inspect(request, signal), this.#destroyedSignal()]);
     } catch (error) {
       if (this.#isDestroyed) throw new ShadowEnvDestroyedError();
-      if (signal?.aborted) throw error;
+      if (signal?.aborted) throw signal.reason;
       snapshot.error = errorInfo(error);
     }
 
