@@ -59,6 +59,10 @@
     "./FrameLoop.js": {
       "import": "./src/utils/FrameLoop.js",
       "types": "./src/utils/FrameLoop.d.ts"
+    },
+    "./model-context.js": {
+      "import": "./src/model-context.js",
+      "types": "./src/model-context.d.ts"
     }
   },
   "sideEffects": [
