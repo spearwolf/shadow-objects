@@ -565,6 +565,50 @@ export class Entity {
     return this.#context.has(name);
   }
 
+  /** The names of the Entity Contexts this entity holds, used or provided. Reads only, creates none. */
+  contextNames(): ContextNameType[] {
+    return Array.from(this.#context.keys());
+  }
+
+  /**
+   * The three values behind one Entity Context of this entity: what its own providers wrote, what it
+   * inherits from the parent (or from the global chain at a root), and what `useContext(name)` reads.
+   * `hasProviders` says whether a provider feed is attached -- a value written straight into the
+   * signal from `provideContext()` counts as provided but not as a provider.
+   *
+   * `undefined` when the entity holds no context of that name; asking does not create one. The
+   * reads are plain `.value` reads and track nothing, so a call from inside an effect does not
+   * subscribe that effect to the context.
+   */
+  describeContext(
+    name: ContextNameType,
+  ): {provided: unknown; inherited: unknown; effective: unknown; hasProviders: boolean} | undefined {
+    const ctx = this.#context.get(name);
+    if (ctx === undefined) return undefined;
+    return {
+      provided: ctx.provide.value,
+      inherited: ctx.inherited.value,
+      effective: ctx.context.value,
+      hasProviders: ctx.providerFeeds.size > 0,
+    };
+  }
+
+  /** The names of the global Entity Contexts this entity contributes to. Reads only, creates none. */
+  globalContextNames(): ContextNameType[] {
+    return Array.from(this.#rootContexts.keys());
+  }
+
+  /**
+   * What this entity contributes to the kernel-wide chain of one global Entity Context: the value
+   * and the very signal that stands in the chain, so a caller holding the chain can find this entity
+   * in it by identity. `undefined` when the entity contributes nothing under that name.
+   */
+  describeGlobalContext(name: ContextNameType): {value: unknown; signal: Signal<unknown>; hasProviders: boolean} | undefined {
+    const rootCtx = this.#rootContexts.get(name);
+    if (rootCtx === undefined) return undefined;
+    return {value: rootCtx.signal.value, signal: rootCtx.signal, hasProviders: rootCtx.providerFeeds.size > 0};
+  }
+
   useContext<T = unknown>(name: ContextNameType): SignalReader<T> {
     return this.#findOrCreateContext(name).context.get as SignalReader<T>;
   }

@@ -1283,4 +1283,95 @@ describe('Entity', () => {
       kernel.destroy();
     });
   });
+
+  describe('inspection accessors', () => {
+    // Two collectors sit between a provider's write and a child's `context` signal: the parent's
+    // and the child's, one microtask each. Three drains cover both with one to spare.
+    const settle = async () => {
+      await nextMicrotask();
+      await nextMicrotask();
+      await nextMicrotask();
+    };
+
+    it('contextNames() lists the names the entity holds and creates none', () => {
+      const kernel = makeKernel();
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'node');
+      const e = kernel.getEntity(uuid);
+
+      expect(e.contextNames()).toEqual([]);
+
+      e.provideContext('a');
+      e.useContext('b');
+
+      expect(e.contextNames()).toEqual(['a', 'b']);
+      expect(e.describeContext('c'), 'asking does not create').toBeUndefined();
+      expect(e.contextNames()).toEqual(['a', 'b']);
+
+      kernel.destroy();
+    });
+
+    it('describeContext() reads provided, inherited and effective off the three signals', async () => {
+      const kernel = makeKernel();
+      const [parentUuid, childUuid] = [generateUUID(), generateUUID()];
+      kernel.createEntity(parentUuid, 'parent');
+      kernel.createEntity(childUuid, 'child', parentUuid);
+      const parent = kernel.getEntity(parentUuid);
+      const child = kernel.getEntity(childUuid);
+
+      const release = parent.attachContextProvider('ctx', createSignal('p'));
+      child.useContext('ctx');
+      await settle();
+
+      expect(parent.describeContext('ctx')).toEqual({provided: 'p', inherited: undefined, effective: 'p', hasProviders: true});
+      expect(child.describeContext('ctx')).toEqual({provided: undefined, inherited: 'p', effective: 'p', hasProviders: false});
+
+      release();
+      await settle();
+
+      expect(parent.describeContext('ctx')?.hasProviders).toBe(false);
+
+      kernel.destroy();
+    });
+
+    it('describeGlobalContext() reads the contribution of this entity and hands out its signal', () => {
+      const kernel = makeKernel();
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'node');
+      const e = kernel.getEntity(uuid);
+
+      expect(e.globalContextNames()).toEqual([]);
+
+      const sig = e.provideGlobalContext('g');
+      sig.set(1);
+
+      expect(e.globalContextNames()).toEqual(['g']);
+      expect(e.describeGlobalContext('g')).toEqual({value: 1, signal: sig, hasProviders: false});
+      expect(e.describeGlobalContext('h')).toBeUndefined();
+
+      const release = e.attachGlobalContextProvider('g', createSignal(2));
+      expect(e.describeGlobalContext('g')).toMatchObject({value: 2, hasProviders: true});
+      release();
+
+      kernel.destroy();
+    });
+
+    it('answers empty lists once the entity is released', () => {
+      const kernel = makeKernel();
+      const uuid = generateUUID();
+      kernel.createEntity(uuid, 'node');
+      const e = kernel.getEntity(uuid);
+      e.useContext('a');
+      e.provideGlobalContext('g');
+
+      kernel.destroyEntity(uuid);
+
+      expect(e.contextNames()).toEqual([]);
+      expect(e.globalContextNames()).toEqual([]);
+      expect(e.describeContext('a')).toBeUndefined();
+      expect(e.describeGlobalContext('g')).toBeUndefined();
+
+      kernel.destroy();
+    });
+  });
 });
