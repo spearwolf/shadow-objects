@@ -8,11 +8,15 @@ export const SerializeDefaults: SerializeLimits = Object.freeze({
   maxStringLength: 200,
 });
 
+/** A limit that is not a finite number -- `NaN`, an infinity -- reads as the default. */
+const orDefault = (val: number | undefined, fallback: number): number =>
+  val !== undefined && Number.isFinite(val) ? val : fallback;
+
 export const resolveSerializeLimits = (limits?: Partial<SerializeLimits>): SerializeLimits => ({
-  maxDepth: limits?.maxDepth ?? SerializeDefaults.maxDepth,
-  maxArrayLength: limits?.maxArrayLength ?? SerializeDefaults.maxArrayLength,
-  maxObjectEntries: limits?.maxObjectEntries ?? SerializeDefaults.maxObjectEntries,
-  maxStringLength: limits?.maxStringLength ?? SerializeDefaults.maxStringLength,
+  maxDepth: orDefault(limits?.maxDepth, SerializeDefaults.maxDepth),
+  maxArrayLength: orDefault(limits?.maxArrayLength, SerializeDefaults.maxArrayLength),
+  maxObjectEntries: orDefault(limits?.maxObjectEntries, SerializeDefaults.maxObjectEntries),
+  maxStringLength: orDefault(limits?.maxStringLength, SerializeDefaults.maxStringLength),
 });
 
 const isDomNode = (val: object): val is {nodeType: number; nodeName: string; id?: unknown} =>

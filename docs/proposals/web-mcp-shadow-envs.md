@@ -131,7 +131,7 @@ All types live in `src/inspect/types.ts` and are exported as types from `index.t
 
 ```typescript
 export interface EnvSnapshot {
-  /** The namespace as a string; the global namespace reports its symbol description. */
+  /** The namespace as a string; the global namespace reports its symbol description. Empty while the environment has no view. */
   namespace: string;
   /** Whether the namespace is the global one. `String(GlobalNS)` alone does not say so. */
   isGlobalNamespace: boolean;
@@ -291,7 +291,7 @@ export interface ViewComponentSnapshot {
 
 The View snapshot deliberately reads the `ComponentMemory` and not the pending `ComponentChanges`. `buildChangeTrails(false)` is what `#syncNow()` calls to fix a cycle's trail, and calling it from an inspection would interleave with the sync tempo. Pending changes are therefore not part of this proposal; a `pendingChanges: boolean` flag is a candidate for a later phase once `ComponentChanges` gets a side-effect-free `hasChanges()` read.
 
-The `element` path is built on the main thread by scanning `document.querySelectorAll('shae-ent')` once per snapshot and matching `viewComponent.uuid`; elements inside closed shadow roots are missed, as they are for every DOM query, and the field is simply absent for them.
+The `element` path is built on the main thread by scanning `document.querySelectorAll('shae-ent')` once per snapshot and matching `viewComponent.uuid`; elements inside shadow roots are missed, open or closed alike, as they are for every DOM query, and the field is simply absent for them.
 
 ### 6.5 Read accessors the snapshot needs
 

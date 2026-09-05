@@ -27,7 +27,7 @@ const selectorPath = (el: Element): string => {
   return parts.join(' > ');
 };
 
-/** uuid -> selector path of the `<shae-ent>` carrying it. Empty without a document, and for elements inside closed shadow roots. */
+/** uuid -> selector path of the `<shae-ent>` carrying it. Empty without a document, and for elements inside shadow roots (the query pierces none, open or closed). */
 const indexEntElements = (): Map<string, string> => {
   const index = new Map<string, string>();
   if (typeof document === 'undefined') return index;

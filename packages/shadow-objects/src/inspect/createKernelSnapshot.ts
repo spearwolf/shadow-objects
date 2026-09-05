@@ -216,6 +216,7 @@ class KernelSnapshotBuilder {
 
   #sourceOf(entity: Entity, name: string | symbol, provided: unknown): EntityContextSource {
     if (holdsValue(provided)) return {kind: 'self'};
+    // the parent chain is a chain: Entity.assertAttachableTo() refuses a parent that is a descendant
     for (let ancestor = entity.parent; ancestor !== undefined; ancestor = ancestor.parent) {
       if (holdsValue(ancestor.describeContext(name)?.provided)) return {kind: 'ancestor', uuid: ancestor.uuid};
     }

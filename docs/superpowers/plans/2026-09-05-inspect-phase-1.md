@@ -32,7 +32,7 @@ Claude-Session: https://claude.ai/code/session_01DbBQAaqSivrnAXKL2TF3TA
 
 ## Deviations from the proposal, decided here
 
-The proposal leaves a few gaps that the code has to close. Task 13 writes these into the proposal so spec and code agree.
+The proposal leaves a few gaps that the code has to close. Task 12 writes these into the proposal so spec and code agree.
 
 1. `TruncationNote` is used but never defined in §6.2. Defined in Task 1 as `{reason: 'max-depth' | 'max-nodes' | 'unknown-root'; uuid?: string; message: string}`.
 2. `Kernel.describeShadowObject(obj)` (§6.5) cannot answer `definedUnder`: the constructor of an instance is known only at the Kernel's entity entry. It becomes `Kernel.describeShadowObjects(uuid): ShadowObjectDescription[]`, one description per Shadow Object of the Entity, carrying `definedUnder` and `hooks`.

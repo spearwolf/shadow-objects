@@ -134,6 +134,9 @@ describe('serializeValue', () => {
 
   it('ships the defaults of the proposal', () => {
     expect(SerializeDefaults).toEqual({maxDepth: 3, maxArrayLength: 20, maxObjectEntries: 30, maxStringLength: 200});
+    expect(serializeValue([1, 2, 3], {maxArrayLength: NaN}), 'a limit that is not a number reads as the default').toEqual([
+      1, 2, 3,
+    ]);
   });
 
   it('produces JSON-safe output', () => {

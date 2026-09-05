@@ -190,7 +190,7 @@ export interface EnvSnapshot {
     isReady: boolean;
     isDestroyed: boolean;
   };
-  /** What the View holds for this namespace. Present while the environment has a view. */
+  /** What the View holds for this namespace. Present while the environment has a view, unless building it threw -- then `error` says why. */
   view?: ViewSnapshot;
   /** What the Kernel holds. Absent while the proxy is not ready, or when the inspection failed -- then `error` says why. */
   kernel?: KernelSnapshot;
