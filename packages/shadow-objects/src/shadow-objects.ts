@@ -5,4 +5,6 @@ export * from './in-the-dark/events.js';
 export * from './in-the-dark/Kernel.js';
 export * from './in-the-dark/Registry.js';
 export * from './in-the-dark/ShadowObject.js';
+export * from './inspect/createKernelSnapshot.js';
+export type * from './inspect/types.js';
 export type * from './types.js';

@@ -8,6 +8,8 @@ export * from './elements/ShaeElement.js';
 export * from './elements/ShaeEntElement.js';
 export * from './elements/ShaePropElement.js';
 export * from './elements/ShaeWorkerElement.js';
+export * from './inspect/createKernelSnapshot.js';
+export type * from './inspect/types.js';
 export type * from './types.js';
 export * from './utils/FrameLoop.js';
 export * from './utils/toNamespace.js';
