@@ -3,8 +3,8 @@
 Status: 2026-09-05. Analysis of the Playwright suite in this package, the gaps it leaves, and a
 ticket-ready list of test cases to close them.
 
-> **Where the suite stands.** 741 tests across Chromium, Firefox and WebKit — 247 per project,
-> thirteen spec files over thirteen pages. The harness fixes and the P1 blocks of every group below
+> **Where the suite stands.** 825 tests across Chromium, Firefox and WebKit — 275 per project,
+> fifteen spec files over fifteen pages. The harness fixes and the P1 blocks of every group below
 > are in place. No framework defect is open — [`KNOWN-DEFECTS.md`](KNOWN-DEFECTS.md) describes
 > the `knownFailures` mechanism that carries the next one.
 >
@@ -19,7 +19,7 @@ Scope: E2E only. This file names the pages, fixtures and assertions of the Playw
 
 ## 1. What exists today
 
-Thirteen spec files, 247 registered test cases per project — 741 across Chromium, Firefox and WebKit. The specs
+Fifteen spec files, 275 registered test cases per project — 825 across Chromium, Firefox and WebKit. The specs
 themselves contain almost no logic: they name a page and a list of ids, and `runPageTests` turns
 each id into one Playwright test that asserts `data-testresult="ok"` on the node the page wrote.
 All real assertions live in `src/*.js`.
@@ -39,6 +39,8 @@ All real assertions live in `src/*.js`.
 | `create-element.spec.ts` | `pages/create-element.html` | 8 | Both construction paths: markup the parser upgrades, and `document.createElement()` for all three tags — each element carries its marker, and an appended `<shae-ent>` gets its view component. |
 | `remote-worker-env.spec.ts` | `pages/remote-worker-env.html` | 7 | Programmatic `ShadowEnv` + `RemoteWorkerEnv`: `ready()`, `importScript()`, `isReady`, one `sync()`, one message worker → view. |
 | `inspect-worker-env.spec.ts` | `pages/inspect-worker-env.html` | 16 | `ShadowEnv.inspect()` over a real worker: the snapshot is built in the worker (`thread: 'worker'`) and comes back JSON-safe, View and Kernel agree on uuids, tokens and props, Shadow Objects and the Registry are described, `maxDepth` and `include` are honoured with a truncation note, an aborted signal rejects with its reason, and the proxy rejects after the teardown. |
+| `model-context.spec.ts` | `pages/model-context.html` | 18 | The five inspection tools through a fake model context, over one worker and one local environment: registration with names and annotations, `list-envs` with counts and no tree, `get-entity-tree` over the wire and under limits, `get-entity` with ancestors and the View component, `find-entities` by token with paths, a call without a criterion and an unknown namespace refused as error results, redaction on both halves, a JSON-safe envelope, and `dispose()`. |
+| `model-context-platform.spec.ts` | `pages/model-context-platform.html` | 10 | The same tools on Chromium's real `document.modelContext`: `getTools()` lists them with their annotations, `executeTool()` reaches `list-envs`, `get-entity-tree` and `find-entities` and brings the envelope back, a refusal arrives as an error result, and `dispose()` takes them off the platform. Skipped in Firefox and WebKit. |
 
 Two of the cases per page come from the harness rather than from the page: `runPageTests` always
 registers `test suite setup` and a case over the errors the page recorded. A page that names no

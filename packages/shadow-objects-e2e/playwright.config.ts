@@ -37,7 +37,12 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: {...devices['Desktop Chrome']},
+      // WebMCP ships behind a feature flag in the Chromium Playwright bundles (151 at the time of
+      // writing). With it, `document.modelContext` exists and `pages/model-context-platform.html`
+      // registers the inspection tools on the real platform; without it the page reports the
+      // platform as absent and its spec fails. Firefox and WebKit have no such flag, and that spec
+      // skips there by name.
+      use: {...devices['Desktop Chrome'], launchOptions: {args: ['--enable-features=WebMCP']}},
     },
 
     {
