@@ -67,7 +67,7 @@ export interface InspectRequest {
 export interface EntityFilter {
   /** The Entity's token, exact. */
   token?: string;
-  /** A property name the Entity carries. */
+  /** A property name the Entity carries -- set from the View or read by a Shadow Object, with or without a value; the same names its `props` list shows. */
   propName?: string;
   /** The display name of a Shadow Object attached to the Entity. */
   shadowObject?: string;

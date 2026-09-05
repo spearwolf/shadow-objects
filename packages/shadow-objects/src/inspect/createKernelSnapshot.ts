@@ -142,9 +142,7 @@ class KernelSnapshotBuilder {
   #matches(entity: Entity, filter: NormalizedEntityFilter): boolean {
     const {token, propName, shadowObject, contextName} = filter;
     if (token !== undefined && this.#kernel.tokenOf(entity.uuid) !== token) return false;
-    // a bare `useProperty()` call vivifies the signal without giving it a value -- that reader does
-    // not make the entity "carry" the property, so only a defined value counts as a match
-    if (propName !== undefined && !entity.propEntries().some(([key, val]) => key === propName && val !== undefined)) return false;
+    if (propName !== undefined && !entity.propKeys().includes(propName)) return false;
     if (shadowObject !== undefined && !this.#describe(entity.uuid).some((d) => d.displayName === shadowObject)) return false;
     if (contextName !== undefined && !entity.contextNames().includes(contextName)) return false;
     return true;
