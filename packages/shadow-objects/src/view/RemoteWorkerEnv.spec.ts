@@ -8,11 +8,14 @@ import {
   Destroy,
   Destroyed,
   ImportedModule,
+  Inspect,
+  Inspected,
   Loaded,
   MessageToView,
   WorkerChangeTrailTimeout,
   WorkerConfigureTimeout,
   WorkerDestroyTimeout,
+  WorkerInspectTimeout,
   WorkerLoadTimeout,
 } from '../constants.js';
 import type {ChangeTrailType, ISendEvents, IUpdateOrderChange} from '../types.js';
@@ -146,6 +149,15 @@ describe('RemoteWorkerEnv', () => {
       const {env, worker} = await startEnv();
 
       const pending = env.applyChangeTrail([], true);
+      worker.fail();
+
+      await expectWorkerFailedRejection(pending);
+    });
+
+    it('rejects a pending inspect instead of waiting for the inspect timeout', async () => {
+      const {env, worker} = await startEnv();
+
+      const pending = env.inspect();
       worker.fail();
 
       await expectWorkerFailedRejection(pending);
@@ -493,18 +505,26 @@ describe('RemoteWorkerEnv', () => {
       await expectWorkerDestroyedRejection(env.importScript('./late.js'));
     });
 
+    it('rejects inspect instead of throwing a TypeError', async () => {
+      const {env} = await destroyed();
+
+      await expectWorkerDestroyedRejection(env.inspect());
+    });
+
     it('settles the requests that were in flight when the teardown arrived', async () => {
       const {env, worker} = await startEnv();
 
       const pendingChangeTrail = env.applyChangeTrail([], true);
       const pendingImport = env.importScript('./in-flight.js');
+      const pendingInspect = env.inspect();
 
       env.destroy();
       worker.reply({type: Destroyed});
 
-      // their replies can no longer arrive, so neither of them waits out its own timeout
+      // their replies can no longer arrive, so none of them waits out its own timeout
       await expectWorkerDestroyedRejection(pendingChangeTrail);
       await expectWorkerDestroyedRejection(pendingImport);
+      await expectWorkerDestroyedRejection(pendingInspect);
     });
 
     it('turns a start() away instead of spawning a worker nobody can reach', async () => {
@@ -818,6 +838,133 @@ describe('RemoteWorkerEnv', () => {
     });
   });
 
+  describe('inspection', () => {
+    const snapshot = {
+      takenAt: 1,
+      thread: 'worker',
+      counts: {entities: 0, roots: 0, shadowObjects: 0},
+      roots: [],
+      globalContexts: [],
+    };
+
+    it('posts the request under a serial of its own and resolves with the snapshot the answer carries', async () => {
+      const {env, worker} = await startEnv();
+
+      const pending = env.inspect({maxDepth: 2, include: ['props']});
+
+      expect(worker.posted.at(-1)).toEqual({type: Inspect, serial: 1, request: {maxDepth: 2, include: ['props']}});
+
+      worker.reply({type: Inspected, serial: 1, snapshot});
+
+      expect(await pending).toEqual(snapshot);
+    });
+
+    // the two answers are told apart by their type, so neither sequence has to know the other
+    it('counts its serials apart from the change trails', async () => {
+      const {env, worker} = await startEnv();
+
+      const trail = env.applyChangeTrail([], true);
+      expect(worker.posted.at(-1).serial).toBe(1);
+      worker.reply({type: AppliedChangeTrail, serial: 1});
+      await trail;
+
+      const first = env.inspect();
+      expect(worker.posted.at(-1).serial, 'the first inspection is number one of its own sequence').toBe(1);
+      worker.reply({type: Inspected, serial: 1, snapshot});
+      await first;
+
+      const second = env.inspect();
+      expect(worker.posted.at(-1).serial, 'the sequence on the wire has no gaps').toBe(2);
+      worker.reply({type: Inspected, serial: 2, snapshot});
+      await second;
+    });
+
+    it('settles only the request the answer belongs to', async () => {
+      const {env, worker} = await startEnv();
+
+      const first = env.inspect();
+      const second = env.inspect();
+
+      let firstSettled = false;
+      first.then(
+        () => {
+          firstSettled = true;
+        },
+        () => {
+          firstSettled = true;
+        },
+      );
+
+      worker.reply({type: Inspected, serial: 2, snapshot: {...snapshot, takenAt: 2}});
+      worker.reply({type: AppliedChangeTrail, serial: 1});
+
+      expect(await second).toEqual({...snapshot, takenAt: 2});
+      await flushMicrotasks();
+      expect(
+        firstSettled,
+        'neither another inspection nor a change trail confirmation with the same number decides this one',
+      ).toBe(false);
+
+      worker.reply({type: Inspected, serial: 1, snapshot});
+      expect(await first).toEqual(snapshot);
+    });
+
+    it('rejects with the failure the worker reported, as an error of that name', async () => {
+      const {env, worker} = await startEnv();
+
+      const pending = env.inspect();
+      worker.reply({type: Inspected, serial: 1, error: 'the kernel is in no state to be walked', errorName: 'RangeError'});
+
+      const reason = await expectRejection(pending, 'RangeError');
+
+      expect(reason).toBeInstanceOf(WorkerReportedError);
+      expect(reason.message).toBe('the kernel is in no state to be walked');
+    });
+
+    // A sender that speaks another protocol may answer with the type alone; the caller gets a
+    // rejection rather than an `undefined` it would then read through.
+    it('rejects an answer that carries neither a snapshot nor an error', async () => {
+      const {env, worker} = await startEnv();
+
+      const pending = env.inspect();
+      worker.reply({type: Inspected, serial: 1});
+
+      const reason = await expectRejection(pending, 'Error');
+
+      expect(reason).toBeInstanceOf(WorkerReportedError);
+      expect(reason.message).toBe('the worker answered the inspection without a snapshot');
+    });
+
+    it("rejects with the reason of the caller's signal and stops listening for the answer", async () => {
+      const {env, worker} = await startEnv();
+      const listenersBefore = worker.listeners.get('message')!.size;
+
+      const controller = new AbortController();
+      const pending = env.inspect({}, controller.signal);
+      expect(worker.listeners.get('message')!.size, 'one listener waits for the answer').toBe(listenersBefore + 1);
+
+      const reason = new Error('the caller gave up');
+      controller.abort(reason);
+
+      await expect(pending).rejects.toBe(reason);
+      expect(worker.listeners.get('message')!.size, 'and it is gone with the wait').toBe(listenersBefore);
+
+      // the answer that arrives afterwards belongs to nobody, and nothing throws on its account
+      worker.reply({type: Inspected, serial: 1, snapshot});
+      await flushMicrotasks();
+    });
+
+    it('rejects a signal that is already aborted before anything goes on the wire', async () => {
+      const {env, worker} = await startEnv();
+      const postedBefore = worker.posted.length;
+
+      const reason = new Error('never mind');
+      await expect(env.inspect({}, AbortSignal.abort(reason))).rejects.toBe(reason);
+
+      expect(worker.posted.length, 'no request was posted').toBe(postedBefore);
+    });
+  });
+
   describe('the listeners on the worker', () => {
     it('takes its listeners off the worker when the environment is torn down', async () => {
       const {env, worker} = await startEnv();
@@ -1021,22 +1168,23 @@ describe('RemoteWorkerEnv', () => {
   });
   describe('the timeouts', () => {
     /**
-     * The four resolved timeouts of a fresh environment, so a case can name the one key it is
-     * about and let the assertion carry the other three.
+     * The five resolved timeouts of a fresh environment, so a case can name the one key it is
+     * about and let the assertion carry the other four.
      */
     const defaultTimeouts = {
       loadTimeout: WorkerLoadTimeout,
       configureTimeout: WorkerConfigureTimeout,
       changeTrailTimeout: WorkerChangeTrailTimeout,
+      inspectTimeout: WorkerInspectTimeout,
       destroyTimeout: WorkerDestroyTimeout,
     };
 
-    it('default to the four constants', () => {
+    it('default to the five constants', () => {
       expect(new RemoteWorkerEnv().timeouts).toEqual(defaultTimeouts);
     });
 
     it.each(Object.keys(defaultTimeouts) as (keyof typeof defaultTimeouts)[])(
-      'take the %s option and leave the other three on their constant',
+      'take the %s option and leave the other four on their constant',
       (key) => {
         const env = new RemoteWorkerEnv({[key]: 1234});
 
@@ -1044,7 +1192,7 @@ describe('RemoteWorkerEnv', () => {
       },
     );
 
-    // The four cases below are the only proof that a value taken in is also a value acted on.
+    // The five cases below are the only proof that a value taken in is also a value acted on.
     // Each of them asserts both sides of its deadline: still open one millisecond before it,
     // over one millisecond later. Only the second half tells the configured number apart from
     // the constant it stands in for -- with the constant in force, nothing happens at either mark.
@@ -1119,6 +1267,23 @@ describe('RemoteWorkerEnv', () => {
 
         await vi.advanceTimersByTimeAsync(1);
         expectTimedOut(settled, ImportedModule);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('cut an inspection off at the inspectTimeout', async () => {
+      try {
+        vi.useFakeTimers();
+
+        const {env} = await startEnv({inspectTimeout: 1234});
+        const settled = trackSettled(env.inspect());
+
+        await vi.advanceTimersByTimeAsync(1233);
+        expect(settled.value, 'not before its time').toBe('pending');
+
+        await vi.advanceTimersByTimeAsync(1);
+        expectTimedOut(settled, Inspected);
       } finally {
         vi.useRealTimers();
       }

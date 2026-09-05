@@ -7,15 +7,27 @@ import {
   Destroy,
   Destroyed,
   ImportedModule,
+  Inspect,
+  Inspected,
   Loaded,
   MessageToView,
   WorkerChangeTrailTimeout,
   WorkerConfigureTimeout,
   WorkerDestroyTimeout,
+  WorkerInspectTimeout,
   WorkerLoadTimeout,
 } from '../constants.js';
 import createWorker from '../create-worker.js';
-import type {AppliedChangeTrailEvent, ChangeTrailType, ImportedModuleEvent, SyncEvent, TransferablesType} from '../types.js';
+import type {InspectRequest, KernelSnapshot} from '../inspect/types.js';
+import type {
+  AppliedChangeTrailEvent,
+  ChangeTrailType,
+  ImportedModuleEvent,
+  InspectEvent,
+  InspectedEvent,
+  SyncEvent,
+  TransferablesType,
+} from '../types.js';
 import {CONSOLE_LOGGER, ConsoleLogger, consoleLoggerConfigKey, loadConsoleLoggerConfig} from '../utils/ConsoleLogger.js';
 import {toUrlString} from '../utils/toUrlString.js';
 import {isTimeout, MaxWorkerTimeout, waitForMessageOfType} from '../utils/waitForMessageOfType.js';
@@ -112,7 +124,7 @@ export class WorkerReportedError extends Error {
 }
 
 /**
- * How long a {@link RemoteWorkerEnv} waits for each of the four replies a worker owes it,
+ * How long a {@link RemoteWorkerEnv} waits for each of the five replies a worker owes it,
  * in milliseconds.
  */
 export interface WorkerTimeouts {
@@ -122,12 +134,14 @@ export interface WorkerTimeouts {
   configureTimeout: number;
   /** the `AppliedChangeTrail` confirmation of a change trail sent with `waitForConfirmation` */
   changeTrailTimeout: number;
+  /** the `Inspected` answer to an `inspect()` */
+  inspectTimeout: number;
   /** the `Destroyed` acknowledgement of a teardown */
   destroyTimeout: number;
 }
 
 /**
- * What {@link RemoteWorkerEnv} takes. Every value left out keeps its default — the four
+ * What {@link RemoteWorkerEnv} takes. Every value left out keeps its default — the five
  * `Worker*Timeout` constants. A value that is not a number of milliseconds from 1 to
  * 2147483647 — close to 25 days, the longest delay a timer keeps — is reported through the
  * logger and the default applies.
@@ -138,6 +152,7 @@ const DefaultWorkerTimeouts: WorkerTimeouts = {
   loadTimeout: WorkerLoadTimeout,
   configureTimeout: WorkerConfigureTimeout,
   changeTrailTimeout: WorkerChangeTrailTimeout,
+  inspectTimeout: WorkerInspectTimeout,
   destroyTimeout: WorkerDestroyTimeout,
 };
 
@@ -148,8 +163,8 @@ const DefaultWorkerTimeouts: WorkerTimeouts = {
  * Zero and Infinity are refused along with the rest, and that is the point of the rule rather
  * than an oversight: `waitForMessageOfType()` arms no timer for either of them, so a teardown
  * given one of the two would wait for an acknowledgement a dead worker never sends — and the
- * `terminate()` that ends the teardown hangs on that very chain. One rule for all four values
- * is easier to hold on to than three that allow it and one that does not, and {@link MaxWorkerTimeout}
+ * `terminate()` that ends the teardown hangs on that very chain. One rule for all five values
+ * is easier to hold on to than four that allow it and one that does not, and {@link MaxWorkerTimeout}
  * — close to 25 days — is as long as a wait can honestly be made.
  */
 const resolveTimeouts = (options: RemoteWorkerEnvOptions | undefined, logger: ConsoleLogger): WorkerTimeouts => {
@@ -194,6 +209,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   #worker?: Worker | undefined;
   #isDestroyed = false;
   #changeTrailSerial = 0;
+  #inspectSerial = 0;
 
   /**
    * Aborted exactly once, with the error that ends this environment: a {@link WorkerFailedError}
@@ -213,7 +229,7 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
   readonly #timeouts: Readonly<WorkerTimeouts>;
 
   /**
-   * The four timeouts this environment holds itself to, resolved once when it is built. The
+   * The five timeouts this environment holds itself to, resolved once when it is built. The
    * object is frozen and the slot holds no setter, so the constructor is the one way in --
    * and `resolveTimeouts()` vets every value that goes through it.
    */
@@ -405,6 +421,58 @@ export class RemoteWorkerEnv implements IShadowObjectEnvProxy {
       },
       signal,
     );
+  }
+
+  /**
+   * Asks the worker for a snapshot of its Kernel. The request travels as an `Inspect` message
+   * under a serial of its own, and the `Inspected` answer that carries the same serial settles
+   * the call: with the snapshot, or with a `WorkerReportedError` rebuilt from the failure the
+   * worker described. An answer that stays out past `inspectTimeout` rejects with a
+   * `WorkerTimeoutError`; a worker that failed or an environment that was torn down rejects right
+   * away, before or while the answer is awaited.
+   *
+   * The caller's `signal` ends the wait with its own reason. The worker is not told: an answer
+   * that arrives afterwards carries a serial nobody waits for any more and is discarded like any
+   * other unmatched message.
+   *
+   * The message runs through the same queue as the change trails, so the snapshot reflects every
+   * trail posted before this call and none posted after it.
+   */
+  inspect(request: InspectRequest = {}, signal?: AbortSignal): Promise<KernelSnapshot> {
+    const {signal: failure} = this.#workerFailure;
+    if (failure.aborted) return Promise.reject(failure.reason);
+    if (signal?.aborted) return Promise.reject(signal.reason);
+
+    const worker = this.#worker;
+    if (worker == null) return Promise.reject(new WorkerDestroyedError());
+
+    // a sequence of its own next to the one the change trails count on: the two answers are told
+    // apart by their type, so neither sequence has to know about the other
+    const serial = ++this.#inspectSerial;
+    const message: InspectEvent = {type: Inspect, serial, request};
+    worker.postMessage(message);
+
+    let snapshot: KernelSnapshot | undefined;
+
+    return waitForMessageOfType(
+      worker,
+      Inspected,
+      this.timeouts.inspectTimeout,
+      (data: InspectedEvent) => {
+        if (data.serial !== serial) return false;
+        if (data.error) throw new WorkerReportedError(data.errorName, data.error);
+        snapshot = data.snapshot;
+        return true;
+      },
+      signal === undefined ? failure : AbortSignal.any([failure, signal]),
+    ).then(() => {
+      // a reply that names neither a snapshot nor an error comes from a sender that does not
+      // speak this protocol; it is a rejection, not a value the caller then reads through
+      if (snapshot === undefined) {
+        throw new WorkerReportedError(undefined, 'the worker answered the inspection without a snapshot');
+      }
+      return snapshot;
+    });
   }
 
   destroy(): void {
