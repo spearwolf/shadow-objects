@@ -528,6 +528,22 @@ import { on } from '@spearwolf/eventize';
 on(env, ShadowEnv.ContextCreated, () => console.log('Ready!'));
 ```
 
+### Inspecting an Environment
+
+`env.inspect()` takes a plain-data picture of both halves of an environment: the component tree the View holds, and the Entity Tree the Kernel holds -- with properties, Shadow Objects and Entity Contexts. It is JSON-safe end to end, so it prints, ships and diffs.
+
+```javascript
+await env.syncWait();                 // first: the picture reflects what the Kernel has applied
+const snapshot = await env.inspect({maxDepth: 3});
+console.log(JSON.stringify(snapshot.kernel?.roots, null, 2));
+```
+
+The `syncWait()` in front is the ordering rule. The View snapshot reads the committed Component Memory, not the pending changes, and the Kernel changes only when a change trail reaches it; a snapshot taken between a property write and the next cycle shows the previous value on both sides. Wait for the cycle, then ask.
+
+Two places to look when a Shadow Object does not see what you expect. Each `contexts` entry names where its `effective` value comes from -- `self`, an `ancestor` by uuid, the `global` chain, or `none` when the name is used and nobody provides it. Each `shadowObjects` entry names the tokens the constructor is `definedUnder`, which is the answer to "why did that Shadow Object show up on this Entity" when a route brought it there.
+
+`ShadowEnv.inspectAll()` does the same for every environment on the page that holds a namespace. In the console, `ShadowEnv.get('game-world').inspect().then(console.log)` is the quickest way in -- `ShadowEnv` has to be reachable there, which an application import makes it.
+
 ### When the Worker Dies
 
 A remote environment can lose its worker: an unhandled error inside one of your Shadow Objects modules, a module that fails to import, or a message the structured clone algorithm cannot read back. The proxy reports that loss, and `ShadowEnv` passes it on:

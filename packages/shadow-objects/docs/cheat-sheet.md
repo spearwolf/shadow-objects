@@ -509,6 +509,29 @@ kernel.createEntity('a-uuid', 'other-token');  // throws EntityUuidInUseError, t
 
 ---
 
+## Inspecting an Environment
+
+```typescript
+await env.syncWait();
+const snapshot = await env.inspect({maxDepth: 3});   // EnvSnapshot: {namespace, kind, state, view?, kernel?, error?}
+const all = await ShadowEnv.inspectAll();            // every environment with a namespace
+
+snapshot.kernel?.roots[0]?.props;          // [{name, value, routes}]
+snapshot.kernel?.roots[0]?.shadowObjects;  // [{displayName, definedUnder, uses…, provides…, hooks}]
+snapshot.kernel?.roots[0]?.contexts;       // [{name, provided?, inherited?, effective, providedBy, source}]
+snapshot.kernel?.globalContexts;           // [{name, value, providers}]
+snapshot.kernel?.registry;                 // {tokens, routes, propRoutes, isDefault}
+snapshot.kernel?.truncation;               // where maxDepth / maxNodes cut the walk
+
+// inside the environment, without a ShadowEnv:
+import {createKernelSnapshot} from '@spearwolf/shadow-objects/shadow-objects.js';
+const kernelSnapshot = createKernelSnapshot(kernel, {rootUuids: [uuid]});
+```
+
+Request defaults: `maxDepth` 4, `maxNodes` 250, `include` all four (`props`, `shadowObjects`, `contexts`, `registry`), values cut at depth 3 / 20 items / 30 entries / 200 characters. Everything is JSON-safe; what JSON would drop is tagged `{$type: …}`.
+
+---
+
 ## FrameLoop
 
 ```typescript

@@ -101,6 +101,8 @@ released, and a new one is the way back. See the
 
 Each domain, what it owns, what it must not touch, and the invariants that hold the whole thing together are written up in the [project README](https://github.com/spearwolf/shadow-objects#the-five-domains) and in [Concepts](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/concepts.md).
 
+Every environment can be asked what it holds: `ShadowEnv.get(ns).inspect()` answers with a JSON-safe snapshot of the component tree and the Entity Tree behind it, Shadow Objects and Entity Contexts included -- see [Inspecting an Environment](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/guides.md#inspecting-an-environment).
+
 ## Security
 
 The `src` of a `<shae-worker>` is a module URL, resolved against the document and run with a dynamic `import()`; the loaded module acts as the application's origin. Set it only from values the application trusts, and constrain it in production with a Content Security Policy delivered on every response of the origin — a policy scoped to only the document's response, or set through `<meta>`, never reaches a worker script loaded from a network URL.

@@ -1271,6 +1271,17 @@ environment that has not been displaced, `env.ns$` carries the same name, so an 
 it from one namespace to the next without observing `view` itself; a displaced environment keeps
 that name in `ns$` even though this lookup no longer answers it.
 
+#### `ShadowEnv.inspectAll(request?, signal?)`
+
+Describes every environment that holds a namespace, in registration order, each by [`inspect()`](#inspectrequest-signal). One environment that cannot answer costs its own entry, not the list: its reason stands under `error`, and an environment destroyed while it answers drops out of the list. Rejects only when `signal` aborts.
+
+- **Signature:** `static inspectAll(request?: InspectRequest, signal?: AbortSignal): Promise<EnvSnapshot[]>`
+
+```typescript
+const snapshots = await ShadowEnv.inspectAll({maxDepth: 2});
+console.log(JSON.stringify(snapshots, null, 2));
+```
+
 ### Events
 
 `ShadowEnv` emits events via [@spearwolf/eventize](https://github.com/spearwolf/eventize).
@@ -1415,6 +1426,60 @@ single worker hiccup swallowed one trail, and it can fail because the Shadow Env
 everything it is sent -- the first case is over with a fresh environment, the second one produces
 the same failure in it. Only the application knows which of the two it is in.
 
+#### `inspect(request?, signal?)`
+
+A plain-data picture of the environment: what the View holds for the namespace and, where the proxy is ready and implements `inspect`, what the Kernel holds behind it. Everything in it is JSON-safe -- symbols, functions, signals, class instances and cycles are replaced by tagged stand-ins, see [`SerializedValue`](#serializedvalue).
+
+- **Signature:** `inspect(request?: InspectRequest, signal?: AbortSignal): Promise<EnvSnapshot>`
+
+```typescript
+await env.syncWait();
+const snapshot = await env.inspect();
+
+snapshot.view?.roots;    // the component tree, props as the Component Memory holds them
+snapshot.kernel?.roots;  // the Entity Tree: props, Shadow Objects, Entity Contexts
+snapshot.kernel?.globalContexts;
+snapshot.kernel?.registry;
+```
+
+Two things the promise can do, and one it never does.
+
+- It **rejects** only for the caller's reasons: `signal` aborted, or the environment destroyed before or while the proxy answers (`ShadowEnvDestroyedError`).
+- It **reports** every reason inside the environment under `error`, with `kernel` absent: a proxy that does not implement `inspect` (`{name: 'NotInspectable'}`), a Kernel that threw. A proxy that is not ready yet is not an error -- `state.proxyReady` says so, and `kernel` is simply absent.
+- It never builds the pending changes. The View snapshot reads the committed Component Memory, so a component created and not yet synced has no `props`, and a property set since the last cycle shows its previous value. A caller that wants the View and the Kernel to agree after its own change awaits [`syncWait()`](#syncwait) first.
+
+`EnvSnapshot` carries `namespace` (the global namespace reports `'ShadowObjectsGlobalNS'`, and `isGlobalNamespace` says so), `kind` (`'local'`, `'worker'`, `'custom'` for any other proxy, `'none'` without one), `state`, and the two halves `view` and `kernel`.
+
+##### `InspectRequest`
+
+| Field | Default | Meaning |
+| :--- | :--- | :--- |
+| `include` | all four | Which of `'props'`, `'shadowObjects'`, `'contexts'`, `'registry'` to carry per Entity; `'props'` is what the View side reads |
+| `rootUuids` | the roots | Descend from these uuids instead. An unknown uuid is reported under `truncation`, never thrown |
+| `maxDepth` | `4` | Tree depth below each root that is walked; a non-finite number reads as the cap, `64` |
+| `maxNodes` | `250` | Total nodes across the walk |
+| `values` | see below | `SerializeLimits` for every property and context value |
+
+Both halves of the snapshot are cut by the same request. Where a limit cut the walk, `truncation` names the node and the reason (`'max-depth'`, `'max-nodes'`, `'unknown-root'`); `childCount` on a node whose `children` are absent still says how many there are, and `rootUuids` is the way to descend from there.
+
+##### `KernelSnapshot`
+
+`takenAt`, `thread` (`'main'` or `'worker'`), `counts`, `roots` (one `EntityNodeSnapshot` per Entity, the walk of [`getEntityGraph()`](#getentitygraph) with `omittedChildren` in the same shape), `globalContexts`, `registry` (the three maps with constructors reduced to display names, and `isDefault`), and `truncation`.
+
+An `EntityNodeSnapshot` carries `uuid`, `token`, `order`, `parentUuid`, `autoDestructionOnParentRemoval`, `childCount`, and per `include`:
+
+- `props` -- `{name, value, routes}`, where `routes` says whether the value counts as truthy for [property routing](#2-conditional-routing).
+- `shadowObjects` -- per Shadow Object the `displayName`, the tokens it is `definedUnder`, the names it uses (`usesProperties`, `usesContexts`, `usesParentContexts`) and provides (`providesContexts`, `providesGlobalContexts`), and the lifecycle `hooks` it implements.
+- `contexts` -- per Entity Context the `name`, `provided` (absent unless this Entity provides), `inherited` (absent at a root with no global value), `effective` (what `useContext()` reads), `providedBy` (display names on this Entity), and `source`: `{kind: 'self'}`, `{kind: 'ancestor', uuid}`, `{kind: 'global'}` or `{kind: 'none'}`. "Holds a value" is `!= null`, the rule the context chain resolves by.
+
+A symbol context name arrives as `{symbol: description}`. An agent or a script can read it; it cannot pass it back in, and a symbol context is findable only through the tree.
+
+##### `SerializedValue`
+
+Primitives pass through; `NaN` and the two infinities become their names. Everything JSON would drop or mangle is tagged: `{$type: 'undefined'}`, `bigint`, `symbol`, `function`, `date`, `signal` (with its current value), `dom` (a node, by `nodeName` and `id`), `array-buffer` / `typed-array` (by `byteLength`), `object` (any other class instance: its `class` and a `preview` of its own enumerable keys -- a `Map` or `Set` previews `size` and `entries`, an `Error` its `name` and `message`), `circular` (a cycle on the current path), and `truncated` with a `reason` of `'depth'`, `'length'`, `'entries'` or `'string'` and the `original` size. A getter that throws becomes `{$type: 'object', class: 'Error', preview: {message}}` in place of its value.
+
+`SerializeLimits` defaults: `maxDepth` 3, `maxArrayLength` 20, `maxObjectEntries` 30, `maxStringLength` 200. They are per value, not per snapshot.
+
 #### `ChangeTrailRefusedError`
 
 The reason a Shadow Environment gives when it could apply only part of a change trail. Exported
@@ -1511,13 +1576,14 @@ animate();
 
 ## Environment Proxies
 
-The `envProxy` property accepts any implementation of `IShadowObjectEnvProxy`. Two implementations ship out of the box; writing a third is a matter of these six members.
+The `envProxy` property accepts any implementation of `IShadowObjectEnvProxy`. Two implementations ship out of the box; writing a third is a matter of these seven members.
 
 | Member | Signature | Required |
 | :--- | :--- | :--- |
 | `start` | `() => Promise<void>` | yes |
 | `importScript` | `(url: URL \| string) => Promise<void>` | yes |
 | `applyChangeTrail` | `(data: ChangeTrailType, waitForConfirmation: boolean) => Promise<void>` | yes |
+| `inspect` | `(request: InspectRequest, signal?: AbortSignal) => Promise<KernelSnapshot>` | no |
 | `destroy` | `() => void` | yes |
 | `onMessageToView` | `(event: Omit<MessageToViewEvent, 'transferables'>) => any` | no |
 | `onProxyFailed` | `(reason: unknown) => any` | no |
@@ -1542,6 +1608,8 @@ exactly as it did.
 Losing the environment altogether is the other channel: that is `onProxyFailed`, and the two are
 not interchangeable. A refused trail leaves the environment ready and costs one cycle; a failed
 proxy ends it.
+
+`inspect` is the one optional *call*: a proxy that implements it hands `ShadowEnv.inspect()` a [`KernelSnapshot`](#kernelsnapshot) of the Kernel it stands for -- `createKernelSnapshot(kernel, request)` is the builder both shipped implementations would use, and `LocalShadowObjectEnv` calls it synchronously inside the promise. A proxy that leaves it out keeps working; the environment then reports `NotInspectable`.
 
 The last two are callbacks rather than calls: `ShadowEnv` installs both on every proxy it is given -- `onMessageToView` for messages coming out of the Shadow Environment, `onProxyFailed` for the loss of that environment. An implementation that cannot fail simply never calls the latter.
 
@@ -2818,6 +2886,38 @@ const graph = kernel.getEntityGraph();
 console.log(JSON.stringify(graph, null, 2));
 ```
 
+#### `createKernelSnapshot(kernel, request?)`
+
+The serializable counterpart of `getEntityGraph()`: the same walk over the same tree, with `omittedChildren` in the same shape, cut by the depth and node limits of the request and carrying per Entity the properties, the Shadow Objects and the Entity Contexts as plain data. What `ShadowEnv.inspect()` asks the environment for, exported so that a test or a Shadow Object module that holds a `Kernel` can take the picture itself. Synchronous, read-only and quiet: no signal read inside it subscribes anything. See [`inspect()`](#inspectrequest-signal) for the request and the snapshot.
+
+- **Signature:** `createKernelSnapshot(kernel: Kernel, request?: InspectRequest): KernelSnapshot`
+
+```typescript
+import {createKernelSnapshot} from '@spearwolf/shadow-objects/shadow-objects.js';
+
+const snapshot = createKernelSnapshot(kernel, {maxDepth: 2, include: ['props', 'contexts']});
+```
+
+#### Inspection accessors
+
+The snapshot is built from read accessors that each answer one question, create nothing on read, and answer empty after a teardown rather than throwing. They are public so that a diagnosis can ask one question without taking a whole snapshot.
+
+| Member | Answers |
+| :--- | :--- |
+| `kernel.tokenOf(uuid)` | The token of the Entity, or `undefined` |
+| `kernel.describeShadowObjects(uuid)` | One `ShadowObjectDescription` per Shadow Object of the Entity: `displayName`, `definedUnder`, the five name lists, `hooks` |
+| `kernel.rootContextNames()` | The names of the kernel-wide context chains |
+| `kernel.describeRootContext(name)` | `{value, signals}` of one chain -- the members in chain order, the same signal objects the Entities contribute |
+| `entity.contextNames()` | The Entity Context names this Entity holds |
+| `entity.describeContext(name)` | `{provided, inherited, effective, hasProviders}` of one Entity Context |
+| `entity.globalContextNames()` | The global names this Entity contributes to |
+| `entity.describeGlobalContext(name)` | `{value, signal, hasProviders}` -- the contribution and the signal standing in the chain |
+| `registry.describe()` | The three maps, constructors reduced to display names |
+| `registry.tokensOf(construct)` | The tokens a constructor is defined under |
+| `Registry.isDefault(registry)` | Whether it is the default registry of the thread |
+
+`entity` here is the `Entity` class `kernel.getEntity()` hands out, not the `EntityApi` a Shadow Object sees through the creation API -- the four accessors are on the class only.
+
 #### `upgradeEntities()`
 
 Re-evaluates all Entities against the current Registry. Call this after dynamically adding new Shadow Object definitions.
@@ -3177,6 +3277,10 @@ Checks if a token is registered.
 
 Checks if a token route exists. Property routes -- the `@name` form that `appendRoute` also accepts -- are not answered here and read as `false` even while they resolve.
 
+#### `registry.describe()`, `registry.tokensOf(construct)`, `Registry.isDefault(registry)`
+
+Read-only views for inspection. `describe()` copies the token, route and property-route maps with every constructor reduced to its display name; `tokensOf()` is the reverse lookup of `define()`; `isDefault()` tells the shared default registry from any other. See [Inspection accessors](#inspection-accessors).
+
 #### `registry.clear()`
 
 Removes all registrations and routes.
@@ -3319,3 +3423,5 @@ const graph = kernel.getEntityGraph();
 // through the node, not through the JSON.
 console.log(JSON.stringify(graph, null, 2));
 ```
+
+For a picture that survives `JSON.stringify()` -- properties, Shadow Objects and Entity Contexts included -- take `createKernelSnapshot(kernel)` instead; from the View side, `ShadowEnv.get(ns).inspect()` joins it with the component tree.
