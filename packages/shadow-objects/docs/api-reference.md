@@ -1445,7 +1445,7 @@ snapshot.kernel?.registry;
 Two things the promise can do, and one it never does.
 
 - It **rejects** only for the caller's reasons: `signal` aborted, or the environment destroyed before or while the proxy answers (`ShadowEnvDestroyedError`).
-- It **reports** every reason inside the environment under `error`, with `kernel` absent: a proxy that does not implement `inspect` (`{name: 'NotInspectable'}`), a Kernel that threw. A proxy that is not ready yet is not an error -- `state.proxyReady` says so, and `kernel` is simply absent.
+- It **reports** every reason inside the environment under `error`, with `kernel` absent: a proxy that does not implement `inspect` (`{name: 'NotInspectable'}`), a Kernel that threw, a View snapshot that threw -- then `view` is the absent half, and its reason is the one kept where both fail. A proxy that is not ready yet is not an error -- `state.proxyReady` says so, and `kernel` is simply absent.
 - It never builds the pending changes. The View snapshot reads the committed Component Memory, so a component created and not yet synced has no `props`, and a property set since the last cycle shows its previous value. A caller that wants the View and the Kernel to agree after its own change awaits [`syncWait()`](#syncwait) first.
 
 `EnvSnapshot` carries `namespace` (the global namespace reports `'ShadowObjectsGlobalNS'`, and `isGlobalNamespace` says so), `kind` (`'local'`, `'worker'`, `'custom'` for any other proxy, `'none'` without one), `state`, and the two halves `view` and `kernel`.
@@ -1470,13 +1470,21 @@ An `EntityNodeSnapshot` carries `uuid`, `token`, `order`, `parentUuid`, `autoDes
 
 - `props` -- `{name, value, routes}`, where `routes` says whether the value counts as truthy for [property routing](#2-conditional-routing).
 - `shadowObjects` -- per Shadow Object the `displayName`, the tokens it is `definedUnder`, the names it uses (`usesProperties`, `usesContexts`, `usesParentContexts`) and provides (`providesContexts`, `providesGlobalContexts`), and the lifecycle `hooks` it implements.
-- `contexts` -- per Entity Context the `name`, `provided` (absent unless this Entity provides), `inherited` (absent at a root with no global value), `effective` (what `useContext()` reads), `providedBy` (display names on this Entity), and `source`: `{kind: 'self'}`, `{kind: 'ancestor', uuid}`, `{kind: 'global'}` or `{kind: 'none'}`. "Holds a value" is `!= null`, the rule the context chain resolves by.
+- `contexts` -- per Entity Context the `name`, `provided` (absent unless this Entity provides), `inherited` (absent when nothing is inherited), `effective` (what `useContext()` reads), `providedBy` (display names on this Entity), and `source`: `{kind: 'self'}`, `{kind: 'ancestor', uuid}`, `{kind: 'global'}` or `{kind: 'none'}`. "Holds a value" is `!= null`, the rule the context chain resolves by.
 
 A symbol context name arrives as `{symbol: description}`. An agent or a script can read it; it cannot pass it back in, and a symbol context is findable only through the tree.
 
+##### `ViewSnapshot`
+
+`takenAt`, `counts` (`components`, `roots`), `roots` (one `ViewComponentSnapshot` per component, the roots in the order the `ComponentContext` keeps them) and `truncation`, cut by the same `maxDepth`, `maxNodes` and `rootUuids` as the Kernel side.
+
+A `ViewComponentSnapshot` carries `uuid`, `token`, `order`, `parentUuid`, `childCount`, `children` (absent where the depth limit cut the walk), `omittedChildren` (a child the walk had already placed elsewhere, reason `'already-in-graph'` -- the same shape as the Kernel side minus the reason that needs a Kernel), and, under `include: ['props']`, `props` -- `{name, value, routes}` as the Component Memory holds them, which is the last committed state: a component created and not yet synced has no `props`.
+
+`element` is a CSS selector path to the `<shae-ent>` element carrying the component, from the nearest ancestor with a simple id (or the document root) down to the element, one `tag:nth-of-type(n)` step per level: `#app > section:nth-of-type(1) > shae-ent:nth-of-type(2)`. It is found with one `document.querySelectorAll('shae-ent')` per snapshot, so it is absent for an element inside a shadow root (the query pierces none, open or closed), for a component no element carries, and in a realm without a `document`.
+
 ##### `SerializedValue`
 
-Primitives pass through; `NaN` and the two infinities become their names. Everything JSON would drop or mangle is tagged: `{$type: 'undefined'}`, `bigint`, `symbol`, `function`, `date`, `signal` (with its current value), `dom` (a node, by `nodeName` and `id`), `array-buffer` / `typed-array` (by `byteLength`), `object` (any other class instance: its `class` and a `preview` of its own enumerable keys -- a `Map` or `Set` previews `size` and `entries`, an `Error` its `name` and `message`), `circular` (a cycle on the current path), and `truncated` with a `reason` of `'depth'`, `'length'`, `'entries'` or `'string'` -- the last three with the `original` size, a `'string'` cut also with a `preview` of its head. A getter that throws becomes `{$type: 'object', class: 'Error', preview: {message}}` in place of its value.
+Primitives pass through; `NaN` and the two infinities become their names. Everything JSON would drop or mangle is tagged: `{$type: 'undefined'}`, `bigint`, `symbol`, `function`, `date`, `signal` (with its current value), `dom` (a node, by `nodeName` and `id`), `array-buffer` / `typed-array` (by `byteLength`), `object` (any other class instance: its `class` and a `preview` of its own enumerable keys -- a `Map` or `Set` previews `size` and `entries`, an `Error` its `name` and `message`), `circular` (a cycle on the current path), and `truncated` with a `reason` of `'depth'`, `'length'`, `'entries'` or `'string'` -- the last three with the `original` size, a `'string'` cut also with a `preview` of its head. Serializing never throws: a getter that throws while it is read, a revoked proxy, a trap that refuses -- each becomes `{$type: 'object', class: 'Error', preview: {message}}` in place of the value, and a signal that holds itself ends as `circular`.
 
 `SerializeLimits` defaults: `maxDepth` 3, `maxArrayLength` 20, `maxObjectEntries` 30, `maxStringLength` 200. They are per value, not per snapshot.
 

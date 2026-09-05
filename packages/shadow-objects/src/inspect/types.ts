@@ -161,6 +161,8 @@ export interface ViewComponentSnapshot {
   element?: string;
   children?: ViewComponentSnapshot[];
   childCount: number;
+  /** A child the walk had already placed elsewhere; same meaning as the Kernel side's entry of that reason. */
+  omittedChildren?: {uuid: string; reason: 'already-in-graph'}[];
 }
 
 export interface ViewSnapshot {

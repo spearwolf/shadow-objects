@@ -52,6 +52,7 @@ class ViewSnapshotBuilder {
   readonly #ctx: ComponentContext;
   readonly #req: NormalizedInspectRequest;
   readonly #budget: NodeBudget;
+  readonly #visited = new Set<string>();
   readonly #truncation: TruncationNote[] = [];
   readonly #elements: Map<string, string>;
   #budgetNoted = false;
@@ -69,6 +70,9 @@ class ViewSnapshotBuilder {
 
     const nodes: ViewComponentSnapshot[] = [];
     for (const root of roots) {
+      // a root reached through an earlier root's subtree drops from the top level without a note,
+      // the way the Kernel builder drops one
+      if (this.#visited.has(root.uuid)) continue;
       if (!this.#budget.take()) {
         this.#noteBudget(root.parent?.uuid);
         break;
@@ -115,6 +119,7 @@ class ViewSnapshotBuilder {
 
   #node(component: ViewComponent, depth: number): ViewComponentSnapshot {
     const {uuid} = component;
+    this.#visited.add(uuid);
     const children = this.#ctx.getChildren(component);
 
     // the setter coerces a missing token to VoidToken, so the getter never actually reads back undefined --
@@ -132,7 +137,14 @@ class ViewSnapshotBuilder {
 
     if (depth < this.#req.maxDepth) {
       const walked: ViewComponentSnapshot[] = [];
+      const omitted: NonNullable<ViewComponentSnapshot['omittedChildren']> = [];
       for (const child of children) {
+        // `addToChildren()` writes a children list without taking the child out of the one it
+        // already stands in, so a component can be reached twice and a list can point at an ancestor
+        if (this.#visited.has(child.uuid)) {
+          omitted.push({uuid: child.uuid, reason: 'already-in-graph'});
+          continue;
+        }
         if (!this.#budget.take()) {
           this.#noteBudget(uuid);
           break;
@@ -140,6 +152,7 @@ class ViewSnapshotBuilder {
         walked.push(this.#node(child, depth + 1));
       }
       node.children = walked;
+      if (omitted.length > 0) node.omittedChildren = omitted;
     } else if (children.length > 0) {
       this.#truncation.push({
         reason: 'max-depth',
