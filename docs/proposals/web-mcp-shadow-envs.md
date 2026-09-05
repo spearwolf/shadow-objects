@@ -135,8 +135,8 @@ export interface EnvSnapshot {
   namespace: string;
   /** Whether the namespace is the global one. `String(GlobalNS)` alone does not say so. */
   isGlobalNamespace: boolean;
-  /** `'local'` for a LocalShadowObjectEnv, `'worker'` for a RemoteWorkerEnv, `'custom'` for any other proxy. */
-  kind: 'local' | 'worker' | 'custom';
+  /** `'local'` for a LocalShadowObjectEnv, `'worker'` for a RemoteWorkerEnv, `'custom'` for any other proxy, `'none'` while the environment has no proxy. */
+  kind: 'local' | 'worker' | 'custom' | 'none';
   state: {
     viewReady: boolean;
     proxyReady: boolean;
@@ -166,7 +166,18 @@ export interface KernelSnapshot {
   /** Set when a limit of the request cut the walk short. Names what was cut and how to get the rest. */
   truncation?: TruncationNote[];
 }
+```
 
+```typescript
+export interface TruncationNote {
+  reason: 'max-depth' | 'max-nodes' | 'unknown-root';
+  /** The node whose children were not walked, or the root uuid that was not found. */
+  uuid?: string;
+  message: string;
+}
+```
+
+```typescript
 export interface EntityNodeSnapshot {
   uuid: string;
   token: string;
@@ -234,7 +245,7 @@ export type ContextName = string | {symbol: string};
 
 Two remarks on the contexts.
 
-*`source` is computed, not stored.* The Entity holds a `provide`, an `inherited` and a `context` signal per name and a `SignalsPath` over the first two. The snapshot reads their `.value` fields -- a read outside any effect tracks nothing -- and derives `source` by walking the parent chain until an Entity with a non-`undefined` `provided` value for the name is found, falling back to `'global'` when the Kernel's root chain holds a value, and `'none'` otherwise. That walk reuses the ancestor visits the tree walk makes anyway; it is O(depth) per context name and fine at the sizes §13 bounds.
+*`source` is computed, not stored.* The Entity holds a `provide`, an `inherited` and a `context` signal per name and a `SignalsPath` over the first two. The snapshot reads their `.value` fields -- a read outside any effect tracks nothing -- and derives `source` by walking the parent chain until an Entity is found whose `provided` value for the name is `!= null` -- the rule `SignalsPath` resolves a chain by -- falling back to `'global'` when the Kernel's root chain holds a value, and `'none'` otherwise. That walk reuses the ancestor visits the tree walk makes anyway; it is O(depth) per context name and fine at the sizes §13 bounds.
 
 *Symbol names cannot be addressed from outside.* An agent can read `{symbol: 'my-context'}` and understand it; it cannot pass a symbol back in. Every tool that takes a context name takes a string, and a symbol context is findable only through the tree. That is the honest limit of a JSON boundary, and the docs say so.
 
@@ -291,8 +302,10 @@ Additive, read-only, and each small enough to test in isolation. None of them ch
 | `Entity` | `contextNames(): ContextNameType[]` | keys of `#context`, without creating any |
 | `Entity` | `describeContext(name): {provided, inherited, effective, hasProviders} \| undefined` | raw values read from the three signals; `undefined` when the name is not on this Entity |
 | `Entity` | `globalContextNames(): ContextNameType[]` | keys of `#rootContexts` |
+| `Entity` | `describeGlobalContext(name): {value, signal, hasProviders} \| undefined` | this Entity's contribution to the chain and the signal standing in it |
 | `ShadowObjectCreationScope` | `describe(): ShadowObjectDescription` | display name and the five name lists, read from the private maps |
-| `Kernel` | `describeShadowObject(obj): ShadowObjectDescription \| undefined` | delegates to the scope behind `#shadowObjectScopes` |
+| `Kernel` | `describeShadowObjects(uuid): ShadowObjectDescription[]` | one description per Shadow Object of the Entity, with `definedUnder` and `hooks` -- the constructor is known only at the entity entry, so the lookup is per Entity |
+| `Kernel` | `tokenOf(uuid): string \| undefined` | the token of the entity entry |
 | `Kernel` | `rootContextNames(): ContextNameType[]` | keys of `#rootContexts` |
 | `Kernel` | `describeRootContext(name): {value, signals: Signal[]} \| undefined` | needs `SignalsPath.signals` (a read-only view of its members) |
 | `Registry` | `describe(): RegistrySnapshot` (without `isDefault`) | copies of the three maps with constructors reduced to display names |
@@ -300,7 +313,7 @@ Additive, read-only, and each small enough to test in isolation. None of them ch
 | `Registry` | `static isDefault(registry): boolean` | identity check against the module-level default |
 | `SignalsPath` | `get signals(): readonly SignalLike[]` | the current member list |
 
-`Kernel.describeShadowObject()` also answers `hooks` by checking the four symbol keys the `LIFECYCLE_HOOKS` table in `Kernel.ts` already names. The mapping from the provider signals of a scope to the Entity's providers of a name (`providedBy`) is done in the snapshot builder by asking every Shadow Object of the Entity for its `providesContexts` and grouping by name -- no new bookkeeping.
+`Kernel.describeShadowObjects()` also answers `hooks` by checking the four symbol keys the `LIFECYCLE_HOOKS` table in `Kernel.ts` already names. The mapping from the provider signals of a scope to the Entity's providers of a name (`providedBy`) is done in the snapshot builder by asking every Shadow Object of the Entity for its `providesContexts` and grouping by name -- no new bookkeeping.
 
 ## 7. Value serialization
 
@@ -322,7 +335,7 @@ export type SerializedValue =
   | {$type: 'array-buffer' | 'typed-array'; byteLength: number; class: string}
   | {$type: 'circular'}
   | {$type: 'redacted'}
-  | {$type: 'truncated'; reason: 'depth' | 'length' | 'entries' | 'string'; original?: number};
+  | {$type: 'truncated'; reason: 'depth' | 'length' | 'entries' | 'string'; original?: number; preview?: string};
 
 export interface SerializeLimits {
   maxDepth: number;         // default 3
@@ -336,9 +349,9 @@ Rules, in the order they are applied:
 
 1. Primitives pass through; `undefined` becomes `{$type: 'undefined'}` because JSON drops it, and a property that is set without a value (`[key]` in a change trail) is exactly the case that must stay visible.
 2. `NaN` and `±Infinity` become strings `'NaN'`, `'Infinity'`, `'-Infinity'` -- JSON has no representation for them.
-3. Plain objects and arrays recurse under `maxDepth`; a cycle is detected with a `Set` of visited objects along the current path, not globally, so a shared sub-object appears twice rather than as `$circular` the second time.
+3. Plain objects and arrays recurse under `maxDepth`; a cycle is detected with a `Set` of visited objects along the current path, not globally, so a shared sub-object appears twice rather than as `$circular` the second time. The root object is depth 0, and a container nested deeper than `maxDepth` levels below the root is cut: `maxDepth: 2` keeps two nested containers and cuts the third.
 4. A signalize signal (`isSignal()`) becomes `{$type: 'signal', value}` with its current value serialized -- a Shadow Object that puts a signal into a context is common, and the agent wants the value.
-5. `Date`, `Map`, `Set`, typed arrays and buffers get their own tags; `Map`/`Set` are rendered as entry arrays under the array limit.
+5. `Date`, `Map`, `Set`, typed arrays and buffers get their own tags; `Map`/`Set` are rendered as entry arrays under the array limit. `Map` and `Set` have no tag of their own and travel as `{$type: 'object', class: 'Map' | 'Set', preview: {size, entries}}`.
 6. Anything else with a prototype other than `Object.prototype` or `null` becomes `{$type: 'object', class}` with a `preview` of its own enumerable string keys under the entry limit. A `three` `Object3D` therefore shows its class and its first thirty fields, not its whole scene graph.
 7. A DOM `Node` (checked by duck typing on `nodeType` and `nodeName`, so the module needs no DOM globals) becomes `{$type: 'dom'}`. This case only occurs in a local environment with `disableStructuredClone`.
 8. Any getter that throws while being read makes the field `{$type: 'object', class: 'Error', preview: {message}}` rather than aborting the snapshot.
@@ -447,7 +460,7 @@ static inspectAll(request?: InspectRequest, signal?: AbortSignal): Promise<EnvSn
 
 The `kind` field is decided here: `isLocalEnv` marks a local proxy, `instanceof RemoteWorkerEnv` a worker, anything else `'custom'`. That keeps `RemoteWorkerEnv` free of a marker field it has no other use for.
 
-`inspectAll()` runs the environments in parallel with `Promise.all` over `inspect()` calls that do not reject for environment reasons -- one silent worker costs its own entry, not the page's answer.
+`inspectAll()` runs the environments in parallel with `Promise.all` over `inspect()` calls that do not reject for environment reasons -- one silent worker costs its own entry, not the page's answer. An environment destroyed while it answers drops out of the list rather than failing the call, and the call rejects only for an aborted signal.
 
 ## 9. Discovery of environments
 
@@ -662,7 +675,7 @@ Following `AGENTS.md` §4 and `CLAUDE.md`, in the same change as the code:
 Four phases, each shippable on its own and each ending with green `pnpm run ci`.
 
 **Phase 1 -- snapshot model and local environments.**
-`src/inspect/` with types, serializer and `createKernelSnapshot()`; the read accessors of §6.5; `IShadowObjectEnvProxy.inspect?`; `LocalShadowObjectEnv.inspect()`; `ShadowEnv.inspect()` / `inspectAll()` with the View snapshot; unit tests; docs for all of it. After this phase a developer can call `ShadowEnv.get('ns').inspect()` in the console of a local environment and get JSON.
+`src/inspect/` with types, serializer and `createKernelSnapshot()`; the read accessors of §6.5; `IShadowObjectEnvProxy.inspect?`; `LocalShadowObjectEnv.inspect()`; `ShadowEnv.inspect()` / `inspectAll()` with the View snapshot; unit tests; docs for all of it. After this phase a developer can call `ShadowEnv.get('ns').inspect()` in the console of a local environment and get JSON. Implemented 2026-09-05; see `docs/superpowers/plans/2026-09-05-inspect-phase-1.md`.
 
 **Phase 2 -- worker transport.**
 `Inspect` / `Inspected`, `WorkerInspectTimeout`, `RemoteWorkerEnv.inspect()`, `MessageRouter.#onInspect()`, `inspectTimeout` option and `inspect-timeout` attribute, the fifth `switch` cases, unit and browser-mode tests, docs. After this phase the same console call works for a worker environment.
@@ -676,7 +689,7 @@ Files touched, by phase:
 
 | Phase | New | Changed |
 | :--- | :--- | :--- |
-| 1 | `src/inspect/types.ts`, `serializeValue.ts`, `createKernelSnapshot.ts`, `createViewSnapshot.ts`, specs | `Entity.ts`, `ShadowObjectCreationScope.ts`, `Kernel.ts`, `Registry.ts`, `SignalsPath.ts`, `IShadowObjectEnvProxy.ts`, `LocalShadowObjectEnv.ts`, `ShadowEnv.ts`, `shadow-objects.ts`, `index.ts`, docs, changelog |
+| 1 | `src/inspect/types.ts`, `serializeValue.ts`, `createKernelSnapshot.ts`, `createViewSnapshot.ts`, `normalizeInspectRequest.ts`, `in-the-dark/displayName.ts`, specs | `Entity.ts`, `ShadowObjectCreationScope.ts`, `Kernel.ts`, `Registry.ts`, `SignalsPath.ts`, `IShadowObjectEnvProxy.ts`, `LocalShadowObjectEnv.ts`, `ShadowEnv.ts`, `shadow-objects.ts`, `index.ts`, docs, changelog |
 | 2 | -- | `constants.ts`, `RemoteWorkerEnv.ts`, `MessageRouter.ts`, `ShaeWorkerElement.ts`, `types.ts` (wire shapes), specs, docs, changelog |
 | 3 | `src/model-context.ts`, `src/model-context/ModelContextLike.ts`, `exposeShadowEnvsToModelContext.ts`, `tools/*.ts`, specs, `shadow-objects-e2e/tests/model-context.spec.ts` and page | `package.json` (`exports`), `distContract.files.txt`, `distContract.package.json`, `AGENTS.md`, `README.md`, docs, changelogs |
 
