@@ -402,8 +402,9 @@ export class ShadowEnv {
    * implements `inspect`, the Kernel's Entity Tree behind it.
    *
    * Never rejects for a reason inside the environment -- a proxy that cannot answer, a Kernel that
-   * threw -- and reports those under `error` with `kernel` absent. A proxy that is not ready yet is
-   * not an error either: `state.proxyReady` says so, and `kernel` is simply absent. It rejects
+   * threw, a View snapshot that threw -- and reports those under `error`, with the half that failed
+   * absent. Where both halves fail, `error` carries the View's reason. A proxy that is not ready yet
+   * is not an error either: `state.proxyReady` says so, and `kernel` is simply absent. It rejects
    * only for a reason of the caller's: an aborted signal, or an environment that is destroyed
    * before or while the proxy answers.
    *
@@ -425,7 +426,13 @@ export class ShadowEnv {
       state: {viewReady: this.viewReady, proxyReady: this.proxyReady, isReady: this.isReady, isDestroyed: this.#isDestroyed},
     };
 
-    if (this.#comCtx) snapshot.view = createViewSnapshot(this.#comCtx, request);
+    if (this.#comCtx) {
+      try {
+        snapshot.view = createViewSnapshot(this.#comCtx, request);
+      } catch (error) {
+        snapshot.error = errorInfo(error);
+      }
+    }
 
     if (proxy === undefined || !this.proxyReady) return snapshot;
 
@@ -440,7 +447,8 @@ export class ShadowEnv {
     } catch (error) {
       if (this.#isDestroyed) throw new ShadowEnvDestroyedError();
       if (signal?.aborted) throw signal.reason;
-      snapshot.error = errorInfo(error);
+      // a View that already failed keeps the field: it is the half the caller can still act on
+      if (snapshot.error === undefined) snapshot.error = errorInfo(error);
     }
 
     return snapshot;

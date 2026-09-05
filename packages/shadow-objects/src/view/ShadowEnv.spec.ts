@@ -1762,6 +1762,23 @@ describe('ShadowEnv', () => {
       await expect(env.inspect()).rejects.toBeInstanceOf(ShadowEnvDestroyedError);
     });
 
+    it('reports a view snapshot that throws, instead of rejecting', async () => {
+      const env = new ShadowEnv();
+      const ctx = ComponentContext.get();
+      env.view = ctx;
+      const traverse = vi.spyOn(ctx, 'traverseLevelOrderBFS').mockImplementation(() => {
+        throw new RangeError('view broke');
+      });
+
+      const snapshot = await env.inspect();
+
+      expect(snapshot.view).toBeUndefined();
+      expect(snapshot.error).toEqual({name: 'RangeError', message: 'view broke'});
+
+      traverse.mockRestore();
+      env.destroy();
+    });
+
     it('rejects when the environment is destroyed while the proxy is still answering', async () => {
       const env = new ShadowEnv();
       env.view = ComponentContext.get();
