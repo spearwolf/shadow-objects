@@ -51,8 +51,8 @@ describe('serializeValue', () => {
 
   it('marks a cycle on the current path and lets a shared object appear twice', () => {
     const shared = {s: 1};
-    const cyclic: Record<string, unknown> = {shared, again: shared};
-    cyclic['self'] = cyclic;
+    const cyclic: {shared: unknown; again: unknown; self?: unknown} = {shared, again: shared};
+    cyclic.self = cyclic;
     expect(serializeValue(cyclic)).toEqual({shared: {s: 1}, again: {s: 1}, self: {$type: 'circular'}});
   });
 

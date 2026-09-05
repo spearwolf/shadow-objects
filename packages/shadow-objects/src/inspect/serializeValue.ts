@@ -34,6 +34,9 @@ const errorEntry = (error: unknown): SerializedValue => ({
   preview: {message: error instanceof Error ? error.message : String(error)},
 });
 
+/** Marks the entries cut of an object in its serialized preview. */
+const TRUNCATED_KEY = '$truncated';
+
 /**
  * Turns any value into plain, JSON-safe data under a set of limits. Never throws: a getter that
  * throws while it is read becomes an error entry in place of the value.
@@ -146,7 +149,7 @@ class Serializer {
       }
       out[key] = this.serialize(entry, depth + 1, path);
     }
-    if (keys.length > max) out['$truncated'] = {$type: 'truncated', reason: 'entries', original: keys.length};
+    if (keys.length > max) out[TRUNCATED_KEY] = {$type: 'truncated', reason: 'entries', original: keys.length};
     return out;
   }
 }
