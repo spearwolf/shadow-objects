@@ -18,6 +18,7 @@ for the mechanism to track framework defects as expected failures.
 | `upgrade-timing` | markup parsed before the custom element definitions load |
 | `async-events` | message round-trips in both directions, `traverseChildren`, `forward-custom-events`, what `auto-sync` controls |
 | `remote-worker-env` | the programmatic `ShadowEnv` + `RemoteWorkerEnv` path |
+| `inspect-worker-env` | `ShadowEnv.inspect()` over a real worker: the snapshot crosses the wire, View and Kernel agree, the request limits hold, an abort and a teardown reject |
 | `shae-worker` | `<shae-worker>` in remote and local flavour, context lifecycle events, a `local` change against a running remote environment refused |
 | `auto-destruct` | `autoDestructionOnParentRemoval` cascade over a real worker |
 | `auto-destruct-dom` | the same flag, set from markup: what reaches the entity, what a DOM removal does, and what the kernel's cascade does |
