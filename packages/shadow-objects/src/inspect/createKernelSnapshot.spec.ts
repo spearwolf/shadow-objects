@@ -72,6 +72,13 @@ const shape = (node: EntityNodeSnapshot): unknown => ({
   ...(node.omittedChildren ? {omittedChildren: node.omittedChildren} : {}),
 });
 
+const graphShape = (node: ReturnType<Kernel['getEntityGraph']>[number]): unknown => ({
+  uuid: node.entity.uuid,
+  token: node.token,
+  children: node.children.map(graphShape),
+  ...(node.omittedChildren ? {omittedChildren: node.omittedChildren} : {}),
+});
+
 describe('createKernelSnapshot', () => {
   it('walks the same tree as getEntityGraph()', async () => {
     const {kernel, uuids} = await makeScene();
@@ -81,15 +88,27 @@ describe('createKernelSnapshot', () => {
     const snapshot = createKernelSnapshot(kernel, {maxDepth: 64, maxNodes: 1000});
     const graph = kernel.getEntityGraph();
 
-    const graphShape = (node: (typeof graph)[number]): unknown => ({
-      uuid: node.entity.uuid,
-      token: node.token,
-      children: node.children.map(graphShape),
-      ...(node.omittedChildren ? {omittedChildren: node.omittedChildren} : {}),
-    });
-
     expect(snapshot.roots.map(shape)).toEqual(graph.map(graphShape));
     expect(snapshot.truncation).toBeUndefined();
+
+    kernel.destroy();
+  });
+
+  it('drops a root already reached through another root, as getEntityGraph() does', async () => {
+    const {kernel, uuids} = await makeScene();
+    // lonely stays in the kernel's root set, but this back-edge also puts it under root's
+    // children -- root is walked first, so lonely is reached there and drops off the top level
+    kernel.getEntity(uuids.root).addChild(kernel.getEntity(uuids.lonely));
+
+    const snapshot = createKernelSnapshot(kernel, {maxDepth: 64, maxNodes: 1000});
+    const graph = kernel.getEntityGraph();
+
+    expect(snapshot.roots.map(shape)).toEqual(graph.map(graphShape));
+
+    const [root] = snapshot.roots;
+    const lonelyNodes = root!.children!.filter((n) => n.uuid === uuids.lonely);
+    expect(lonelyNodes).toHaveLength(1);
+    expect(snapshot.roots.map((n) => n.uuid)).not.toContain(uuids.lonely);
 
     kernel.destroy();
   });

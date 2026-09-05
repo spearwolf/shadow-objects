@@ -65,8 +65,11 @@ class KernelSnapshotBuilder {
 
     const nodes: EntityNodeSnapshot[] = [];
     for (const root of roots) {
+      // a root reached through an earlier root's subtree (a back-edge into the root set) drops
+      // from the top level without a note, same as `getEntityGraph()`'s top-level `visited` check
+      if (this.#visited.has(root.uuid)) continue;
       if (!this.#budget.take()) {
-        this.#noteBudget(root.parentUuid);
+        this.#noteBudget(undefined);
         break;
       }
       nodes.push(this.#node(root, 0));
