@@ -219,6 +219,41 @@ export interface ShadowObjectConstructorFunc {
   displayName?: string;
 }
 
+/** The four lifecycle hooks a Shadow Object can implement, by the name of their symbol. */
+export type LifecycleHookName = 'onCreate' | 'onDestroy' | 'onParentChanged' | 'onViewEvent';
+
+/**
+ * What a creation scope knows about its Shadow Object: the display name and the five name lists
+ * the creation API filled while the constructor ran. Read-only; a torn-down scope answers empty
+ * lists.
+ */
+export interface ShadowObjectScopeDescription {
+  displayName: string;
+  usesProperties: string[];
+  usesContexts: (string | symbol)[];
+  usesParentContexts: (string | symbol)[];
+  providesContexts: (string | symbol)[];
+  providesGlobalContexts: (string | symbol)[];
+}
+
+/** {@link ShadowObjectScopeDescription} plus what only the Kernel can add: the tokens and the hooks. */
+export interface ShadowObjectDescription extends ShadowObjectScopeDescription {
+  /** The tokens the constructor is defined under in the Kernel's Registry, in definition order. */
+  definedUnder: string[];
+  /** Which of the four lifecycle hooks the instance implements. */
+  hooks: LifecycleHookName[];
+}
+
+/** The three maps of a Registry, with constructors reduced to display names. */
+export interface RegistryDescription {
+  /** token -> display names of the constructors defined under it, in definition order. */
+  tokens: Record<string, string[]>;
+  /** token -> tokens it routes to. */
+  routes: Record<string, string[]>;
+  /** `@prop` and `token@prop` keys -> tokens (property routes). */
+  propRoutes: Record<string, string[]>;
+}
+
 export type ShadowObjectType = EventizedObject;
 
 export type NamespaceType = string | symbol;
