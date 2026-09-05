@@ -1,3 +1,4 @@
+import type {InspectRequest, KernelSnapshot} from '../inspect/types.js';
 import type {MessageToViewEvent} from '../shadow-objects.js';
 import type {ChangeTrailType} from '../types.js';
 
@@ -26,6 +27,15 @@ export interface IShadowObjectEnvProxy {
    *   sent without it -- `RemoteWorkerEnv` is one of those.
    */
   applyChangeTrail(data: ChangeTrailType, waitForConfirmation: boolean): Promise<void>;
+
+  /**
+   * Describe the Kernel behind this proxy: a plain-data snapshot of its Entity Tree, cut by the
+   * limits of the request. Optional: a proxy that does not implement it makes `ShadowEnv.inspect()`
+   * report `kernel` as absent with an error naming the proxy as not inspectable, and everything
+   * else keeps working. Reject with the signal's reason when `signal` is aborted before or while
+   * the snapshot is built.
+   */
+  inspect?(request: InspectRequest, signal?: AbortSignal): Promise<KernelSnapshot>;
 
   destroy(): void;
 

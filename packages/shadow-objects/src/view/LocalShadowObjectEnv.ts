@@ -3,6 +3,8 @@ import {MessageToView, ShadowObjectsExport} from '../constants.js';
 import {importModule, missingShadowObjectsExportMessage} from '../in-the-dark/importModule.js';
 import {Kernel, type MessageToViewEvent} from '../in-the-dark/Kernel.js';
 import {Registry} from '../in-the-dark/Registry.js';
+import {createKernelSnapshot} from '../inspect/createKernelSnapshot.js';
+import type {InspectRequest, KernelSnapshot} from '../inspect/types.js';
 import type {ChangeTrailType, ShadowObjectsModule, SyncEvent} from '../types.js';
 import {toUrlString} from '../utils/toUrlString.js';
 import {cloneChangeTrail} from './cloneChangeTrail.js';
@@ -65,6 +67,20 @@ export class LocalShadowObjectEnv implements IShadowObjectEnvProxy {
     // not the same relative ordering RemoteWorkerEnv has against its own promises, which settles
     // only after its worker round-trip and can land later still.
     return result.then(() => undefined);
+  }
+
+  /**
+   * The snapshot of this environment's Kernel, built synchronously inside the call. Nothing is
+   * cloned: the builder emits plain data and the caller owns it. A signal that is already aborted
+   * rejects before anything is built; there is no later point to abort at.
+   */
+  inspect(request: InspectRequest = {}, signal?: AbortSignal): Promise<KernelSnapshot> {
+    if (signal?.aborted) return Promise.reject(signal.reason);
+    try {
+      return Promise.resolve(createKernelSnapshot(this.kernel, request));
+    } catch (error) {
+      return Promise.reject(error);
+    }
   }
 
   async importScript(url: URL | string): Promise<void> {

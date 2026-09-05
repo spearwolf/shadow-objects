@@ -355,4 +355,50 @@ describe('LocalShadowObjectEnv', () => {
       env.destroy();
     });
   });
+
+  describe('inspect', () => {
+    it('resolves with a snapshot of its kernel', async () => {
+      const env = new ShadowEnv();
+      const localEnv = new LocalShadowObjectEnv();
+      env.view = ComponentContext.get();
+      env.envProxy = localEnv;
+
+      const vc = new ViewComponent('foo');
+      vc.setProperty('bar', 42);
+      await env.syncWait();
+
+      const snapshot = await localEnv.inspect();
+
+      expect(snapshot.roots.map((n) => n.uuid)).toEqual([vc.uuid]);
+      expect(snapshot.roots[0]!.props).toEqual([{name: 'bar', value: 42, routes: true}]);
+      expect(snapshot.thread).toBe('main');
+
+      env.destroy();
+    });
+
+    it('honours the request', async () => {
+      const localEnv = new LocalShadowObjectEnv();
+      localEnv.kernel.createEntity('r', 'node');
+      localEnv.kernel.createEntity('c', 'node', 'r');
+
+      const snapshot = await localEnv.inspect({maxDepth: 0, include: ['props']});
+
+      expect(snapshot.roots[0]!.children).toBeUndefined();
+      expect(snapshot.roots[0]!.shadowObjects).toBeUndefined();
+      expect(snapshot.truncation?.[0]?.reason).toBe('max-depth');
+
+      localEnv.destroy();
+    });
+
+    it('rejects with the reason of a signal that is already aborted, and builds nothing', async () => {
+      const localEnv = new LocalShadowObjectEnv();
+      const controller = new AbortController();
+      const reason = new Error('gone');
+      controller.abort(reason);
+
+      await expect(localEnv.inspect({}, controller.signal)).rejects.toBe(reason);
+
+      localEnv.destroy();
+    });
+  });
 });
