@@ -151,6 +151,21 @@ describe('exposeShadowEnvsToModelContext', () => {
     expect(mc.tools.size).toBe(0);
   });
 
+  it('stops registering when the caller signal aborts midway, and reports no tools', async () => {
+    const mc = fakeModelContext();
+    const controller = new AbortController();
+    const registerTool = mc.registerTool.bind(mc);
+    mc.registerTool = async (tool, options) => {
+      await registerTool(tool, options);
+      if (tool.name === 'shae-get-entity-tree') controller.abort();
+    };
+
+    const handle = await exposeShadowEnvsToModelContext({modelContext: mc, signal: controller.signal});
+
+    expect(handle).toMatchObject({available: true, tools: []});
+    expect(mc.tools.size).toBe(0);
+  });
+
   it('rejects a second exposure under the same prefix on the duplicate name, and leaves the first intact', async () => {
     const mc = fakeModelContext();
     const first = await exposeShadowEnvsToModelContext({modelContext: mc});

@@ -242,6 +242,60 @@ describe('the model-context tools', () => {
       expect(missing.isError).toBe(true);
       expect(missing.content[0]?.text).toBe('no Shadow Environment holds an Entity "no-such-uuid"');
     });
+
+    it('names an environment that failed next to the one that answered', async () => {
+      const broken = new ShadowEnv();
+      broken.view = ComponentContext.get('mc-broken');
+      broken.envProxy = {
+        start: () => Promise.resolve(),
+        importScript: () => Promise.resolve(),
+        applyChangeTrail: () => Promise.resolve(),
+        destroy: () => {},
+        inspect: () => Promise.reject(new Error('silent')),
+      };
+      await broken.ready();
+      try {
+        const result = await run('get-entity', {uuid: scene.actor.uuid});
+        expect(data(result).matches).toHaveLength(1);
+        expect(data(result).matches[0].namespace).toBe(NS);
+        expect(data(result).errors).toEqual([{namespace: 'mc-broken', error: {name: 'Error', message: 'silent'}}]);
+        expect(result.content[0]?.text).toContain('failed: mc-broken (Error: silent)');
+
+        expect(data(await run('get-entity', {uuid: scene.actor.uuid, namespace: NS})).errors).toBeUndefined();
+      } finally {
+        broken.destroy();
+        ComponentContext.get('mc-broken').dispose();
+      }
+    });
+
+    it('answers once per environment that holds the uuid', async () => {
+      const twinCtx = ComponentContext.get('mc-twin');
+      const twinEnv = new ShadowEnv();
+      twinEnv.view = twinCtx;
+      twinEnv.envProxy = new LocalShadowObjectEnv();
+      new ViewComponent('twin', {context: twinCtx, uuid: scene.actor.uuid});
+      await twinEnv.syncWait();
+
+      try {
+        const result = await run('get-entity', {uuid: scene.actor.uuid});
+        const matches = data(result).matches;
+        expect(matches.map((m: any) => m.namespace)).toEqual(expect.arrayContaining([NS, 'mc-twin']));
+        const twin = matches.find((m: any) => m.namespace === 'mc-twin');
+        expect(twin.entity.token).toBe('twin');
+        expect(twin.ancestors).toEqual([]);
+      } finally {
+        twinEnv.destroy();
+        twinCtx.dispose();
+      }
+    });
+
+    it('carries the kernel truncation notes of a cut walk', async () => {
+      tools = createTools(toolContext({limits: {maxNodes: 1}}));
+      const result = await run('get-entity', {uuid: scene.scene.uuid});
+      const [match] = data(result).matches;
+      expect(match.truncation).toBeDefined();
+      expect(match.truncation.some((n: any) => n.reason === 'max-nodes')).toBe(true);
+    });
   });
 
   describe('find-entities', () => {

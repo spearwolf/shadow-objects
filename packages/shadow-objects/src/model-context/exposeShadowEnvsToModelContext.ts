@@ -38,10 +38,10 @@ export const DefaultToolPrefix = 'shae-';
  * they show the first line of code.
  *
  * Resolves, never rejects, where the platform has no model context -- the same application code
- * runs in every browser. Rejects with what `registerTool()` rejected with: a `NotAllowedError`
+ * runs in every browser. Rejects with what `registerTool()` rejected with -- a `NotAllowedError`
  * under a Permissions Policy that disables `tools`, an `InvalidStateError` on a name that is
- * already taken, are the caller's to handle. Registration is all-or-nothing: a rejection midway
- * takes back what was registered before it.
+ * already taken -- and those are the caller's to handle. Registration is all-or-nothing: a
+ * rejection midway takes back what was registered before it.
  */
 export async function exposeShadowEnvsToModelContext(options: ExposeOptions = {}): Promise<ExposeHandle> {
   const logger = new ConsoleLogger('ModelContext');
@@ -56,8 +56,14 @@ export async function exposeShadowEnvsToModelContext(options: ExposeOptions = {}
   const controller = new AbortController();
   const {signal} = options;
   if (signal !== undefined) {
-    if (signal.aborted) controller.abort(signal.reason);
-    else signal.addEventListener('abort', () => controller.abort(signal.reason), {once: true});
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+    } else {
+      const onAbort = () => controller.abort(signal.reason);
+      signal.addEventListener('abort', onAbort, {once: true});
+      // dispose() ends here too; without this, a long-lived caller signal would keep onAbort's closure alive forever
+      controller.signal.addEventListener('abort', () => signal.removeEventListener('abort', onAbort), {once: true});
+    }
   }
 
   const ctx: ToolContext = {

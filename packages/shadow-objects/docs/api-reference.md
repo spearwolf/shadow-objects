@@ -1908,6 +1908,8 @@ The package entry point pulls the Custom Elements in with it and therefore needs
 
 Five read-only tools that describe every Shadow Environment on the page to an AI agent, through the browser's model context ([WebMCP](https://github.com/webmachinelearning/webmcp): `document.modelContext`). One function registers them, and an `AbortSignal` or the handle takes them back. Nothing registers on import, on an element, or on its own.
 
+Read [Exposing Environments to an Agent](#exposing-environments-to-an-agent) under *Security* before the first call in an application: every value in every answer is application state.
+
 ```typescript
 import {exposeShadowEnvsToModelContext} from '@spearwolf/shadow-objects/model-context.js';
 
@@ -1916,8 +1918,6 @@ handle.available;  // false where the platform has no model context -- then noth
 handle.tools;      // ['shae-list-envs', 'shae-get-entity-tree', 'shae-get-entity', 'shae-find-entities', 'shae-get-registry']
 handle.dispose();  // takes them back
 ```
-
-Read [Exposing Environments to an Agent](#exposing-environments-to-an-agent) under *Security* before the first call in an application: every value in every answer is application state.
 
 A subpath rather than an `index.ts` export, so that the module stays out of the worker bundle and out of every consumer that does not want it; `ConsoleLogger.js` and `FrameLoop.js` are the precedent. Importing it throws nowhere -- the platform is read only inside the call -- so the same application code runs in every browser.
 
@@ -1929,7 +1929,7 @@ A subpath rather than an `index.ts` export, so that the module stays out of the 
 | :--- | :--- | :--- |
 | `modelContext` | `document.modelContext`, then `navigator.modelContext` | Where to register. Anything with a `registerTool()` -- a fake in a test, an adapter of your own |
 | `toolPrefix` | `'shae-'` | The start of every tool name, so the tools sit next to an application's own without colliding |
-| `signal` | none | Aborting it unregisters every tool; the same as `dispose()` |
+| `signal` | none | Aborting it unregisters every tool; the same as `dispose()`; a signal that is already aborted registers nothing and resolves with `available: true, tools: []` |
 | `exposedTo` | not set | Passed through to `registerTool()` untouched; the platform's default applies without it |
 | `limits` | `{}` | An `InspectRequest` of defaults for every call; a call's own input wins field by field, `values` one level down |
 | `redactProps` | none | `string[]` or `(name, uuid) => boolean`: the properties whose values every answer replaces by `{$type: 'redacted'}`, on the Kernel's and the View's side alike. Property values only; an Entity Context that carries the same secret is not covered |
@@ -1956,7 +1956,7 @@ A refusal -- an unknown namespace, an unknown uuid, a search without a criterion
 | :--- | :--- | :--- |
 | `shae-list-envs` | none | `{envs: [{namespace, isGlobalNamespace, kind, state, view?: {takenAt, counts}, kernel?: {takenAt, thread, counts}, error?}]}` -- no tree; the cheapest call and the first to make |
 | `shae-get-entity-tree` | `{namespace?, rootUuid?, maxDepth?, maxNodes?, include?, valueDepth?}` | `{envs: EnvSnapshot[]}` -- both halves, cut by the limits; `truncation` names where, `rootUuid` is the way to descend |
-| `shae-get-entity` | `{uuid, namespace?}` | `{matches: [{namespace, entity, ancestors: [{uuid, token}], view?}]}` -- the Entity with its children one level down, the chain above it, and the View's component of the same uuid; a uuid held in more than one environment comes back once per environment |
+| `shae-get-entity` | `{uuid, namespace?}` | `{matches: [{namespace, entity, ancestors: [{uuid, token}], view?, truncation?}], errors?: [{namespace, error}]}` -- the Entity with its children one level down, the chain above it, and the View's component of the same uuid; a uuid held in more than one environment comes back once per environment; `errors` names every environment that could not answer, and is absent when all did |
 | `shae-find-entities` | `{namespace?, token?, propName?, shadowObject?, contextName?, limit?}`, at least one criterion | `{results: [{namespace, matches: [{uuid, token, path}], total, error?}]}` -- the search runs where the Kernel runs (`InspectRequest.filter`) and ships matches, not the tree; `limit` defaults to 50, `total` counts every match |
 | `shae-get-registry` | `{namespace?}` | `{registries: [{namespace, kind, registry?: RegistrySnapshot, error?}]}` |
 

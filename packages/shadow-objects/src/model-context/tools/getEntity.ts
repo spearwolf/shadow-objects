@@ -1,4 +1,4 @@
-import type {EntityNodeSnapshot, ViewComponentSnapshot} from '../../inspect/types.js';
+import type {EntityNodeSnapshot, TruncationNote, ViewComponentSnapshot} from '../../inspect/types.js';
 import type {ModelContextToolLike} from '../ModelContextLike.js';
 import {
   buildRequest,
@@ -18,6 +18,7 @@ export interface EntityMatchEntry {
   entity: Omit<EntityNodeSnapshot, 'ancestors'>;
   ancestors: {uuid: string; token: string}[];
   view?: ViewComponentSnapshot;
+  truncation?: TruncationNote[];
 }
 
 export const createGetEntityTool = (ctx: ToolContext): ModelContextToolLike =>
@@ -52,6 +53,7 @@ export const createGetEntityTool = (ctx: ToolContext): ModelContextToolLike =>
         const entry: EntityMatchEntry = {namespace: s.namespace, entity, ancestors};
         const view = s.view?.roots[0];
         if (view !== undefined) entry.view = view;
+        if (s.kernel?.truncation !== undefined) entry.truncation = s.kernel.truncation;
         matches.push(entry);
       }
 
@@ -62,12 +64,20 @@ export const createGetEntityTool = (ctx: ToolContext): ModelContextToolLike =>
         );
       }
 
-      const summary = matches
+      const errors: {namespace: string; error: {name: string; message: string}}[] = [];
+      for (const s of envs) {
+        if (s.error !== undefined) errors.push({namespace: s.namespace, error: s.error});
+      }
+
+      let summary = matches
         .map((m) => {
           const where = m.ancestors.length === 0 ? 'a root' : `under ${m.ancestors.map((a) => a.token).join(' > ')}`;
           return `${m.namespace}: ${m.entity.token} "${m.entity.uuid}", ${where}, ${m.entity.childCount} children`;
         })
         .join('; ');
-      return textResult(summary, {matches});
+      if (errors.length > 0) {
+        summary += `; failed: ${errors.map((e) => `${e.namespace} (${e.error.name}: ${e.error.message})`).join(', ')}`;
+      }
+      return textResult(summary, errors.length > 0 ? {matches, errors} : {matches});
     }),
   });
