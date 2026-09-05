@@ -22,6 +22,11 @@ export class SignalsPath {
 
   readonly value$: Signal<any>;
 
+  /** The members of the path in chain order -- the first one holding a value is the one `value` reads. A copy. */
+  get signals(): readonly SignalLike<any>[] {
+    return this.#signals.slice();
+  }
+
   constructor(signals?: SignalLike<any>[]) {
     retain(this as SignalsPath, VALUE);
 

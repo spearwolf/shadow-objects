@@ -1,5 +1,5 @@
 import {emitSafe, emitStrict, eventize, off, on} from '@spearwolf/eventize';
-import {batch} from '@spearwolf/signalize';
+import {batch, type SignalLike} from '@spearwolf/signalize';
 import {ChangeTrailRefusedError} from '../ChangeTrailRefusedError.js';
 import {ComponentChangeType, MessageToView} from '../constants.js';
 import {EntityUuidInUseError} from '../EntityUuidInUseError.js';
@@ -153,6 +153,11 @@ export class Kernel {
 
   hasEntity(uuid: string): boolean {
     return this.#entities.has(uuid);
+  }
+
+  /** The token of the entity behind `uuid`, or `undefined` when the kernel does not hold one. */
+  tokenOf(uuid: string): string | undefined {
+    return this.#entities.get(uuid)?.token;
   }
 
   /**
@@ -961,6 +966,23 @@ export class Kernel {
       this.#rootContexts.set(name, ctx);
     }
     return ctx;
+  }
+
+  /** The names of the kernel-wide context chains -- every name a root entity uses or any entity provides globally. */
+  rootContextNames(): (string | symbol)[] {
+    return Array.from(this.#rootContexts.keys());
+  }
+
+  /**
+   * One kernel-wide context chain: what it resolves to, and its members in chain order. The members
+   * are the signals the entities contributed -- `Entity.describeGlobalContext()` hands out the same
+   * objects, so a caller can match them by identity. `undefined` for a name the kernel holds no
+   * chain for; asking does not create one.
+   */
+  describeRootContext(name: string | symbol): {value: unknown; signals: readonly SignalLike<any>[]} | undefined {
+    const path = this.#rootContexts.get(name);
+    if (path === undefined) return undefined;
+    return {value: path.value, signals: path.signals};
   }
 
   destroy(): void {

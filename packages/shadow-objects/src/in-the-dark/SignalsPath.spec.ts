@@ -144,4 +144,24 @@ describe('SignalsPath', () => {
 
     expect(valueFn, 'last a').toHaveBeenCalledWith('a');
   });
+
+  it('hands out its members in chain order, as a copy', () => {
+    const path = new SignalsPath();
+    const a = createSignal();
+    const b = createSignal();
+
+    expect(path.signals).toEqual([]);
+
+    path.add(a);
+    path.unshift(b);
+    expect(path.signals).toEqual([b, a]);
+
+    path.remove(b);
+    expect(path.signals).toEqual([a]);
+
+    (path.signals as unknown[]).push(b);
+    expect(path.signals, 'the list handed out is not the list kept').toEqual([a]);
+
+    path.dispose();
+  });
 });
