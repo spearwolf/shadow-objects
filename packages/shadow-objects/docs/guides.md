@@ -546,6 +546,27 @@ Two places to look when a Shadow Object does not see what you expect. Each `cont
 
 `ShadowEnv.inspectAll()` does the same for every environment on the page that holds a namespace. In the console, `ShadowEnv.get('game-world').inspect().then(console.log)` is the quickest way in -- `ShadowEnv` has to be reachable there, which an application import makes it.
 
+### Exposing Environments to an Agent
+
+Everything `inspect()` returns can be handed to an AI agent in the browser through the model context (WebMCP). Before the code: every value in every answer is application state, and an application that routes a session token or a user's draft through a `<shae-prop>` shows it to every agent the page exposes tools to. Read [Exposing Environments to an Agent](./api-reference.md#exposing-environments-to-an-agent) under *Security* first, keep the call behind a development switch, and name the properties that must not leave the page.
+
+```javascript
+import {exposeShadowEnvsToModelContext} from '@spearwolf/shadow-objects/model-context.js';
+
+if (import.meta.env.DEV) {
+  const handle = await exposeShadowEnvsToModelContext({
+    redactProps: ['sessionToken', 'email'],   // {$type: 'redacted'} in every answer
+    limits: {maxDepth: 3},                     // defaults for every call; the agent's own input wins
+  });
+  // handle.available is false where the browser has no model context; nothing was registered then
+  // handle.dispose() takes the five tools back
+}
+```
+
+An agent then sees `shae-list-envs`, `shae-get-entity-tree`, `shae-get-entity`, `shae-find-entities` and `shae-get-registry`, each read-only, each answering with a one-line summary and the JSON of the snapshot. The tools ask `ShadowEnv.inspectAll()` and `inspect()` per call and cache nothing; the `syncWait()` rule above holds for them too, and an agent cannot wait for a cycle on the application's behalf. The [API Reference](./api-reference.md#model-context) has the inputs and outputs of every tool.
+
+In a test, or in a browser without the platform, hand the function a `modelContext` of your own -- anything with a `registerTool()` -- and call the tools' `execute()` directly.
+
 ### When the Worker Dies
 
 A remote environment can lose its worker: an unhandled error inside one of your Shadow Objects modules, a module that fails to import, or a message the structured clone algorithm cannot read back. The proxy reports that loss, and `ShadowEnv` passes it on:

@@ -113,6 +113,8 @@ Content-Security-Policy: script-src 'self'; worker-src 'self' blob:
 
 Full detail — why `worker-src` needs `blob:` for the `@spearwolf/shadow-objects/bundle.js` entry point, and which response has to carry the header for every other one — is in the [API Reference](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/api-reference.md#security).
 
+`exposeShadowEnvsToModelContext()` from `@spearwolf/shadow-objects/model-context.js` is a second way state leaves the page: it hands every Shadow Environment to an AI agent through the browser's model context (WebMCP), read-only, and every value in every answer is application state. Nothing is exposed without the call; keep it behind a development switch and name the properties to redact. Details under [Exposing Environments to an Agent](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/api-reference.md#exposing-environments-to-an-agent).
+
 ## Documentation
 
 - [Overview](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/README.md)

@@ -4,6 +4,13 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-09-05 — the e2e suite drives the inspection tools through a fake model context and through Chromium's real one
+
+Phase 3 of the inspection proposal (`docs/proposals/web-mcp-shadow-envs.md`, §16) lands in `@spearwolf/shadow-objects`; what it changes for the package is in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md). The e2e package grows with it, and its Chromium project gains a launch flag.
+
+- **`packages/shadow-objects-e2e/playwright.config.ts`:** the chromium project is launched with `--enable-features=WebMCP`. Playwright 1.62.1 bundles Chromium 151, which exposes `document.modelContext` behind that flag; without it the platform page reports the model context as absent.
+- **`packages/shadow-objects-e2e`:** `pages/model-context.html` drives the five tools of `@spearwolf/shadow-objects/model-context.js` through a fake model context over a worker and a local environment in Chromium, Firefox and WebKit; `pages/model-context-platform.html` registers on the real `document.modelContext` and executes through `getTools()` / `executeTool()`, skipped by name outside Chromium. `TEST-PLAN.md` and `README.md`: the case counts stand at 275 per project, 825 overall.
+
 ## 2026-09-05 — the e2e suite gains a page for inspecting a worker environment, and the integration suite one for a local one
 
 Phase 2 of the inspection proposal (`docs/proposals/web-mcp-shadow-envs.md`, §16) lands in `@spearwolf/shadow-objects`; what it changes for the package is in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md). The two private test packages grow with it.

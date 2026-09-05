@@ -421,3 +421,25 @@ await env.ready();
 ```
 
 This style of test is slower than unit tests but verifies that the whole wiring -- Registry (Component Manifest), Kernel (ECS System Runner), entities, and Shadow Objects -- works together correctly.
+
+---
+
+## 10. Exposing Environments to an Agent
+
+`exposeShadowEnvsToModelContext()` hands every Shadow Environment on the page to an AI agent, read-only, through the browser's model context. It is the inspection API of `ShadowEnv.inspect()` with an agent on the other end -- and every value it returns is application state.
+
+**Call it behind a switch, never unconditionally in a shipped bundle.** The same gate that enables the `ConsoleLogger` is the natural one; a build flag such as `import.meta.env.DEV` is the other. The function is the only way the tools appear -- no element attribute, no import side effect -- so the switch is the whole decision.
+
+```javascript
+import {exposeShadowEnvsToModelContext} from '@spearwolf/shadow-objects/model-context.js';
+
+if (import.meta.env.DEV) {
+  await exposeShadowEnvsToModelContext({redactProps: ['sessionToken', 'email']});
+}
+```
+
+**Name the properties that must not leave the page.** `redactProps` replaces their values by `{$type: 'redacted'}` in every answer, on the Kernel's and the View's side. It takes a list of names or a predicate over name and Entity uuid. There is no default list on purpose: a guess would suggest a coverage it cannot have, and a property that carries a secret in one application is harmless in the next. Entity Context values are not covered; a secret that travels as a context is a secret the agent sees.
+
+**Keep one handle.** A second call under the same prefix rejects on the duplicate name; a second call under another prefix registers a second, independent set. `dispose()` or the `signal` you passed takes a set back, and a page that opens the tools on a route should close them on leaving it.
+
+**Set `limits` for the agent, not for yourself.** An agent's context window is the budget. The defaults -- depth 4, 250 nodes, values cut at depth 3 -- are conservative; `shae-find-entities` exists so that a search does not ship the tree, and `shae-list-envs` carries counts only. Loosen them for a small scene, tighten them for a large one; the agent's own input wins over them field by field.

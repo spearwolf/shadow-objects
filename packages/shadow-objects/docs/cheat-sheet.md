@@ -537,6 +537,28 @@ Request defaults: `maxDepth` 4, `maxNodes` 250, `include` all four (`props`, `sh
 
 ---
 
+## Exposing Environments to an Agent
+
+```typescript
+import {exposeShadowEnvsToModelContext} from '@spearwolf/shadow-objects/model-context.js';
+const handle = await exposeShadowEnvsToModelContext({redactProps: ['sessionToken']});
+handle.available;   // false: no model context on this platform, nothing registered
+handle.tools;       // the five names below
+handle.dispose();   // takes them back (or abort options.signal)
+```
+
+| Tool | Asks for | Answers with |
+| :--- | :--- | :--- |
+| `shae-list-envs` | nothing | every environment: namespace, kind, state, counts |
+| `shae-get-entity-tree` | `namespace?, rootUuid?, maxDepth?, maxNodes?, include?, valueDepth?` | both halves of `inspect()`, cut by the limits |
+| `shae-get-entity` | `uuid, namespace?` | one Entity, its ancestors, the View component next to it |
+| `shae-find-entities` | one of `token, propName, shadowObject, contextName`; `limit?` | `{uuid, token, path}` per match, and the total |
+| `shae-get-registry` | `namespace?` | tokens, routes, property routes |
+
+Read-only, every value untrusted by declaration, a refusal is `isError: true`. Development only: every answer is application state.
+
+---
+
 ## FrameLoop
 
 ```typescript

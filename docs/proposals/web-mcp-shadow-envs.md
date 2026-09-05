@@ -378,6 +378,8 @@ export interface InspectRequest {
 
 The same request type serves the View snapshot on the main thread and the Kernel snapshot in the environment, so a caller asks once and gets both sides cut by the same rules.
 
+*Amended 2026-09-05 (phase 3).* `InspectRequest` carries a public `filter?: EntityFilter` -- `{token?, propName?, shadowObject?, contextName?, limit?}` -- and `KernelSnapshot` answers it under `search: {matches: [{uuid, token, path}], total}` with `roots` empty; the walk limits and `include` do not apply to a search, and the View side ignores it. `EntityNodeSnapshot.ancestors` is set on a node the request named in `rootUuids`. Both are what §10.3 and §10.4 need in one round trip, and both are public: a field on the wire and in the output is public whether the type admits it or not.
+
 ### 8.2 The proxy contract
 
 `IShadowObjectEnvProxy` gains one optional member:
@@ -515,7 +517,7 @@ Search inside the environment, so that the answer is small.
 - **Input:** `{namespace?: string, token?: string, propName?: string, shadowObject?: string, contextName?: string, limit?: number}`; at least one criterion, all given criteria must match, `limit` defaults to 50.
 - **Output:** `{namespace, matches: {uuid, token, path: string[]}[], total}` where `path` is the token chain from the root, and `total` says how many matched before the limit.
 
-The search runs as part of `createKernelSnapshot()` with a `filter` in the request -- an internal field the tools set and the public `InspectRequest` does not carry -- so the worker sends back only the matches. It is the one tool whose request shape reaches beyond §8.1, and it is what keeps a search over a large tree from shipping the tree.
+The search runs as part of `createKernelSnapshot()` with a `filter` in the request, so the worker sends back only the matches. *Amended 2026-09-05:* the field is public (§8.1), not internal. The output of §10.3 and §10.4 is a list with one entry per environment whether one or all were asked -- `{matches: [{namespace, entity, ancestors, view?}]}` and `{results: [{namespace, matches, total, error?}]}` -- and so are the outputs of §10.2 (`{envs}`), §10.5 (`{registries}`) and §10.1 (`{envs}`); an agent parses one shape. A refusal the tool can phrase -- an unknown namespace or uuid, a search without a criterion, a field of the wrong type, a failure the environment reported -- is an `isError: true` result and never a rejection: Chromium reports a rejected `execute()` as a generic failure and drops the message. Only an aborted `options.signal` rejects.
 
 ### 10.5 `shae-get-registry`
 
@@ -602,6 +604,8 @@ export interface ModelContextToolLike {
 
 `registerTool` returning `unknown` rather than a promise is on purpose: the Chrome early preview returned nothing, the spec returns a promise, and the adapter awaits whatever it gets. No dependency on `webmcp-types`: a `0.1.x` package that tracks a moving spec would pin this package to its release cadence. If the types package stabilises, it can be adopted as a devDependency for the tests through the catalog, without touching the public interface here.
 
+*Amended 2026-09-05:* `execute(input: unknown, …)` -- the platform hands over whatever it parsed, and the tools read it through a typed reader. `ModelContextToolResult`, `ModelContextRegisterOptions` and `ModelContextToolAnnotations` are the named halves of the shapes above; `findModelContext()` is the lookup, `document.modelContext` first.
+
 ### 11.4 `<shae-worker>`
 
 No new registration attribute in this proposal. Registering agent-visible tools is a page-level decision with security consequences (§12), and an attribute would make it a per-element side effect that a copied snippet carries along. The one element change is the `inspect-timeout` attribute of §8.4.
@@ -654,7 +658,7 @@ Per package, following the existing layout.
 **`packages/shadow-objects-e2e` (Playwright):**
 
 - `pages/inspect-worker-env.html` with `tests/inspect-worker-env.spec.ts` -- `ShadowEnv` + `RemoteWorkerEnv`, `inspect()` after `syncWait()` in three engines: the wire shapes survive structured cloning, `thread` reads `'worker'`, the request limits hold, an abort and a teardown reject.
-- `tests/model-context.spec.ts` -- a page that calls `exposeShadowEnvsToModelContext()`; the test drives the tools through `document.modelContext.getTools()` / `executeTool()` from `page.evaluate()`. Runs only where the browser exposes the API: the Chromium project is launched with the WebMCP testing flag, and the spec skips with a named reason where `document.modelContext` is absent, so Firefox and WebKit stay green. Which flag Playwright's bundled Chromium accepts, and whether that build carries the origin-trial implementation at all, is the first thing to verify when this phase starts; a fallback is to run the same spec against the fake adapter injected through `modelContext`, which proves the tools but not the platform.
+- `tests/model-context.spec.ts` with `pages/model-context.html` -- the five tools through a fake `ModelContextLike` handed in as `options.modelContext`, over one worker and one local environment, in three engines. `tests/model-context-platform.spec.ts` with `pages/model-context-platform.html` -- the tools registered on the real `document.modelContext` and driven through the platform's `getTools()` / `executeTool()`; the Chromium project is launched with `--enable-features=WebMCP`, and the spec skips by name in Firefox and WebKit. *Verified 2026-09-05 on Playwright 1.62.1 / Chromium 151:* the flag is the one above; `registerTool()` returns a promise and rejects a duplicate name with `InvalidStateError`; `executeTool(tool, input)` takes an entry of `getTools()` and the input as a JSON string and returns the result as a JSON string; a throw inside `execute` surfaces as `UnknownError` without its message.
 
 ## 15. Documentation and contract obligations
 
@@ -684,7 +688,7 @@ Four phases, each shippable on its own and each ending with green `pnpm run ci`.
 `Inspect` / `Inspected`, `WorkerInspectTimeout`, `RemoteWorkerEnv.inspect()`, `MessageRouter.#onInspect()`, `inspectTimeout` option and `inspect-timeout` attribute, the fifth `switch` cases, unit and browser-mode tests, docs. After this phase the same console call works for a worker environment. Implemented 2026-09-05; see `docs/superpowers/plans/2026-09-05-inspect-phase-2.md`.
 
 **Phase 3 -- model context.**
-`src/model-context/` with the adapter, the five tools, `exposeShadowEnvsToModelContext()`, the subpath export, dist contract update, unit tests against the fake adapter, the e2e spec, docs. After this phase an agent in a browser with WebMCP sees the tools.
+`src/model-context/` with the adapter, the five tools, `exposeShadowEnvsToModelContext()`, the subpath export, dist contract update, unit tests against the fake adapter, the e2e spec, docs. After this phase an agent in a browser with WebMCP sees the tools. Implemented 2026-09-05; see `docs/superpowers/plans/2026-09-05-inspect-phase-3.md`.
 
 **Phase 4 -- follow-ups, each its own proposal or change:** §17.
 

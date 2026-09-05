@@ -23,6 +23,7 @@ This is the complete API reference for the Shadow Objects framework. Entities ar
 - [ShadowEnv](#shadowenv)
 - [Environment Proxies](#environment-proxies)
 - [FrameLoop](#frameloop)
+- [Model Context](#model-context)
 - [Web Components](#web-components)
   - [shae-worker](#shae-worker)
   - [shae-ent](#shae-ent)
@@ -31,6 +32,7 @@ This is the complete API reference for the Shadow Objects framework. Entities ar
 - [Kernel (ECS System Runner)](#kernel-ecs-system-runner)
 - [Security](#security)
   - [The Module URL is a Trust Boundary](#the-module-url-is-a-trust-boundary)
+  - [Exposing Environments to an Agent](#exposing-environments-to-an-agent)
 - [Advanced](#advanced)
   - [Programmatic Registration](#programmatic-registration)
   - [The @ShadowObject Decorator](#the-shadowobject-decorator)
@@ -1902,6 +1904,85 @@ The package entry point pulls the Custom Elements in with it and therefore needs
 
 ---
 
+## Model Context
+
+Five read-only tools that describe every Shadow Environment on the page to an AI agent, through the browser's model context ([WebMCP](https://github.com/webmachinelearning/webmcp): `document.modelContext`). One function registers them, and an `AbortSignal` or the handle takes them back. Nothing registers on import, on an element, or on its own.
+
+```typescript
+import {exposeShadowEnvsToModelContext} from '@spearwolf/shadow-objects/model-context.js';
+
+const handle = await exposeShadowEnvsToModelContext();
+handle.available;  // false where the platform has no model context -- then nothing was registered
+handle.tools;      // ['shae-list-envs', 'shae-get-entity-tree', 'shae-get-entity', 'shae-find-entities', 'shae-get-registry']
+handle.dispose();  // takes them back
+```
+
+Read [Exposing Environments to an Agent](#exposing-environments-to-an-agent) under *Security* before the first call in an application: every value in every answer is application state.
+
+A subpath rather than an `index.ts` export, so that the module stays out of the worker bundle and out of every consumer that does not want it; `ConsoleLogger.js` and `FrameLoop.js` are the precedent. Importing it throws nowhere -- the platform is read only inside the call -- so the same application code runs in every browser.
+
+### `exposeShadowEnvsToModelContext(options?)`
+
+- **Signature:** `exposeShadowEnvsToModelContext(options?: ExposeOptions): Promise<ExposeHandle>`
+
+| Option | Default | Meaning |
+| :--- | :--- | :--- |
+| `modelContext` | `document.modelContext`, then `navigator.modelContext` | Where to register. Anything with a `registerTool()` -- a fake in a test, an adapter of your own |
+| `toolPrefix` | `'shae-'` | The start of every tool name, so the tools sit next to an application's own without colliding |
+| `signal` | none | Aborting it unregisters every tool; the same as `dispose()` |
+| `exposedTo` | not set | Passed through to `registerTool()` untouched; the platform's default applies without it |
+| `limits` | `{}` | An `InspectRequest` of defaults for every call; a call's own input wins field by field, `values` one level down |
+| `redactProps` | none | `string[]` or `(name, uuid) => boolean`: the properties whose values every answer replaces by `{$type: 'redacted'}`, on the Kernel's and the View's side alike. Property values only; an Entity Context that carries the same secret is not covered |
+
+The promise resolves with `{available: false, tools: [], dispose}` where the platform has no model context -- a worker, Node, a browser without WebMCP, a plain `http://` origin outside `localhost` -- and logs one `info` line through a `ConsoleLogger` named `ModelContext`. It rejects with what `registerTool()` rejected with: a `NotAllowedError` under a Permissions Policy that disables `tools`, an `InvalidStateError` on a name that is already registered. Registration is all-or-nothing -- a rejection midway takes back what was registered before it. A second call while the first handle is live registers a second, independent set; under the same prefix it rejects on the duplicate name and leaves the first set intact. Keep one handle.
+
+`ExposeHandle` carries `available`, `tools` (the registered names, with the prefix) and `dispose()`, which is idempotent.
+
+### The tools
+
+Every tool carries `annotations: {readOnlyHint: true, untrustedContentHint: true}` -- read-only because nothing writes, untrusted because the values are application data that may contain whatever a user typed. Every answer is one envelope:
+
+```typescript
+{
+  content: [{type: 'text', text}],  // a one-line summary, a blank line, then the JSON of structuredContent
+  structuredContent: object,        // the data, for an agent that reads structured results
+  isError?: true,                   // a refusal the tool could phrase; content carries the reason
+}
+```
+
+A refusal -- an unknown namespace, an unknown uuid, a search without a criterion, an input field of the wrong type, an environment that reported a failure -- is an `isError` result and never a rejection, so the wording reaches the agent. Only an aborted `options.signal` rejects `execute()`. A `namespace` names one environment as `shae-list-envs` reports it (the global namespace is `'ShadowObjectsGlobalNS'`); without one, every environment that holds a namespace answers, and every answer is a list with one entry per environment, whichever way it was asked.
+
+| Tool | Input | `structuredContent` |
+| :--- | :--- | :--- |
+| `shae-list-envs` | none | `{envs: [{namespace, isGlobalNamespace, kind, state, view?: {takenAt, counts}, kernel?: {takenAt, thread, counts}, error?}]}` -- no tree; the cheapest call and the first to make |
+| `shae-get-entity-tree` | `{namespace?, rootUuid?, maxDepth?, maxNodes?, include?, valueDepth?}` | `{envs: EnvSnapshot[]}` -- both halves, cut by the limits; `truncation` names where, `rootUuid` is the way to descend |
+| `shae-get-entity` | `{uuid, namespace?}` | `{matches: [{namespace, entity, ancestors: [{uuid, token}], view?}]}` -- the Entity with its children one level down, the chain above it, and the View's component of the same uuid; a uuid held in more than one environment comes back once per environment |
+| `shae-find-entities` | `{namespace?, token?, propName?, shadowObject?, contextName?, limit?}`, at least one criterion | `{results: [{namespace, matches: [{uuid, token, path}], total, error?}]}` -- the search runs where the Kernel runs (`InspectRequest.filter`) and ships matches, not the tree; `limit` defaults to 50, `total` counts every match |
+| `shae-get-registry` | `{namespace?}` | `{registries: [{namespace, kind, registry?: RegistrySnapshot, error?}]}` |
+
+The tool inputs map onto [`InspectRequest`](#inspectrequest): `rootUuid` is `rootUuids: [rootUuid]`, `valueDepth` is `values.maxDepth`, the rest keep their names. An environment that cannot answer costs its own entry with the reason under `error`, exactly as [`inspectAll()`](#shadowenvinspectallrequest-signal) reports it. Snapshots are built per call and never cached; an agent that wants View and Kernel to agree after a change the application made has to wait for the application's own `syncWait()`, and the tools cannot do that for it.
+
+### `ModelContextLike`
+
+The structural contract the package talks to the platform through, exported for tests and for an adapter of your own:
+
+```typescript
+interface ModelContextLike {
+  registerTool(tool: ModelContextToolLike, options?: {signal?: AbortSignal; exposedTo?: string[]}): Promise<unknown> | unknown;
+}
+interface ModelContextToolLike {
+  name: string; title?: string; description: string; inputSchema: object;
+  annotations?: {readOnlyHint?: boolean; untrustedContentHint?: boolean; consequentialHint?: boolean};
+  execute(input: unknown, options?: {signal?: AbortSignal}): Promise<unknown> | unknown;
+}
+```
+
+`findModelContext()` is the lookup the function uses without `options.modelContext`: `document.modelContext` first, `navigator.modelContext` as the fallback, `undefined` for neither. WebMCP is a moving specification; this interface is where the package absorbs the next change, and no types package is depended on for it.
+
+**The platform, as of September 2026.** Chromium ships `document.modelContext` behind `--enable-features=WebMCP` (Chrome 149 origin trial; `about:flags#enable-webmcp-testing` for local development). There, an in-page agent lists the tools with `getTools()` and runs one with `executeTool(tool, input)`, where `tool` is an entry of that list and `input` is the JSON **string** of the arguments; the tool's `execute` receives the parsed object, and the result comes back to the caller of `executeTool()` as the JSON string of what `execute()` returned. A tool whose `execute` rejects is reported to the agent as a generic failure without its message, which is why the tools here answer refusals as `isError` results.
+
+---
+
 ## Web Components
 
 The framework ships a suite of Custom Elements that let you declare your Shadow Environment directly in HTML. These handle lifecycle, connection, and synchronization of the underlying `ViewComponent` and `ShadowEnv` classes.
@@ -3099,6 +3180,19 @@ Content-Security-Policy: script-src 'self'; worker-src 'self' blob:
 This example protects the embedded `blob:` worker of the `bundle.js` entry point. A deployment that serves `shadow-objects.worker.js` needs the same header, or an equivalent one, on that script's own response as well.
 
 Neither the element nor the proxy validate the URL, and neither offers a hook where an application could register allowed origins; the restriction belongs to the CSP and to the code that sets the value.
+
+### Exposing Environments to an Agent
+
+`exposeShadowEnvsToModelContext()` is a second way state leaves the page. Every value in every answer is application state: properties hold what the View put there, and an application that passes a session token, an e-mail address or a user's draft through a `<shae-prop>` will see it in the answer, and so will every agent the page exposes tools to.
+
+- **Nothing is exposed without the call.** No element attribute, no auto-registration, no import side effect. The function is the only way in, and its `signal` or `dispose()` is the way out.
+- **Read-only, and declared as such.** `readOnlyHint: true` on every tool; an agent cannot change a Kernel through this surface. `untrustedContentHint: true` on every tool, unconditionally, because the values can include what a user typed.
+- **Exposure follows the platform.** Without `exposedTo` the platform decides which documents and agents see the tools; the option is passed through for the cases where that default is not the right one.
+- **Redaction is available and not default.** `redactProps` hides the property names the application knows to be secret. A default list would be a guess, and a guess here would suggest a coverage it cannot have. Entity Context values are not covered.
+- **Production is a decision.** Call the function behind the same switch that enables the `ConsoleLogger`, or behind a build flag, and never unconditionally in a shipped bundle -- see [Best Practices](./best-practices.md#10-exposing-environments-to-an-agent). The framework does not enforce this; it is the application's origin and the application's data.
+- **A secure context is required.** On plain `http://` outside `localhost` the platform hands out no model context, and the function reports `available: false`.
+
+The View half of every answer names elements by CSS selector path, never by node, and reveals nothing the agent could not read from the DOM itself.
 
 ---
 

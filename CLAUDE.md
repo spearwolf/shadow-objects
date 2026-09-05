@@ -70,6 +70,7 @@ Code layout inside `packages/shadow-objects/src/` worth knowing up front:
 - `view/` — main-thread side. `ShadowEnv` is the env facade; `LocalShadowObjectEnv` runs shadow objects in-process, `RemoteWorkerEnv` proxies them to a worker. `ComponentContext`, `ComponentMemory`, `ComponentChanges`, `ViewComponent` form the bridge from DOM/View to entities.
 - `worker/` — `WorkerRuntime` + `MessageRouter` are the worker-side counterpart that drives entities and shadow objects when the env runs off-thread.
 - `elements/` — custom elements (`<shae-ent>`, `<shae-prop>`, `<shae-worker>`) that wire DOM nodes into the shadow env.
+- `model-context/` — the WebMCP layer behind the `@spearwolf/shadow-objects/model-context.js` subpath: the structural `ModelContextLike` adapter, the five read-only tools and `exposeShadowEnvsToModelContext()`. Imports `ShadowEnv` and the snapshot types, never the Kernel; nothing here is in `index.ts` or the worker bundle.
 - `index.ts` is the single public entry point — anything not re-exported from there is internal.
 
 `view/` ↔ `worker/` are mirror images linked by an async message protocol. When changing one side, check the other. `IShadowObjectEnvProxy.ts` is the contract.
