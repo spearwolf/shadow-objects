@@ -1448,6 +1448,8 @@ Two things the promise can do, and one it never does.
 - It **reports** every reason inside the environment under `error`, with `kernel` absent: a proxy that does not implement `inspect` (`{name: 'NotInspectable'}`), a Kernel that threw, a View snapshot that threw -- then `view` is the absent half, and its reason is the one kept where both fail. A proxy that is not ready yet is not an error -- `state.proxyReady` says so, and `kernel` is simply absent.
 - It never builds the pending changes. The View snapshot reads the committed Component Memory, so a component created and not yet synced has no `props`, and a property set since the last cycle shows its previous value. A caller that wants the View and the Kernel to agree after its own change awaits [`syncWait()`](#syncwait) first.
 
+Over a worker the same call costs one round trip. The request travels to the worker as an `Inspect` message, the Kernel builds the snapshot there -- `kernel.thread` reads `'worker'` -- and the answer comes back as `Inspected`, matched to its request by a serial of its own. The request runs through the same queue as the change trails, so the snapshot reflects every trail posted before the call and none posted after it; that is why the `syncWait()` above is enough on both kinds of environment. An answer that stays out past `inspectTimeout` is reported under `error` as a `WorkerTimeoutError` naming `'inspected'`; a worker that failed or was torn down while it answers rejects the call, as the first bullet says, because the environment is gone with it. See [`RemoteWorkerEnv`](#remoteworkerenv).
+
 `EnvSnapshot` carries `namespace` (the global namespace reports `'ShadowObjectsGlobalNS'`, and `isGlobalNamespace` says so), `kind` (`'local'`, `'worker'`, `'custom'` for any other proxy, `'none'` without one), `state`, and the two halves `view` and `kernel`.
 
 ##### `InspectRequest`
@@ -1617,7 +1619,7 @@ Losing the environment altogether is the other channel: that is `onProxyFailed`,
 not interchangeable. A refused trail leaves the environment ready and costs one cycle; a failed
 proxy ends it.
 
-`inspect` is the one optional *call*: a proxy that implements it hands `ShadowEnv.inspect()` a [`KernelSnapshot`](#kernelsnapshot) of the Kernel it stands for -- `createKernelSnapshot(kernel, request)` is the builder both shipped implementations would use, and `LocalShadowObjectEnv` calls it synchronously inside the promise. A proxy that leaves it out keeps working; the environment then reports `NotInspectable`.
+`inspect` is the one optional *call*: a proxy that implements it hands `ShadowEnv.inspect()` a [`KernelSnapshot`](#kernelsnapshot) of the Kernel it stands for -- `createKernelSnapshot(kernel, request)` is the builder both shipped implementations use: `LocalShadowObjectEnv` calls it synchronously inside the promise, `RemoteWorkerEnv` posts the request to the worker as an `Inspect` message and resolves with the `Inspected` answer. A proxy that leaves it out keeps working; the environment then reports `NotInspectable`.
 
 The last two are callbacks rather than calls: `ShadowEnv` installs both on every proxy it is given -- `onMessageToView` for messages coming out of the Shadow Environment, `onProxyFailed` for the loss of that environment. An implementation that cannot fail simply never calls the latter.
 
@@ -1674,12 +1676,12 @@ import { RemoteWorkerEnv } from '@spearwolf/shadow-objects';
 
 const remoteEnv = new RemoteWorkerEnv();
 
-// or with one or more of the four timeouts set explicitly
+// or with one or more of the five timeouts set explicitly
 const patientEnv = new RemoteWorkerEnv({ changeTrailTimeout: 15000 });
 ```
 
-**The constructor options are the four timeouts, and nothing else.** `loadTimeout`,
-`configureTimeout`, `changeTrailTimeout` and `destroyTimeout` correspond one to one to the four
+**The constructor options are the five timeouts, and nothing else.** `loadTimeout`,
+`configureTimeout`, `changeTrailTimeout`, `inspectTimeout` and `destroyTimeout` correspond one to one to the five
 [Worker Timeout Constants](#worker-timeout-constants), and every key is decided on its own: a key
 left out — or set to `undefined` — keeps its constant, so `new RemoteWorkerEnv()`,
 `new RemoteWorkerEnv({})` and the example above differ only in the one value that was named. A
@@ -1692,7 +1694,7 @@ acknowledgement a dead worker never sends, and the `terminate()` at the end of t
 never run. The upper bound is refused for the mirror image of the same reason: `setTimeout()`
 truncates its delay into a signed 32-bit field, so a larger number comes back out as some other,
 shorter one — `loadTimeout: 2147483648` fires at once rather than waiting its 24.9 days. A value
-that quietly means something else than it says is turned away rather than honoured. The declarative half of the same decision is the four
+that quietly means something else than it says is turned away rather than honoured. The declarative half of the same decision is the five
 `<shae-worker>` attributes; see [`<shae-worker>` Attributes](#shae-worker).
 
 **Properties:**
@@ -1701,7 +1703,7 @@ that quietly means something else than it says is turned away rather than honour
 | :--- | :--- |
 | `isDestroyed` | `boolean` (read-only). Also `true` once the worker has failed. |
 | `workerLoaded` | Promise that resolves once the worker is ready. It rejects with a `WorkerFailedError` when the worker fails, with a `WorkerDestroyedError` when the environment is torn down, and with a [`WorkerTimeoutError`](#workertimeouterror) when the load handshake does not complete within `loadTimeout`. Every read hands out a promise that can reject, so attach a `catch()` even when you do not await it -- otherwise the rejection surfaces as an unhandled one. |
-| `timeouts` | `Readonly<WorkerTimeouts>`. The four timeouts this environment holds itself to, resolved once when it is built. This is what a diagnosis asks when the values come from a template rather than from a call. Both halves are closed: the object is frozen, so writing `env.timeouts.loadTimeout` throws in strict mode and does nothing outside it, and the property slot is a getter without a setter, so `env.timeouts = …` throws a `TypeError` the same way — `logger` is closed alike. The constructor is therefore the one place these four numbers are set, and `resolveTimeouts()` vets every one of them there. |
+| `timeouts` | `Readonly<WorkerTimeouts>`. The five timeouts this environment holds itself to, resolved once when it is built. This is what a diagnosis asks when the values come from a template rather than from a call. Both halves are closed: the object is frozen, so writing `env.timeouts.loadTimeout` throws in strict mode and does nothing outside it, and the property slot is a getter without a setter, so `env.timeouts = …` throws a `TypeError` the same way — `logger` is closed alike. The constructor is therefore the one place these five numbers are set, and `resolveTimeouts()` vets every one of them there. |
 | `logger` | `ConsoleLogger` (read-only). The logger this environment reports through. Its enabled state travels into the worker together with the shared logger configuration when the worker starts. A JSON object stored under `ConsoleLogger.RemoteWorkerEnv.workerConfig` is merged on top of that configuration; see [Console Logger](#console-logger). |
 
 **Methods:**
@@ -1710,6 +1712,7 @@ that quietly means something else than it says is turned away rather than honour
 | :--- | :--- |
 | `importScript(url)` | Import a shadow objects module inside the worker. Rejects with a `WorkerDestroyedError` after `destroy()`, and with a [`WorkerTimeoutError`](#workertimeouterror) when no answer arrives within `configureTimeout`. A failure the worker reports arrives as a `WorkerReportedError`: its `message` is the wording from the worker, its `name` the name the error was thrown under there. A module with no `shadowObjects` export is therefore an `Error` named `Error`, with the same wording a `LocalShadowObjectEnv` throws for that case. |
 | `applyChangeTrail(changeTrail, waitForConfirmation)` | Send a change trail to the worker; with `waitForConfirmation` the promise resolves once the worker has applied it, and rejects with a `ChangeTrailRefusedError` where the worker's Kernel refused it. A confirmation that names no `appliedCount` rejects with the reported reason itself -- a `WorkerReportedError` -- instead of a `ChangeTrailRefusedError`. A confirmation that does not arrive within `changeTrailTimeout` rejects with a [`WorkerTimeoutError`](#workertimeouterror). A trail sent without a confirmation carries no serial, gets no answer, and therefore never reports a refusal. Rejects with a `WorkerDestroyedError` after `destroy()`. |
+| `inspect(request?, signal?)` | Ask the worker for a [`KernelSnapshot`](#kernelsnapshot) of its Kernel. The request goes out as an `Inspect` message under a serial of its own and the promise resolves with the `Inspected` answer that carries the same serial; a failure the worker reports arrives as a `WorkerReportedError`. Rejects with a [`WorkerTimeoutError`](#workertimeouterror) when no answer arrives within `inspectTimeout`, with a `WorkerDestroyedError` after `destroy()`, and with the `signal`'s reason when the caller aborts -- the worker is not told, and its answer is discarded when it arrives. The snapshot reflects every change trail posted before the call and none posted after it. |
 | `start()` | Spawn the worker and wait for the load handshake. Rejects with a `WorkerDestroyedError` after `destroy()`, and with a [`WorkerTimeoutError`](#workertimeouterror) when the handshake does not complete within `loadTimeout`. |
 | `destroy()` | Tears the environment down and terminates the worker — once it has acknowledged, or after `WorkerDestroyTimeout` if it stays silent. Takes effect whether or not a worker was ever spawned. On that message the worker tears its own kernel down — its entities are destroyed and the `onDestroy` callbacks of their Shadow Objects run — acknowledges with `Destroyed` once, and hears nothing after that. The environment stops listening to the worker as the teardown begins, so whatever it still sends -- a `MessageToView` among it -- does not arrive. |
 
@@ -1732,19 +1735,19 @@ Both events are put back when a listener throws, so a consumer subscribing later
 | `reason` | `WorkerFailedError` | The error every pending and every later request is rejected with. |
 | `event` | `ErrorEvent \| MessageEvent` | The worker event the failure was read from. |
 
-A failure is final for this environment: the worker is terminated, `isDestroyed` becomes `true`, and everything still waiting for a reply -- along with every later `applyChangeTrail()`, `importScript()`, `start()` and `workerLoaded` -- is rejected with the `WorkerFailedError` right away instead of running into its timeout.
+A failure is final for this environment: the worker is terminated, `isDestroyed` becomes `true`, and everything still waiting for a reply -- along with every later `applyChangeTrail()`, `importScript()`, `inspect()`, `start()` and `workerLoaded` -- is rejected with the `WorkerFailedError` right away instead of running into its timeout.
 
 The two ends are told apart by the error they hand out: a worker that broke down reports a `WorkerFailedError`, a deliberate `destroy()` a `WorkerDestroyedError`. Both are final for that environment -- carry on with a fresh `RemoteWorkerEnv`. Both classes are exported from `@spearwolf/shadow-objects`.
 
 A `WorkerReportedError` is no end of this environment. It is a single request the worker turned down: `message` is the wording from the worker, `name` the name the error was thrown under there. An `instanceof` on the original class fails here -- structured cloning does not carry an error class -- so the name is what tells one reported failure from another. A throw the worker cannot read out -- an object whose `toString()` throws, one with no prototype at all -- still arrives: the wording is then the fixed `an error that cannot be described` and no name travels with it, so `name` reads `Error` and the request ends in a rejection rather than in a timeout. Exported from `@spearwolf/shadow-objects` as well.
 
-**`destroy()` counts once, and it counts always.** It marks the environment destroyed whether or not a worker was ever spawned, so the `WorkerDestroyedError` the three methods above promise follows any teardown. Calling it a second time finds nothing left to do: no second `Destroy` goes out, and no worker is terminated twice.
+**`destroy()` counts once, and it counts always.** It marks the environment destroyed whether or not a worker was ever spawned, so the `WorkerDestroyedError` the four methods above promise follows any teardown. Calling it a second time finds nothing left to do: no second `Destroy` goes out, and no worker is terminated twice.
 
 **What the worker does with it.** In this order: it takes its kernel down, entity by entity, so the `onDestroy` callbacks of the Shadow Objects run while the thread is still alive; then it sends the `Destroyed` acknowledgement; from then on it discards every message that reaches it and takes its `message` listener off the global scope. One `Destroy` therefore means exactly one `Destroyed`: a second one is discarded like everything else, and the worker stays down -- there is no message and no call that starts it again.
 
 Two things are worth knowing. A callback that throws is kept where it happened. The failure is logged under the name of the Shadow Object where its own hook or teardown failed, and under the uuid where the failure was the Entity's own. The Entity it belongs to is taken down all the same, the sweep carries on, and the acknowledgement goes out as always -- without it the view would sit out its `WorkerDestroyTimeout` and learn nothing it could act on. And what an `onDestroy` sends towards the view during this teardown does not arrive: the router unsubscribes from the kernel before taking it down, so that the acknowledgement is not overtaken by a message from a kernel that is on its way out. A `LocalShadowObjectEnv` delivers such a message, so this is the one point at which the two environments do not end alike.
 
-A teardown settles what is still waiting. A `start()` caught in the middle of its load handshake rejects with a `WorkerDestroyedError` right away -- whether the worker was still coming up, went on to complete the handshake afterwards, or never answered at all; nothing sits out `WorkerLoadTimeout` for a reply that has nowhere left to go. An `applyChangeTrail()` or `importScript()` already on the wire goes the same way, and that cuts a real window: `destroy()` waits for the worker's `Destroyed` reply or `WorkerDestroyTimeout`, so the worker may well finish the change trail in the meantime and confirm it. That confirmation no longer reaches the caller -- the request is rejected at the moment of the teardown, whether it was going to succeed or run into its timeout. Send what has to arrive before you tear the environment down. `workerLoaded` follows the same rule: every promise of it that has not already resolved rejects, and so does every read after the teardown. A confirmation belongs to exactly one request, so a change trail that fails rejects only the caller holding its serial and an import that fails only the caller holding its url; requests running side by side settle on their own.
+A teardown settles what is still waiting. A `start()` caught in the middle of its load handshake rejects with a `WorkerDestroyedError` right away -- whether the worker was still coming up, went on to complete the handshake afterwards, or never answered at all; nothing sits out `WorkerLoadTimeout` for a reply that has nowhere left to go. An `applyChangeTrail()`, `importScript()` or `inspect()` already on the wire goes the same way, and that cuts a real window: `destroy()` waits for the worker's `Destroyed` reply or `WorkerDestroyTimeout`, so the worker may well finish the change trail in the meantime and confirm it. That confirmation no longer reaches the caller -- the request is rejected at the moment of the teardown, whether it was going to succeed or run into its timeout. Send what has to arrive before you tear the environment down. `workerLoaded` follows the same rule: every promise of it that has not already resolved rejects, and so does every read after the teardown. A confirmation belongs to exactly one request, so a change trail that fails rejects only the caller holding its serial and an import that fails only the caller holding its url; requests running side by side settle on their own.
 
 ```typescript
 import { on } from '@spearwolf/eventize';
@@ -1763,10 +1766,10 @@ The reason a reply from the worker did not arrive in time. Exported from
 
 | Member | Type | Description |
 | :--- | :--- | :--- |
-| `messageType` | `WorkerReplyType` | The type of the message that did not arrive, spelled as it travels: `'loaded'` for the load handshake of `start()`, `'importedModule'` for an `importScript()`, `'appliedChangeTrail'` for a change trail sent with a confirmation, `'destroyed'` for the acknowledgement of a teardown. |
-| `timeout` | `number` | How many milliseconds were waited for it. A diagnosis therefore knows which of the four values was in force without reaching for `env.timeouts`. |
+| `messageType` | `WorkerReplyType` | The type of the message that did not arrive, spelled as it travels: `'loaded'` for the load handshake of `start()`, `'importedModule'` for an `importScript()`, `'appliedChangeTrail'` for a change trail sent with a confirmation, `'inspected'` for an `inspect()`, `'destroyed'` for the acknowledgement of a teardown. |
+| `timeout` | `number` | How many milliseconds were waited for it. A diagnosis therefore knows which of the five values was in force without reaching for `env.timeouts`. |
 
-`WorkerReplyType` is exported from `@spearwolf/shadow-objects` as well, so a `switch` over the four cases can be exhaustive.
+`WorkerReplyType` is exported from `@spearwolf/shadow-objects` as well, so a `switch` over the five cases can be exhaustive.
 
 ```typescript
 import { WorkerTimeoutError } from '@spearwolf/shadow-objects';
@@ -1795,16 +1798,17 @@ These constants control how long the framework waits for worker responses:
 | `WorkerLoadTimeout` | 60000ms | Time to wait for the worker to load. |
 | `WorkerConfigureTimeout` | 60000ms | Time to wait for module imports. |
 | `WorkerChangeTrailTimeout` | 5000ms | Time to wait for change trail confirmation. |
+| `WorkerInspectTimeout` | 5000ms | Time to wait for the answer to an inspection. |
 | `WorkerDestroyTimeout` | 5000ms | Time to wait for worker destruction. |
 
-When one of the four runs out, the waiting request rejects with a
+When one of the five runs out, the waiting request rejects with a
 [`WorkerTimeoutError`](#workertimeouterror) that carries the reply that stayed out and the number of
 milliseconds it waited.
 
 They are the last line of defence, not the first: a worker that dies or sends something unreadable rejects the waiting calls immediately.
 
-They are also the default rather than the law: a single environment moves any of the four with the
-[`RemoteWorkerEnv` constructor options](#remoteworkerenv), and a declarative one with the four
+They are also the default rather than the law: a single environment moves any of the five with the
+[`RemoteWorkerEnv` constructor options](#remoteworkerenv), and a declarative one with the five
 `<shae-worker>` [attributes](#shae-worker) that carry the same names.
 
 ```typescript
@@ -1812,6 +1816,7 @@ import {
   WorkerLoadTimeout,
   WorkerConfigureTimeout,
   WorkerChangeTrailTimeout,
+  WorkerInspectTimeout,
   WorkerDestroyTimeout,
 } from '@spearwolf/shadow-objects';
 ```
@@ -1919,6 +1924,7 @@ The root of any Shadow Objects application. Initializes the Shadow Environment (
 | `load-timeout` | How long the worker environment waits for the load handshake, in milliseconds. Default: `WorkerLoadTimeout` (60000). |
 | `configure-timeout` | How long it waits for a module import to be confirmed, in milliseconds. Default: `WorkerConfigureTimeout` (60000). |
 | `change-trail-timeout` | How long it waits for the confirmation of a change trail, in milliseconds. Default: `WorkerChangeTrailTimeout` (5000). |
+| `inspect-timeout` | How long it waits for the answer to an inspection, in milliseconds. Default: `WorkerInspectTimeout` (5000). |
 | `destroy-timeout` | How long it waits for the worker to acknowledge the teardown before terminating it, in milliseconds. Default: `WorkerDestroyTimeout` (5000). |
 
 **Truthy attributes are not presence attributes.** `local` and `no-autostart` read their value:
@@ -1932,14 +1938,14 @@ all: `no-structured-clone="false"` disables `structuredClone` just as the bare a
 `no-autostart` is not observed and is read exactly once, when the element connects. Setting or
 removing it afterwards changes nothing.
 
-**The four timeout attributes.** Each takes a number of milliseconds from `1` to `2147483647`
+**The five timeout attributes.** Each takes a number of milliseconds from `1` to `2147483647`
 (close to 25 days); anything else — including `0`, `Infinity` and anything above the upper bound —
 is reported to the console and the constant applies.
 They are the declarative half of the [`RemoteWorkerEnv` constructor options](#remoteworkerenv),
 which is where the rule and the reason behind it are written out. Like `no-autostart` they are not
 observed: they are read at the one moment they matter, when the worker environment is built, and
 setting one afterwards changes nothing about an environment that already exists. Under `local` they
-do nothing and say nothing — a local environment waits for no reply and has none of the four.
+do nothing and say nothing — a local environment waits for no reply and has none of the five.
 
 Changing `local` after the environment has been created is refused: the write is reported through
 the `ConsoleLogger` (`logger.error`, not gated behind `ConsoleLogger.sharedConfig.enable`) and the
@@ -2036,7 +2042,7 @@ teardown takes the environment with it, so there is nothing to return to.
 | `ns` | The namespace, get and set, inherited from `ShaeElement`. Writing trims the value and reflects it back into the `ns` attribute; an empty value removes the attribute and returns the element to the Global Context. |
 | `isShaeWorkerElement` | `true`. `isShaeElement` is `true` as well, inherited from `ShaeElement`. |
 | `ShaeWorkerElement.DefaultAutoSync` | Static, `"frame"` — what an empty `auto-sync`, a removed one and any truthy non-string assignment fall back to. An unreadable value does *not* come here; it is reported and switches syncing off. |
-| `ShaeWorkerElement.observedAttributes` | Static: `ns`, `local`, `src`, `no-structured-clone`, `auto-sync`. `no-autostart` and the four timeout attributes — `load-timeout`, `configure-timeout`, `change-trail-timeout`, `destroy-timeout` — are deliberately not among them. |
+| `ShaeWorkerElement.observedAttributes` | Static: `ns`, `local`, `src`, `no-structured-clone`, `auto-sync`. `no-autostart` and the five timeout attributes — `load-timeout`, `configure-timeout`, `change-trail-timeout`, `inspect-timeout`, `destroy-timeout` — are deliberately not among them. |
 
 The four signals `isConnected$`, `autoSync$`, `src$` and the inherited `ns$` are part of the
 surface as well: read them with `.value` or subscribe to them. They are what the attributes feed —

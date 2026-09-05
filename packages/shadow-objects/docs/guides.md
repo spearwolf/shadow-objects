@@ -313,7 +313,7 @@ This element owns the Shadow Environment. It initializes the Kernel (ECS System 
 | `no-autostart` | Do not create the Shadow Environment on connect -- call `start()` yourself |
 | `auto-sync` | Sync frequency: every animation frame (`"frame"`, the default, also `"on"`/`"yes"`/`"true"`/`"auto-sync"`), every `1000/N` ms (`"60fps"`), every N ms (`"100"`), or off (`"off"`/`"no"`/`"false"`) |
 | `no-structured-clone` | Disable cloning for local environments (performance optimization, local only) |
-| `load-timeout`, `configure-timeout`, `change-trail-timeout`, `destroy-timeout` | How long the worker environment waits for the load handshake, a module import, a change trail confirmation and the teardown acknowledgement -- in milliseconds, from 1 to 2147483647 |
+| `load-timeout`, `configure-timeout`, `change-trail-timeout`, `inspect-timeout`, `destroy-timeout` | How long the worker environment waits for the load handshake, a module import, a change trail confirmation, the answer to an inspection and the teardown acknowledgement -- in milliseconds, from 1 to 2147483647 |
 
 The full rules -- which of these read a truthy value rather than mere presence, and what an unparseable `auto-sync` does -- are in the [`<shae-worker>` reference](./api-reference.md#shae-worker).
 
@@ -539,6 +539,8 @@ console.log(JSON.stringify(snapshot.kernel?.roots, null, 2));
 ```
 
 The `syncWait()` in front is the ordering rule. The View snapshot reads the committed Component Memory, not the pending changes, and the Kernel changes only when a change trail reaches it; a snapshot taken between a property write and the next cycle shows the previous value on both sides. Wait for the cycle, then ask.
+
+Over a worker the same call works and costs a round trip: the request travels to the worker as an `Inspect` message, the Kernel builds the snapshot there, and the answer comes back as `Inspected`. The request goes through the same queue as the change trails, so the snapshot reflects every trail posted before the call and none posted after it -- the `syncWait()` in front is enough on both kinds of environment, and `snapshot.kernel.thread` says where the picture was taken. An answer that stays out past `inspectTimeout` (the `inspect-timeout` attribute, 5000 ms by default) is reported under `error` as a `WorkerTimeoutError`.
 
 Two places to look when a Shadow Object does not see what you expect. Each `contexts` entry names where its `effective` value comes from -- `self`, an `ancestor` by uuid, the `global` chain, or `none` when the name is used and nobody provides it. Each `shadowObjects` entry names the tokens the constructor is `definedUnder`, which is the answer to "why did that Shadow Object show up on this Entity" when a route brought it there.
 

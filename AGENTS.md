@@ -31,7 +31,7 @@ Uses Signals and Effects (via `@spearwolf/signalize`).
 - **Downstream (Props):** View -> Kernel -> Entity -> Shadow Object Signal.
 - **Upstream (Events):** Shadow Object -> Entity -> Kernel -> View.
 - **Lateral (Context):** Hierarchical dependency injection (Provider/Consumer) between Entities.
-- **Inspection (read-only):** `ShadowEnv.inspect()` -> proxy `inspect()` -> `createKernelSnapshot(kernel)`. A plain-data picture of the Entity Tree, its Shadow Objects and Entity Contexts, built from read accessors on `Entity`, `Kernel`, `Registry` and the creation scope that create nothing on read. Never the live objects, never a write.
+- **Inspection (read-only):** `ShadowEnv.inspect()` -> proxy `inspect()` -> `createKernelSnapshot(kernel)`, synchronously in a `LocalShadowObjectEnv` and as the `Inspect` / `Inspected` message pair through `MessageRouter` in a `RemoteWorkerEnv`. A plain-data picture of the Entity Tree, its Shadow Objects and Entity Contexts, built from read accessors on `Entity`, `Kernel`, `Registry` and the creation scope that create nothing on read. Never the live objects, never a write.
 
 **Dispatching a notification.** Every fan-out the framework sends to code it does not own goes out
 through eventize's guarded dispatch, never the plain `emit()`: a listener that throws costs itself

@@ -196,7 +196,7 @@ The transport between View Layer and Shadow Environment is a **change trail**: a
 
 When you do need a guarantee, use `syncWait()`, which resolves after the Shadow Environment has processed the batch -- and it is at the same time the only route on which a worker reports a change trail handover it refused. See [`ShadowEnv`](./api-reference.md#shadowenv) for both methods.
 
-The same clock governs what an inspection shows. `ShadowEnv.inspect()` reads the View's committed Component Memory and the Kernel's live Entity Tree, both at the moment of the call; a change made since the last cycle is in neither. A snapshot taken right after `syncWait()` resolves is the one where the two halves agree.
+The same clock governs what an inspection shows. `ShadowEnv.inspect()` reads the View's committed Component Memory and the Kernel's live Entity Tree, both at the moment of the call; a change made since the last cycle is in neither. A snapshot taken right after `syncWait()` resolves is the one where the two halves agree. Over a worker the request queues behind the change trails already on their way, so the Kernel's half reflects exactly those and nothing posted after it.
 
 For local environments you can additionally switch off structured cloning, and then references travel instead of copies. That is more than a performance knob: it is the only way to hand a non-cloneable object such as a DOM node or a canvas context straight to a Shadow Object.
 

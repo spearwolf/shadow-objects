@@ -410,11 +410,13 @@ export const WorkerInspectTimeout = 5000;
 Wire shapes:
 
 ```typescript
-interface InspectMessage   { type: typeof Inspect;   serial: number; request: InspectRequest }
-interface InspectedMessage { type: typeof Inspected; serial: number; snapshot?: KernelSnapshot; error?: string; errorName?: string }
+interface InspectEvent   { type: typeof Inspect;   serial: number; request: InspectRequest }
+interface InspectedEvent { type: typeof Inspected; serial: number; snapshot?: KernelSnapshot; error?: string; errorName?: string }
 ```
 
-`RemoteWorkerEnv.inspect()` follows `applyChangeTrail(trail, true)` line for line: reject on an aborted `#workerFailure` signal or a missing worker, take a serial from `#changeTrailSerial`'s neighbour `#inspectSerial`, post, and `waitForMessageOfType(worker, Inspected, this.timeouts.inspectTimeout, guard, signal)` where the guard matches the serial and turns an `error` field into a `WorkerReportedError`. The caller's `AbortSignal` is combined with the worker-failure signal through `AbortSignal.any()`; a caller that gives up stops waiting, and the worker's answer, when it arrives, is discarded like any other unmatched message.
+Both are exported from `src/types.ts` next to `AppliedChangeTrailEvent` and `ImportedModuleEvent`, whose naming they follow. A reply that carries neither `snapshot` nor `error` is rejected on the view side with a `WorkerReportedError`; the router answers an inspection whether or not it carries a serial, since an inspection has no effect besides its answer.
+
+`RemoteWorkerEnv.inspect()` follows `applyChangeTrail(trail, true)` line for line: reject on an aborted `#workerFailure` signal or a missing worker, take a serial from `#changeTrailSerial`'s neighbour `#inspectSerial`, post, and `waitForMessageOfType(worker, Inspected, this.timeouts.inspectTimeout, guard, signal)` where the guard matches the serial and turns an `error` field into a `WorkerReportedError`. The caller's `AbortSignal` is combined with the worker-failure signal through `AbortSignal.any()`; a caller that gives up stops waiting, and the worker's answer, when it arrives, is discarded like any other unmatched message. `inspectTimeout` sits between `changeTrailTimeout` and `destroyTimeout` in every ordered list, so the teardown stays last.
 
 `WorkerTimeouts` gains `inspectTimeout`, `RemoteWorkerEnvOptions` inherits it, `resolveTimeouts()` vets it through the same `isTimeout()` rule, and `<shae-worker>` reads it from an `inspect-timeout` attribute next to the four existing ones in `WorkerTimeoutAttributes`.
 
@@ -647,10 +649,11 @@ Per package, following the existing layout.
 
 **`packages/shadow-objects-testing` (vitest browser mode, Chromium):**
 
-- `test/inspect-local-env.test.js` and `test/inspect-worker-env.test.js` -- `<shae-worker>` with and without `local`, a small `<shae-ent>` tree with `<shae-prop>` values, `env.inspect()` after `syncWait()`: View and Kernel agree on uuids, tokens and props; the worker case proves the wire shapes survive structured cloning.
+- `test/inspect-local-env.test.js` -- `<shae-worker local>`, a small `<shae-ent>` tree with `<shae-prop>` values, `env.inspect()` after `syncWait()`: View and Kernel agree on uuids, tokens and props, and the `element` paths resolve. The worker case lives in the e2e package: that harness runs local environments only.
 
 **`packages/shadow-objects-e2e` (Playwright):**
 
+- `pages/inspect-worker-env.html` with `tests/inspect-worker-env.spec.ts` -- `ShadowEnv` + `RemoteWorkerEnv`, `inspect()` after `syncWait()` in three engines: the wire shapes survive structured cloning, `thread` reads `'worker'`, the request limits hold, an abort and a teardown reject.
 - `tests/model-context.spec.ts` -- a page that calls `exposeShadowEnvsToModelContext()`; the test drives the tools through `document.modelContext.getTools()` / `executeTool()` from `page.evaluate()`. Runs only where the browser exposes the API: the Chromium project is launched with the WebMCP testing flag, and the spec skips with a named reason where `document.modelContext` is absent, so Firefox and WebKit stay green. Which flag Playwright's bundled Chromium accepts, and whether that build carries the origin-trial implementation at all, is the first thing to verify when this phase starts; a fallback is to run the same spec against the fake adapter injected through `modelContext`, which proves the tools but not the platform.
 
 ## 15. Documentation and contract obligations
@@ -678,7 +681,7 @@ Four phases, each shippable on its own and each ending with green `pnpm run ci`.
 `src/inspect/` with types, serializer and `createKernelSnapshot()`; the read accessors of §6.5; `IShadowObjectEnvProxy.inspect?`; `LocalShadowObjectEnv.inspect()`; `ShadowEnv.inspect()` / `inspectAll()` with the View snapshot; unit tests; docs for all of it. After this phase a developer can call `ShadowEnv.get('ns').inspect()` in the console of a local environment and get JSON. Implemented 2026-09-05; see `docs/superpowers/plans/2026-09-05-inspect-phase-1.md`.
 
 **Phase 2 -- worker transport.**
-`Inspect` / `Inspected`, `WorkerInspectTimeout`, `RemoteWorkerEnv.inspect()`, `MessageRouter.#onInspect()`, `inspectTimeout` option and `inspect-timeout` attribute, the fifth `switch` cases, unit and browser-mode tests, docs. After this phase the same console call works for a worker environment.
+`Inspect` / `Inspected`, `WorkerInspectTimeout`, `RemoteWorkerEnv.inspect()`, `MessageRouter.#onInspect()`, `inspectTimeout` option and `inspect-timeout` attribute, the fifth `switch` cases, unit and browser-mode tests, docs. After this phase the same console call works for a worker environment. Implemented 2026-09-05; see `docs/superpowers/plans/2026-09-05-inspect-phase-2.md`.
 
 **Phase 3 -- model context.**
 `src/model-context/` with the adapter, the five tools, `exposeShadowEnvsToModelContext()`, the subpath export, dist contract update, unit tests against the fake adapter, the e2e spec, docs. After this phase an agent in a browser with WebMCP sees the tools.
@@ -690,7 +693,7 @@ Files touched, by phase:
 | Phase | New | Changed |
 | :--- | :--- | :--- |
 | 1 | `src/inspect/types.ts`, `serializeValue.ts`, `createKernelSnapshot.ts`, `createViewSnapshot.ts`, `normalizeInspectRequest.ts`, `in-the-dark/displayName.ts`, specs | `Entity.ts`, `ShadowObjectCreationScope.ts`, `Kernel.ts`, `Registry.ts`, `SignalsPath.ts`, `IShadowObjectEnvProxy.ts`, `LocalShadowObjectEnv.ts`, `ShadowEnv.ts`, `shadow-objects.ts`, `index.ts`, docs, changelog |
-| 2 | -- | `constants.ts`, `RemoteWorkerEnv.ts`, `MessageRouter.ts`, `ShaeWorkerElement.ts`, `types.ts` (wire shapes), specs, docs, changelog |
+| 2 | `shadow-objects-e2e/pages/inspect-worker-env.html` and page, `shadow-objects-testing/test/inspect-local-env.test.js` | `constants.ts`, `RemoteWorkerEnv.ts`, `MessageRouter.ts`, `ShaeWorkerElement.ts`, `elements/constants.ts`, `types.ts` (wire shapes), specs, docs, changelog |
 | 3 | `src/model-context.ts`, `src/model-context/ModelContextLike.ts`, `exposeShadowEnvsToModelContext.ts`, `tools/*.ts`, specs, `shadow-objects-e2e/tests/model-context.spec.ts` and page | `package.json` (`exports`), `distContract.files.txt`, `distContract.package.json`, `AGENTS.md`, `README.md`, docs, changelogs |
 
 ## 17. Later phases, out of this proposal
