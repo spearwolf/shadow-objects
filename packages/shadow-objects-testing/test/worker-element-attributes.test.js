@@ -311,12 +311,12 @@ describe('local, no-structured-clone, src', () => {
     el.destroy();
   });
 
-  // The four timeout attributes belong to the worker environment; a local one waits for nothing
-  // and has none of them. Reading them here anyway would report the two unreadable values below
+  // The five timeout attributes belong to the worker environment; a local one waits for nothing
+  // and has none of them. Reading them here anyway would report the three unreadable values below
   // for an environment that would never have used them.
-  it('a local element ignores the four timeout attributes and reports nothing', async () => {
+  it('a local element ignores the five timeout attributes and reports nothing', async () => {
     const container = mount(
-      `<shae-worker local no-autostart ns="${nextNs()}" load-timeout="abc" configure-timeout="62000" change-trail-timeout="6000" destroy-timeout="0"></shae-worker>`,
+      `<shae-worker local no-autostart ns="${nextNs()}" load-timeout="abc" configure-timeout="62000" change-trail-timeout="6000" inspect-timeout="-1" destroy-timeout="0"></shae-worker>`,
     );
     const el = container.querySelector('shae-worker');
 

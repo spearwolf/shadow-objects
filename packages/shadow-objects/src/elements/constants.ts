@@ -23,6 +23,7 @@ export const ATTR_SRC = 'src';
 export const ATTR_LOAD_TIMEOUT = 'load-timeout';
 export const ATTR_CONFIGURE_TIMEOUT = 'configure-timeout';
 export const ATTR_CHANGE_TRAIL_TIMEOUT = 'change-trail-timeout';
+export const ATTR_INSPECT_TIMEOUT = 'inspect-timeout';
 export const ATTR_DESTROY_TIMEOUT = 'destroy-timeout';
 
 // <shae-prop> attributes

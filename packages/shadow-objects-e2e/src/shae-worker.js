@@ -71,7 +71,7 @@ async function main() {
 
   await testAsyncAction('worker0-is-remote-env', shadowEnv0.envProxy.workerLoaded);
 
-  // The four timeout attributes on the element, read once when the worker environment was built.
+  // The five timeout attributes on the element, read once when the worker environment was built.
   // The optional chains are deliberate: this has to report false rather than throw, so that a
   // page which does not carry the values keeps its "no unexpected console errors" guard green.
   testBooleanAction('worker0-timeouts-from-attributes', () => {
@@ -80,6 +80,7 @@ async function main() {
       timeouts?.loadTimeout === 61000 &&
       timeouts?.configureTimeout === 62000 &&
       timeouts?.changeTrailTimeout === 6000 &&
+      timeouts?.inspectTimeout === 6600 &&
       timeouts?.destroyTimeout === 6500
     );
   });

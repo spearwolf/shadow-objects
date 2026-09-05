@@ -12,6 +12,7 @@ import {
   ATTR_CHANGE_TRAIL_TIMEOUT,
   ATTR_CONFIGURE_TIMEOUT,
   ATTR_DESTROY_TIMEOUT,
+  ATTR_INSPECT_TIMEOUT,
   ATTR_LOAD_TIMEOUT,
   ATTR_LOCAL,
   ATTR_NO_AUTOSTART,
@@ -25,6 +26,7 @@ const WorkerTimeoutAttributes: [keyof RemoteWorkerEnvOptions, string][] = [
   ['loadTimeout', ATTR_LOAD_TIMEOUT],
   ['configureTimeout', ATTR_CONFIGURE_TIMEOUT],
   ['changeTrailTimeout', ATTR_CHANGE_TRAIL_TIMEOUT],
+  ['inspectTimeout', ATTR_INSPECT_TIMEOUT],
   ['destroyTimeout', ATTR_DESTROY_TIMEOUT],
 ];
 
