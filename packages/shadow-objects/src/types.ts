@@ -1,7 +1,8 @@
 import type {AnyEventNames, EventArgs, EventizedObject, on, once, SubscribeArgs} from '@spearwolf/eventize';
 import type {CompareFunc, createEffect, createMemo, createSignal, Signal, SignalReader} from '@spearwolf/signalize';
-import type {AppliedChangeTrail, ComponentChangeType, ImportedModule} from './constants.js';
+import type {AppliedChangeTrail, ComponentChangeType, ImportedModule, Inspect, Inspected} from './constants.js';
 import type {Entity} from './in-the-dark/Entity.js';
+import type {InspectRequest, KernelSnapshot} from './inspect/types.js';
 import type {Kernel, Registry} from './shadow-objects.js';
 
 export type ChangeTrailType = IComponentChangeType[];
@@ -109,6 +110,30 @@ export interface AppliedChangeTrailEvent {
    * nothing is known about how far the trail got.
    */
   appliedCount?: number;
+}
+
+/**
+ * What goes on the wire for an `inspect()` over a worker: the request as the caller gave it, and
+ * the serial the answer is matched by. The request is plain data and survives structured cloning.
+ */
+export interface InspectEvent {
+  type: typeof Inspect;
+  serial: number;
+  request: InspectRequest;
+}
+
+/**
+ * The worker's answer to an {@link InspectEvent}: the snapshot, or the two fields of a throw that
+ * survive structured cloning -- see {@link ImportedModuleEvent.errorName}. Exactly one of
+ * `snapshot` and `error` is set by the router; a reply carrying neither is rejected by the view
+ * side rather than read through.
+ */
+export interface InspectedEvent {
+  type: typeof Inspected;
+  serial: number;
+  snapshot?: KernelSnapshot;
+  error?: string;
+  errorName?: string;
 }
 
 export type EntityApi = Readonly<

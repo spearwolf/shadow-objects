@@ -34,14 +34,22 @@ export const Loaded = 'loaded';
 export const AppliedChangeTrail = 'appliedChangeTrail';
 export const ImportedModule = 'importedModule';
 export const Destroyed = 'destroyed';
+export const Inspect = 'inspect';
+export const Inspected = 'inspected';
 
 /**
- * The four replies a `RemoteWorkerEnv` waits for, each behind a deadline of its own: the `Loaded`
+ * The five replies a `RemoteWorkerEnv` waits for, each behind a deadline of its own: the `Loaded`
  * greeting of the load handshake, the `ImportedModule` answer to an `importScript()`, the
- * `AppliedChangeTrail` confirmation of a change trail sent with `waitForConfirmation`, and the
- * `Destroyed` receipt of a teardown. A `switch` over the four is exhaustive.
+ * `AppliedChangeTrail` confirmation of a change trail sent with `waitForConfirmation`, the
+ * `Inspected` answer to an `inspect()`, and the `Destroyed` receipt of a teardown. A `switch` over
+ * the five is exhaustive.
  */
-export type WorkerReplyType = typeof Loaded | typeof AppliedChangeTrail | typeof ImportedModule | typeof Destroyed;
+export type WorkerReplyType =
+  | typeof Loaded
+  | typeof AppliedChangeTrail
+  | typeof ImportedModule
+  | typeof Inspected
+  | typeof Destroyed;
 
 /**
  * The `messageToView` event is fired when the kernel receives a message from an entity (to its view component counterpart)
@@ -51,6 +59,7 @@ export const MessageToView = 'messageToView';
 export const WorkerLoadTimeout = 60000;
 export const WorkerConfigureTimeout = 60000;
 export const WorkerChangeTrailTimeout = 5000;
+export const WorkerInspectTimeout = 5000;
 export const WorkerDestroyTimeout = 5000;
 
 export const ShadowObjectsExport = 'shadowObjects';

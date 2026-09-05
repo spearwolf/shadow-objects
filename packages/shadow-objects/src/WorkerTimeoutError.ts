@@ -3,13 +3,14 @@ import type {WorkerReplyType} from './constants.js';
 /**
  * The reason a reply from the worker did not arrive in time.
  *
- * Four replies of a `RemoteWorkerEnv` have a deadline, and `messageType` names the one that stayed
+ * Five replies of a `RemoteWorkerEnv` have a deadline, and `messageType` names the one that stayed
  * out: the `Loaded` greeting of the load handshake, the `ImportedModule` answer to an
  * `importScript()`, the `AppliedChangeTrail` confirmation of a change trail sent with
- * `waitForConfirmation`, and the `Destroyed` receipt of a teardown.
+ * `waitForConfirmation`, the `Inspected` answer to an `inspect()`, and the `Destroyed` receipt of
+ * a teardown.
  *
  * `timeout` carries the number of milliseconds that were waited, so a diagnosis knows which of the
- * four values was in force without reaching for the `timeouts` of the `RemoteWorkerEnv`.
+ * five values was in force without reaching for the `timeouts` of the `RemoteWorkerEnv`.
  *
  * The error says nothing about what the worker did with the request. A confirmation window that
  * ran out leaves a Shadow Environment that may well have applied the whole change trail, which is
