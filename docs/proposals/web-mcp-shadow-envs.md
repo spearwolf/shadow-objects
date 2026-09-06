@@ -14,7 +14,7 @@ This document is now two things at once. It is the design record -- why the laye
 
 Open, as of 2026-09-06:
 
-- Every item of §17 -- the View/Kernel diff tool, mutation tools, an element-level opt-in, a DevTools panel, streaming. None of them is started; each is a proposal of its own.
+- Every item of §17 -- the View/Kernel diff tool, mutation tools, a DevTools panel, streaming. None of them is started; each is a proposal of its own. The element-level opt-in of the first draft shipped on 2026-09-06 (§11.4).
 - WebMCP itself (§3): the spec is an origin trial, and the adapter of §11.3 is the one file to touch when it moves.
 
 The three task-by-task implementation plans that carried the phases (`docs/superpowers/plans/2026-09-05-inspect-phase-{1,2,3}.md`) were removed on 2026-09-06; every deviation they recorded is in this document, in a source comment or in a spec, and git history holds the files.
@@ -649,6 +649,7 @@ Behaviour:
 - Rejects with what `registerTool()` rejected with -- a `NotAllowedError` under a Permissions Policy that disables `tools` is the caller's business to handle, and swallowing it would hide a deployment mistake.
 - Registers every tool with one internal `AbortController` whose signal is chained to `options.signal`; `dispose()` aborts it. Registration is all-or-nothing: a rejection midway aborts the controller so that the tools already registered are taken back.
 - A second call while the first handle is live registers a second, independent set; with the same prefix `registerTool()` rejects on the duplicate name, and the rejection is passed through. The first set stays intact. The docs say to keep one handle.
+- *As built, 2026-09-06:* one registration per model context and prefix, shared -- every call and every `<shae-worker expose-to-model-context>` is a share of it, the first opens it, a later one joins instead of failing on the duplicate name, `dispose()` takes one share back and the tools leave with the last. `namespaces` (`NamespaceRule`) is the new option; the tools see the union of the shares' namespaces and apply the union of their `redactProps`, both read at the start of every call. `limits` and `exposedTo` are the opener's.
 - *As built:* a `signal` already aborted at call time registers nothing and resolves `{available: true, tools: []}`; a signal that aborts midway stops the loop the same way. `dispose()` also removes the listener from the caller's signal. A successful registration logs one `info` line with the count, a rejected one logs one `error` line before the rejection is passed through.
 
 `redactProps` is the one knob this proposal adds for privacy; §12 explains why it is an option and not a default. *As built* it covers property values on both halves of the snapshot and nothing else: an Entity Context value is not redacted, and the `routes` flag of a redacted property stays. The reference and the best-practices page say so. Alongside the function, the subpath exports `DefaultToolPrefix`, `findModelContext()`, `isModelContextLike()` and the types `RedactRule`, `EnvSummary`, `EntityMatchEntry`, `FindEntitiesEntry` and `RegistryEntry` -- the per-tool output entries an agent-side consumer types against.
@@ -682,13 +683,21 @@ No new registration attribute in this proposal. Registering agent-visible tools 
 
 If usage shows that the function call is a hurdle, a follow-up can add an opt-in attribute; the function stays the primitive either way.
 
+*As built, 2026-09-06:* the follow-up came, and it is `expose-to-model-context` with `redact-props` next to it. Three decisions shaped it, each taken against the simpler reading:
+
+- **Per environment, not per page.** The attribute exposes the environment of the element that carries it; the agent sees the union over every share, and an environment no share exposes is neither listed nor answered for -- a tool asked for its namespace is refused with the words of an unknown one, so an agent cannot tell hidden from absent. This is what "element-level" promises literally, and it limits what a copied snippet exposes to the environment it sticks to. `ShadowEnv.inspectAll()` gained a filter for it that keeps a refused environment untouched.
+- **Calls and elements share one registration.** The platform refuses a duplicate tool name, and the first draft of the attribute would have collided with a call of the function on the same page. Instead of a separate path for elements, the function itself became a share of one registration per model context and prefix (`src/model-context/sharedExposure.ts`): a call without `namespaces` exposes everything, whichever came first; a call's `dispose()` takes its share and leaves an element's standing; the tools go with the last share. The element joins through the public function, with a namespace predicate and a redaction predicate that read the element live, loaded with a dynamic `import()` -- a static import would have pulled the layer into every consumer of `<shae-worker>` -- which `dist/bundle.js` inlines and the lib layout keeps apart.
+- **Redaction cumulates.** Every share's `redactProps` is one rule, a value is hidden when any rule says so in every exposed environment, and a rule leaves with its share -- a name stays hidden while another share still names it. Redaction works by name and does not know where a value came from; the conservative reading is the right one for a security measure, and both unions are read at the start of every tool call, so an attribute edited at runtime applies to the next call.
+
+The function stays the primitive: an environment built without an element is exposed by the function, with `namespaces` where a subset is wanted. The §12 stance holds with one word changed: nothing is exposed without a *decision*, and the attribute is a decision the markup carries, which the docs say next to the sample.
+
 ## 12. Security and privacy
 
 Every value in a snapshot is application state. Properties hold what the View put there, and an application that passes a session token, an e-mail address or a user's draft through a `<shae-prop>` will see it in the snapshot, and so will every agent the page exposes tools to.
 
 The proposal's stance, and how the design carries it:
 
-- **Nothing is exposed without a call.** No element attribute, no auto-registration, no import side effect. `exposeShadowEnvsToModelContext()` is the only way in, and it takes an `AbortSignal` to get back out.
+- **Nothing is exposed without a call.** No element attribute, no auto-registration, no import side effect. `exposeShadowEnvsToModelContext()` is the only way in, and it takes an `AbortSignal` to get back out. *As built, 2026-09-06:* the element attribute of §11.4 is the second way in, per environment, as a share of the same registration; the last share leaving is the way out.
 - **Read-only, and declared as such.** `readOnlyHint: true` on every tool tells the agent and the browser the same thing. An agent cannot change a Kernel through this surface.
 - **Exposure follows the platform.** Without `exposedTo`, the spec exposes tools to the document, same-origin documents in the frame tree, and the built-in agent. The option is passed through untouched for the cases where an author-provided agent in a cross-origin frame should see them.
 - **`untrustedContentHint: true`** on every tool, because the values the tools return can include content a user typed. That is the spec's mechanism for telling an agent to treat a result as data, and it is set unconditionally rather than left to the application.
@@ -777,7 +786,6 @@ None of these is started as of 2026-09-06. Each is a proposal of its own; the sn
 
 - **View/Kernel diff.** A `shae-diff-view-kernel` tool over a side-effect-free `ComponentChanges.hasChanges()` read: components without an Entity, Entities without a component, tokens and props that differ, and the pending trail that explains it.
 - **Mutation tools.** `shae-set-property`, `shae-dispatch-view-event`, `shae-sync`, each with `consequentialHint: true` and `readOnlyHint: false`, each routed through the View (`ComponentContext.setProperty()`, `dispatchShadowObjectsEvent()`, `ShadowEnv.syncWait()`) and never through the Kernel directly -- the View owns structure, and an agent is a View-side actor like any other. A separate opt-in flag, so that a read-only exposure stays read-only.
-- **Element-level opt-in.** A `<shae-worker>` attribute that calls the function, once the function has proven itself.
 - **A DevTools panel** consuming `ShadowEnv.inspectAll()` on a timer; the snapshot model already carries what it needs, including `element` paths for highlighting.
 - **Progress and streaming**, once WebMCP settles them.
 

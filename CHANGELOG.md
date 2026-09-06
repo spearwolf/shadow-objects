@@ -16,6 +16,7 @@ The element-level opt-in of the inspection proposal (`docs/proposals/web-mcp-sha
 
 - **`packages/shadow-objects-e2e`:** `pages/model-context-element.html` drives `<shae-worker expose-to-model-context redact-props>` over a real worker next to a local element without the attribute, through a fake model context installed before the element definitions load, in Chromium, Firefox and WebKit; `pages/model-context-platform.html` puts such an element next to the function call on Chromium's real `document.modelContext` and shows one registration shared by both. `TEST-PLAN.md`: the case counts stand at 291 per project, 873 overall.
 - **`packages/shadow-objects-testing`:** `test/worker-element-model-context.test.js` builds the same from markup in real Chromium -- parser upgrade with the attribute in place, `<shae-prop>` values through the tools, redaction cumulating across elements and a function call, and the teardown of the last exposing element.
+- **`docs/superpowers/plans/2026-09-06-model-context-element-opt-in.md`:** removed; the proposal's §11.4 holds the design and the decisions, git history holds the file.
 
 ## 2026-09-06 — the inspection proposal reads as built, and the three phase plans that carried it are gone
 
