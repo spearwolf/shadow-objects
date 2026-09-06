@@ -322,73 +322,143 @@ For anything that has a clear create/destroy lifecycle and depends on reactive s
 
 ## 9. Testing Shadow Objects
 
-Shadow Objects are plain functions or classes. You do not need a browser or a running framework to test them. The key is to inject a mock `ShadowObjectCreationAPI`.
+A Shadow Object is a plain function or class, and the Kernel that runs it needs no DOM, no worker and no View Layer. A unit test therefore does not have to stand in for the framework -- it runs the real one. `@spearwolf/shadow-objects/testing.js` is the subpath that takes the ceremony off: a Kernel on a Registry of its own, object-shaped properties, recorded View messages, recorded Kernel errors, and one `settle()` that waits until the framework has finished reacting. It replaces the hand-built mock of `ShadowObjectCreationAPI` that this section used to recommend, and with it the whole class of tests that pass against a mock and fail against the framework.
 
-### Unit Test Approach
+Nothing in the subpath imports a test runner and nothing runs at import time. What you assert on are plain arrays and plain objects, so vitest, jest, `node:test` and a browser runner are served alike.
 
-Test the logic in isolation by constructing a minimal API mock:
+### One Shadow Object: `mountShadowObject()`
+
+`mountShadowObject()` is the whole single-object case. It builds a test kernel, registers the constructor under a token, creates one Entity, and hands back the instance with the Entity's handle around it:
 
 ```typescript
-// player-logic.test.ts
-import { expect, test, vi } from 'vitest';
-import { PlayerLogic } from './PlayerLogic';
+import {expect, test} from 'vitest';
+import {mountShadowObject} from '@spearwolf/shadow-objects/testing.js';
+import type {ShadowObjectCreationAPI} from '@spearwolf/shadow-objects';
 
-function makeMockApi(overrides = {}) {
-  const signals: Record<string, { value: unknown }> = {};
-  const effects: Array<() => void> = [];
-  const destroyCallbacks: Array<() => void> = [];
-
-  return {
-    useProperty: (name: string) => {
-      signals[name] = signals[name] ?? { value: undefined };
-      return () => signals[name].value;
-    },
-    // Mirror the real Signal: an object, not callable, and set() stores
-    // whatever it is given -- it never treats a function as an updater.
-    createSignal: (initial: unknown) => {
-      let val = initial;
-      return {
-        get: () => val,
-        get value() { return val; },
-        set: (next: unknown) => { val = next; },
-      };
-    },
-    createEffect: (fn: () => void) => { effects.push(fn); fn(); },
-    onDestroy: (fn: () => void) => destroyCallbacks.push(fn),
-    dispatchMessageToView: vi.fn(),
-    onViewEvent: vi.fn(),
-    emit: vi.fn(),
-    on: vi.fn(),
-    // helpers exposed for assertions
-    _signals: signals,
-    _effects: effects,
-    _destroy: () => destroyCallbacks.forEach(fn => fn()),
-    ...overrides
-  };
+class PlayerLogic {
+  constructor({useProperty, createEffect, dispatchMessageToView}: ShadowObjectCreationAPI) {
+    const getScore = useProperty<number>('score');
+    createEffect(() => {
+      dispatchMessageToView('score-updated', {value: getScore()});
+    });
+  }
 }
 
-test('PlayerLogic dispatches score-updated when score changes', () => {
-  const api = makeMockApi();
-  PlayerLogic(api);
+test('PlayerLogic reports every score it is given', async () => {
+  const so = await mountShadowObject(PlayerLogic, {props: {score: 0}});
 
-  // Simulate the 'score' property arriving from the view
-  api._signals['score'].value = 10;
-  // Re-run effects (simplified -- a real signal system tracks this automatically)
-  api._effects.forEach(fn => fn());
+  expect(so.instance).toBeInstanceOf(PlayerLogic);
+  expect(so.viewMessages).toEqual([{type: 'score-updated', data: {value: 0}, traverseChildren: false}]);
 
-  expect(api.dispatchMessageToView).toHaveBeenCalledWith(
-    'score-updated',
-    expect.objectContaining({ value: 10 })
-  );
-});
+  so.setProps({score: 10});
+  await so.settle();
 
-test('PlayerLogic cleans up on destroy', () => {
-  const api = makeMockApi();
-  PlayerLogic(api);
+  expect(so.viewMessages.at(-1)).toEqual({type: 'score-updated', data: {value: 10}, traverseChildren: false});
 
-  expect(() => api._destroy()).not.toThrow();
+  so.dispose();
 });
 ```
+
+`await` on the mount, because the framework is asynchronous and a context value needs two microtask hops to reach its reader. `so.instance` is the object the constructor produced, typed from the constructor. Everything else on the handle is the Entity: `setProps()`, `readProp()`, `readContext()`, `sendViewEvent()`, `emit()`, `describe()`, `viewMessages`. `dispose()` tears the Kernel down, and it is where an error the Kernel swallowed surfaces.
+
+### Properties, contexts and the sync tempo
+
+The rules that decide whether an assertion is one line too early:
+
+- **`await settle()` before asserting on a View message.** `dispatchMessageToView()` hands the message to a microtask, so nothing is recorded on the line after the dispatch. `settle()` drains the whole microtask cascade, not one generation of it, and it uses a `MessageChannel` rather than a timer -- a test that installed fake timers still gets its `settle()` back.
+- **A View event is synchronous.** `sendViewEvent()` reaches `onViewEvent` on the same line, the way `Kernel.dispatchEventsToEntity()` delivers it. Nothing has to settle first.
+- **A context value reaches its reader one settle after a provider wrote it.** Every context value runs through the Entity's microtask collector. And a context that no Shadow Object on that Entity has touched yet needs one settle more, because the `readContext()` call is itself what creates the entry and links it to the parent -- however long the provider has been standing.
+- **A context is read inside an effect or a memo, never as a bare value in a constructor body.** `useContext()` hands back a signal reader and the value behind it lands after the constructor has returned, in a test exactly as in a running application. `useParentContext()` is the exception: it reads the signal the link to the parent writes directly, bypassing the collector, so it answers inside a constructor body. That is why `mountShadowObject()` settles twice -- the second settle alone would already carry every context into every effect; the first is what lets a `useParentContext()` read in a constructor see a value instead of `undefined`.
+
+The same tempo governs an application, and §6 has the view-side half of it: [Mind the Sync Tempo, in Both Modes](#mind-the-sync-tempo-in-both-modes).
+
+### Composition: several Shadow Objects on one Entity
+
+`createTestKernel()` is the layer under `mountShadowObject()`, and the one to reach for as soon as a test needs more than one object, a parent, or a route:
+
+```typescript
+import {expect, test} from 'vitest';
+import {createTestKernel} from '@spearwolf/shadow-objects/testing.js';
+import type {ShadowObjectCreationAPI} from '@spearwolf/shadow-objects';
+
+const physicsWorld = {gravity: -9.81};
+
+function GameRoot({provideContext}: ShadowObjectCreationAPI) {
+  provideContext('physicsWorld', physicsWorld);
+}
+
+class HealthLogic {
+  hp = 100;
+  constructor({onViewEvent, emit}: ShadowObjectCreationAPI) {
+    onViewEvent((type, data) => {
+      if (type !== 'damage') return;
+      this.hp -= (data as {amount: number}).amount;
+      if (this.hp <= 0) emit('playerDied');
+    });
+  }
+}
+
+class RenderLogic {
+  deaths = 0;
+  playerDied() {
+    this.deaths += 1;
+  }
+}
+
+test('a player under a root takes damage and tells the renderer', async () => {
+  const t = createTestKernel();
+
+  t.define('game-root', GameRoot);
+  t.define('health-component', HealthLogic);
+  t.define('render-mesh', RenderLogic);
+  t.route('player', ['health-component', 'render-mesh']);
+
+  const root = t.createEntity('game-root');
+  const player = root.createChild('player');
+
+  // A View event is synchronous, so the assertion needs no settle.
+  player.sendViewEvent('damage', {amount: 100});
+  expect(player.shadowObjectOf(HealthLogic).hp).toBe(0);
+  expect(player.shadowObjectOf(RenderLogic).deaths).toBe(1);
+
+  // The provider wrote in its constructor; this read is the first touch of the
+  // context on this Entity, and a first touch is what creates the entry.
+  await t.settle();
+  expect(player.readContext('physicsWorld')).toBeUndefined();
+  await t.settle();
+  expect(player.readContext('physicsWorld')).toBe(physicsWorld);
+
+  t.dispose();
+});
+```
+
+`route()` composes tokens the way a module's `routes` entry does, `createChild()` builds the tree, `shadowObjectOf(constructor)` picks one object out of an Entity that carries several, and `readContext()` reads the effective value without a signalize import. `t.kernel` and `t.registry` are there for everything the facade does not cover.
+
+Each test kernel builds on a `Registry` of its own, so two tests cannot see each other's definitions. A class that registered itself through the `@ShadowObject` decorator without a registry of its own sits in the process-wide default Registry instead, and `createTestKernel({registry: Registry.get()})` is the deliberate bridge to it -- with the catch that a Registry handed in is never cleared by `dispose()`, because it is not the test kernel's to empty.
+
+### Errors the Kernel swallows
+
+A Shadow Object whose `onDestroy` throws does not fail anything by itself. The Kernel runs every teardown through `runGuarded()`, which catches, reports through the `ConsoleLogger` and carries on -- on that path there is no caller left to decide anything. A test that does not watch the logger sees a green run over a broken teardown.
+
+The test kernel watches it. Every report the Kernel makes is recorded on `t.errors`, kept off the console, and `dispose()` throws when an unacknowledged report of level `error` is among them. A warning is recorded, readable and never fails a run: `importModule()` warns about a module two `extends` chains have in common, and that is a shape of the module graph rather than a mistake.
+
+Where the error is the point of the test, acknowledge it in three lines:
+
+```typescript
+expect(t.errors.filter((record) => record.level === 'error')).toHaveLength(1);
+t.clearErrors();
+t.dispose();
+```
+
+`createTestKernel({failOnKernelErrors: false})` switches the throw off for a test that would rather assert on `t.errors` at the end, and `{echoKernelErrors: true}` puts the reports back on the console while still recording them.
+
+### What the utility does not do
+
+- **No View Layer.** There is no `ViewComponent`, no `<shae-ent>`, no `ComponentContext` and no change trail. `sendViewEvent()` stands in for what the View would deliver, `viewMessages` for what it would receive.
+- **No worker, and no environment proxy.** The Kernel runs in the test's own realm.
+- **No clone, in either direction.** A property or context value reaches a Shadow Object by identity, a DOM node and a WebGL handle included, and a message payload comes back the same way. That is more than even a local `ShadowEnv` gives without `disableStructuredClone`.
+
+The last one has a consequence worth stating plainly: a green test here proves nothing about whether the same code survives a worker. A value that arrived by identity is a value `structuredClone` may refuse at the boundary, and the test never asked the question. That is what the integration and end-to-end suites are for -- *Integration Testing* below is the next step up.
 
 ### What to Test
 
@@ -397,6 +467,7 @@ test('PlayerLogic cleans up on destroy', () => {
 - `onDestroy` callbacks are registered and run without errors
 - Context is consumed or provided correctly
 - Edge cases: missing properties, null values, rapid signal changes
+- That a Shadow Object uses the properties and contexts it is supposed to use, asserted through `describe()`: `usesProperties`, `usesContexts`, `usesParentContexts`, `providesContexts` and `providesGlobalContexts` are the name lists the creation API filled while the constructor ran, and `hooks` names the lifecycle hooks the instance implements
 
 ### Integration Testing
 
@@ -422,7 +493,7 @@ await env.ready();
 // Create a component, sync, assert on entity state
 ```
 
-This style of test is slower than unit tests but verifies that the whole wiring -- Registry (Component Manifest), Kernel (ECS System Runner), entities, and Shadow Objects -- works together correctly.
+This style of test is slower than unit tests but verifies that the whole wiring -- Registry (Component Manifest), Kernel (ECS System Runner), entities, and Shadow Objects -- works together correctly. This is where the line runs: `createTestKernel()` answers what a Shadow Object does, and a `ShadowEnv` answers whether the View reaches it -- the change trail, the clone, the sync tick and the proxy. A worker boundary needs the end-to-end suite on top of that.
 
 ---
 

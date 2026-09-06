@@ -558,6 +558,53 @@ Request defaults: `maxDepth` 4, `maxNodes` 250, `include` all four (`props`, `sh
 
 ---
 
+## Testing a Shadow Object
+
+```typescript
+import {mountShadowObject} from '@spearwolf/shadow-objects/testing.js';
+
+const so = await mountShadowObject(PlayerLogic, {props: {score: 0}, contexts: {physicsWorld}});
+
+so.instance;                       // the object the constructor produced, typed from it
+so.viewMessages;                   // [{type, data, traverseChildren}] since the last clearViewMessages()
+so.setProps({score: 10});          // object-shaped changeProperties(); removeProps('score') removes
+await so.settle();                 // now the effect has run and the message is recorded
+so.sendViewEvent('damage', {amount: 5});   // synchronous -- no settle needed
+so.readProp('score');              // 10
+so.readContext('physicsWorld');    // the very object, nothing cloned it
+so.describe();                     // [{displayName, definedUnder, hooks, usesProperties, usesContexts, …}]
+so.dispose();                      // tears the kernel down; throws over unacknowledged kernel errors
+```
+
+```typescript
+import {createTestKernel, settle} from '@spearwolf/shadow-objects/testing.js';
+
+const t = createTestKernel();                   // own Registry; {registry: Registry.get()} bridges to @ShadowObject
+t.define('health', HealthLogic);                // and t.importModule(myModule) for a whole module
+t.route('player', ['health', 'render-mesh']);   // composition, as a module's routes entry does it
+
+const root = t.createEntity('game-root');
+const player = root.createChild('player', {hp: 100}, {uuid: 'player-1', order: 2});
+
+t.entity('player-1');                           // the same handle, also for a uuid a Shadow Object created
+player.emit('playerDied', 42);                  // the entity's own event bus
+player.shadowObjectOf(HealthLogic).hp;          // one instance out of several; shadowObjects() for all
+player.setToken('ghost');                       // rebuilds the entity's shadow objects
+player.destroy();                               // the handle stays readable
+
+t.errors;                                       // [{level, args, error?}] -- what runGuarded() swallowed
+t.clearErrors();                                // acknowledge, or dispose() throws over level 'error'
+t.dispose();
+```
+
+`await settle()` before asserting on a View message or a context; a View event is synchronous. A context is readable one settle after a provider wrote it, and one settle more when no Shadow Object on that Entity has touched it yet -- the read is what creates the entry. Read a context inside an effect or a memo, never as a bare value in a constructor body; `useParentContext()` is the exception.
+
+`dispose()` throws over recorded Kernel errors of level `error` that no `clearErrors()` acknowledged -- warnings never fail a run. `createTestKernel({failOnKernelErrors: false})` switches it off, `{echoKernelErrors: true}` puts the reports back on the console.
+
+`dispose()` cannot deliver a farewell message: it releases the recorder while the teardown's message is still in a microtask. Destroy the Entity and `await settle()` first.
+
+---
+
 ## Exposing Environments to an Agent
 
 Development only, and read the security section of the API reference first: every answer is application state.

@@ -116,6 +116,10 @@ Full detail — why `worker-src` needs `blob:` for the `@spearwolf/shadow-object
 
 `exposeShadowEnvsToModelContext()` from `@spearwolf/shadow-objects/model-context.js` is a second way state leaves the page: it hands every Shadow Environment to an AI agent through the browser's model context (WebMCP), read-only, and every value in every answer is application state. Nothing is exposed without a decision; keep the call behind a development switch and name the properties to redact. The declarative form, `<shae-worker expose-to-model-context>`, exposes that element's environment alone as a share of the same registration, and belongs in development markup for the same reason the call belongs behind a switch. Details under [Exposing Environments to an Agent](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/api-reference.md#exposing-environments-to-an-agent).
 
+## Testing
+
+`@spearwolf/shadow-objects/testing.js` runs Shadow Objects on the real Kernel in a unit test -- no DOM, no worker, no View Layer, and no hand-built stand-in for the creation API. `mountShadowObject(constructor, {props, contexts})` is the single-object case: it hands back the instance, the properties and contexts it reads, the messages it sent towards the View, and a `settle()` that waits until the framework has finished reacting. `createTestKernel()` is the layer under it, for a test that needs several Shadow Objects on one Entity, a parent, or a route. Reports the Kernel swallows through `runGuarded()` -- a throwing `onDestroy` among them -- are recorded and fail the teardown instead of passing unseen. The subpath imports no test runner and ships in no application bundle. Details under [Testing Shadow Objects](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/best-practices.md#9-testing-shadow-objects).
+
 ## Documentation
 
 - [Overview](https://github.com/spearwolf/shadow-objects/blob/main/packages/shadow-objects/docs/README.md)

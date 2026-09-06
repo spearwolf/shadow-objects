@@ -24,6 +24,7 @@ This is the complete API reference for the Shadow Objects framework. Entities ar
 - [Environment Proxies](#environment-proxies)
 - [FrameLoop](#frameloop)
 - [Model Context](#model-context)
+- [Testing](#testing)
 - [Web Components](#web-components)
   - [shae-worker](#shae-worker)
   - [shae-ent](#shae-ent)
@@ -2031,6 +2032,173 @@ interface ModelContextToolLike {
 `findModelContext()` is the lookup the function uses without `options.modelContext`: `document.modelContext` first, `navigator.modelContext` as the fallback, `undefined` for neither. WebMCP is a moving specification; this interface is where the package absorbs the next change, and no types package is depended on for it.
 
 **The platform, as of September 2026.** Chromium ships `document.modelContext` behind `--enable-features=WebMCP` (Chrome 149 origin trial; `about:flags#enable-webmcp-testing` for local development). There, an in-page agent lists the tools with `getTools()` and runs one with `executeTool(tool, input)`, where `tool` is an entry of that list and `input` is the JSON **string** of the arguments; the tool's `execute` receives the parsed object, and the result comes back to the caller of `executeTool()` as the JSON string of what `execute()` returned. A tool whose `execute` rejects is reported to the agent as a generic failure without its message, which is why the tools here answer refusals as `isError` results.
+
+---
+
+## Testing
+
+A Kernel for a unit test, with the ceremony taken off: its own `Registry`, object-shaped properties, recorded View messages, recorded Kernel errors, and a `settle()` that drains the microtask cascade. Everything runs on the real Kernel -- there is no DOM, no `ShadowEnv`, no worker and no `structuredClone` in it.
+
+```typescript
+import {createTestKernel, mountShadowObject, settle} from '@spearwolf/shadow-objects/testing.js';
+```
+
+A subpath rather than an `index.ts` export, for the same reason [`model-context.js`](#model-context) is one: it has no place in an application bundle and none at all in the worker bundle. Nothing here imports a test runner, importing the module registers nothing and touches no global, and what a test asserts on are plain arrays -- so vitest, jest, `node:test` and a browser runner are served alike. The patterns behind the API are in [Best Practices §9](./best-practices.md#9-testing-shadow-objects).
+
+### `createTestKernel(options?)`
+
+- **Signature:** `createTestKernel(options?: TestKernelOptions): TestKernel`
+
+`TestKernelOptions`:
+
+| Option | Default | Meaning |
+| :--- | :--- | :--- |
+| `registry` | a fresh `new Registry()` | The Registry to build on. See [Registry isolation](#registry-isolation) below before handing one in |
+| `failOnKernelErrors` | `true` | `dispose()` throws when unacknowledged reports of level `error` were recorded |
+| `echoKernelErrors` | `false` | Keep the Kernel's logger output on the console as well as recording it |
+
+`TestKernel`:
+
+| Member | Meaning |
+| :--- | :--- |
+| `kernel: Kernel` | The Kernel itself -- the way out for everything the facade does not cover |
+| `registry: Registry` | The Registry the Kernel resolves tokens against |
+| `errors: readonly KernelErrorRecord[]` | What the Kernel reported through its logger since the last `clearErrors()` |
+| `define(token, constructa)` | `Registry.define()`; takes a class or a function constructor |
+| `route(token, targets)` | `Registry.appendRoute()`; composes several tokens under one, as a module's `routes` entry does |
+| `importModule(module)` | `Promise<void>`; imports a `ShadowObjectsModule` into this Registry, `extends` chains and `initialize` included |
+| `createEntity(token, props?, options?)` | Creates one Entity and returns its `TestEntity` handle. `options: CreateEntityOptions` = `{uuid?, order?, parent?, autoDestructionOnParentRemoval?}`; `uuid` defaults to a generated one, `order` to `0`, `autoDestructionOnParentRemoval` to `false` |
+| `entity(uuid)` | `TestEntity \| undefined` -- the handle for a uuid, `undefined` when the Kernel holds no such Entity. A uuid a Shadow Object created on its own through `testKernel.kernel.createEntity()` gets a handle here on first ask, and the same uuid always answers with the same handle |
+| `settle()` | `Promise<void>`; the module-level [`settle()`](#settle) |
+| `clearErrors()` | Acknowledges every recorded report, so `dispose()` no longer throws over it |
+| `dispose()` | Destroys the Kernel, unhooks the recorder, clears the handles, empties the Registry it created, and throws over unacknowledged errors. Idempotent |
+
+A constructor that throws costs its Entity: `createEntity()` re-throws and leaves no handle behind, so `entity(uuid)` answers `undefined` afterwards. A handle stays readable after its Entity is destroyed -- `token` then answers with the last token the Kernel held, and `shadowObjects()` and `describe()` answer empty rather than throwing.
+
+### `TestEntity`
+
+One handle per Entity, handed out by `createEntity()`, `entity()` and `createChild()`.
+
+| Member | Meaning |
+| :--- | :--- |
+| `uuid: string` | The Entity's uuid |
+| `token: string` | The token the Kernel currently holds for this Entity; the last known one after a destroy |
+| `entity: Entity` | The `Entity` itself -- the way out for everything the handle does not cover |
+| `viewMessages: readonly ViewMessageRecord[]` | What this Entity sent towards the View since the last `clearViewMessages()`. Recorded one microtask after the dispatch, so a test settles before it reads |
+| `createChild(token, props?, options?)` | An Entity with this one as its parent; `options` is `CreateEntityOptions` without `parent` |
+| `setProps(props)` | Object-shaped `changeProperties()`. Goes through the Kernel, so a property route (`token@prop`) is re-resolved and can put a Shadow Object on the Entity or take it off |
+| `removeProps(...names)` | Sets the named properties to `undefined`, which is what a removal is |
+| `readProp<T>(name)` | `T \| undefined`; the current value, without a signalize import |
+| `readContext<T>(name)` | `T \| undefined`; the effective value of an Entity Context, the one `useContext()` reads. String or symbol keys. See the timing rule below |
+| `setToken(token)` | `changeToken()`; rebuilds the Entity's Shadow Objects |
+| `setParent(parent, order?)` | Moves the Entity; `setParent(undefined)` makes it a root again |
+| `sendViewEvent(type, data?)` | Delivers a View event. **Synchronous**, the way `Kernel.dispatchEventsToEntity()` is: a View event carries no structure, so nothing has to settle before a Shadow Object hears it |
+| `emit(eventName, ...args)` | Emits on the Entity's own event bus -- the channel the Shadow Objects of one Entity talk to each other on. A method named like the event is what receives it |
+| `shadowObjects()` | `ShadowObjectType[]`; every Shadow Object instance on this Entity, in the Kernel's own order |
+| `shadowObjectOf(constructa)` | The one instance built from `constructa`, typed from it. See the throw conditions below |
+| `describe()` | `ShadowObjectDescription[]`, index-aligned with `shadowObjects()`: `displayName`, `definedUnder`, `hooks`, and the name lists `usesProperties`, `usesContexts`, `usesParentContexts`, `providesContexts`, `providesGlobalContexts` |
+| `clearViewMessages()` | Empties this Entity's recorded list, and no other's |
+| `destroy()` | `destroyEntity()`; the handle stays readable |
+
+**The timing rule on `readContext()`.** A context value is readable one `settle()` after a provider wrote it -- every value runs through the Entity's microtask collector on its way to the readers. A context that no Shadow Object on that Entity has touched yet needs one settle more, because the `readContext()` call is itself what creates the entry and links it to the parent. The link feeds the inherited signal at once, but the effective value still passes the collector, so a read that creates the entry is one settle too early however long the provider has been standing. In practice: settle, read (`undefined`), settle, read.
+
+**The throw conditions on `shadowObjectOf()`.** Identity decides first: a class instance answers `instanceof`, the `@ShadowObject` decorator's subclass included, and so does the object of a function constructor that returns nothing. Only where identity matched nothing does the display name decide, over the index-aligned `describe()` list -- a name is not an identity, so it is the fallback and never a second rule beside it. Two throws:
+
+- `no shadow object built from "<displayName>" on entity <uuid>` -- nothing matched.
+- `<n> shadow objects built from "<displayName>" on entity <uuid>; use shadowObjects() and pick one` -- more than one matched. Two *function* constructors sharing a display name on one Entity are genuinely inseparable: neither leaves a prototype behind, so nothing tells their objects apart. Reach for `shadowObjects()` there.
+
+### `mountShadowObject(constructa, options?)`
+
+- **Signature:** `mountShadowObject<C>(constructa: C, options?: MountOptions): Promise<MountedShadowObject<C>>`
+
+The single-object case on top of `createTestKernel()`: one test kernel, the constructor registered under a token, one Entity, and -- where `contexts` are given -- a synthetic parent Entity that provides them.
+
+`MountOptions`:
+
+| Option | Default | Meaning |
+| :--- | :--- | :--- |
+| `props` | none | The Entity's initial properties |
+| `contexts` | none | `Record<string \| symbol, unknown>`: the Entity Contexts a synthetic parent provides to the object under test |
+| `token` | a generated one | The token to register the constructor under |
+| `registry` | a fresh one | As `TestKernelOptions.registry` |
+| `failOnKernelErrors` | `true` | As `TestKernelOptions.failOnKernelErrors` |
+| `echoKernelErrors` | `false` | As `TestKernelOptions.echoKernelErrors` |
+
+**A function handed in as a context value is read as a signal reader, not as the value.** That is `provideContext()`'s own contract -- `sourceOrInitialValue` takes a `SignalReader<T>` to keep a context in sync with existing reactive state, and a function is indistinguishable from one. Wrap a function you want as the value (`{fn}`, or a class instance carrying it).
+
+`MountedShadowObject<C>` is every `TestEntity` member except `createChild()` and `destroy()`, plus:
+
+| Member | Meaning |
+| :--- | :--- |
+| `instance` | The object the constructor produced, typed from `constructa`. A function constructor returning nothing yields `object` |
+| `testKernel` | The `TestKernel` underneath, for everything the mount does not cover |
+| `settle()` | The test kernel's `settle()` |
+| `dispose()` | The test kernel's `dispose()`, error default included |
+
+**The two microtask hops.** The mount settles twice, and the two buy different things. `settle()` drains the whole cascade, so the second one alone already carries every context value down into every effect. The first one runs after the synthetic parent is created and before the object under test is built: it lets the parent's own context signal fill, so a `useParentContext()` read inside a constructor body answers with the value rather than `undefined` -- that reader is a direct link to the parent and does not pass the Entity's collector. What neither settle can do is hand a context value to a constructor through `useContext()`: that reader does pass the collector, and the value lands after the constructor has returned, in a mounted test exactly as in a running application. **A context is read inside an effect or a memo.**
+
+### `settle()`
+
+- **Signature:** `settle(): Promise<void>`
+
+Waits until the microtask queue is empty, including everything it grows while it is drained. A single `await Promise.resolve()` clears one generation and lies about the rest, and the Kernel produces more than one: `dispatchMessageToView()` queues a microtask of its own, and the collector behind the Entity Contexts accepts writes from inside its own delivery, which schedules the next round.
+
+It hops over a `MessageChannel` rather than a `setTimeout`, because a test that installs fake timers is a test that has frozen `setTimeout`, and a `settle()` that never resolves under fake timers costs an afternoon per consumer. A message port is not a timer. The `setTimeout` fallback covers a realm that has no `MessageChannel` at all.
+
+### `recordKernelErrors(logger, echo?)`
+
+- **Signature:** `recordKernelErrors(logger: ConsoleLogger, echo?: boolean): KernelErrorRecorder`
+
+The recorder `createTestKernel()` uses, exported for a Kernel held directly. It replaces `error` and `warn` on the logger instance with own properties; `KernelErrorRecorder` carries `records`, `clear()` and `unhook()`, and `unhook()` puts the prototype methods back. `echo` defaults to `false`. `warn` is recorded even though the real method is gated behind `ConsoleLogger.isWarn`: a test wants the report whatever host it happens to run on.
+
+### `KernelErrorRecord` and `ViewMessageRecord`
+
+```typescript
+interface KernelErrorRecord {
+  level: 'error' | 'warn';
+  args: readonly unknown[];  // as they were logged; runGuarded() puts its message first and the error last
+  error?: Error;             // the last argument, where that argument is an Error
+}
+
+interface ViewMessageRecord {
+  type: string;
+  data: unknown;
+  traverseChildren?: boolean;
+}
+```
+
+**Only level `error` fails a `dispose()`.** The Kernel answers a failing teardown by reporting it through its `ConsoleLogger` and carrying on -- `runGuarded()` hands nothing back to a caller, because on that path there is no caller left to decide anything. Without the recorder a test has no way to see a Shadow Object whose `onDestroy` threw, so an unacknowledged `error` fails `dispose()` by default; `clearErrors()` acknowledges, and `failOnKernelErrors: false` switches the throw off. A warning never fails a run: `importModule()` warns about a module two `extends` chains have in common, which is a shape of the module graph and not a mistake.
+
+**A recorded message always carries `traverseChildren` when it came from a Shadow Object.** Both layers of the dispatch -- the creation API's `dispatchMessageToView()` and `Entity.dispatchMessageToView()` -- declare the parameter as `traverseChildren = false`, so the field is there whether or not the caller passed it. It is absent only for a message assembled by hand as a `MessageToViewEvent` and handed straight to `Kernel.dispatchMessageToView()`, where the field is optional. The flag is recorded, never acted on: it is an instruction to the View Layer, and there is no View Layer here.
+
+**The one message `viewMessages` cannot hold** is the one a teardown dispatched during `dispose()`. `dispose()` releases the recorder and clears the handles in the same synchronous call, while that message is still sitting in a microtask. A test that wants a Shadow Object's farewell message destroys the Entity and settles first:
+
+```typescript
+const ent = t.createEntity('mortal');
+ent.destroy();
+await t.settle();
+
+expect(ent.viewMessages).toEqual([{type: 'farewell', data: undefined, traverseChildren: false}]);
+
+t.dispose();
+```
+
+**Nothing clones on the way in or out.** A property or context value reaches a Shadow Object by identity, a DOM node and a WebGL handle included, and `ViewMessageRecord.data` is the very object the Shadow Object dispatched -- more than a `LocalShadowObjectEnv` gives without `disableStructuredClone`. Say what that costs, too: such a test proves nothing about whether the same code survives a worker, because a value that arrived by identity is a value `structuredClone` may refuse at the boundary.
+
+### Registry isolation
+
+Each test kernel builds on a `Registry` of its own, so two tests never see each other's definitions, and `dispose()` empties it. A Registry handed in through `registry` is the caller's: `dispose()` leaves it alone, default or not, because clearing it would take the rest of the suite's definitions with it.
+
+A class that registered itself through the [`@ShadowObject`](#the-shadowobject-decorator) decorator without a registry of its own is in the process-wide default Registry, and reaching it is the deliberate bridge:
+
+```typescript
+import {Registry} from '@spearwolf/shadow-objects/shadow-objects.js';
+import {createTestKernel} from '@spearwolf/shadow-objects/testing.js';
+
+const t = createTestKernel({registry: Registry.get()});  // never cleared by dispose()
+```
+
+Isolation is gone from that point on: every definition the decorator made anywhere in the process is visible, and every definition this test adds stays behind after it.
 
 ---
 
