@@ -58,7 +58,7 @@ export async function mountShadowObject<C extends AnyShadowObjectConstructor>(
 
   await testKernel.settle();
 
-  const instance = ent.instanceOf(constructa);
+  const instance = ent.shadowObjectOf(constructa);
 
   // Written out rather than delegated through a prototype: `TestEntityImpl` keeps its state in
   // private fields, which are branded per instance, so a method reached through `Object.create()`
@@ -87,7 +87,7 @@ export async function mountShadowObject<C extends AnyShadowObjectConstructor>(
     sendViewEvent: (type, data) => ent.sendViewEvent(type, data),
     emit: (eventName, ...args) => ent.emit(eventName, ...args),
     shadowObjects: () => ent.shadowObjects(),
-    instanceOf: <C2 extends AnyShadowObjectConstructor>(other: C2) => ent.instanceOf(other),
+    shadowObjectOf: <C2 extends AnyShadowObjectConstructor>(other: C2) => ent.shadowObjectOf(other),
     describe: () => ent.describe(),
     clearViewMessages: () => ent.clearViewMessages(),
     settle: () => testKernel.settle(),

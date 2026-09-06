@@ -139,7 +139,7 @@ export class TestEntityImpl implements TestEntity {
    * `describeShadowObjects()` walk the same bookkeeping in the same order, so the two lists line up
    * index by index.
    */
-  instanceOf<C extends AnyShadowObjectConstructor>(constructa: C): ShadowObjectInstance<C> {
+  shadowObjectOf<C extends AnyShadowObjectConstructor>(constructa: C): ShadowObjectInstance<C> {
     const displayName = getDisplayName(constructa as ShadowObjectConstructor);
     const instances = this.shadowObjects();
 

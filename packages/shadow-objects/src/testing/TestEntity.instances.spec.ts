@@ -3,7 +3,7 @@ import type {ShadowObjectCreationAPI} from '../types.js';
 import {createTestKernel} from './createTestKernel.js';
 
 describe('TestEntity shadow object access', () => {
-  it('instanceOf finds a class instance and types it', () => {
+  it('shadowObjectOf finds a class instance and types it', () => {
     const t = createTestKernel();
 
     class PlayerLogic {
@@ -12,7 +12,7 @@ describe('TestEntity shadow object access', () => {
     t.define('player', PlayerLogic);
 
     const ent = t.createEntity('player');
-    const instance = ent.instanceOf(PlayerLogic);
+    const instance = ent.shadowObjectOf(PlayerLogic);
 
     expect(instance.score).toBe(7);
     expect(ent.shadowObjects()).toHaveLength(1);
@@ -20,7 +20,7 @@ describe('TestEntity shadow object access', () => {
     t.dispose();
   });
 
-  it('instanceOf finds an object a function constructor returned', () => {
+  it('shadowObjectOf finds an object a function constructor returned', () => {
     const t = createTestKernel();
 
     function HealthLogic(_api: ShadowObjectCreationAPI) {
@@ -30,12 +30,12 @@ describe('TestEntity shadow object access', () => {
 
     const ent = t.createEntity('health');
 
-    expect(ent.instanceOf(HealthLogic).health).toBe(100);
+    expect(ent.shadowObjectOf(HealthLogic).health).toBe(100);
 
     t.dispose();
   });
 
-  it('instanceOf picks the right one out of three on a composite token', () => {
+  it('shadowObjectOf picks the right one out of three on a composite token', () => {
     const t = createTestKernel();
 
     class Physics {}
@@ -52,12 +52,12 @@ describe('TestEntity shadow object access', () => {
     const ent = t.createEntity('player');
 
     expect(ent.shadowObjects()).toHaveLength(3);
-    expect(ent.instanceOf(Health).hp).toBe(50);
+    expect(ent.shadowObjectOf(Health).hp).toBe(50);
 
     t.dispose();
   });
 
-  it('instanceOf throws with the display name when nothing matches', () => {
+  it('shadowObjectOf throws with the display name when nothing matches', () => {
     const t = createTestKernel();
 
     class Present {}
@@ -66,7 +66,7 @@ describe('TestEntity shadow object access', () => {
 
     const ent = t.createEntity('probe');
 
-    expect(() => ent.instanceOf(Absent)).toThrow(/Absent/);
+    expect(() => ent.shadowObjectOf(Absent)).toThrow(/Absent/);
 
     t.dispose();
   });
@@ -90,7 +90,7 @@ describe('TestEntity shadow object access', () => {
     const ent = t.createEntity('both');
 
     expect(ent.shadowObjects()).toHaveLength(2);
-    expect(ent.instanceOf(Collide).from).toBe('class');
+    expect(ent.shadowObjectOf(Collide).from).toBe('class');
 
     t.dispose();
   });
@@ -113,7 +113,7 @@ describe('TestEntity shadow object access', () => {
 
     const ent = t.createEntity('both');
 
-    expect(() => ent.instanceOf(first)).toThrow(/2 shadow objects built from "Twin"/);
+    expect(() => ent.shadowObjectOf(first)).toThrow(/2 shadow objects built from "Twin"/);
 
     t.dispose();
   });

@@ -84,7 +84,7 @@ export interface TestEntity {
 
   shadowObjects(): ShadowObjectType[];
   /** The one Shadow Object on this Entity built from `constructa`. Throws for none and for more than one. */
-  instanceOf<C extends AnyShadowObjectConstructor>(constructa: C): ShadowObjectInstance<C>;
+  shadowObjectOf<C extends AnyShadowObjectConstructor>(constructa: C): ShadowObjectInstance<C>;
   describe(): ShadowObjectDescription[];
 
   clearViewMessages(): void;
