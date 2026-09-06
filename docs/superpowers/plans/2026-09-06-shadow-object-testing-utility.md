@@ -2180,14 +2180,14 @@ describe('mountShadowObject', () => {
     const so = await mountShadowObject(PlayerLogic, {props: {score: 0}});
 
     expect(so.instance).toBeInstanceOf(PlayerLogic);
-    expect(so.viewMessages).toEqual([{type: 'score-updated', data: {value: 0}}]);
+    expect(so.viewMessages).toEqual([{type: 'score-updated', data: {value: 0}, traverseChildren: false}]);
 
     so.setProps({score: 10});
     await so.settle();
 
     expect(so.viewMessages).toEqual([
-      {type: 'score-updated', data: {value: 0}},
-      {type: 'score-updated', data: {value: 10}},
+      {type: 'score-updated', data: {value: 0}, traverseChildren: false},
+      {type: 'score-updated', data: {value: 10}, traverseChildren: false},
     ]);
 
     so.dispose();
@@ -2218,13 +2218,39 @@ describe('mountShadowObject', () => {
     const key = Symbol('physics-world');
     const world = {gravity: -9.81};
 
+    // The reader is taken during construction, the way a Shadow Object is written. A `useContext()`
+    // left inside the returned closure would make `so.readContext(key)` the first touch of that
+    // context, and a first touch is what creates the entry -- so it would read `undefined` and need
+    // one more settle, which is a property of the Entity and has nothing to do with symbols.
     function Body({useContext}: ShadowObjectCreationAPI) {
-      return {read: () => useContext(key)()};
+      const getWorld = useContext(key);
+      return {read: () => getWorld()};
     }
 
     const so = await mountShadowObject(Body, {contexts: {[key]: world}});
 
     expect(so.readContext(key)).toBe(world);
+    expect(so.instance.read()).toBe(world);
+
+    so.dispose();
+  });
+
+  it('the synthetic parent has settled before the object under test is built', async () => {
+    const world = {gravity: -9.81};
+    let seenInConstructor: unknown;
+
+    function Body({useParentContext}: ShadowObjectCreationAPI) {
+      // `useParentContext()` reads the inherited signal, which the link to the parent writes without
+      // going through the Entity's microtask collector -- so it answers inside the constructor body.
+      // It answers with the *value* only because the mount settled after creating the parent: the
+      // parent's own context signal was already filled when the link was made. This test is what
+      // makes the first of the mount's two settles load-bearing.
+      seenInConstructor = useParentContext('physicsWorld')();
+    }
+
+    const so = await mountShadowObject(Body, {contexts: {physicsWorld: world}});
+
+    expect(seenInConstructor).toBe(world);
 
     so.dispose();
   });
@@ -2300,15 +2326,19 @@ import type {
  * Mounts one Shadow Object on one Entity and hands back everything a test asserts on.
  *
  * Asynchronous because the framework is. `contexts` are provided by a synthetic parent Entity, and a
- * context value reaches a reader a microtask after it was written -- twice over, because the child's
- * own context signal runs through the same collector. The mount settles after the parent and again
- * after the object under test, so when it resolves every context has reached every reader and every
- * effect that depends on one has re-run.
+ * context value reaches a reader a microtask after it was written.
  *
- * What it cannot do is hand a context value to a constructor body: `useContext()` gives out a signal
- * reader, and the value behind it lands after the constructor has returned. That is the framework's
- * tempo, not this function's -- a context is read inside an effect or a memo. `useParentContext()`
- * is the exception and reads synchronously.
+ * Two settles, and they buy different things. `settle()` drains the whole microtask cascade, so the
+ * second one alone already carries every context value down to every effect. The first is what a
+ * constructor gets: it lets the parent's own context signal settle before the object under test is
+ * built, so a `useParentContext()` read inside the constructor body answers with the value instead
+ * of `undefined` -- that reader is a direct link to the parent and does not pass the Entity's
+ * collector.
+ *
+ * What neither settle can do is hand a context value to a constructor through `useContext()`. That
+ * reader does pass the collector, and the value behind it lands after the constructor has returned,
+ * in a mounted test as much as in a running application. A context is read inside an effect or a
+ * memo.
  */
 export async function mountShadowObject<C extends AnyShadowObjectConstructor>(
   constructa: C,
@@ -2390,9 +2420,9 @@ The trailing comma in `<T,>` is what keeps a generic arrow function from being r
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm -F @spearwolf/shadow-objects exec vitest src/testing/mountShadowObject.spec.ts --run`
-Expected: PASS, 6 tests.
+Expected: PASS, 7 tests.
 
-If the context test fails with `undefined`, the second `settle()` is missing or is placed before `createEntity()` rather than after it. Both hops are needed and both come after the Entity they wait for.
+If the context test fails with `undefined`, the second `settle()` is missing or is placed before `createEntity()` rather than after it. If instead the `useParentContext()` test fails, the first settle is the one that is missing.
 
 - [ ] **Step 5: Add the emitted files to the dist contract**
 
