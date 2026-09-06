@@ -2068,12 +2068,12 @@ A subpath rather than an `index.ts` export, for the same reason [`model-context.
 | `route(token, targets)` | `Registry.appendRoute()`; composes several tokens under one, as a module's `routes` entry does |
 | `importModule(module)` | `Promise<void>`; imports a `ShadowObjectsModule` into this Registry, `extends` chains and `initialize` included |
 | `createEntity(token, props?, options?)` | Creates one Entity and returns its `TestEntity` handle. `options: CreateEntityOptions` = `{uuid?, order?, parent?, autoDestructionOnParentRemoval?}`; `uuid` defaults to a generated one, `order` to `0`, `autoDestructionOnParentRemoval` to `false` |
-| `entity(uuid)` | `TestEntity \| undefined` -- the handle for a uuid, `undefined` when the Kernel holds no such Entity. A uuid a Shadow Object created on its own through `testKernel.kernel.createEntity()` gets a handle here on first ask, and the same uuid always answers with the same handle |
+| `entity(uuid)` | `TestEntity \| undefined` -- the handle for a uuid. `undefined` for a uuid this test kernel has never handed out a handle for and the Kernel does not hold; a handle it has already handed out keeps answering after its Entity is destroyed. A uuid a Shadow Object created on its own through `testKernel.kernel.createEntity()` gets a handle here on first ask, and the same uuid always answers with the same handle |
 | `settle()` | `Promise<void>`; the module-level [`settle()`](#settle) |
 | `clearErrors()` | Acknowledges every recorded report, so `dispose()` no longer throws over it |
-| `dispose()` | Destroys the Kernel, unhooks the recorder, clears the handles, empties the Registry it created, and throws over unacknowledged errors. Idempotent |
+| `dispose()` | Destroys the Kernel, unhooks the recorder, releases the handles and the recorded View messages, empties the Registry it created, and throws over unacknowledged errors. Idempotent |
 
-A constructor that throws costs its Entity: `createEntity()` re-throws and leaves no handle behind, so `entity(uuid)` answers `undefined` afterwards. A handle stays readable after its Entity is destroyed -- `token` then answers with the last token the Kernel held, and `shadowObjects()` and `describe()` answer empty rather than throwing.
+A constructor that throws costs its Entity: `createEntity()` re-throws and leaves no handle behind, so `entity(uuid)` answers `undefined` afterwards -- unless the uuid was one this test kernel already held a handle for, which the failed call restores rather than evicts. A handle stays readable after its Entity is destroyed -- `token` then answers with the last token the Kernel held, `shadowObjects()` and `describe()` answer empty rather than throwing, and `entity(uuid)` keeps handing that handle back.
 
 ### `TestEntity`
 
@@ -2084,7 +2084,7 @@ One handle per Entity, handed out by `createEntity()`, `entity()` and `createChi
 | `uuid: string` | The Entity's uuid |
 | `token: string` | The token the Kernel currently holds for this Entity; the last known one after a destroy |
 | `entity: Entity` | The `Entity` itself -- the way out for everything the handle does not cover |
-| `viewMessages: readonly ViewMessageRecord[]` | What this Entity sent towards the View since the last `clearViewMessages()`. Recorded one microtask after the dispatch, so a test settles before it reads |
+| `viewMessages: readonly ViewMessageRecord[]` | What this Entity sent towards the View since the last `clearViewMessages()`. Recorded one settle after the dispatch, so a test settles before it reads. The list belongs to the test kernel and the handle is a view onto it, so a handle built after the fact holds everything that uuid already sent |
 | `createChild(token, props?, options?)` | An Entity with this one as its parent; `options` is `CreateEntityOptions` without `parent` |
 | `setProps(props)` | Object-shaped `changeProperties()`. Goes through the Kernel, so a property route (`token@prop`) is re-resolved and can put a Shadow Object on the Entity or take it off |
 | `removeProps(...names)` | Sets the named properties to `undefined`, which is what a removal is |
@@ -2171,7 +2171,7 @@ interface ViewMessageRecord {
 
 **A recorded message always carries `traverseChildren` when it came from a Shadow Object.** Both layers of the dispatch -- the creation API's `dispatchMessageToView()` and `Entity.dispatchMessageToView()` -- declare the parameter as `traverseChildren = false`, so the field is there whether or not the caller passed it. It is absent only for a message assembled by hand as a `MessageToViewEvent` and handed straight to `Kernel.dispatchMessageToView()`, where the field is optional. The flag is recorded, never acted on: it is an instruction to the View Layer, and there is no View Layer here.
 
-**The one message `viewMessages` cannot hold** is the one a teardown dispatched during `dispose()`. `dispose()` releases the recorder and clears the handles in the same synchronous call, while that message is still sitting in a microtask. A test that wants a Shadow Object's farewell message destroys the Entity and settles first:
+**The one message `viewMessages` cannot hold** is the one a teardown dispatched during `dispose()`. `dispose()` unsubscribes from the Kernel and releases the recorded messages in the same synchronous call, while that message is still sitting in a microtask. A test that wants a Shadow Object's farewell message destroys the Entity and settles first:
 
 ```typescript
 const ent = t.createEntity('mortal');

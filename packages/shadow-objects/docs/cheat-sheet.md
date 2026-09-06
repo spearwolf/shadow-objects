@@ -586,7 +586,8 @@ t.route('player', ['health', 'render-mesh']);   // composition, as a module's ro
 const root = t.createEntity('game-root');
 const player = root.createChild('player', {hp: 100}, {uuid: 'player-1', order: 2});
 
-t.entity('player-1');                           // the same handle, also for a uuid a Shadow Object created
+t.entity('player-1');                           // the same handle, also for a uuid a Shadow Object created,
+                                                // and it carries what that Entity already sent
 player.emit('playerDied', 42);                  // the entity's own event bus
 player.shadowObjectOf(HealthLogic).hp;          // one instance out of several; shadowObjects() for all
 player.setToken('ghost');                       // rebuilds the entity's shadow objects

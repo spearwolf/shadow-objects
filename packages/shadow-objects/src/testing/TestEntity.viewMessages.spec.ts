@@ -84,9 +84,9 @@ describe('TestEntity view messages', () => {
     t.dispose();
   });
 
-  // The supported way to reach a farewell message. `dispose()` cannot deliver one: it releases the
-  // recorder and clears the handles in the same synchronous call, while the message its teardown
-  // dispatched is still sitting in a microtask. Destroying the Entity and settling has neither
+  // The supported way to reach a farewell message. `dispose()` cannot deliver one: it unsubscribes
+  // from the Kernel and releases the message log in the same synchronous call, while the message its
+  // teardown dispatched is still sitting in a microtask. Destroying the Entity and settling has neither
   // problem, and it is what a test that cares about a farewell should do.
   it('records a farewell message dispatched from an [onDestroy] hook', async () => {
     const t = createTestKernel();

@@ -120,8 +120,10 @@ export interface TestKernel {
 
   createEntity(token: string, props?: Record<string, unknown>, options?: CreateEntityOptions): TestEntity;
   /**
-   * The handle for a uuid, or `undefined` when the Kernel holds no such Entity. A uuid a Shadow
-   * Object created through `testKernel.kernel.createEntity()` gets a handle here on first ask.
+   * The handle for a uuid. `undefined` for a uuid this test kernel has never handed out a handle
+   * for and the Kernel does not hold; a handle it has already handed out keeps answering after its
+   * Entity is destroyed. A uuid a Shadow Object created through `testKernel.kernel.createEntity()`
+   * gets a handle here on first ask, and the same uuid always answers with the same handle.
    */
   entity(uuid: string): TestEntity | undefined;
 

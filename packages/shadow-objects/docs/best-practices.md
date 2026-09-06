@@ -432,7 +432,7 @@ test('a player under a root takes damage and tells the renderer', async () => {
 });
 ```
 
-`route()` composes tokens the way a module's `routes` entry does, `createChild()` builds the tree, `shadowObjectOf(constructor)` picks one object out of an Entity that carries several, and `readContext()` reads the effective value without a signalize import. `t.kernel` and `t.registry` are there for everything the facade does not cover.
+`route()` composes tokens the way a module's `routes` entry does, `createChild()` builds the tree, `shadowObjectOf(constructa)` picks one object out of an Entity that carries several, and `readContext()` reads the effective value without a signalize import. `t.kernel` and `t.registry` are there for everything the facade does not cover.
 
 Each test kernel builds on a `Registry` of its own, so two tests cannot see each other's definitions. A class that registered itself through the `@ShadowObject` decorator without a registry of its own sits in the process-wide default Registry instead, and `createTestKernel({registry: Registry.get()})` is the deliberate bridge to it -- with the catch that a Registry handed in is never cleared by `dispose()`, because it is not the test kernel's to empty.
 
