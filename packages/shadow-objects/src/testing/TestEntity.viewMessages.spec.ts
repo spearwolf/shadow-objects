@@ -1,6 +1,8 @@
 import {describe, expect, it} from 'vitest';
+import {onDestroy} from '../in-the-dark/events.js';
 import type {ShadowObjectCreationAPI} from '../types.js';
 import {createTestKernel} from './createTestKernel.js';
+import type {TestEntity} from './types.js';
 
 // `traverseChildren: false` stands in every expectation below on purpose. Both layers of the
 // dispatch -- `ShadowObjectCreationScope.dispatchMessageToView()` and
@@ -57,21 +59,58 @@ describe('TestEntity view messages', () => {
     t.dispose();
   });
 
-  // The registration order in `createTestKernel.createEntity()` is what this test pins: the handle
-  // goes into the map before the Kernel call, so a Shadow Object that dispatches from its own
-  // constructor has somewhere for its message to land. Without the early insert the message is
-  // dropped in silence, and nothing else in the suite would notice.
-  it('records a message a Shadow Object dispatched from its own constructor', async () => {
+  // The registration order in `createTestKernel.createEntity()` is what this test pins, and the
+  // guarantee is handle identity rather than delivery. Delivery is safe either way: the Kernel
+  // hands every message to a microtask, so the recorder's lookup runs long after `createEntity()`
+  // has returned and the handle is in the map whichever side of the Kernel call put it there.
+  // What a late insert breaks is identity -- a constructor that asks for its own handle gets a
+  // lazily built one, and the insert afterwards overwrites it. Two handles for one uuid, and the
+  // messages land on the one the caller does not hold.
+  it('hands a constructor the same handle createEntity() returns', async () => {
     const t = createTestKernel();
+    let seenDuringConstruction: TestEntity | undefined;
 
-    t.define('eager', function Eager({dispatchMessageToView}: ShadowObjectCreationAPI) {
+    t.define('eager', function Eager({entity, dispatchMessageToView}: ShadowObjectCreationAPI) {
+      seenDuringConstruction = t.entity(entity.uuid);
       dispatchMessageToView('constructed');
     });
 
     const ent = t.createEntity('eager');
     await t.settle();
 
+    expect(seenDuringConstruction).toBe(ent);
     expect(ent.viewMessages).toEqual([{type: 'constructed', data: undefined, traverseChildren: false}]);
+
+    t.dispose();
+  });
+
+  // The supported way to reach a farewell message. `dispose()` cannot deliver one: it releases the
+  // recorder and clears the handles in the same synchronous call, while the message its teardown
+  // dispatched is still sitting in a microtask. Destroying the Entity and settling has neither
+  // problem, and it is what a test that cares about a farewell should do.
+  it('records a farewell message dispatched from an [onDestroy] hook', async () => {
+    const t = createTestKernel();
+
+    t.define(
+      'mortal',
+      class Mortal {
+        readonly #dispatch: ShadowObjectCreationAPI['dispatchMessageToView'];
+
+        constructor({dispatchMessageToView}: ShadowObjectCreationAPI) {
+          this.#dispatch = dispatchMessageToView;
+        }
+
+        [onDestroy]() {
+          this.#dispatch('farewell');
+        }
+      },
+    );
+
+    const ent = t.createEntity('mortal');
+    ent.destroy();
+    await t.settle();
+
+    expect(ent.viewMessages).toEqual([{type: 'farewell', data: undefined, traverseChildren: false}]);
 
     t.dispose();
   });

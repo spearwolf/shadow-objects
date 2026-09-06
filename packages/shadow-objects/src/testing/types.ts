@@ -56,7 +56,15 @@ export interface TestEntity {
   readonly token: string;
   /** The Entity itself -- the way out for everything this handle does not cover. */
   readonly entity: Entity;
-  /** What this Entity sent towards the View since the last `clearViewMessages()`. */
+  /**
+   * What this Entity sent towards the View since the last `clearViewMessages()`.
+   *
+   * A message is recorded one microtask after it was dispatched, so a test settles before it reads.
+   * One message never arrives, and it is the end of the road anyway: `TestKernel.dispose()`
+   * releases the recorder and clears the handles in the same synchronous call, while a message its
+   * teardown dispatched is still queued. A test that wants a Shadow Object's farewell message
+   * destroys the Entity and settles first.
+   */
   readonly viewMessages: readonly ViewMessageRecord[];
 
   createChild(token: string, props?: Record<string, unknown>, options?: Omit<CreateEntityOptions, 'parent'>): TestEntity;
