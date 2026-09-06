@@ -1688,8 +1688,10 @@ Create `packages/shadow-objects/src/testing/TestEntity.viewMessages.spec.ts`:
 
 ```ts
 import {describe, expect, it} from 'vitest';
+import {onDestroy} from '../in-the-dark/events.js';
 import type {ShadowObjectCreationAPI} from '../types.js';
 import {createTestKernel} from './createTestKernel.js';
+import type {TestEntity} from './types.js';
 
 // `traverseChildren: false` stands in every expectation below on purpose. Both layers of the
 // dispatch -- `ShadowObjectCreationScope.dispatchMessageToView()` and
@@ -1746,21 +1748,58 @@ describe('TestEntity view messages', () => {
     t.dispose();
   });
 
-  // The registration order in `createTestKernel.createEntity()` is what this test pins: the handle
-  // goes into the map before the Kernel call, so a Shadow Object that dispatches from its own
-  // constructor has somewhere for its message to land. Without the early insert the message is
-  // dropped in silence, and nothing else in the suite would notice.
-  it('records a message a Shadow Object dispatched from its own constructor', async () => {
+  // The registration order in `createTestKernel.createEntity()` is what this test pins, and the
+  // guarantee is handle identity rather than delivery. Delivery is safe either way: the Kernel
+  // hands every message to a microtask, so the recorder's lookup runs long after `createEntity()`
+  // has returned and the handle is in the map whichever side of the Kernel call put it there.
+  // What a late insert breaks is identity -- a constructor that asks for its own handle gets a
+  // lazily built one, and the insert afterwards overwrites it. Two handles for one uuid, and the
+  // messages land on the one the caller does not hold.
+  it('hands a constructor the same handle createEntity() returns', async () => {
     const t = createTestKernel();
+    let seenDuringConstruction: TestEntity | undefined;
 
-    t.define('eager', function Eager({dispatchMessageToView}: ShadowObjectCreationAPI) {
+    t.define('eager', function Eager({entity, dispatchMessageToView}: ShadowObjectCreationAPI) {
+      seenDuringConstruction = t.entity(entity.uuid);
       dispatchMessageToView('constructed');
     });
 
     const ent = t.createEntity('eager');
     await t.settle();
 
+    expect(seenDuringConstruction).toBe(ent);
     expect(ent.viewMessages).toEqual([{type: 'constructed', data: undefined, traverseChildren: false}]);
+
+    t.dispose();
+  });
+
+  // The supported way to reach a farewell message. `dispose()` cannot deliver one: it releases the
+  // recorder and clears the handles in the same synchronous call, while the message its teardown
+  // dispatched is still sitting in a microtask. Destroying the Entity and settling has neither
+  // problem, and it is what a test that cares about a farewell should do.
+  it('records a farewell message dispatched from an [onDestroy] hook', async () => {
+    const t = createTestKernel();
+
+    t.define(
+      'mortal',
+      class Mortal {
+        readonly #dispatch: ShadowObjectCreationAPI['dispatchMessageToView'];
+
+        constructor({dispatchMessageToView}: ShadowObjectCreationAPI) {
+          this.#dispatch = dispatchMessageToView;
+        }
+
+        [onDestroy]() {
+          this.#dispatch('farewell');
+        }
+      },
+    );
+
+    const ent = t.createEntity('mortal');
+    ent.destroy();
+    await t.settle();
+
+    expect(ent.viewMessages).toEqual([{type: 'farewell', data: undefined, traverseChildren: false}]);
 
     t.dispose();
   });
@@ -1871,7 +1910,7 @@ and add to `dispose()`, directly after `this.kernel.destroy()`:
 - [ ] **Step 5: Run the test to verify it passes**
 
 Run: `pnpm -F @spearwolf/shadow-objects exec vitest src/testing/TestEntity.viewMessages.spec.ts --run`
-Expected: PASS, 5 tests.
+Expected: PASS, 6 tests.
 
 - [ ] **Step 6: Lint, format and typecheck**
 
@@ -2080,7 +2119,7 @@ Expected: PASS, 6 tests.
 - [ ] **Step 5: Run every testing spec written so far**
 
 Run: `pnpm -F @spearwolf/shadow-objects exec vitest src/testing --run`
-Expected: PASS, 47 tests across 8 files.
+Expected: PASS, 48 tests across 8 files.
 
 - [ ] **Step 6: Lint, format and typecheck**
 
@@ -2547,6 +2586,7 @@ Insert a new `## Testing` section directly after the `## Model Context` section 
 - `TestEntity`, one line per member, with the throw conditions of `instanceOf()` and this timing rule on `readContext()`: a context is read one settle after a provider wrote it, and a context no Shadow Object on that Entity has used yet needs one settle more, because the read is what creates the entry and links it to the parent
 - `mountShadowObject(constructa, options?)`, `MountOptions`, `MountedShadowObject`, and the two microtask hops
 - `settle()` and why it uses a `MessageChannel`
+- the one message `viewMessages` cannot hold: `dispose()` releases the recorder and clears the handles in the same synchronous call, while a message its teardown dispatched is still in a microtask. A test that wants a Shadow Object's farewell message destroys the Entity and settles before disposing
 - `KernelErrorRecord`, `ViewMessageRecord`, and the rule that only level `error` fails a `dispose()`. Say that a recorded message always carries `traverseChildren` when it came from a Shadow Object, because both layers of `dispatchMessageToView()` default the parameter to `false`; the field is absent only for a message assembled by hand and handed straight to `Kernel.dispatchMessageToView()`
 - the Registry isolation rule, including the `createTestKernel({registry: Registry.get()})` bridge for `@ShadowObject`-registered classes and the warning that a Registry handed in is never cleared
 - that a function handed in as a context value is read by `provideContext()` as a signal reader
