@@ -262,9 +262,26 @@ export function mountShadowObject<C extends ShadowObjectConstructor | ShadowObje
 
 A context value does not reach a reader in the task it was written in. `Entity.#findOrCreateContext()` routes the resolved value of the `SignalsPath` through `deferContextValueUpdate()`, a `MicrotaskCollector`, so `useContext()` answers `undefined` until the next microtask; `useParentContext()` reads the parent's own context signal and therefore waits on the same collector one level up.
 
-A synchronous `mountShadowObject()` would hand back an object whose `useContext()` reads `undefined` -- and the object's constructor would already have run against nothing. Awaiting the mount lets the contexts settle before the object under test is created. This is the same lesson §6 of `best-practices.md` teaches about the sync tempo, and the testing utility has no business building the trap it warns about.
+There are two hops, not one, and the mount awaits both: `settle()` after the parent Entity is created, and `settle()` again after the object under test is created below it. The second one is needed because the child's own context signal is fed through the collector as well -- `Entity.#subscribeToParent()` links the parent's `context` signal into the child's `inherited` signal, and the child's `context` signal, which is what `useContext()` reads, is written from the resolved path one microtask later.
+
+What this does **not** buy is a context value inside the constructor body. `useContext()` hands out a signal reader, and the value behind it arrives after the constructor has returned -- in a mounted test as much as in a running application. A Shadow Object reads a context inside an effect or a memo, which then re-runs when the value lands:
+
+```ts
+const getScene = useContext<Scene>('three-scene');
+createEffect(() => {
+  const scene = getScene();
+  if (!scene) return;      // the first run, before the value has landed
+  scene.add(mesh);
+});
+```
+
+`useParentContext()` is the exception: it reads the `inherited` signal, which the link writes without going through the collector.
+
+So the promise the mount makes is precise: when it resolves, every context has reached every reader and every effect that depends on one has re-run. That is the same lesson §6 of `best-practices.md` teaches about the sync tempo, and the testing utility has no business building the trap it warns about.
 
 The `await` costs one keyword. A `mountShadowObject()` without `contexts` still returns a promise, because a factory whose return type depends on an option is a factory nobody can wrap.
+
+A function handed in as a context value is read by `provideContext()` as a signal reader, not as the value. That is `provideContext()`'s own contract and the documentation names it here rather than letting a test discover it.
 
 ### 6.2 The values are not cloned
 
@@ -314,7 +331,7 @@ export interface KernelErrorRecord {
 
 `createTestKernel()` replaces `error` and `warn` on the `ConsoleLogger` instance behind `kernel.logger` with recorders. The methods live on the prototype, so an own-property assignment shadows them and `dispose()` deletes the own properties again. The console stays quiet by default, because a suite that deliberately provokes a failing teardown should not print it; `echoKernelErrors: true` forwards to the original for the case where it should.
 
-**`dispose()` throws when unacknowledged errors were recorded.** This is the default, and it is the point of the whole section. The Kernel's teardown path never rethrows -- `runGuarded()` reports and carries on, and `AGENTS.md` and `docs/api-reference.md` both write that down as a promise, not an accident. The consequence for a test is that a Shadow Object with a broken `onDestroy`, a context cleanup that throws or a `createResource` teardown that fails passes every assertion and still leaks. Making the teardown of the test kernel the place where that becomes visible costs one line in the tests that provoke it on purpose:
+**`dispose()` throws when unacknowledged reports of level `error` were recorded.** Warnings are recorded and readable but never fail a run: `importModule()` warns about a module two `extends` chains have in common, which is a shape of the module graph and not a mistake. This is the default, and it is the point of the whole section. The Kernel's teardown path never rethrows -- `runGuarded()` reports and carries on, and `AGENTS.md` and `docs/api-reference.md` both write that down as a promise, not an accident. The consequence for a test is that a Shadow Object with a broken `onDestroy`, a context cleanup that throws or a `createResource` teardown that fails passes every assertion and still leaks. Making the teardown of the test kernel the place where that becomes visible costs one line in the tests that provoke it on purpose:
 
 ```ts
 expect(t.errors).toHaveLength(1);
@@ -338,7 +355,9 @@ const t = createTestKernel({registry: Registry.get()});
 
 with the warning that `dispose()` then leaves the Registry alone, because clearing the default one would take every other suite's definitions with it. `LocalShadowObjectEnv` already draws exactly this line and for exactly this reason; the utility follows it rather than inventing a second rule.
 
-`dispose()` does four things, in order: `kernel.destroy()`, clear the Registry unless it is the default one, unhook the logger recorders, release the handles and the recorded arrays. Then it throws if §8 says it should.
+`dispose()` does four things, in order: `kernel.destroy()`, clear the Registry **only when the test kernel created it**, unhook the logger recorders, release the handles and the recorded arrays. Then it throws if §8 says it should.
+
+Ownership decides the clearing rather than `Registry.isDefault()`: a Registry the caller handed in is the caller's, default or not, and a test kernel that empties it would take with it whatever the caller registered for the rest of the suite.
 
 ## 10. Files, exports and the dist contract
 
