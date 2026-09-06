@@ -322,7 +322,7 @@ For anything that has a clear create/destroy lifecycle and depends on reactive s
 
 ## 9. Testing Shadow Objects
 
-A Shadow Object is a plain function or class, and the Kernel that runs it needs no DOM, no worker and no View Layer. A unit test therefore does not have to stand in for the framework -- it runs the real one. `@spearwolf/shadow-objects/testing.js` is the subpath that takes the ceremony off: a Kernel on a Registry of its own, object-shaped properties, recorded View messages, recorded Kernel errors, and one `settle()` that waits until the framework has finished reacting. It replaces the hand-built mock of `ShadowObjectCreationAPI` that this section used to recommend, and with it the whole class of tests that pass against a mock and fail against the framework.
+A Shadow Object is a plain function or class, and the Kernel that runs it needs no DOM, no worker and no View Layer. A unit test therefore does not have to stand in for the framework -- it runs the real one. `@spearwolf/shadow-objects/testing.js` is the subpath that takes the ceremony off: a Kernel on a Registry of its own, object-shaped properties, recorded View messages, recorded Kernel errors, and one `settle()` that waits until the framework has finished reacting. What it makes unnecessary is a hand-built mock of `ShadowObjectCreationAPI`, and with it the whole class of tests that pass against the mock and fail against the framework.
 
 Nothing in the subpath imports a test runner and nothing runs at import time. What you assert on are plain arrays and plain objects, so vitest, jest, `node:test` and a browser runner are served alike.
 

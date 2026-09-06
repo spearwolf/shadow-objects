@@ -4,6 +4,24 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-09-06 — an agent skill for using the framework, and one sentence of history out of the docs
+
+`skills/use-shadow-objects/` is a new agent skill: what a coding agent needs to build an application
+*with* `@spearwolf/shadow-objects`, as opposed to `AGENTS.md`, which is about working *on* this
+repository. `SKILL.md` carries the mental model, the six invariants, the import map, the creation
+API, the routes syntax, the sync tempo, the local-versus-remote decision and a pitfall table; four
+files under `references/` carry the long tail and are loaded on demand.
+
+- **`skills/use-shadow-objects/references/`:** `api.md` (creation API, Registry, ViewComponent,
+  ComponentContext, ShadowEnv, both proxies, Kernel error contracts, ConsoleLogger, FrameLoop),
+  `elements.md` (the three custom elements, the `type` table, host and parent binding, teardown),
+  `testing.md` (`createTestKernel`, `mountShadowObject`, the timing rules, kernel errors),
+  `inspection.md` (`inspect()`, the snapshot shapes, the five WebMCP tools, security).
+- **`packages/shadow-objects/docs/best-practices.md`:** §9 said what the testing utility replaced.
+  The docs describe the current state, not how it got there, so the sentence now says what a
+  hand-built mock of `ShadowObjectCreationAPI` is no longer needed for. The point it carried — a
+  test that passes against a mock and fails against the framework — stays.
+
 ## 2026-09-06 — the build-system design record is gone, and `docs/superpowers/` with it
 
 `docs/superpowers/specs/2026-05-09-build-system-renewal-design.md` is removed. It was archived as "Historical" on 2026-08-27 and spared twice since, both times on the grounds that this changelog and `Backlog.md` link it. `Backlog.md` is gone, and the document's own verification section diffs a build against `docs/superpowers/specs/dist-snapshot.txt`, which the cleanup of 2026-08-27 deleted while sparing the document that reads it. What remained was a design for a tsdown build that was never built, kept in place by a changelog entry saying it was kept. No task, no test and no CI job read it.
