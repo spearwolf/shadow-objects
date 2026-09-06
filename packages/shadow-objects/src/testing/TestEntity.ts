@@ -2,7 +2,7 @@ import {emit} from '@spearwolf/eventize';
 import {value} from '@spearwolf/signalize';
 import {getDisplayName} from '../in-the-dark/displayName.js';
 import type {Entity} from '../in-the-dark/Entity.js';
-import type {Kernel, MessageToViewEvent} from '../in-the-dark/Kernel.js';
+import type {Kernel} from '../in-the-dark/Kernel.js';
 import type {ComponentPropertiesType, ShadowObjectConstructor, ShadowObjectDescription, ShadowObjectType} from '../types.js';
 import type {
   AnyShadowObjectConstructor,
@@ -16,6 +16,9 @@ import type {
 export interface TestKernelInternals {
   readonly kernel: Kernel;
   createEntity(token: string, props?: Record<string, unknown>, options?: CreateEntityOptions): TestEntity;
+  /** What the test kernel recorded for a uuid. The log is its own, so a handle never holds one. */
+  viewMessagesOf(uuid: string): readonly ViewMessageRecord[];
+  clearViewMessagesOf(uuid: string): void;
 }
 
 /**
@@ -30,7 +33,6 @@ export class TestEntityImpl implements TestEntity {
   readonly uuid: string;
 
   readonly #testKernel: TestKernelInternals;
-  readonly #viewMessages: ViewMessageRecord[] = [];
 
   // The token the Kernel no longer answers for, once this Entity is destroyed. A handle stays
   // readable after its Entity is gone -- a test asserts on what it held, and a getter that threw
@@ -59,8 +61,13 @@ export class TestEntityImpl implements TestEntity {
     return this.#lastKnownToken;
   }
 
+  /**
+   * A view onto the test kernel's own log, the way `token` and `entity` are views onto the Kernel.
+   * The handle stores nothing: a message is recorded for a uuid whether or not a handle for it
+   * existed at the time, so a handle built later answers for everything that Entity already sent.
+   */
   get viewMessages(): readonly ViewMessageRecord[] {
-    return this.#viewMessages;
+    return this.#testKernel.viewMessagesOf(this.uuid);
   }
 
   createChild(token: string, props?: Record<string, unknown>, options?: Omit<CreateEntityOptions, 'parent'>): TestEntity {
@@ -174,23 +181,8 @@ export class TestEntityImpl implements TestEntity {
     return this.#kernel.describeShadowObjects(this.uuid);
   }
 
-  /**
-   * Called by the test kernel for every message the Kernel emitted for this uuid. `traverseChildren`
-   * is recorded rather than acted on: the flag is an instruction to the View layer, and there is no
-   * View layer here.
-   *
-   * @internal
-   */
-  recordViewMessage(message: MessageToViewEvent): void {
-    this.#viewMessages.push({
-      type: message.type,
-      data: message.data,
-      ...(message.traverseChildren !== undefined ? {traverseChildren: message.traverseChildren} : {}),
-    });
-  }
-
   clearViewMessages(): void {
-    this.#viewMessages.length = 0;
+    this.#testKernel.clearViewMessagesOf(this.uuid);
   }
 
   destroy(): void {

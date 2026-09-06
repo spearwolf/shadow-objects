@@ -59,11 +59,14 @@ export interface TestEntity {
   /**
    * What this Entity sent towards the View since the last `clearViewMessages()`.
    *
-   * A message is recorded one microtask after it was dispatched, so a test settles before it reads.
+   * The list belongs to the test kernel and this is a view onto it, so it holds every message that
+   * was dispatched for this uuid -- the ones from before anything asked for a handle included.
+   *
+   * A message is recorded one settle after it was dispatched, so a test settles before it reads.
    * One message never arrives, and it is the end of the road anyway: `TestKernel.dispose()`
-   * releases the recorder and clears the handles in the same synchronous call, while a message its
-   * teardown dispatched is still queued. A test that wants a Shadow Object's farewell message
-   * destroys the Entity and settles first.
+   * unsubscribes and releases the log in the same synchronous call, while a message its teardown
+   * dispatched is still queued. A test that wants a Shadow Object's farewell message destroys the
+   * Entity and settles first.
    */
   readonly viewMessages: readonly ViewMessageRecord[];
 

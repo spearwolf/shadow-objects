@@ -15,13 +15,23 @@ import type {
   TestEntity,
   TestKernel,
   TestKernelOptions,
+  ViewMessageRecord,
 } from './types.js';
+
+/** What `viewMessagesOf()` answers for a uuid nothing was ever recorded for. */
+const NoViewMessages: readonly ViewMessageRecord[] = Object.freeze([]);
 
 class TestKernelImpl implements TestKernel, TestKernelInternals {
   readonly kernel: Kernel;
   readonly registry: Registry;
 
   readonly #handles = new Map<string, TestEntityImpl>();
+
+  // The recording lives here rather than on the handles, because a message is dispatched for a uuid
+  // long before anything asks for its handle: a Shadow Object that calls `entity.kernel.createEntity()`
+  // makes one, and a handle built afterwards has to answer for what that Entity already sent.
+  readonly #viewMessages = new Map<string, ViewMessageRecord[]>();
+
   readonly #importedModules = new Set<ShadowObjectsModule>();
   readonly #recorder: KernelErrorRecorder;
   readonly #unsubscribeMessageToView: () => void;
@@ -41,8 +51,23 @@ class TestKernelImpl implements TestKernel, TestKernelInternals {
 
     // Nothing clones the payload on the way here, unlike `LocalShadowObjectEnv`, which runs it
     // through `structuredClone`. A test asserts on the object the Shadow Object sent.
+    //
+    // `traverseChildren` is recorded rather than acted on: the flag is an instruction to the View
+    // layer, and there is no View layer here. The spread is conditional because
+    // `exactOptionalPropertyTypes` forbids writing `undefined` into an optional field.
     this.#unsubscribeMessageToView = on(this.kernel, MessageToView, (message: MessageToViewEvent) => {
-      this.#handles.get(message.uuid)?.recordViewMessage(message);
+      const record: ViewMessageRecord = {
+        type: message.type,
+        data: message.data,
+        ...(message.traverseChildren !== undefined ? {traverseChildren: message.traverseChildren} : {}),
+      };
+
+      const recorded = this.#viewMessages.get(message.uuid);
+      if (recorded === undefined) {
+        this.#viewMessages.set(message.uuid, [record]);
+      } else {
+        recorded.push(record);
+      }
     });
   }
 
@@ -65,8 +90,9 @@ class TestKernelImpl implements TestKernel, TestKernelInternals {
   createEntity(token: string, props?: Record<string, unknown>, options?: CreateEntityOptions): TestEntity {
     const uuid = options?.uuid ?? generateUUID();
 
-    // The handle goes in before the Kernel call, because a Shadow Object constructor may already
-    // dispatch a message towards the View, and the recorder has to find a handle to put it on.
+    // The handle goes in before the Kernel call, because a Shadow Object constructor may ask this
+    // facade for its own handle, and the one it gets has to be the one this call hands back.
+    const previous = this.#handles.get(uuid);
     const handle = new TestEntityImpl(this, uuid, token);
     this.#handles.set(uuid, handle);
 
@@ -80,7 +106,15 @@ class TestKernelImpl implements TestKernel, TestKernelInternals {
         options?.autoDestructionOnParentRemoval ?? false,
       );
     } catch (error) {
-      this.#handles.delete(uuid);
+      // Restore rather than delete. `options.uuid` may name a uuid this facade already held a handle
+      // for -- the Kernel refuses that creation with an `EntityUuidInUseError` -- and deleting would
+      // evict a handle the caller still holds, leaving every later message for that uuid on the
+      // replacement this failed call put in.
+      if (previous === undefined) {
+        this.#handles.delete(uuid);
+      } else {
+        this.#handles.set(uuid, previous);
+      }
       throw error;
     }
 
@@ -97,6 +131,16 @@ class TestKernelImpl implements TestKernel, TestKernelInternals {
     const handle = new TestEntityImpl(this, uuid, token);
     this.#handles.set(uuid, handle);
     return handle;
+  }
+
+  /** What was recorded for a uuid, whether or not a handle for it existed at the time. @internal */
+  viewMessagesOf(uuid: string): readonly ViewMessageRecord[] {
+    return this.#viewMessages.get(uuid) ?? NoViewMessages;
+  }
+
+  /** Empties one uuid's recorded list, and no other's. @internal */
+  clearViewMessagesOf(uuid: string): void {
+    this.#viewMessages.delete(uuid);
   }
 
   settle(): Promise<void> {
@@ -124,6 +168,7 @@ class TestKernelImpl implements TestKernel, TestKernelInternals {
 
     this.#recorder.unhook();
     this.#handles.clear();
+    this.#viewMessages.clear();
     this.#importedModules.clear();
 
     // Only `error`. A warning is recorded and readable, and never fails a run: `importModule()`

@@ -130,6 +130,29 @@ describe('TestEntity view messages', () => {
     t.dispose();
   });
 
+  // Act, settle, then ask -- the order a test author writes by reflex, and the one the recording has
+  // to survive. The log lives on the test kernel rather than on the handle, so a message dispatched
+  // for a uuid no handle existed for is on the handle the first `entity()` call builds.
+  it('records for a uuid whose handle is asked for only after the message was dispatched', async () => {
+    const t = createTestKernel();
+
+    t.define('probe', function Probe({dispatchMessageToView}: ShadowObjectCreationAPI) {
+      dispatchMessageToView('hello', {from: 'a uuid the facade has no handle for'});
+    });
+
+    t.kernel.createEntity('late-uuid', 'probe');
+    await t.settle();
+
+    const late = t.entity('late-uuid');
+
+    expect(late).toBeDefined();
+    expect(late!.viewMessages).toEqual([
+      {type: 'hello', data: {from: 'a uuid the facade has no handle for'}, traverseChildren: false},
+    ]);
+
+    t.dispose();
+  });
+
   it('records on the Entity that sent it, and clearViewMessages empties one list', async () => {
     const t = createTestKernel();
 

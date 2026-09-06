@@ -77,6 +77,24 @@ describe('createTestKernel', () => {
     t.dispose();
   });
 
+  // The rollback of a failed `createEntity()` restores rather than deletes. A second creation under
+  // a uuid the facade already holds a handle for overwrites that handle before the Kernel refuses
+  // the call; deleting the overwrite would evict the handle the caller still holds, and every later
+  // message for that uuid would land on a replacement nobody can reach.
+  it('a refused creation leaves the handle of the uuid it collided with in place', () => {
+    const t = createTestKernel();
+    t.define('probe', class Probe {});
+
+    const first = t.createEntity('probe', undefined, {uuid: 'taken-uuid'});
+
+    expect(() => t.createEntity('probe', undefined, {uuid: 'taken-uuid'})).toThrow();
+    expect(t.entity('taken-uuid')).toBe(first);
+    expect(first.token).toBe('probe');
+
+    t.clearErrors();
+    t.dispose();
+  });
+
   it('resolves a composite token through a route', () => {
     const t = createTestKernel();
     const built: string[] = [];
