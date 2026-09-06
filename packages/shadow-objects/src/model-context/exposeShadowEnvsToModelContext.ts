@@ -70,6 +70,7 @@ export async function exposeShadowEnvsToModelContext(options: ExposeOptions = {}
     prefix: options.toolPrefix ?? DefaultToolPrefix,
     limits: options.limits ?? {},
     redact: toRedactPredicate(options.redactProps),
+    isExposed: undefined,
   };
   const registerOptions: ModelContextRegisterOptions = {signal: controller.signal};
   if (options.exposedTo !== undefined) registerOptions.exposedTo = options.exposedTo;

@@ -61,6 +61,7 @@ const toolContext = (extra: Partial<ToolContext> = {}): ToolContext => ({
   prefix: 'shae-',
   limits: {},
   redact: undefined,
+  isExposed: undefined,
   ...extra,
 });
 
@@ -362,5 +363,68 @@ describe('the model-context tools', () => {
       expect(JSON.parse(JSON.stringify(structured)), name).toEqual(structured);
       expect(result.content[0]?.text.endsWith(JSON.stringify(structured)), name).toBe(true);
     }
+  });
+
+  describe('with isExposed', () => {
+    const HIDDEN = 'mc-tools-hidden';
+    let hidden: ShadowEnv;
+
+    beforeEach(async () => {
+      hidden = new ShadowEnv();
+      hidden.view = ComponentContext.get(HIDDEN);
+      hidden.envProxy = new LocalShadowObjectEnv();
+      new ViewComponent('thing', {context: ComponentContext.get(HIDDEN)});
+      await hidden.syncWait();
+      tools = createTools(toolContext({isExposed: (ns) => ns === NS}));
+    });
+
+    afterEach(() => {
+      hidden.destroy();
+      ComponentContext.get(HIDDEN).dispose();
+    });
+
+    it('list-envs names only the exposed environments', async () => {
+      const names = data(await run('list-envs')).envs.map((e: any) => e.namespace);
+      expect(names).toContain(NS);
+      expect(names).not.toContain(HIDDEN);
+    });
+
+    it('a hidden namespace is refused with the wording of an unknown one, on every tool that takes one', async () => {
+      for (const name of ['get-entity-tree', 'get-registry']) {
+        const result = await run(name, {namespace: HIDDEN});
+        expect(result.isError, name).toBe(true);
+        expect(result.content[0]?.text, name).toBe(`no Shadow Environment holds the namespace "${HIDDEN}"`);
+      }
+      const entity = await run('get-entity', {uuid: 'whatever', namespace: HIDDEN});
+      expect(entity.content[0]?.text).toBe(`no Shadow Environment holds the namespace "${HIDDEN}"`);
+      const search = await run('find-entities', {token: 'thing', namespace: HIDDEN});
+      expect(search.content[0]?.text).toBe(`no Shadow Environment holds the namespace "${HIDDEN}"`);
+    });
+
+    it('a search without a namespace never reaches a hidden environment', async () => {
+      const results = data(await run('find-entities', {token: 'thing'})).results.map((r: any) => r.namespace);
+      expect(results).not.toContain(HIDDEN);
+    });
+
+    it('reads isExposed and redact once per call, so a getter can answer from live state', async () => {
+      let exposedReads = 0;
+      let redactReads = 0;
+      const ctx: ToolContext = {
+        prefix: 'shae-',
+        limits: {},
+        get isExposed() {
+          exposedReads += 1;
+          return undefined;
+        },
+        get redact() {
+          redactReads += 1;
+          return undefined;
+        },
+      };
+      tools = createTools(ctx);
+      await run('get-entity-tree');
+      expect(exposedReads).toBe(1);
+      expect(redactReads).toBe(1);
+    });
   });
 });

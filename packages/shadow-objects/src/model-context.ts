@@ -21,4 +21,5 @@ export {
   type ModelContextToolResult,
 } from './model-context/ModelContextLike.js';
 export type {RedactRule} from './model-context/redactProps.js';
+export type {NamespaceRule} from './model-context/toolSupport.js';
 export type {EntityMatchEntry, EnvSummary, FindEntitiesEntry, RegistryEntry} from './model-context/tools/index.js';

@@ -19,7 +19,7 @@ import {
   toNamespace,
 } from './toolSupport.js';
 
-const ctx = (): ToolContext => ({prefix: 'shae-', limits: {}, redact: undefined});
+const ctx = (): ToolContext => ({prefix: 'shae-', limits: {}, redact: undefined, isExposed: undefined});
 
 describe('toolSupport', () => {
   describe('ToolInput', () => {

@@ -11,6 +11,8 @@ export interface ToolContext {
   /** Defaults for every call; the call's own input wins field by field. */
   limits: Partial<InspectRequest>;
   redact: RedactPredicate | undefined;
+  /** Which environments the tools see, by the namespace each is registered under; `undefined` means every one. */
+  isExposed: ((ns: NamespaceType) => boolean) | undefined;
 }
 
 /** Every tool declares both: nothing here writes, and every value may be what a user typed. */
@@ -26,6 +28,16 @@ export const GlobalNamespaceName: string = namespaceName(GlobalNS);
 
 /** The namespace a tool input names, as `ShadowEnv.get()` takes it. */
 export const toNamespace = (name: string): NamespaceType => (name === GlobalNamespaceName ? GlobalNS : name);
+
+/** Which environments an exposure covers: a list of namespaces, or a predicate over the namespace an environment is registered under. */
+export type NamespaceRule = NamespaceType[] | ((ns: NamespaceType) => boolean);
+
+export const toNamespacePredicate = (rule: NamespaceRule | undefined): ((ns: NamespaceType) => boolean) | undefined => {
+  if (rule === undefined) return undefined;
+  if (typeof rule === 'function') return rule;
+  const names = new Set<NamespaceType>(rule);
+  return (ns) => names.has(ns);
+};
 
 export const NamespaceInputSchema = Object.freeze({
   type: 'string',
@@ -137,6 +149,10 @@ export const buildRequest = (limits: Partial<InspectRequest>, own: InspectReques
  * each described by `ShadowEnv.inspect()` and redacted where the exposure asks for it. An
  * unknown namespace is a `ToolError`; an environment that cannot answer costs its own entry,
  * with the reason under `error`, exactly as `inspectAll()` reports it.
+ *
+ * A namespace the exposure does not cover is refused with the same words as an unknown one, so an
+ * agent cannot tell the two apart. Both rules are read once, at the top: an exposure whose members
+ * change answers every call from the set it had when the call began.
  */
 export const inspectEnvs = async (
   namespace: string | undefined,
@@ -144,16 +160,20 @@ export const inspectEnvs = async (
   signal: AbortSignal | undefined,
   ctx: ToolContext,
 ): Promise<EnvSnapshot[]> => {
+  const only = ctx.isExposed;
+  const redact = ctx.redact;
+
   let snapshots: EnvSnapshot[];
   if (namespace === undefined) {
-    snapshots = await ShadowEnv.inspectAll(request, signal);
+    snapshots = await ShadowEnv.inspectAll(request, signal, only);
   } else {
-    const env = ShadowEnv.get(toNamespace(namespace));
+    const ns = toNamespace(namespace);
+    const env = only === undefined || only(ns) ? ShadowEnv.get(ns) : undefined;
     if (env === undefined) throw new ToolError(`no Shadow Environment holds the namespace "${namespace}"`);
     snapshots = [await env.inspect(request, signal)];
   }
-  if (ctx.redact !== undefined) {
-    for (const snapshot of snapshots) redactSnapshot(snapshot, ctx.redact);
+  if (redact !== undefined) {
+    for (const snapshot of snapshots) redactSnapshot(snapshot, redact);
   }
   return snapshots;
 };
