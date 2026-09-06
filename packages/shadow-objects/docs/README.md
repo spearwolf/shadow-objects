@@ -34,7 +34,7 @@ file, exports the PNG again, and puts the image under "The Big Picture" in
 
 ## Design Records
 
-The proposals that shaped an API live at the repository root, in [`docs/proposals/`](../../../docs/proposals/), and stay there after implementation as the record of the design and of what it left open. [web-mcp-shadow-envs.md](../../../docs/proposals/web-mcp-shadow-envs.md) is the inspection API -- `ShadowEnv.inspect()` and the snapshot model -- and the model-context tools built on it. [typed-entity-events.md](../../../docs/proposals/typed-entity-events.md) is the creation API's `on()` / `once()` / `emit()` brought in line with eventize, and the event map behind `ShadowObjectCreationAPI<TEvents>` and `EventsOf<T>`.
+The proposals that shaped an API live at the repository root, in [`docs/proposals/`](../../../docs/proposals/), and stay there after implementation as the record of the design and of what it left open. [web-mcp-shadow-envs.md](../../../docs/proposals/web-mcp-shadow-envs.md) is the inspection API -- `ShadowEnv.inspect()` and the snapshot model -- and the model-context tools built on it. [typed-entity-events.md](../../../docs/proposals/typed-entity-events.md) is the creation API's `on()` / `once()` / `emit()` brought in line with eventize, and the event map behind `ShadowObjectCreationAPI<TEvents>` and `EventsOf<T>`. [shadow-object-testing-utility.md](../../../docs/proposals/shadow-object-testing-utility.md) is the testing utility behind `@spearwolf/shadow-objects/testing.js` -- a real Kernel in a unit test, in place of a hand-written mock of the creation API.
 
 ## Related Packages
 
