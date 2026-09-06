@@ -253,6 +253,8 @@ Content-Security-Policy: script-src 'self'; worker-src 'self' blob:
 | [**cheat-sheet.md**](packages/shadow-objects/docs/cheat-sheet.md) | At-a-glance tables and snippets |
 | [**best-practices.md**](packages/shadow-objects/docs/best-practices.md) | Patterns, composition, cleanup, testing |
 
+Design records -- the proposal behind an API, kept after implementation together with what it left open -- live in [`docs/proposals/`](docs/proposals/). The inspection API and the model-context tools are [web-mcp-shadow-envs.md](docs/proposals/web-mcp-shadow-envs.md).
+
 ---
 
 ## Project Structure (Monorepo)

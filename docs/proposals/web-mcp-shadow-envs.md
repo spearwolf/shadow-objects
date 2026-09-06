@@ -1,9 +1,23 @@
 # Proposal: Inspecting Shadow Environments through WebMCP
 
-- **Status:** draft, not yet approved
-- **Date:** 2026-09-05
+- **Status:** implemented -- phases 1 to 3 shipped on 2026-09-05 into the unreleased `@spearwolf/shadow-objects`; §17 holds what is open
+- **Date:** 2026-09-05, brought in line with the code on 2026-09-06
 - **Scope:** `@spearwolf/shadow-objects`
 - **Reads before:** `AGENTS.md` §2 and §4, `packages/shadow-objects/docs/concepts.md` §2 and §4
+- **Reads after:** `packages/shadow-objects/docs/api-reference.md`, sections *Inspection*, *Inspection accessors* and *Model Context* -- the reference of record for the API this document designs
+
+## 0. Where this stands
+
+Everything §1 promises exists and is tested: the snapshot model (`src/inspect/`), the transport through both proxies, and the five tools behind `@spearwolf/shadow-objects/model-context.js`. The work went in as three phases between commits `b2ef37a` (this proposal) and `41c7042` (the last fix of phase 3), all on 2026-09-05; the two changelogs record what each phase changed for the package and for the workspace.
+
+This document is now two things at once. It is the design record -- why the layers are cut where they are, why the tools are read-only, why a worker is asked rather than registering tools of its own -- and it is the map of what the design leaves open (§17). Where the code settled a detail differently from the first draft, the text says so in place, marked *as built*; the reference documentation, not this file, is where a detail is looked up. The seven decisions of §18 were each taken as recommended.
+
+Open, as of 2026-09-06:
+
+- Every item of §17 -- the View/Kernel diff tool, mutation tools, an element-level opt-in, a DevTools panel, streaming. None of them is started; each is a proposal of its own.
+- WebMCP itself (§3): the spec is an origin trial, and the adapter of §11.3 is the one file to touch when it moves.
+
+The three task-by-task implementation plans that carried the phases (`docs/superpowers/plans/2026-09-05-inspect-phase-{1,2,3}.md`) were removed on 2026-09-06; every deviation they recorded is in this document, in a source comment or in a spec, and git history holds the files.
 
 ## 1. Summary
 
@@ -125,7 +139,7 @@ The dependency direction is strictly outward-in: layer 3 imports layer 2 imports
 
 ## 6. The snapshot model
 
-All types live in `src/inspect/types.ts` and are exported as types from `index.ts`. Everything is plain data: structured-clone-safe and `JSON.stringify`-safe. Symbols, functions, class instances and cycles never appear raw; §7 says what they become.
+All snapshot types live in `src/inspect/types.ts` and are exported as types from `index.ts` and `shadow-objects.ts`. *As built*, the three description types the accessors of §6.5 return -- `ShadowObjectScopeDescription`, `ShadowObjectDescription`, `RegistryDescription` -- live in `src/types.ts` next to the constructor type, and `RegistrySnapshot` extends the last of them. Everything is plain data: structured-clone-safe and `JSON.stringify`-safe. Symbols, functions, class instances and cycles never appear raw; §7 says what they become.
 
 ### 6.1 Environment
 
@@ -143,10 +157,14 @@ export interface EnvSnapshot {
     isReady: boolean;
     isDestroyed: boolean;
   };
-  /** What the View holds for this namespace. Always present while the environment has a view. */
+  /** What the View holds for this namespace. Present while the environment has a view and the View walk did not throw. */
   view?: ViewSnapshot;
   /** What the Kernel holds. Absent while the proxy is not ready, or when the inspection failed -- then `error` says why. */
   kernel?: KernelSnapshot;
+  /**
+   * The first failure: a View walk that threw keeps the field, a Kernel failure after it does not
+   * overwrite it. A proxy without `inspect` reports `{name: 'NotInspectable'}`.
+   */
   error?: {name: string; message: string};
 }
 ```
@@ -157,14 +175,17 @@ export interface EnvSnapshot {
 export interface KernelSnapshot {
   /** `Date.now()` on the thread that built the snapshot. */
   takenAt: number;
-  /** The realm the snapshot was built in. */
+  /** The realm the snapshot was built in: `'worker'` where `WorkerGlobalScope` is defined, `'main'` otherwise. */
   thread: 'main' | 'worker';
+  /** `roots` counts the Entities without a parent, `shadowObjects` the descriptions over every Entity. */
   counts: {entities: number; roots: number; shadowObjects: number};
   roots: EntityNodeSnapshot[];
   globalContexts: GlobalContextSnapshot[];
   registry?: RegistrySnapshot;
   /** Set when a limit of the request cut the walk short. Names what was cut and how to get the rest. */
   truncation?: TruncationNote[];
+  /** The answer to a request with a `filter` (§8.1); `roots` is empty then. */
+  search?: EntitySearchSnapshot;
 }
 ```
 
@@ -176,6 +197,8 @@ export interface TruncationNote {
   message: string;
 }
 ```
+
+*As built*, the notes follow three rules: one `max-nodes` note per snapshot, its `uuid` the parent whose child list was cut and absent when the cut hit the top level; one `max-depth` note per node that still has children at the limit; one `unknown-root` note per uuid the Kernel does not hold. A root the walk already reached through another root's subtree leaves the top level without a note, exactly as it does in `getEntityGraph()`. The whole build runs inside signalize's `beQuiet()`, so no read inside it is tracked by an effect.
 
 ```typescript
 export interface EntityNodeSnapshot {
@@ -192,6 +215,8 @@ export interface EntityNodeSnapshot {
   childCount: number;
   /** Same meaning and shape as in `getEntityGraph()`. */
   omittedChildren?: {uuid: string; reason: 'already-in-graph' | 'not-in-kernel'}[];
+  /** The chain above this node, root first. Set only on a node the request named in `rootUuids`; empty for a parentless one. */
+  ancestors?: {uuid: string; token: string}[];
 }
 
 export interface PropSnapshot {
@@ -217,9 +242,9 @@ export interface ShadowObjectSnapshot {
 
 export interface EntityContextSnapshot {
   name: ContextName;
-  /** The value this Entity's own providers wrote, if any provider is attached. */
+  /** The value this Entity's own providers wrote. Set when that value is not `undefined`; a `null` travels as `null`. */
   provided?: SerializedValue;
-  /** The value inherited from the parent, or from the global chain at a root. */
+  /** The value inherited from the parent, or from the global chain at a root. Same rule. */
   inherited?: SerializedValue;
   /** What `useContext(name)` on this Entity reads: provided where present, inherited otherwise. */
   effective: SerializedValue;
@@ -242,6 +267,31 @@ export interface GlobalContextSnapshot {
 /** A string context name as it is; a symbol name as its description, marked as such. */
 export type ContextName = string | {symbol: string};
 ```
+
+*As built (phase 3)*, a request can carry a filter, and the Kernel answers it with a list instead of a tree:
+
+```typescript
+export interface EntityFilter {
+  token?: string;
+  /** Matches the names `Entity.propKeys()` lists. */
+  propName?: string;
+  /** Matches the display name of a Shadow Object on the Entity. */
+  shadowObject?: string;
+  /** String names only; a symbol context is findable through the tree alone. */
+  contextName?: string;
+  /** Default 50. */
+  limit?: number;
+}
+
+export interface EntitySearchSnapshot {
+  /** `path` is the token chain from the root, the Entity's own token last. */
+  matches: {uuid: string; token: string; path: string[]}[];
+  /** How many matched before `limit` cut the list. */
+  total: number;
+}
+```
+
+A filter without a criterion matches every Entity at this level; the rule that a search needs at least one criterion belongs to the tool (§10.4), not to the builder.
 
 Two remarks on the contexts.
 
@@ -280,18 +330,20 @@ export interface ViewComponentSnapshot {
   token?: string;
   order: number;
   parentUuid?: string;
-  /** The properties as the Component Memory holds them -- the last committed state, not pending changes. */
+  /** The properties as the Component Memory holds them -- the last committed state, not pending changes. Absent for a component the memory has no state for yet. */
   props?: PropSnapshot[];
   /** A CSS selector path to the `<shae-ent>` element carrying this component, where one exists. */
   element?: string;
   children?: ViewComponentSnapshot[];
   childCount: number;
+  /** A child the walk had already placed under another parent. */
+  omittedChildren?: {uuid: string; reason: 'already-in-graph'}[];
 }
 ```
 
 The View snapshot deliberately reads the `ComponentMemory` and not the pending `ComponentChanges`. `buildChangeTrails(false)` is what `#syncNow()` calls to fix a cycle's trail, and calling it from an inspection would interleave with the sync tempo. Pending changes are therefore not part of this proposal; a `pendingChanges: boolean` flag is a candidate for a later phase once `ComponentChanges` gets a side-effect-free `hasChanges()` read.
 
-The `element` path is built on the main thread by scanning `document.querySelectorAll('shae-ent')` once per snapshot and matching `viewComponent.uuid`; elements inside shadow roots are missed, open or closed alike, as they are for every DOM query, and the field is simply absent for them.
+The `element` path is built on the main thread by scanning `document.querySelectorAll('shae-ent')` once per snapshot and matching each element's `uuid`, the first element per uuid winning; elements inside shadow roots are missed, open or closed alike, as they are for every DOM query, and the field is simply absent for them. *As built*, the path starts at the nearest ancestor whose id is a plain identifier, as `#id`, or at the document root, and continues in `localName:nth-of-type(n)` segments joined by ` > `. Without a `document` -- a test without a DOM -- no component carries the field.
 
 ### 6.5 Read accessors the snapshot needs
 
@@ -303,17 +355,17 @@ Additive, read-only, and each small enough to test in isolation. None of them ch
 | `Entity` | `describeContext(name): {provided, inherited, effective, hasProviders} \| undefined` | raw values read from the three signals; `undefined` when the name is not on this Entity |
 | `Entity` | `globalContextNames(): ContextNameType[]` | keys of `#rootContexts` |
 | `Entity` | `describeGlobalContext(name): {value, signal, hasProviders} \| undefined` | this Entity's contribution to the chain and the signal standing in it |
-| `ShadowObjectCreationScope` | `describe(): ShadowObjectDescription` | display name and the five name lists, read from the private maps |
-| `Kernel` | `describeShadowObjects(uuid): ShadowObjectDescription[]` | one description per Shadow Object of the Entity, with `definedUnder` and `hooks` -- the constructor is known only at the entity entry, so the lookup is per Entity |
+| `ShadowObjectCreationScope` | `describe(): ShadowObjectScopeDescription` | display name and the five name lists, read from the private maps; internal, the Kernel builds on it |
+| `Kernel` | `describeShadowObjects(uuid): ShadowObjectDescription[]` | one description per Shadow Object of the Entity -- the scope description extended by `definedUnder` and `hooks`; the constructor is known only at the entity entry, so the lookup is per Entity. A scope already torn down answers its display name through `in-the-dark/displayName.ts` and empty lists |
 | `Kernel` | `tokenOf(uuid): string \| undefined` | the token of the entity entry |
 | `Kernel` | `rootContextNames(): ContextNameType[]` | keys of `#rootContexts` |
-| `Kernel` | `describeRootContext(name): {value, signals: Signal[]} \| undefined` | needs `SignalsPath.signals` (a read-only view of its members) |
-| `Registry` | `describe(): RegistrySnapshot` (without `isDefault`) | copies of the three maps with constructors reduced to display names |
+| `Kernel` | `describeRootContext(name): {value, signals: readonly SignalLike[]} \| undefined` | needs `SignalsPath.signals` |
+| `Registry` | `describe(): RegistryDescription` | copies of the three maps with constructors reduced to display names; `RegistrySnapshot` is this plus `isDefault`, which the builder adds |
 | `Registry` | `tokensOf(construct): string[]` | reverse lookup over `#registry` |
 | `Registry` | `static isDefault(registry): boolean` | identity check against the module-level default |
-| `SignalsPath` | `get signals(): readonly SignalLike[]` | the current member list |
+| `SignalsPath` | `get signals(): readonly SignalLike[]` | a copy of the current member list |
 
-`Kernel.describeShadowObjects()` also answers `hooks` by checking the four symbol keys the `LIFECYCLE_HOOKS` table in `Kernel.ts` already names. The mapping from the provider signals of a scope to the Entity's providers of a name (`providedBy`) is done in the snapshot builder by asking every Shadow Object of the Entity for its `providesContexts` and grouping by name -- no new bookkeeping.
+`Kernel.describeShadowObjects()` also answers `hooks` by checking the four symbol keys the `LIFECYCLE_HOOKS` table in `Kernel.ts` already names. `Entity.describeContext().hasProviders` counts provider feeds: a value written straight into the signal from `provideContext()` reads as provided and not as a provider, which is why the snapshot keys `provided` on the value (§6.2) and leaves `hasProviders` to a caller of the accessor. The mapping from the provider signals of a scope to the Entity's providers of a name (`providedBy`) is done in the snapshot builder by asking every Shadow Object of the Entity for its `providesContexts` and grouping by name -- no new bookkeeping.
 
 ## 7. Value serialization
 
@@ -356,6 +408,15 @@ Rules, in the order they are applied:
 7. A DOM `Node` (checked by duck typing on `nodeType` and `nodeName`, so the module needs no DOM globals) becomes `{$type: 'dom'}`. This case only occurs in a local environment with `disableStructuredClone`.
 8. Any getter that throws while being read makes the field `{$type: 'object', class: 'Error', preview: {message}}` rather than aborting the snapshot.
 
+*As built*, on top of the rules:
+
+- An `Error` instance becomes `{$type: 'object', class, preview: {name, message}}`. Leaves with a tag of their own -- dates, buffers, typed arrays, DOM nodes, errors -- keep it below `maxDepth`; only containers are cut there.
+- An invalid `Date` carries `iso: 'Invalid Date'`, a symbol without a description omits the field, a class without a name reads `'Object'`.
+- The entries cut of an object sits inside it under the key `$truncated`; a depth cut carries no `original`.
+- A signal is recognised in its function form and its object form alike; a signal already on the current path is `$circular`.
+- Rule 8 covers a revoked proxy, a throwing trap and a hostile `isSignal` or `name` as well: `serializeValue()` never throws.
+- A non-finite or `NaN` limit falls back to its default (`resolveSerializeLimits()`, exported next to `SerializeDefaults`).
+
 The limits come from the request (§8.1) and default to the values above. They are per value, not per snapshot; §13 has the per-snapshot budget.
 
 ## 8. Transport
@@ -368,17 +429,19 @@ export interface InspectRequest {
   include?: ('props' | 'shadowObjects' | 'contexts' | 'registry')[];
   /** Descend from these uuids instead of the roots. Unknown uuids are reported under `truncation`, not thrown. */
   rootUuids?: string[];
-  /** Tree depth below each root that is walked. Default 4. `Infinity` is refused and read as the maximum, 64. */
+  /** Tree depth below each root that is walked. Default 4. Floored and clamped to 0..64; a non-finite value reads as 64. */
   maxDepth?: number;
-  /** Total number of Entity nodes across the walk. Default 250. */
+  /** Total number of Entity nodes across the walk. Default 250, floored, at least 1, no upper cap; a non-finite value reads as unlimited. */
   maxNodes?: number;
   values?: Partial<SerializeLimits>;
+  /** Turns the inspection into a search; §6.2 has the shape and `KernelSnapshot.search` the answer. */
+  filter?: EntityFilter;
 }
 ```
 
 The same request type serves the View snapshot on the main thread and the Kernel snapshot in the environment, so a caller asks once and gets both sides cut by the same rules.
 
-*Amended 2026-09-05 (phase 3).* `InspectRequest` carries a public `filter?: EntityFilter` -- `{token?, propName?, shadowObject?, contextName?, limit?}` -- and `KernelSnapshot` answers it under `search: {matches: [{uuid, token, path}], total}` with `roots` empty; the walk limits and `include` do not apply to a search, and the View side ignores it. `EntityNodeSnapshot.ancestors` is set on a node the request named in `rootUuids`. Both are what §10.3 and §10.4 need in one round trip, and both are public: a field on the wire and in the output is public whether the type admits it or not.
+*Amended 2026-09-05 (phase 3).* `filter` and `search` are public: a field on the wire and in the output is public whether the type admits it or not. Under a search the walk limits do not apply, `roots` stays empty, the View side ignores the field, and `include` still governs whether `registry` is carried. `EntityNodeSnapshot.ancestors` is set on a node the request named in `rootUuids`. Both are what §10.3 and §10.4 need in one round trip. The defaults leave the package as `InspectDefaults` (`maxDepth` 4, `maxDepthCap` 64, `maxNodes` 250, `maxMatches` 50); `normalizeInspectRequest()` applies the clamping rules above and the same floor-and-minimum rule to `filter.limit`.
 
 ### 8.2 The proxy contract
 
@@ -401,7 +464,7 @@ Optional rather than required, for the same reason `onMessageToView` and `onProx
 
 ### 8.4 Worker environment
 
-Two message types join `constants.ts`, and `WorkerReplyType` grows to five members -- the comment on it promises an exhaustive `switch`, so every such `switch` gets a fifth case:
+Two message types join `constants.ts`, and `WorkerReplyType` grows to five members. The comment on it promises an exhaustive `switch`; *as built* the package holds none to extend -- the type is read by `WorkerTimeoutError.messageType` and `waitForMessageOfType()` only -- and the reference names the fifth value:
 
 ```typescript
 export const Inspect = 'inspect';
@@ -442,6 +505,8 @@ case Inspect:
 }
 ```
 
+The `postMessage` sits inside the `try` on purpose: a snapshot that structured cloning refuses -- a value the serializer let through and the wire will not carry -- is answered as an error reply instead of leaving the caller to its timeout.
+
 The message runs through the same queue as the change trails. A snapshot therefore reflects every trail posted before the request and none posted after it. That ordering is the guarantee `ShadowEnv.inspect()` documents: "call `syncWait()` first if the snapshot must include what you just changed".
 
 ### 8.5 `ShadowEnv.inspect()`
@@ -466,6 +531,8 @@ The `kind` field is decided here: `isLocalEnv` marks a local proxy, `instanceof 
 
 `inspectAll()` runs the environments in parallel with `Promise.all` over `inspect()` calls that do not reject for environment reasons -- one silent worker costs its own entry, not the page's answer. An environment destroyed while it answers drops out of the list rather than failing the call, and the call rejects only for an aborted signal.
 
+*As built*, two details of the same method. `inspect()` records a View walk that threw under `error` with `view` absent, and a Kernel failure after it does not overwrite that entry: the first failure is the one reported. And `inspectAll()` can drop a destroyed environment because `ComponentContext.dispose()` deletes the namespace from `getContextsMap()`; the environment is gone from the registry §9 enumerates the moment it is destroyed, and the `ShadowEnvDestroyedError` its pending `inspect()` rejects with is what the list filters out. The abort is raced against the proxy rather than left to it, so a caller's signal settles the call whether or not the proxy honours signals.
+
 ## 9. Discovery of environments
 
 The environments an agent sees are the ones in `globalThis.__shadowEnvs`. That map is fed by the `view` setter, so an environment counts from the moment it has a `ComponentContext` -- whether or not its proxy is up. An environment in that state reports `state.proxyReady: false` and no `kernel`; an agent that sees it knows to wait or to ask again.
@@ -489,12 +556,14 @@ Every result is returned in the same envelope:
 
 `structuredContent` is the Model Context Protocol's field for structured results. WebMCP's `execute` may return anything, and the explainer's examples return `{content}`; carrying both costs nothing and lets an agent that understands either form work. If the spec settles on one, the adapter (§11.3) is where the envelope changes.
 
+*As built*, the text half is the summary, a blank line, then the JSON; a refusal (`isError: true`, see §10.4) carries `content` only. Input is read leniently through `toolSupport.ts`: a value that is not an object reads as empty input, `null` for a field means absent, a field of the wrong type is a refusal that names the field and the expected type, and `include` is checked against the four names. A failure that is not a refusal the tool phrased is reported as `Name: message`.
+
 ### 10.1 `shae-list-envs`
 
 Every environment on the page, with its state and counts, and no tree.
 
 - **Input:** none.
-- **Output:** `EnvSnapshot[]` with `view` and `kernel` reduced to their `counts` and `takenAt`. This is the cheapest call and the one an agent makes first.
+- **Output:** `{envs: EnvSummary[]}` -- per environment `namespace`, `isGlobalNamespace`, `kind`, `state`, `error?`, and `view` and `kernel` reduced to `counts`, `takenAt` and the Kernel's `thread`. The tool asks with `maxDepth: 0, maxNodes: 1, include: []`, so no tree is built. This is the cheapest call and the one an agent makes first.
 
 ### 10.2 `shae-get-entity-tree`
 
@@ -508,7 +577,7 @@ The Entity Tree of one environment, or of all of them.
 One Entity in full, with everything §6.2 defines and, on top, the ancestor chain.
 
 - **Input:** `{uuid: string, namespace?: string}`. Without a namespace, every environment is asked and the first that holds the uuid answers; uuids are unique per `ComponentContext`, and a page that reuses one across namespaces gets both, labelled.
-- **Output:** `{namespace, entity: EntityNodeSnapshot (depth 1), ancestors: {uuid, token}[], view?: ViewComponentSnapshot}` -- the View component of the same uuid next to the Kernel's Entity, which is where a divergence between the two sides becomes visible without a diff tool.
+- **Output:** `{matches: [{namespace, entity: EntityNodeSnapshot (depth 1), ancestors: {uuid, token}[], view?: ViewComponentSnapshot, truncation?}], errors?: [{namespace, error}]}` -- the View component of the same uuid next to the Kernel's Entity, which is where a divergence between the two sides becomes visible without a diff tool. `errors` names the environments that could not answer; a uuid nobody holds is a refusal that names them as well. The tool forces `maxDepth: 1`, and an exposure-wide `limits.maxDepth` (§11.2) does not apply to it.
 
 ### 10.4 `shae-find-entities`
 
@@ -524,7 +593,7 @@ The search runs as part of `createKernelSnapshot()` with a `filter` in the reque
 The composition rules of an environment: tokens, routes and property routes.
 
 - **Input:** `{namespace?: string}`.
-- **Output:** `RegistrySnapshot` per environment. An agent that reads a token on an Entity and wants to know why a Shadow Object is or is not there looks here.
+- **Output:** `{registries: [{namespace, kind, registry?: RegistrySnapshot, error?}]}`. An agent that reads a token on an Entity and wants to know why a Shadow Object is or is not there looks here.
 
 ### 10.6 Deliberately not in this set
 
@@ -579,9 +648,10 @@ Behaviour:
 - Resolves, never rejects, when the platform has no model context: `available: false`, one `info` line through a `ConsoleLogger('ModelContext')`. The same application code runs in every browser.
 - Rejects with what `registerTool()` rejected with -- a `NotAllowedError` under a Permissions Policy that disables `tools` is the caller's business to handle, and swallowing it would hide a deployment mistake.
 - Registers every tool with one internal `AbortController` whose signal is chained to `options.signal`; `dispose()` aborts it. Registration is all-or-nothing: a rejection midway aborts the controller so that the tools already registered are taken back.
-- A second call while the first handle is live registers a second, independent set; with the same prefix `registerTool()` rejects on the duplicate name, and the rejection is passed through. The docs say to keep one handle.
+- A second call while the first handle is live registers a second, independent set; with the same prefix `registerTool()` rejects on the duplicate name, and the rejection is passed through. The first set stays intact. The docs say to keep one handle.
+- *As built:* a `signal` already aborted at call time registers nothing and resolves `{available: true, tools: []}`; a signal that aborts midway stops the loop the same way. `dispose()` also removes the listener from the caller's signal. A successful registration logs one `info` line with the count, a rejected one logs one `error` line before the rejection is passed through.
 
-`redactProps` is the one knob this proposal adds for privacy; §12 explains why it is an option and not a default.
+`redactProps` is the one knob this proposal adds for privacy; §12 explains why it is an option and not a default. *As built* it covers property values on both halves of the snapshot and nothing else: an Entity Context value is not redacted, and the `routes` flag of a redacted property stays. The reference and the best-practices page say so. Alongside the function, the subpath exports `DefaultToolPrefix`, `findModelContext()`, `isModelContextLike()` and the types `RedactRule`, `EnvSummary`, `EntityMatchEntry`, `FindEntitiesEntry` and `RegistryEntry` -- the per-tool output entries an agent-side consumer types against.
 
 ### 11.3 The adapter
 
@@ -648,8 +718,9 @@ Per package, following the existing layout.
 - `src/worker/MessageRouter.spec.ts` -- the `Inspect` round trip with the existing fake `postMessage`, an error inside the builder answered as `Inspected` with `error`, a request after the teardown discarded.
 - `src/view/RemoteWorkerEnv.spec.ts` -- serial matching, `inspectTimeout` expiry as `WorkerTimeoutError`, rejection after `destroy()`, abort through the caller's signal.
 - `src/view/ShadowEnv.spec.ts` -- `inspect()` on an environment without a proxy, with a proxy that lacks `inspect`, with a local proxy; `inspectAll()` across two namespaces where one fails.
-- `src/model-context/exposeShadowEnvsToModelContext.spec.ts` -- against a fake `ModelContextLike` that records registrations: tool names and annotations, `available: false` without a context, all-or-nothing on a rejected registration, `dispose()` and signal chaining, each tool's `execute` against a local environment, `redactProps`.
+- `src/model-context/exposeShadowEnvsToModelContext.spec.ts` -- against a fake `ModelContextLike` that records registrations: tool names and annotations, `available: false` without a context, all-or-nothing on a rejected registration, `dispose()` and signal chaining, the duplicate prefix. *As built* the rest of the list is split off: `redactProps.spec.ts`, `toolSupport.spec.ts` (input reading, envelope, refusals) and `tools/tools.spec.ts` (each tool's `execute` against a local environment).
 - `src/distContract.spec.ts` -- updated expectation files for the new subpath and the new files under `dist/`.
+- Beyond the list, *as built*: `src/inspect/createViewSnapshot.spec.ts`, `src/in-the-dark/Kernel.inspection.spec.ts`, the `inspect` block of `src/view/LocalShadowObjectEnv.spec.ts`, the accessor cases in `Registry.spec.ts` and `SignalsPath.spec.ts`, and the `inspect-timeout` case in `shadow-objects-testing/test/worker-element-attributes.test.js`.
 
 **`packages/shadow-objects-testing` (vitest browser mode, Chromium):**
 
@@ -658,14 +729,14 @@ Per package, following the existing layout.
 **`packages/shadow-objects-e2e` (Playwright):**
 
 - `pages/inspect-worker-env.html` with `tests/inspect-worker-env.spec.ts` -- `ShadowEnv` + `RemoteWorkerEnv`, `inspect()` after `syncWait()` in three engines: the wire shapes survive structured cloning, `thread` reads `'worker'`, the request limits hold, an abort and a teardown reject.
-- `tests/model-context.spec.ts` with `pages/model-context.html` -- the five tools through a fake `ModelContextLike` handed in as `options.modelContext`, over one worker and one local environment, in three engines. `tests/model-context-platform.spec.ts` with `pages/model-context-platform.html` -- the tools registered on the real `document.modelContext` and driven through the platform's `getTools()` / `executeTool()`; the Chromium project is launched with `--enable-features=WebMCP`, and the spec skips by name in Firefox and WebKit. *Verified 2026-09-05 on Playwright 1.62.1 / Chromium 151:* the flag is the one above; `registerTool()` returns a promise and rejects a duplicate name with `InvalidStateError`; `executeTool(tool, input)` takes an entry of `getTools()` and the input as a JSON string and returns the result as a JSON string; a throw inside `execute` surfaces as `UnknownError` without its message.
+- `tests/model-context.spec.ts` with `pages/model-context.html` -- the five tools through a fake `ModelContextLike` handed in as `options.modelContext`, over one worker and one local environment, in three engines. `tests/model-context-platform.spec.ts` with `pages/model-context-platform.html` -- the tools registered on the real `document.modelContext` and driven through the platform's `getTools()` / `executeTool()`; the Chromium project is launched with `--enable-features=WebMCP`, and the spec skips by name in Firefox and WebKit. *Verified 2026-09-05 on Playwright 1.62.1 / Chromium 151:* the flag is the one above; `registerTool()` returns a promise and rejects a duplicate name with `InvalidStateError`; `getTools()` lists the registered tools with `inputSchema` as a JSON string; `executeTool(tool, input)` takes an entry of `getTools()` and the input as a JSON string, hands `execute` the parsed object and no options -- so a tool must not rely on `options.signal` being there -- and returns the result as a JSON string; a throw inside `execute` surfaces as `UnknownError` without its message.
 
 ## 15. Documentation and contract obligations
 
-Following `AGENTS.md` §4 and `CLAUDE.md`, in the same change as the code:
+Following `AGENTS.md` §4 and `CLAUDE.md`, in the same change as the code. All of it is in place as of 2026-09-06; the list stays as the checklist it was, with where each item landed.
 
-- `packages/shadow-objects/docs/api-reference.md` -- a section *Inspection* under `ShadowEnv` (`inspect`, `inspectAll`, the request and snapshot types), `createKernelSnapshot()` under the Kernel, the new `Entity`, `Kernel`, `Registry` and `SignalsPath` accessors, the `inspectTimeout` option and attribute, the `Inspect` / `Inspected` messages under the worker protocol, and a section *Model Context* for the subpath.
-- `packages/shadow-objects/docs/guides.md` -- *Inspecting an environment* with the `syncWait()` ordering rule, and *Exposing environments to an agent* with the security paragraph first.
+- `packages/shadow-objects/docs/api-reference.md` -- a section *Inspection* under `ShadowEnv` (`inspect`, `inspectAll`, the request and snapshot types), `createKernelSnapshot()` and the table *Inspection accessors* under the Kernel (the `Entity`, `Kernel`, `Registry` and `SignalsPath` accessors), the `inspectTimeout` option and attribute, the fifth `WorkerReplyType` value, and a section *Model Context* for the subpath with *Exposing Environments to an Agent* under *Security*. The wire shapes `InspectEvent` / `InspectedEvent` are documented on the types in `src/types.ts`, the way `AppliedChangeTrailEvent` and `ImportedModuleEvent` are; the reference names the messages, not the shapes.
+- `packages/shadow-objects/docs/guides.md` -- *Inspecting an Environment* with the `syncWait()` ordering rule, and *Exposing Environments to an Agent* with the security paragraph first.
 - `packages/shadow-objects/docs/concepts.md` -- one paragraph under *The Change Trail and the Sync Tempo* on what a snapshot reflects.
 - `packages/shadow-objects/docs/cheat-sheet.md` -- the tool table and the one-liner.
 - `packages/shadow-objects/docs/best-practices.md` -- the development-only recommendation of §12.
@@ -673,34 +744,36 @@ Following `AGENTS.md` §4 and `CLAUDE.md`, in the same change as the code:
 - `packages/shadow-objects/CHANGELOG.md` -- under *Unreleased*: the API, the subpath, the protocol, the timeout.
 - `src/distContract.files.txt` and `src/distContract.package.json` -- the new files and the new `exports` entry.
 - `AGENTS.md` -- §2 gains the inspection route next to the three data-flow directions; the terminology table is unchanged, and this document already uses only its left column. `scripts/checkTerminology.mjs` does not scan `docs/proposals/`, and nothing here would fail it.
-- Root `CHANGELOG.md` -- only if the e2e project gains a browser flag or a devDependency.
+- Root `CHANGELOG.md` -- only if the e2e project gains a browser flag or a devDependency. It gained the Chromium flag `--enable-features=WebMCP`, so phases 2 and 3 each have a dated entry there.
 
-`pnpm make:todo` runs if any `TODO` is left in the code, which this plan does not intend.
+No `TODO` was left in the code, so `pnpm make:todo` had nothing to do.
 
 ## 16. Implementation plan
 
-Four phases, each shippable on its own and each ending with green `pnpm run ci`.
+Four phases, each shippable on its own and each ending with green `pnpm run ci`. The first three shipped on 2026-09-05, one after the other, each from a task-by-task plan that has since been removed (§0); the commit ranges below are the record.
 
 **Phase 1 -- snapshot model and local environments.**
-`src/inspect/` with types, serializer and `createKernelSnapshot()`; the read accessors of §6.5; `IShadowObjectEnvProxy.inspect?`; `LocalShadowObjectEnv.inspect()`; `ShadowEnv.inspect()` / `inspectAll()` with the View snapshot; unit tests; docs for all of it. After this phase a developer can call `ShadowEnv.get('ns').inspect()` in the console of a local environment and get JSON. Implemented 2026-09-05; see `docs/superpowers/plans/2026-09-05-inspect-phase-1.md`.
+`src/inspect/` with types, serializer and `createKernelSnapshot()`; the read accessors of §6.5; `IShadowObjectEnvProxy.inspect?`; `LocalShadowObjectEnv.inspect()`; `ShadowEnv.inspect()` / `inspectAll()` with the View snapshot; unit tests; docs for all of it. After this phase a developer can call `ShadowEnv.get('ns').inspect()` in the console of a local environment and get JSON. Implemented 2026-09-05, commits `3fea28b` to `bac8670`.
 
 **Phase 2 -- worker transport.**
-`Inspect` / `Inspected`, `WorkerInspectTimeout`, `RemoteWorkerEnv.inspect()`, `MessageRouter.#onInspect()`, `inspectTimeout` option and `inspect-timeout` attribute, the fifth `switch` cases, unit and browser-mode tests, docs. After this phase the same console call works for a worker environment. Implemented 2026-09-05; see `docs/superpowers/plans/2026-09-05-inspect-phase-2.md`.
+`Inspect` / `Inspected`, `WorkerInspectTimeout`, `RemoteWorkerEnv.inspect()`, `MessageRouter.#onInspect()`, `inspectTimeout` option and `inspect-timeout` attribute, the fifth `WorkerReplyType` value, unit and browser-mode tests, docs. After this phase the same console call works for a worker environment. Implemented 2026-09-05, commits `66d50d6` to `424ee64`.
 
 **Phase 3 -- model context.**
-`src/model-context/` with the adapter, the five tools, `exposeShadowEnvsToModelContext()`, the subpath export, dist contract update, unit tests against the fake adapter, the e2e spec, docs. After this phase an agent in a browser with WebMCP sees the tools. Implemented 2026-09-05; see `docs/superpowers/plans/2026-09-05-inspect-phase-3.md`.
+The search and the ancestors in the snapshot; `src/model-context/` with the adapter, the five tools, `exposeShadowEnvsToModelContext()`, the subpath export, dist contract update, unit tests against the fake adapter, the two e2e specs, docs. After this phase an agent in a browser with WebMCP sees the tools. Implemented 2026-09-05, commits `6314adb` to `41c7042`.
 
-**Phase 4 -- follow-ups, each its own proposal or change:** §17.
+**Phase 4 -- follow-ups, each its own proposal or change:** §17. Not started.
 
-Files touched, by phase:
+Files touched, by phase, as built:
 
 | Phase | New | Changed |
 | :--- | :--- | :--- |
-| 1 | `src/inspect/types.ts`, `serializeValue.ts`, `createKernelSnapshot.ts`, `createViewSnapshot.ts`, `normalizeInspectRequest.ts`, `in-the-dark/displayName.ts`, specs | `Entity.ts`, `ShadowObjectCreationScope.ts`, `Kernel.ts`, `Registry.ts`, `SignalsPath.ts`, `IShadowObjectEnvProxy.ts`, `LocalShadowObjectEnv.ts`, `ShadowEnv.ts`, `shadow-objects.ts`, `index.ts`, docs, changelog |
-| 2 | `shadow-objects-e2e/pages/inspect-worker-env.html` and page, `shadow-objects-testing/test/inspect-local-env.test.js` | `constants.ts`, `RemoteWorkerEnv.ts`, `MessageRouter.ts`, `ShaeWorkerElement.ts`, `elements/constants.ts`, `types.ts` (wire shapes), specs, docs, changelog |
-| 3 | `src/model-context.ts`, `src/model-context/ModelContextLike.ts`, `exposeShadowEnvsToModelContext.ts`, `tools/*.ts`, specs, `shadow-objects-e2e/tests/model-context.spec.ts` and page | `package.json` (`exports`), `distContract.files.txt`, `distContract.package.json`, `AGENTS.md`, `README.md`, docs, changelogs |
+| 1 | `src/inspect/types.ts`, `serializeValue.ts`, `createKernelSnapshot.ts`, `createViewSnapshot.ts`, `normalizeInspectRequest.ts`, `in-the-dark/displayName.ts`, `in-the-dark/Kernel.inspection.spec.ts`, specs | `Entity.ts`, `ShadowObjectCreationScope.ts`, `Kernel.ts`, `Registry.ts`, `SignalsPath.ts`, `IShadowObjectEnvProxy.ts`, `LocalShadowObjectEnv.ts`, `ShadowEnv.ts`, `shadow-objects.ts`, `index.ts`, `types.ts` (description types), `distContract.files.txt`, `AGENTS.md`, docs, changelog |
+| 2 | `shadow-objects-e2e/pages/inspect-worker-env.html` and page, `shadow-objects-testing/test/inspect-local-env.test.js` | `constants.ts`, `RemoteWorkerEnv.ts`, `MessageRouter.ts`, `ShaeWorkerElement.ts`, `elements/constants.ts`, `types.ts` (wire shapes), `shadow-objects-e2e/pages/shae-worker.html`, `shadow-objects-testing/test/worker-element-attributes.test.js`, specs, docs, changelogs |
+| 3 | `src/model-context.ts`, `src/model-context/ModelContextLike.ts`, `exposeShadowEnvsToModelContext.ts`, `redactProps.ts`, `toolSupport.ts`, `tools/*.ts`, specs, `shadow-objects-e2e/tests/model-context.spec.ts` and `model-context-platform.spec.ts` with their pages | `src/inspect/*` (filter, search, ancestors), `package.json` (`exports`), `distContract.files.txt`, `distContract.package.json`, `shadow-objects-e2e/playwright.config.ts`, `AGENTS.md`, `CLAUDE.md`, `README.md`, docs, changelogs |
 
-## 17. Later phases, out of this proposal
+## 17. Open: later phases, out of this proposal
+
+None of these is started as of 2026-09-06. Each is a proposal of its own; the snapshot model and the adapter are built so that none of them needs a change below the model-context layer.
 
 - **View/Kernel diff.** A `shae-diff-view-kernel` tool over a side-effect-free `ComponentChanges.hasChanges()` read: components without an Entity, Entities without a component, tokens and props that differ, and the pending trail that explains it.
 - **Mutation tools.** `shae-set-property`, `shae-dispatch-view-event`, `shae-sync`, each with `consequentialHint: true` and `readOnlyHint: false`, each routed through the View (`ComponentContext.setProperty()`, `dispatchShadowObjectsEvent()`, `ShadowEnv.syncWait()`) and never through the Kernel directly -- the View owns structure, and an agent is a View-side actor like any other. A separate opt-in flag, so that a read-only exposure stays read-only.
@@ -708,9 +781,9 @@ Files touched, by phase:
 - **A DevTools panel** consuming `ShadowEnv.inspectAll()` on a timer; the snapshot model already carries what it needs, including `element` paths for highlighting.
 - **Progress and streaming**, once WebMCP settles them.
 
-## 18. Open decisions
+## 18. Decisions
 
-Each with a recommendation; the proposal proceeds on the recommendation unless told otherwise.
+Each was open with a recommendation when this document was written; each was taken as recommended on 2026-09-05, and the recommendation stands as the record of why.
 
 1. **Name of the subpath and function.** `model-context.js` and `exposeShadowEnvsToModelContext()` name the platform object rather than the marketing term. Recommendation: keep them; `webmcp` may be renamed by the working group, `modelContext` is the identifier in the IDL.
 2. **`structuredContent` in the result.** Costs a duplicate of the JSON in every response. Recommendation: include it; the text form is the compatibility floor, the structured form is what a capable agent reads, and the duplication is bounded by the same limits.

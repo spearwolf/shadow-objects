@@ -32,6 +32,10 @@ past the edge of the artboard and are cut off there. Its editable source is
 file, exports the PNG again, and puts the image under "The Big Picture" in
 [concepts.md](./concepts.md).
 
+## Design Records
+
+The proposals that shaped an API live at the repository root, in [`docs/proposals/`](../../../docs/proposals/), and stay there after implementation as the record of the design and of what it left open. [web-mcp-shadow-envs.md](../../../docs/proposals/web-mcp-shadow-envs.md) is the inspection API -- `ShadowEnv.inspect()` and the snapshot model -- and the model-context tools built on it.
+
 ## Related Packages
 
 - [**@spearwolf/shae-offscreen-canvas**](../../shae-offscreen-canvas/README.md) -- Offscreen canvas integration for rendering in a worker alongside your Shadow Objects logic.

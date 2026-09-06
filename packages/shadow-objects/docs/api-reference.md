@@ -3011,6 +3011,7 @@ The snapshot is built from read accessors that each answer one question, create 
 | `registry.describe()` | The three maps, constructors reduced to display names |
 | `registry.tokensOf(construct)` | The tokens a constructor is defined under |
 | `Registry.isDefault(registry)` | Whether it is the default registry of the thread |
+| `signalsPath.signals` | A copy of the member list of a global context chain, in chain order -- what `kernel.describeRootContext()` reads |
 
 `entity` here is the `Entity` class `kernel.getEntity()` hands out, not the `EntityApi` a Shadow Object sees through the creation API -- the four accessors are on the class only.
 

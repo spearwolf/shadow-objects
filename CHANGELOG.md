@@ -4,6 +4,14 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-09-06 — the inspection proposal reads as built, and the three phase plans that carried it are gone
+
+`docs/proposals/web-mcp-shadow-envs.md` is a design record now, not a draft: its status says the three phases shipped on 2026-09-05, a new §0 says what is open, and every detail the code settled differently from the first draft is amended in place, marked *as built*. The document is linked from `AGENTS.md`, the root README and the docs index, so it is part of the documentation rather than a file next to it.
+
+- **`docs/superpowers/plans/2026-09-05-inspect-phase-{1,2,3}.md`:** removed. Each recorded its deviations from the proposal, and every one of them is in the proposal, a source comment or a spec by now; the three sentences that were nowhere else — why `inspectAll()` can drop a destroyed environment, why the worker's `postMessage` sits inside the `try`, and what the platform's `getTools()` / `executeTool()` hand over — moved into the proposal (§8.4, §8.5, §14). Git history holds the files. `docs/superpowers/specs/2026-05-09-build-system-renewal-design.md` stays: a different document, historical, linked from this changelog.
+- **`AGENTS.md`, `README.md`, `packages/shadow-objects/docs/README.md`:** name `docs/proposals/` as the place for design records and link the inspection proposal.
+- **`packages/shadow-objects/docs/api-reference.md`:** the *Inspection accessors* table gains `signalsPath.signals`, the one accessor of the phase-1 set the table had left out.
+
 ## 2026-09-05 — the e2e suite drives the inspection tools through a fake model context and through Chromium's real one
 
 Phase 3 of the inspection proposal (`docs/proposals/web-mcp-shadow-envs.md`, §16) lands in `@spearwolf/shadow-objects`; what it changes for the package is in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md). The e2e package grows with it, and its Chromium project gains a launch flag.
