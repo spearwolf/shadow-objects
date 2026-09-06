@@ -315,10 +315,11 @@ A move within a single tick is a move, not a removal — the property travels wi
 
 **Teardown.** Leaving the tree releases the subscriptions one microtask later and reconnecting takes
 them up again; `destroy()` and `isDestroyed` read the same way as on `<shae-ent>`. One thing differs:
-connecting re-reads `name`, `value`, `type` and `no-trim` off the attributes and looks the host up
-from where the element stands, so a `prop.value` or `prop.entNode` written while the element was
-released is replaced rather than applied. Write the attribute if the value is meant to survive the
-return.
+connecting re-reads `name`, `type` and `no-trim` off the attributes — `value` only where that
+attribute carries something — and looks the host up from where the element stands, so a
+`prop.entNode` written while the element was released is replaced rather than applied, and so is a
+`prop.value` written against a `value` attribute that says something. Where the attribute is absent
+or empty, the property write stands.
 
 **`type` values for `<shae-prop>`:**
 

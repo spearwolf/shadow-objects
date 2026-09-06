@@ -135,6 +135,22 @@ export class ShaePropElement extends ShaeLifecycleElement {
     return this.name$.value;
   }
 
+  /**
+   * Writes the `name` attribute, and `attributeChangedCallback` takes it from there: the attribute
+   * is the one source the name is read from, so a write through the property and a write through
+   * `setAttribute` end up in the same place and are trimmed by the same rule. A framework renderer
+   * assigns every prop it finds `in` the element as a property — React 19 and Vue 3 both do — and
+   * a name it cannot assign is a property that never binds.
+   */
+  set name(name: string | undefined) {
+    const trimmed = name?.trim();
+    if (!trimmed) {
+      this.removeAttribute(ATTR_NAME);
+    } else if (this.getAttribute(ATTR_NAME) !== trimmed) {
+      this.setAttribute(ATTR_NAME, trimmed);
+    }
+  }
+
   get value(): unknown {
     return this.valueOut$.value;
   }
@@ -294,12 +310,13 @@ export class ShaePropElement extends ShaeLifecycleElement {
   /**
    * Take this element's own subscriptions up. Its half of {@link ShaeLifecycleElement.restore}.
    *
-   * There is nothing to catch up on here, unlike `<shae-ent>`: `connectedCallback` reads `value`,
-   * `name`, `type` and `no-trim` off the attributes and looks the host up again straight after
-   * this, so the attributes decide, and whatever was written to a released element through
-   * `prop.value` or `prop.entNode` is replaced by what the tree and the markup say. That is this
-   * element's rule in and out of a teardown alike — a `<shae-prop>` reads its position on every
-   * connect — and the documentation states it as the difference it is.
+   * There is nothing to catch up on here, unlike `<shae-ent>`: `connectedCallback` reads `name`,
+   * `type` and `no-trim` off the attributes, `value` where the attribute carries one, and looks the
+   * host up again straight after this. So the attributes decide, and whatever was written to a
+   * released element through `prop.entNode` — or through `prop.value` against a `value` attribute
+   * that says something — is replaced by what the tree and the markup say. That is this element's
+   * rule in and out of a teardown alike — a `<shae-prop>` reads its position on every connect — and
+   * the documentation states it as the difference it is.
    */
   protected override restore(): void {
     super.restore();
@@ -317,7 +334,14 @@ export class ShaePropElement extends ShaeLifecycleElement {
       batch(() => {
         this.#findEntNode();
         this.#readNameAttribute();
-        this.#readValueAttribute();
+        // `value` is the one attribute that is read only where it carries something: a value
+        // written through `prop.value` never reaches the attribute, and a renderer that assigns
+        // properties before it inserts the element — every framework renderer does — would
+        // otherwise see its write replaced by "no attribute, no value" on the way in. An attribute
+        // that carries a value decides, as it does for the three others.
+        if (this.#valueAttributeCarriesValue()) {
+          this.#readValueAttribute();
+        }
         this.#readTypeAttribute();
         this.#readNoTrimAttribute();
       });
@@ -476,6 +500,12 @@ export class ShaePropElement extends ShaeLifecycleElement {
     // has to survive until the trim decides what is left of it.
     const value = this.getAttribute(ATTR_VALUE);
     this.valueIn$.set(value === null || value === '' ? undefined : value);
+  };
+
+  /** Whether the `value` attribute says something — absent and empty are the same "nothing" here. */
+  #valueAttributeCarriesValue = (): boolean => {
+    const value = this.getAttribute(ATTR_VALUE);
+    return value !== null && value !== '';
   };
 
   #readTypeAttribute = () => {

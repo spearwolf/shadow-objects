@@ -81,8 +81,9 @@ left with. `destroy()` does it by hand, `isDestroyed` reads the current state.
 What a released element is written in the meantime is where the two part company. `<shae-ent>` keeps
 it — `token`, `ns` and `forward-custom-events` stand in the signals and are written out to the
 attributes as the element reconnects. `<shae-prop>` re-reads its attributes and looks its host up
-again on every connect, released or not, so a `prop.value` written in that window is replaced rather
-than applied.
+again on every connect, released or not, so a `prop.entNode` written in that window is replaced
+rather than applied — and so is a `prop.value` where the `value` attribute carries something. Where
+it carries nothing, the property write stands.
 
 `<shae-worker>` uses the same two names for something stronger. Its teardown takes the Shadow
 Environment with it, and an environment cannot be rebuilt — a released `<shae-worker>` stays

@@ -2657,8 +2657,8 @@ five apply per element to `bool[]` and `boolean[]`.
 
 | Member | Description |
 | :--- | :--- |
-| `name` | The property name, read-only. Mirrors the `name` attribute, trimmed. |
-| `value` | Reads the converted value. Writing bypasses the `value` attribute and feeds the conversion directly — the attribute keeps whatever it had. `0`, `false` and `''` are values and are set as such; `null` and `undefined` clear the property (see `ViewComponent.setProperty` above). A value that is not a string passes through untouched, even with a `type` set, because the conversion only applies to strings. |
+| `name` | The property name, get and set. Reads the `name` attribute, trimmed. Writing it writes the attribute — trimmed, and removed for `undefined`, `null`, the empty string and whitespace — so the write takes effect the way a `setAttribute` does. A framework that assigns props as properties, React 19 and Vue 3 among them, reaches the binding through this setter. |
+| `value` | Reads the converted value. Writing bypasses the `value` attribute and feeds the conversion directly — the attribute keeps whatever it had. `0`, `false` and `''` are values and are set as such; `null` and `undefined` clear the property (see `ViewComponent.setProperty` above). A value that is not a string passes through untouched, even with a `type` set, because the conversion only applies to strings. A write made before the element connects survives the connect as long as the `value` attribute carries nothing; an attribute that says something wins on every connect — see [Leaving the Tree and Binding Again](#leaving-the-tree-and-binding-again). |
 | `shouldTrim` | Whether string values are trimmed, read-only. The inverse of the `no-trim` attribute. |
 | `entNode` | The host entity, get and set. Writing it binds the property to that entity by hand — the next lookup decides again from where the element stands. |
 | `viewComponent` | The `ViewComponent` of the host entity, read-only. Follows `entNode` and is `undefined` without a host. |
@@ -2683,7 +2683,9 @@ but `import {…} from '@spearwolf/shadow-objects'` does not reach it. A subclas
 subscriptions of its own has to use both or lose them: `teardown()` is the overridable half of
 `destroy()` — release what the subclass holds and call `super.teardown()` last — and `restore()`
 takes the same subscriptions up again after `super.restore()`. There is nothing to write back out to
-an attribute here, unlike `<shae-ent>`: this element re-reads its own attributes on every connect.
+an attribute on the way back in, unlike `<shae-ent>`: this element re-reads its own attributes on
+every connect — `value` only where the attribute carries one — and its `name` setter writes the
+attribute the moment it is assigned, so no signal holds anything the attribute does not say.
 `restore()` runs from `connectedCallback`, on the first connect as well as on a return after a
 release; a subclass constructor takes no subscriptions up. Overriding `destroy()` itself is possible
 but rarely right: the guard that makes the teardown run once, and run once even when releasing
@@ -2709,14 +2711,16 @@ what clears it, and that happens whether or not the element is released afterwar
 
 **An element that comes back reads its position again.** Reconnecting sets `isDestroyed` back to
 `false`, takes the subscriptions up again and then does what this element does on *every* connect:
-it reads `name`, `value`, `type` and `no-trim` off its attributes and looks the host entity up from
-where it now stands. The markup and the tree decide, so a `prop.value` or `prop.entNode` written to
-the element while it was out of the document is replaced rather than applied — set the `value`
-attribute if the write is meant to survive the return.
+it reads `name`, `type` and `no-trim` off its attributes, `value` where that attribute carries
+something, and looks the host entity up from where it now stands. The markup and the tree decide,
+so a `prop.entNode` written to the element while it was out of the document is replaced rather than
+applied, and so is a `prop.value` written against a `value` attribute that says something. A
+`prop.value` written where the attribute is absent or empty stands — it is what a framework
+renderer writes before it inserts the element, and the connect leaves it alone.
 
 That is the one place where the two elements differ: a `<shae-ent>` carries `token`, `ns` and
 `forward-custom-events` back out of its signals as it reconnects and keeps what was written to it,
-while a `<shae-prop>` re-reads its own.
+while a `<shae-prop>` re-reads its own, the value excepted where the attribute has nothing to say.
 
 > **`<shae-worker>` is the exception.** Its `destroy()` and `isDestroyed` name something else: that
 > teardown takes the Shadow Environment with it and cannot be undone. See
