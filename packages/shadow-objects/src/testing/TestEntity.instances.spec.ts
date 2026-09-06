@@ -71,6 +71,53 @@ describe('TestEntity shadow object access', () => {
     t.dispose();
   });
 
+  it('prefers identity over the display name when another constructor shares the name', () => {
+    const t = createTestKernel();
+
+    class Collide {
+      readonly from = 'class';
+    }
+
+    const twin = function Other(_api: ShadowObjectCreationAPI) {
+      return {from: 'function'};
+    };
+    twin.displayName = 'Collide';
+
+    t.define('a', Collide);
+    t.define('b', twin);
+    t.route('both', ['a', 'b']);
+
+    const ent = t.createEntity('both');
+
+    expect(ent.shadowObjects()).toHaveLength(2);
+    expect(ent.instanceOf(Collide).from).toBe('class');
+
+    t.dispose();
+  });
+
+  it('throws when two function constructors share a display name, because nothing separates them', () => {
+    const t = createTestKernel();
+
+    const first = function First(_api: ShadowObjectCreationAPI) {
+      return {which: 1};
+    };
+    const second = function Second(_api: ShadowObjectCreationAPI) {
+      return {which: 2};
+    };
+    first.displayName = 'Twin';
+    second.displayName = 'Twin';
+
+    t.define('a', first);
+    t.define('b', second);
+    t.route('both', ['a', 'b']);
+
+    const ent = t.createEntity('both');
+
+    expect(() => ent.instanceOf(first)).toThrow(/2 shadow objects built from "Twin"/);
+
+    t.dispose();
+  });
+
   it('describe names the properties, contexts and hooks a Shadow Object uses', () => {
     const t = createTestKernel();
 

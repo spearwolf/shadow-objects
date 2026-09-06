@@ -128,24 +128,35 @@ export class TestEntityImpl implements TestEntity {
   /**
    * The one Shadow Object on this Entity that came out of `constructa`.
    *
-   * Two rules, because one does not cover both constructor shapes. A class instance answers
-   * `instanceof` -- the `@ShadowObject` decorator wraps the class in a subclass, which still does.
-   * A function constructor that returns an object does not: `new fn()` hands back that object, and
-   * it carries none of `fn`'s prototype. The display name covers that case, and it is what the
-   * Kernel reports the Shadow Object under anyway. `findShadowObjects()` and
+   * Two rules in order, because one does not cover both constructor shapes, and because the second
+   * one is not exact. A class instance answers `instanceof` -- the `@ShadowObject` decorator wraps
+   * the class in a subclass, which still does -- and so does an object from a function constructor
+   * that returns nothing. Identity is asked first and, where anything answers it, alone.
+   *
+   * A function constructor that returns an object answers nothing: `new fn()` hands back that
+   * object, and it carries none of `fn`'s prototype. Only there does the display name decide, and
+   * only then, because a name is not an identity. `findShadowObjects()` and
    * `describeShadowObjects()` walk the same bookkeeping in the same order, so the two lists line up
    * index by index.
    */
   instanceOf<C extends AnyShadowObjectConstructor>(constructa: C): ShadowObjectInstance<C> {
     const displayName = getDisplayName(constructa as ShadowObjectConstructor);
     const instances = this.shadowObjects();
-    const descriptions = this.describe();
 
-    const matches = instances.filter(
-      (instance, index) =>
-        instance instanceof (constructa as unknown as new (...args: any[]) => object) ||
-        descriptions[index]?.displayName === displayName,
-    );
+    let matches = instances.filter((instance) => instance instanceof (constructa as unknown as new (...args: any[]) => object));
+
+    // The display name is the fallback, never a second rule beside identity. Two constructors are
+    // free to carry one display name, and an `||` between the two would then count the other one's
+    // Shadow Object as a match and report an ambiguity that is not there. Identity, where it
+    // answers at all, is exact.
+    //
+    // What no rule separates is two *function* constructors of one name on one Entity: neither
+    // leaves a prototype behind, so nothing tells their objects apart. The throw below names that
+    // for what it is and points at `shadowObjects()`.
+    if (matches.length === 0) {
+      const descriptions = this.describe();
+      matches = instances.filter((_, index) => descriptions[index]?.displayName === displayName);
+    }
 
     if (matches.length === 0) {
       throw new Error(`no shadow object built from "${displayName}" on entity ${this.uuid}`);
