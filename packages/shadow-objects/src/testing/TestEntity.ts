@@ -1,8 +1,9 @@
 import {emit} from '@spearwolf/eventize';
 import {value} from '@spearwolf/signalize';
+import {getDisplayName} from '../in-the-dark/displayName.js';
 import type {Entity} from '../in-the-dark/Entity.js';
 import type {Kernel} from '../in-the-dark/Kernel.js';
-import type {ComponentPropertiesType, ShadowObjectDescription, ShadowObjectType} from '../types.js';
+import type {ComponentPropertiesType, ShadowObjectConstructor, ShadowObjectDescription, ShadowObjectType} from '../types.js';
 import type {
   AnyShadowObjectConstructor,
   CreateEntityOptions,
@@ -121,15 +122,45 @@ export class TestEntityImpl implements TestEntity {
   }
 
   shadowObjects(): ShadowObjectType[] {
-    throw new Error('not implemented yet');
+    return this.#kernel.findShadowObjects(this.uuid);
   }
 
-  instanceOf<C extends AnyShadowObjectConstructor>(_constructa: C): ShadowObjectInstance<C> {
-    throw new Error('not implemented yet');
+  /**
+   * The one Shadow Object on this Entity that came out of `constructa`.
+   *
+   * Two rules, because one does not cover both constructor shapes. A class instance answers
+   * `instanceof` -- the `@ShadowObject` decorator wraps the class in a subclass, which still does.
+   * A function constructor that returns an object does not: `new fn()` hands back that object, and
+   * it carries none of `fn`'s prototype. The display name covers that case, and it is what the
+   * Kernel reports the Shadow Object under anyway. `findShadowObjects()` and
+   * `describeShadowObjects()` walk the same bookkeeping in the same order, so the two lists line up
+   * index by index.
+   */
+  instanceOf<C extends AnyShadowObjectConstructor>(constructa: C): ShadowObjectInstance<C> {
+    const displayName = getDisplayName(constructa as ShadowObjectConstructor);
+    const instances = this.shadowObjects();
+    const descriptions = this.describe();
+
+    const matches = instances.filter(
+      (instance, index) =>
+        instance instanceof (constructa as unknown as new (...args: any[]) => object) ||
+        descriptions[index]?.displayName === displayName,
+    );
+
+    if (matches.length === 0) {
+      throw new Error(`no shadow object built from "${displayName}" on entity ${this.uuid}`);
+    }
+    if (matches.length > 1) {
+      throw new Error(
+        `${matches.length} shadow objects built from "${displayName}" on entity ${this.uuid}; use shadowObjects() and pick one`,
+      );
+    }
+
+    return matches[0] as ShadowObjectInstance<C>;
   }
 
   describe(): ShadowObjectDescription[] {
-    throw new Error('not implemented yet');
+    return this.#kernel.describeShadowObjects(this.uuid);
   }
 
   clearViewMessages(): void {
