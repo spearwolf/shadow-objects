@@ -640,32 +640,162 @@ With the declarative setup this arrives as a DOM event too: `<shae-worker>` disp
 
 ---
 
-## 5. Framework Integration Note
+## 5. Framework Integration
 
 Shadow Objects does not replace React, Vue, or Svelte. It is the logic layer those frameworks render.
 
 Think of it this way: if Redux or Zustand is global reactive state on one thread, Shadow Objects is reactive ECS state that can live on any number of threads. Your UI framework handles the DOM. Shadow Objects handles the behavior.
 
-The typical integration looks like this:
+There are two ways to connect the two, and they mix freely in one app:
 
-1. Your React/Vue/Svelte component owns the DOM and renders based on local state.
-2. It creates a `ViewComponent` (or uses `<shae-ent>`) to represent itself in the Shadow Environment.
+1. **Declarative.** The component renders `<shae-ent>` and `<shae-prop>` like any other markup. Properties go down as `<shae-prop>` values, events come back up as DOM `CustomEvent`s through `forward-custom-events`. The component never touches the Shadow Objects API.
+2. **Imperative.** The component creates a `ViewComponent` itself. For renderers that have no DOM node per entity -- a canvas, a WebGL scene graph -- and for values that do not fit into an attribute.
+
+### Declarative: Render the Elements
+
+The example is a countdown. The Shadow Object owns the clock -- it runs where the environment runs, in a worker if you use one -- and the component owns the button and the number on the screen. `<shae-worker>` sits once at the top of the app, in `index.html` or in the root component. Entities find it by namespace, so the countdown component can be mounted anywhere below.
+
+```html
+<shae-worker src="./countdown.js"></shae-worker>
+```
+
+```javascript
+// countdown.js -- the module <shae-worker> loads; its `shadowObjects` export is the Registry
+export function Countdown({useProperty, createSignal, createEffect, createResource, dispatchMessageToView}) {
+  const seconds = useProperty('seconds');
+  const running = useProperty('running');
+  const remaining = createSignal(0);
+
+  // a new duration resets the clock
+  createEffect(() => remaining.set(seconds() ?? 0));
+
+  // every change of the clock reaches the view as one `tick`
+  createEffect(() => dispatchMessageToView('tick', {remaining: remaining.get()}));
+
+  // the interval lives exactly as long as `running` is true
+  createResource(
+    () => {
+      if (!running()) return;
+      const id = setInterval(() => {
+        const next = remaining.value - 1;
+        remaining.set(next);
+        if (next <= 0) {
+          clearInterval(id);
+          dispatchMessageToView('done');
+        }
+      }, 1000);
+      return id;
+    },
+    (id) => clearInterval(id),
+  );
+}
+
+export const shadowObjects = {
+  define: {countdown: Countdown},
+};
+```
+
+Two properties go in, two events come out, and the component on the other side is the same in every framework: it writes `seconds` and `running`, listens for `tick` and `done`, and keeps `remaining` as local state so it has something to render before the first `tick` arrives.
+
+**React**
+
+```jsx
+import {useEffect, useRef, useState} from 'react';
+
+export function Countdown({seconds = 30}) {
+  const [running, setRunning] = useState(false);
+  const [remaining, setRemaining] = useState(seconds);
+  const ent = useRef(null);
+
+  useEffect(() => {
+    const el = ent.current;
+    const onTick = (e) => setRemaining(e.detail.remaining);
+    const onDone = () => setRunning(false);
+    el.addEventListener('tick', onTick);
+    el.addEventListener('done', onDone);
+    return () => {
+      el.removeEventListener('tick', onTick);
+      el.removeEventListener('done', onDone);
+    };
+  }, []);
+
+  return (
+    <shae-ent ref={ent} token="countdown" forward-custom-events="tick,done">
+      <shae-prop name="seconds" value={String(seconds)} type="int" />
+      <shae-prop name="running" value={String(running)} type="boolean" />
+      <p>{remaining}s</p>
+      <button onClick={() => setRunning((r) => !r)}>{running ? 'Pause' : 'Start'}</button>
+    </shae-ent>
+  );
+}
+```
+
+- React 18 writes every prop of a custom element as an attribute. React 19 writes it as a property where the element has one -- `name`, `value`, `token` -- and as an attribute otherwise. `<shae-prop>` takes both, so the component reads the same under either: `value` goes in as a string and `type` casts it, whether the string arrived as an attribute or as a property.
+- React's event system knows no `tick`, so the listeners go onto the element through a ref. React 19 also accepts a lowercase `ontick={fn}` prop on a custom element and attaches it as a listener; the ref works in both versions.
+- TypeScript: declare the tags once in `JSX.IntrinsicElements` (`React.JSX.IntrinsicElements` under React 19), with `ref` typed as `React.Ref<ShaeEntElement>`.
+
+**Vue**
+
+```vue
+<script setup>
+import {ref} from 'vue';
+
+const props = defineProps({seconds: {type: Number, default: 30}});
+const running = ref(false);
+const remaining = ref(props.seconds);
+</script>
+
+<template>
+  <shae-ent
+    token="countdown"
+    forward-custom-events="tick,done"
+    @tick="remaining = $event.detail.remaining"
+    @done="running = false"
+  >
+    <shae-prop name="seconds" :value="seconds" type="int" />
+    <shae-prop name="running" :value="running" type="boolean" />
+    <p>{{ remaining }}s</p>
+    <button @click="running = !running">{{ running ? 'Pause' : 'Start' }}</button>
+  </shae-ent>
+</template>
+```
+
+- Tell the compiler that the tags are custom elements, or it looks for components named `shae-ent`: `compilerOptions.isCustomElement = (tag) => tag.startsWith('shae-')`, in `@vitejs/plugin-vue` under `template.compilerOptions`.
+- Vue writes `value` as a property, so the number stays a number and the boolean stays a boolean. `type` only comes into play for a string -- it is there for the case where the element upgrades after Vue has rendered it and the value went in as an attribute.
+- `@tick` and `@done` work on the element directly: a forwarded event is a plain DOM `CustomEvent`, it bubbles, and Vue attaches the listener with `addEventListener`.
+
+**What to notice, in both**
+
+- **Properties go down on the next sync.** A re-render that writes a new `value` is a property change in the Shadow Environment, shipped with the next sync cycle. A re-render that writes the same value changes nothing -- both frameworks skip an attribute or property that did not change, and the entity would not book it either.
+- **Events come up only where asked.** `tick` and `done` reach the element as DOM events because `forward-custom-events` names them. Without the attribute the messages still arrive on `el.viewComponent` as eventize events, see [Sending and Receiving Events via JavaScript](#sending-and-receiving-events-via-javascript).
+- **Teardown is free.** Unmounting the component removes the `<shae-ent>`, the entity goes down with it, and the `createResource` cleanup clears the interval. Neither component has a teardown of its own for the Shadow Object.
+- **The first `tick` is asynchronous.** It arrives after the entity exists and the first sync has run. Seed the local state from the prop, as both components do with `remaining`, instead of rendering nothing until then.
+
+Svelte renders custom elements the same way -- a property where the element has one, an attribute otherwise -- so the Vue version translates one to one.
+
+### Imperative: The `ViewComponent` API
+
+Where there is no DOM node per entity -- a canvas renderer, a scene graph, a virtual list that recycles its rows -- or where a value cannot be spelled out in an attribute, the component creates a `ViewComponent` of its own:
+
+1. Your component owns the DOM and renders based on local state.
+2. It creates a `ViewComponent` to represent itself in the Shadow Environment.
 3. Property changes flow in via `setProperty`.
 4. Events come back from the Shadow Object and update local state, triggering a re-render.
 
 ```jsx
 // React example (conceptual)
-function PlayerCard({ userId }) {
+import {on} from '@spearwolf/eventize';
+import {ComponentContext, ViewComponent} from '@spearwolf/shadow-objects';
+
+function PlayerCard({userId}) {
   const [score, setScore] = useState(0);
-  const componentRef = useRef(null);
 
   useEffect(() => {
     const ctx = ComponentContext.get();
-    const vc = new ViewComponent('player-card', { context: ctx });
+    const vc = new ViewComponent('player-card', {context: ctx});
     vc.setProperty('userId', userId);
 
     const off = on(vc, 'score-updated', (data) => setScore(data.value));
-    componentRef.current = { vc, off };
 
     return () => {
       off();
@@ -677,4 +807,4 @@ function PlayerCard({ userId }) {
 }
 ```
 
-The Shadow Object runs the score logic. React renders it. They stay decoupled. This pattern works equally well with Vue's `onMounted`/`onUnmounted` or Svelte's `onMount`/`onDestroy`.
+The Shadow Object runs the score logic. React renders it. They stay decoupled. This pattern works equally well with Vue's `onMounted`/`onUnmounted` or Svelte's `onMount`/`onDestroy`. `setProperty` takes any JavaScript value, not only what an attribute can spell, which is what makes this the path for a typed array or an object graph; see [Using the ViewComponent API Directly](#using-the-viewcomponent-api-directly) and [Declarative vs. Imperative Properties](./best-practices.md#declarative-vs-imperative-properties).

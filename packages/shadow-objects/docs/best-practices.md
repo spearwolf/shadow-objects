@@ -130,6 +130,8 @@ Use `setProperty` imperatively for complex objects that cannot be serialized in 
 this.viewComponent.setProperty("canvasElement", this.canvasRef.current);
 ```
 
+A complete component in React and in Vue -- the properties going down through `<shae-prop>`, the events coming back as DOM events -- is in the guides under [Framework Integration](./guides.md#5-framework-integration).
+
 ### Batch Properties
 
 When you need multiple properties, use `useProperties` rather than calling `useProperty` multiple times:
