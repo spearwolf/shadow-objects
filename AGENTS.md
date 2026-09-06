@@ -66,7 +66,7 @@ pays for it. Paid once, it is paid for all of them.
 | `docs/cheat-sheet.md` | At-a-glance tables and snippets |
 | `docs/best-practices.md` | Patterns, composition, cleanup, testing |
 
-**Design records:** `docs/proposals/` at the repository root holds one document per proposal. A proposal stays after implementation, brought in line with the code and naming what it left open; it is the record of why an API is cut the way it is, while `packages/shadow-objects/docs/` stays the reference of what it is. The directory is outside the terminology corpus of `pnpm lint:terms`, and every proposal still uses the binding terms of §4. The first one is `docs/proposals/web-mcp-shadow-envs.md`: the inspection API (`ShadowEnv.inspect()`, the snapshot model) and the model-context tools built on it.
+**Design records:** `docs/proposals/` at the repository root holds one document per proposal. A proposal stays after implementation, brought in line with the code and naming what it left open; it is the record of why an API is cut the way it is, while `packages/shadow-objects/docs/` stays the reference of what it is. The directory is outside the terminology corpus of `pnpm lint:terms`, and every proposal still uses the binding terms of §4. The first one is `docs/proposals/web-mcp-shadow-envs.md`: the inspection API (`ShadowEnv.inspect()`, the snapshot model) and the model-context tools built on it. `docs/proposals/typed-entity-events.md` is the second: the creation API's `on()` / `once()` / `emit()` brought in line with eventize, `ShadowObjectCreationAPI<TEvents>` and `EventsOf<T>`.
 
 ## 4. Coding Guidelines
 

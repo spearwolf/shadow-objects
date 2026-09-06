@@ -4,6 +4,12 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-09-06 — the typed entity events have their design record
+
+`docs/proposals/typed-entity-events.md` records why the creation API's `on()` / `once()` / `emit()` were brought in line with eventize and how `ShadowObjectCreationAPI<TEvents>` and `EventsOf<T>` are cut: the routing rule that tells the entity forms from the target form, why the members stay method declarations, why a per-call generic was not taken, and what is open. Written after the code, as built, in the same shape as the inspection proposal. What the change does for the package is in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md).
+
+- **`AGENTS.md`, `README.md`, `packages/shadow-objects/docs/README.md`:** link the second proposal next to the first.
+
 ## 2026-09-06 — the inspection proposal reads as built, and the three phase plans that carried it are gone
 
 `docs/proposals/web-mcp-shadow-envs.md` is a design record now, not a draft: its status says the three phases shipped on 2026-09-05, a new §0 says what is open, and every detail the code settled differently from the first draft is amended in place, marked *as built*. The document is linked from `AGENTS.md`, the root README and the docs index, so it is part of the documentation rather than a file next to it.
