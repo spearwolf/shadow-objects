@@ -1673,6 +1673,40 @@ describe('TestEntity view messages', () => {
     t.dispose();
   });
 
+  // The registration order in `createTestKernel.createEntity()` is what this test pins: the handle
+  // goes into the map before the Kernel call, so a Shadow Object that dispatches from its own
+  // constructor has somewhere for its message to land. Without the early insert the message is
+  // dropped in silence, and nothing else in the suite would notice.
+  it('records a message a Shadow Object dispatched from its own constructor', async () => {
+    const t = createTestKernel();
+
+    t.define('eager', function Eager({dispatchMessageToView}: ShadowObjectCreationAPI) {
+      dispatchMessageToView('constructed');
+    });
+
+    const ent = t.createEntity('eager');
+    await t.settle();
+
+    expect(ent.viewMessages).toEqual([{type: 'constructed', data: undefined}]);
+
+    t.dispose();
+  });
+
+  // The other half of that order: a constructor that throws must leave no handle behind.
+  it('leaves no handle behind when a constructor throws', () => {
+    const t = createTestKernel();
+
+    t.define('doomed', function Doomed() {
+      throw new RangeError('constructor gave up');
+    });
+
+    expect(() => t.createEntity('doomed', undefined, {uuid: 'doomed-uuid'})).toThrow(/constructor gave up/);
+    expect(t.entity('doomed-uuid')).toBeUndefined();
+
+    t.clearErrors();
+    t.dispose();
+  });
+
   it('records on the Entity that sent it, and clearViewMessages empties one list', async () => {
     const t = createTestKernel();
 
@@ -1764,7 +1798,7 @@ and add to `dispose()`, directly after `this.kernel.destroy()`:
 - [ ] **Step 5: Run the test to verify it passes**
 
 Run: `pnpm -F @spearwolf/shadow-objects exec vitest src/testing/TestEntity.viewMessages.spec.ts --run`
-Expected: PASS, 3 tests.
+Expected: PASS, 5 tests.
 
 - [ ] **Step 6: Lint, format and typecheck**
 
@@ -1973,7 +2007,7 @@ Expected: PASS, 6 tests.
 - [ ] **Step 5: Run every testing spec written so far**
 
 Run: `pnpm -F @spearwolf/shadow-objects exec vitest src/testing --run`
-Expected: PASS, 43 tests across 8 files.
+Expected: PASS, 45 tests across 8 files.
 
 - [ ] **Step 6: Lint, format and typecheck**
 
