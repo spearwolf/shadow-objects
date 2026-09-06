@@ -700,29 +700,21 @@ Two properties go in, two events come out, and the component on the other side i
 **React**
 
 ```jsx
-import {useEffect, useRef, useState} from 'react';
+import {useState} from 'react';
 
 export function Countdown({seconds = 30}) {
   const [running, setRunning] = useState(false);
   const [remaining, setRemaining] = useState(seconds);
-  const ent = useRef(null);
-
-  useEffect(() => {
-    const el = ent.current;
-    const onTick = (e) => setRemaining(e.detail.remaining);
-    const onDone = () => setRunning(false);
-    el.addEventListener('tick', onTick);
-    el.addEventListener('done', onDone);
-    return () => {
-      el.removeEventListener('tick', onTick);
-      el.removeEventListener('done', onDone);
-    };
-  }, []);
 
   return (
-    <shae-ent ref={ent} token="countdown" forward-custom-events="tick,done">
-      <shae-prop name="seconds" value={String(seconds)} type="int" />
-      <shae-prop name="running" value={String(running)} type="boolean" />
+    <shae-ent
+      token="countdown"
+      forward-custom-events="tick,done"
+      ontick={(e) => setRemaining(e.detail.remaining)}
+      ondone={() => setRunning(false)}
+    >
+      <shae-prop name="seconds" value={seconds} type="int" />
+      <shae-prop name="running" value={running} type="boolean" />
       <p>{remaining}s</p>
       <button onClick={() => setRunning((r) => !r)}>{running ? 'Pause' : 'Start'}</button>
     </shae-ent>
@@ -730,9 +722,10 @@ export function Countdown({seconds = 30}) {
 }
 ```
 
-- React 18 writes every prop of a custom element as an attribute. React 19 writes it as a property where the element has one -- `name`, `value`, `token` -- and as an attribute otherwise. `<shae-prop>` takes both, so the component reads the same under either: `value` goes in as a string and `type` casts it, whether the string arrived as an attribute or as a property.
-- React's event system knows no `tick`, so the listeners go onto the element through a ref. React 19 also accepts a lowercase `ontick={fn}` prop on a custom element and attaches it as a listener; the ref works in both versions.
-- TypeScript: declare the tags once in `JSX.IntrinsicElements` (`React.JSX.IntrinsicElements` under React 19), with `ref` typed as `React.Ref<ShaeEntElement>`.
+- This is React 19. It writes a prop of a custom element as a property where the element has one -- `name`, `value`, `token` -- and as an attribute otherwise, so the number and the boolean arrive as they are. `type` only comes into play for a string, the case where the element upgrades after React has rendered it and the value went in as an attribute.
+- A lowercase `on…` prop with a function value becomes a listener on the element, named by what follows the `on`: `ontick` hears `tick`. The handler is swapped on every re-render and taken off on unmount. Spell it lowercase -- `onTick` would listen for `Tick` and hear nothing.
+- Under React 18 every prop of a custom element is an attribute, a function included. Pass `value={String(seconds)}` and attach the listeners through a `ref` with `addEventListener` in a `useEffect`; the rest of the component is the same.
+- TypeScript: declare the tags once in `React.JSX.IntrinsicElements`, with `ontick?: (e: CustomEvent<{remaining: number}>) => void` beside the attributes.
 
 **Vue**
 
