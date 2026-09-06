@@ -96,6 +96,10 @@ describe('createTestKernel error recording', () => {
     broken.destroy();
     t.createEntity('fine');
 
+    // The first assertion is what makes this test about a swallowed error at all. Without it the
+    // test passes just as well against a Kernel that stopped calling [onDestroy], or one that
+    // stopped catching what the hook throws -- neither of which the remaining assertions can see.
+    expect(t.errors.filter((record) => record.level === 'error')).toHaveLength(1);
     expect(built).toEqual(['fine']);
 
     t.clearErrors();
