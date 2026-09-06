@@ -216,6 +216,14 @@ src/shae-worker.d.ts
 src/shae-worker.d.ts.map
 src/shae-worker.js
 src/shae-worker.js.map
+src/testing/TestEntity.d.ts
+src/testing/TestEntity.d.ts.map
+src/testing/TestEntity.js
+src/testing/TestEntity.js.map
+src/testing/createTestKernel.d.ts
+src/testing/createTestKernel.d.ts.map
+src/testing/createTestKernel.js
+src/testing/createTestKernel.js.map
 src/testing/recordKernelErrors.d.ts
 src/testing/recordKernelErrors.d.ts.map
 src/testing/recordKernelErrors.js
