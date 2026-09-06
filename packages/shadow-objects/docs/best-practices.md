@@ -430,7 +430,7 @@ This style of test is slower than unit tests but verifies that the whole wiring 
 
 `exposeShadowEnvsToModelContext()` hands every Shadow Environment on the page to an AI agent, read-only, through the browser's model context. It is the inspection API of `ShadowEnv.inspect()` with an agent on the other end -- and every value it returns is application state.
 
-**Call it behind a switch, never unconditionally in a shipped bundle.** The same gate that enables the `ConsoleLogger` is the natural one; a build flag such as `import.meta.env.DEV` is the other. The function is the only way the tools appear -- no element attribute, no import side effect -- so the switch is the whole decision.
+**Call it behind a switch, never unconditionally in a shipped bundle.** The same gate that enables the `ConsoleLogger` is the natural one; a build flag such as `import.meta.env.DEV` is the other. The function and the `expose-to-model-context` attribute are the two ways the tools appear -- no import side effect -- so the switch is the whole decision, and an attribute in shipped markup is that decision made for every visitor: strip it in the production build, or keep the agent surface to the function behind the switch.
 
 ```javascript
 import {exposeShadowEnvsToModelContext} from '@spearwolf/shadow-objects/model-context.js';

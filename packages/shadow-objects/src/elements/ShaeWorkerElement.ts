@@ -1,6 +1,7 @@
 import {on} from '@spearwolf/eventize';
 import {batch, createEffect, createSignal, destroySignal, Effect, hibernate} from '@spearwolf/signalize';
-import {readBooleanAttribute, readNumberAttribute} from '../utils/attr-utils.js';
+import type {ExposeHandle} from '../model-context/exposeShadowEnvsToModelContext.js';
+import {readBooleanAttribute, readListAttribute, readNumberAttribute} from '../utils/attr-utils.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
 import {FrameLoop} from '../utils/FrameLoop.js';
 import {ComponentContext} from '../view/ComponentContext.js';
@@ -12,11 +13,13 @@ import {
   ATTR_CHANGE_TRAIL_TIMEOUT,
   ATTR_CONFIGURE_TIMEOUT,
   ATTR_DESTROY_TIMEOUT,
+  ATTR_EXPOSE_TO_MODEL_CONTEXT,
   ATTR_INSPECT_TIMEOUT,
   ATTR_LOAD_TIMEOUT,
   ATTR_LOCAL,
   ATTR_NO_AUTOSTART,
   ATTR_NO_STRUCTURED_CLONE,
+  ATTR_REDACT_PROPS,
   ATTR_SRC,
 } from './constants.js';
 import {ensureDisplayContentsRule} from './displayContentsRule.js';
@@ -43,6 +46,12 @@ function normaliseAutoSync(value: unknown): string {
   return value.trim().toLowerCase();
 }
 
+/** One element's share of the page's model-context registration: the signal that ends it, the handle it resolves to. */
+interface ModelContextExposure {
+  controller: AbortController;
+  handle: Promise<ExposeHandle>;
+}
+
 export class ShaeWorkerElement extends ShaeElement {
   static override observedAttributes = [
     ...ShaeElement.observedAttributes,
@@ -50,6 +59,7 @@ export class ShaeWorkerElement extends ShaeElement {
     ATTR_SRC,
     ATTR_NO_STRUCTURED_CLONE,
     ATTR_AUTO_SYNC,
+    ATTR_EXPOSE_TO_MODEL_CONTEXT,
   ];
 
   static DefaultAutoSync = 'frame';
@@ -75,6 +85,23 @@ export class ShaeWorkerElement extends ShaeElement {
 
   #autoSync?: Effect;
   #importScript?: Effect;
+
+  #modelContextExposure?: ModelContextExposure | undefined;
+
+  /** The `redact-props` attribute as a list of property names, read as it stands right now. */
+  get redactProps(): string[] {
+    return readListAttribute(this, ATTR_REDACT_PROPS);
+  }
+
+  /**
+   * This element's share of the page's model-context registration, while it has one: a promise
+   * of the `ExposeHandle`, resolving once the tools are on the platform (`available: false` where
+   * there is none) and rejecting with what `registerTool()` rejected with. `undefined` without
+   * the `expose-to-model-context` attribute, before the first connect, and after a teardown.
+   */
+  get modelContextExposure(): Promise<ExposeHandle> | undefined {
+    return this.#modelContextExposure?.handle;
+  }
 
   /**
    * Points the environment at the namespace this element names.
@@ -286,6 +313,7 @@ export class ShaeWorkerElement extends ShaeElement {
       if (this.shouldAutostart) {
         this.start().catch(this.#onUnobservedRejection);
       }
+      this.#syncModelContextExposure();
     });
   }
 
@@ -319,6 +347,10 @@ export class ShaeWorkerElement extends ShaeElement {
       if (this.shadowEnv.isReady) {
         this.#importScript?.run();
       }
+    }
+
+    if (name === ATTR_EXPOSE_TO_MODEL_CONTEXT) {
+      this.#syncModelContextExposure();
     }
   }
 
@@ -375,6 +407,8 @@ export class ShaeWorkerElement extends ShaeElement {
    * {@link ShaeWorkerElement.restore} a method that runs once and never again.
    */
   protected override teardown() {
+    this.#leaveModelContextExposure();
+
     this.#envViewBinding?.();
     this.#envViewBinding = undefined;
 
@@ -477,5 +511,53 @@ export class ShaeWorkerElement extends ShaeElement {
         this.removeAttribute(ATTR_LOCAL);
       }
     });
+  }
+  /**
+   * Joins or leaves the page's model-context registration, whichever the attribute and the
+   * element's state ask for. The attribute is a truthy attribute like `local`; the join waits
+   * for a connect, because an element that is never connected has no environment to expose, and
+   * it ends with the teardown. `redact-props` is not watched: the share reads it at every call.
+   */
+  #syncModelContextExposure(): void {
+    const wanted = !this.isDestroyed && this.isConnected && readBooleanAttribute(this, ATTR_EXPOSE_TO_MODEL_CONTEXT);
+    if (wanted) {
+      this.#joinModelContextExposure();
+    } else {
+      this.#leaveModelContextExposure();
+    }
+  }
+
+  /**
+   * The share is an ordinary call of `exposeShadowEnvsToModelContext()` with two live rules:
+   * this element's namespace, and the names its `redact-props` attribute carries at the moment
+   * a tool asks. The function comes in through a dynamic import, and that is the whole reason
+   * this element can carry the attribute at all -- a static import would pull the model-context
+   * layer into every consumer of `<shae-worker>`, and the layer is meant to stay out of
+   * `index.ts` and the worker bundle. The single-file bundle inlines the import; the lib layout
+   * keeps the modules apart. A leave before the import is back aborts the signal the call is
+   * made with, and the function registers nothing for an aborted signal.
+   */
+  #joinModelContextExposure(): void {
+    if (this.#modelContextExposure !== undefined) return;
+
+    const controller = new AbortController();
+    const handle = import('../model-context/exposeShadowEnvsToModelContext.js').then(({exposeShadowEnvsToModelContext}) =>
+      exposeShadowEnvsToModelContext({
+        signal: controller.signal,
+        namespaces: (ns) => ns === this.ns,
+        redactProps: (name) => this.redactProps.includes(name),
+      }),
+    );
+    this.#modelContextExposure = {controller, handle};
+
+    // the rejection reaches whoever awaits `modelContextExposure` as well; this makes sure it is heard when nobody does
+    handle.catch((error) => this.logger.error('expose-to-model-context: registering the tools failed', error));
+  }
+
+  #leaveModelContextExposure(): void {
+    const exposure = this.#modelContextExposure;
+    if (exposure === undefined) return;
+    this.#modelContextExposure = undefined;
+    exposure.controller.abort();
   }
 }

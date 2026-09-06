@@ -25,6 +25,8 @@ export const ATTR_CONFIGURE_TIMEOUT = 'configure-timeout';
 export const ATTR_CHANGE_TRAIL_TIMEOUT = 'change-trail-timeout';
 export const ATTR_INSPECT_TIMEOUT = 'inspect-timeout';
 export const ATTR_DESTROY_TIMEOUT = 'destroy-timeout';
+export const ATTR_EXPOSE_TO_MODEL_CONTEXT = 'expose-to-model-context';
+export const ATTR_REDACT_PROPS = 'redact-props';
 
 // <shae-prop> attributes
 export const ATTR_NAME = 'name';

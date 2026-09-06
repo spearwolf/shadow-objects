@@ -248,8 +248,10 @@ ent.addEventListener('login-success', (e) => console.log(e.detail.user));
 | `no-structured-clone` | boolean (presence) | Skip data cloning (local only, performance opt); silently without effect when `local` is missing |
 | `no-autostart` | truthy value | Do not create the environment on connect, call `start()` yourself. Not observed: read once, at connect |
 | `load-timeout`, `configure-timeout`, `change-trail-timeout`, `inspect-timeout`, `destroy-timeout` | milliseconds | How long the worker environment waits for each of the five replies a worker owes it. Defaults: 60000 / 60000 / 5000 / 5000 / 5000. A number from 1 to 2147483647 (close to 25 days), anything else is reported and the default stays. Not observed, read once when the environment is built; no effect under `local` |
+| `expose-to-model-context` | truthy value | Hand this environment to an AI agent through the model context (WebMCP); one registration per page, shared with every other element and call, the union of what they expose. Observed: set joins, remove leaves |
+| `redact-props` | `"a, b c"` | Property names the agent never sees; cumulates across shares. Read at every call |
 
-**Truthy value ≠ presence.** `local` and `no-autostart` count as set for `on`, `true`, `yes`,
+**Truthy value ≠ presence.** `local`, `no-autostart` and `expose-to-model-context` count as set for `on`, `true`, `yes`,
 `local`, `1` (case-insensitive, surrounding whitespace ignored) or for the bare attribute — a value of
 nothing but whitespace reads as the bare attribute — and as unset for everything else,
 `="false"` and `="0"` included. Of the boolean-looking attributes, only `no-structured-clone`
@@ -567,6 +569,8 @@ handle.available;   // false: no model context on this platform, nothing registe
 handle.tools;       // the five names below
 handle.dispose();   // takes this share back; the tools leave with the last share (or abort options.signal)
 ```
+
+Declarative: `<shae-worker expose-to-model-context redact-props="sessionToken">` -- this environment only, a share of the same registration; `el.modelContextExposure` is its handle.
 
 | Tool | Asks for | Answers with |
 | :--- | :--- | :--- |

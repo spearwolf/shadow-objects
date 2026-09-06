@@ -1954,7 +1954,7 @@ The package entry point pulls the Custom Elements in with it and therefore needs
 
 ## Model Context
 
-Five read-only tools that describe every Shadow Environment on the page to an AI agent, through the browser's model context ([WebMCP](https://github.com/webmachinelearning/webmcp): `document.modelContext`). One function registers them, and an `AbortSignal` or the handle takes them back. Nothing registers on import, on an element, or on its own.
+Five read-only tools that describe every Shadow Environment on the page to an AI agent, through the browser's model context ([WebMCP](https://github.com/webmachinelearning/webmcp): `document.modelContext`). One function registers them, and an `AbortSignal` or the handle takes them back. Nothing registers on import or on its own; a `<shae-worker` [`expose-to-model-context`](#shae-worker)`>` registers them for its own environment through the same function, as a share of the same registration.
 
 Read [Exposing Environments to an Agent](#exposing-environments-to-an-agent) under *Security* before the first call in an application: every value in every answer is application state.
 
@@ -2059,8 +2059,10 @@ The root of any Shadow Objects application. Initializes the Shadow Environment (
 | `change-trail-timeout` | How long it waits for the confirmation of a change trail, in milliseconds. Default: `WorkerChangeTrailTimeout` (5000). |
 | `inspect-timeout` | How long it waits for the answer to an inspection, in milliseconds. Default: `WorkerInspectTimeout` (5000). |
 | `destroy-timeout` | How long it waits for the worker to acknowledge the teardown before terminating it, in milliseconds. Default: `WorkerDestroyTimeout` (5000). |
+| `expose-to-model-context` | Hands this element's environment to an AI agent through the browser's model context, as one share of the page's registration of the five read-only tools of [Model Context](#model-context): the tools are registered once per page, and an agent sees the union of what every share exposes -- this element's environment, another element's, everything where `exposeShadowEnvsToModelContext()` was called without `namespaces`. An environment no share exposes is not listed, and a tool asked for its namespace answers as for an unknown one. Read as a truthy value, not as a presence -- see below. Observed: setting it joins, removing it leaves, and the tools leave with the last share. Read [Exposing Environments to an Agent](#exposing-environments-to-an-agent) under *Security* first -- a copied snippet copies the exposure. |
+| `redact-props` | Property names whose values every tool answer replaces by `{$type: 'redacted'}`, separated by commas or whitespace. Cumulates with every other share -- another element's list, a call's `redactProps` -- so a name any share hides is hidden in every exposed environment, and a name leaves with the last share that carried it. Read at every tool call, so an edit applies to the next one; no effect without `expose-to-model-context`. |
 
-**Truthy attributes are not presence attributes.** `local` and `no-autostart` read their value:
+**Truthy attributes are not presence attributes.** `local`, `no-autostart` and `expose-to-model-context` read their value:
 the attribute counts as set when it carries `on`, `true`, `yes`, `local` or `1` (case-insensitive,
 surrounding whitespace ignored) — or when it stands there bare, `local`, `local=""` and
 `local="   "` alike, because a value of nothing but whitespace reads as the bare attribute.
@@ -2170,12 +2172,14 @@ teardown takes the environment with it, so there is nothing to return to.
 | `logger` | The `ConsoleLogger` this element reports through, read-only. The slot is a getter without a setter, so `el.logger = …` throws a `TypeError` in strict mode and does nothing outside it. |
 | `autostart` | Whether the element may start on connect. Writable, defaults to `true`; the `no-autostart` attribute is the declarative half of the same decision. |
 | `shouldAutostart` | Read-only: `autostart` and the `no-autostart` attribute taken together. This is what the element asks when it connects. |
+| `redactProps` | Read-only: the `redact-props` attribute as a list of names, split on commas and whitespace. Empty without the attribute. |
+| `modelContextExposure` | Read-only: `Promise<ExposeHandle> \| undefined`. This element's share of the page's model-context registration while it has one -- resolves once the tools are on the platform (`available: false` where there is none), rejects with what `registerTool()` rejected with, which the element's logger reports as well. `undefined` without `expose-to-model-context`, before the first connect, and after a teardown. `dispose()` on the handle takes this element's share back until the attribute is set again; removing the attribute is the intended way. |
 | `autoSync` | Accepts `string \| boolean \| number`. The current `auto-sync` value. **Writing takes strings only:** any other value is read as a flag — a truthy one becomes `"frame"`, a falsy one `"no"`. `el.autoSync = 30` therefore syncs every frame, while `auto-sync="30"` is a 30-millisecond interval. Every value other than the frame default is reflected into the attribute; the frame default is written only when the attribute is already there. |
 | `frameLoop` | The [`FrameLoop`](#frameloop) driving the frame-based sync, taken on first read. There is one per module instance — every element that reads it from the same copy of the package gets the same instance, while a second copy on the page drives a loop of its own; see [Shared Registries](./concepts.md#shared-registries). |
 | `ns` | The namespace, get and set, inherited from `ShaeElement`. Writing trims the value and reflects it back into the `ns` attribute; an empty value removes the attribute and returns the element to the Global Context. |
 | `isShaeWorkerElement` | `true`. `isShaeElement` is `true` as well, inherited from `ShaeElement`. |
 | `ShaeWorkerElement.DefaultAutoSync` | Static, `"frame"` — what an empty `auto-sync`, a removed one and any truthy non-string assignment fall back to. An unreadable value does *not* come here; it is reported and switches syncing off. |
-| `ShaeWorkerElement.observedAttributes` | Static: `ns`, `local`, `src`, `no-structured-clone`, `auto-sync`. `no-autostart` and the five timeout attributes — `load-timeout`, `configure-timeout`, `change-trail-timeout`, `inspect-timeout`, `destroy-timeout` — are deliberately not among them. |
+| `ShaeWorkerElement.observedAttributes` | Static: `ns`, `local`, `src`, `no-structured-clone`, `auto-sync`, `expose-to-model-context`. `no-autostart`, `redact-props` and the five timeout attributes — `load-timeout`, `configure-timeout`, `change-trail-timeout`, `inspect-timeout`, `destroy-timeout` — are deliberately not among them. |
 
 The four signals `isConnected$`, `autoSync$`, `src$` and the inherited `ns$` are part of the
 surface as well: read them with `.value` or subscribe to them. They are what the attributes feed —
@@ -3241,10 +3245,11 @@ Neither the element nor the proxy validate the URL, and neither offers a hook wh
 
 `exposeShadowEnvsToModelContext()` is a second way state leaves the page. Every value in every answer is application state: properties hold what the View put there, and an application that passes a session token, an e-mail address or a user's draft through a `<shae-prop>` will see it in the answer, and so will every agent the page exposes tools to.
 
-- **Nothing is exposed without the call.** No element attribute, no auto-registration, no import side effect. The function is the only way in, and its `signal` or `dispose()` is the way out.
+- **Nothing is exposed without a decision.** No auto-registration, no import side effect. `exposeShadowEnvsToModelContext()` is one way in; the `expose-to-model-context` attribute on a `<shae-worker>` is the other, and it is a decision the markup carries -- a snippet copied with the attribute copies the exposure, so strip it from shipped markup the way the function call stays behind a switch. A share's `dispose()` or `signal`, or the attribute leaving, is that share's way out; the tools go with the last share.
 - **Read-only, and declared as such.** `readOnlyHint: true` on every tool; an agent cannot change a Kernel through this surface. `untrustedContentHint: true` on every tool, unconditionally, because the values can include what a user typed.
 - **Exposure follows the platform.** Without `exposedTo` the platform decides which documents and agents see the tools; the option is passed through for the cases where that default is not the right one.
 - **Redaction is available and not default.** `redactProps` hides the property names the application knows to be secret. A default list would be a guess, and a guess here would suggest a coverage it cannot have. Entity Context values are not covered.
+- **The attribute exposes one environment; shares add up.** `expose-to-model-context` covers the element's own environment and nothing else. Every share of the registration -- elements and calls alike -- adds what it exposes and what it hides, so a call without `namespaces` next to an element exposes everything, and a `redact-props` on one element hides that name everywhere. Redaction only ever grows with a share and shrinks when it leaves.
 - **Production is a decision.** Call the function behind the same switch that enables the `ConsoleLogger`, or behind a build flag, and never unconditionally in a shipped bundle -- see [Best Practices](./best-practices.md#10-exposing-environments-to-an-agent). The framework does not enforce this; it is the application's origin and the application's data.
 - **A secure context is required.** On plain `http://` outside `localhost` the platform hands out no model context, and the function reports `available: false`.
 

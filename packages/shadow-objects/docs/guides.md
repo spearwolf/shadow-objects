@@ -353,6 +353,8 @@ This element owns the Shadow Environment. It initializes the Kernel (ECS System 
 | `auto-sync` | Sync frequency: every animation frame (`"frame"`, the default, also `"on"`/`"yes"`/`"true"`/`"auto-sync"`), every `1000/N` ms (`"60fps"`), every N ms (`"100"`), or off (`"off"`/`"no"`/`"false"`) |
 | `no-structured-clone` | Disable cloning for local environments (performance optimization, local only) |
 | `load-timeout`, `configure-timeout`, `change-trail-timeout`, `inspect-timeout`, `destroy-timeout` | How long the worker environment waits for the load handshake, a module import, a change trail confirmation, the answer to an inspection and the teardown acknowledgement -- in milliseconds, from 1 to 2147483647 |
+| `expose-to-model-context` | Hand this element's environment to an AI agent through the browser's model context -- the declarative form of [Exposing Environments to an Agent](#exposing-environments-to-an-agent) |
+| `redact-props` | Property names whose values the agent never sees, separated by commas or whitespace; cumulates with every other share |
 
 The full rules -- which of these read a truthy value rather than mere presence, and what an unparseable `auto-sync` does -- are in the [`<shae-worker>` reference](./api-reference.md#shae-worker).
 
@@ -605,6 +607,14 @@ if (import.meta.env.DEV) {
 An agent then sees `shae-list-envs`, `shae-get-entity-tree`, `shae-get-entity`, `shae-find-entities` and `shae-get-registry`, each read-only, each answering with a one-line summary and the JSON of the snapshot. The tools ask `ShadowEnv.inspectAll()` and `inspect()` per call and cache nothing; the `syncWait()` rule above holds for them too, and an agent cannot wait for a cycle on the application's behalf. The [API Reference](./api-reference.md#model-context) has the inputs and outputs of every tool.
 
 In a test, or in a browser without the platform, hand the function a `modelContext` of your own -- anything with a `registerTool()` -- and call the tools' `execute()` directly.
+
+The same, declared on the element:
+
+```html
+<shae-worker ns="game" src="./game.js" expose-to-model-context redact-props="sessionToken email">
+```
+
+The attribute exposes this environment and no other. The function and every such element are shares of one registration per page: the tools exist once, the agent sees the union -- a page with three `<shae-worker>` elements and one attribute shows one environment, a second attribute adds its own, a call of the function without `namespaces` adds every one, whichever came first -- and the tools stay until the last share is gone, whether that is a `dispose()` or an attribute removed. `redact-props` cumulates the same way: a name any share hides is hidden in every exposed environment, and it comes back only when the last share that named it leaves. `el.modelContextExposure` is the promise to await in a test. What the sample above keeps behind `import.meta.env.DEV`, markup cannot: an attribute in shipped HTML exposes every visitor's state, so the production build strips it or the page uses the function.
 
 ### When the Worker Dies
 
