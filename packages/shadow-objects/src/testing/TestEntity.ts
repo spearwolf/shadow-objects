@@ -1,3 +1,4 @@
+import {emit} from '@spearwolf/eventize';
 import {value} from '@spearwolf/signalize';
 import type {Entity} from '../in-the-dark/Entity.js';
 import type {Kernel} from '../in-the-dark/Kernel.js';
@@ -91,29 +92,32 @@ export class TestEntityImpl implements TestEntity {
    * after a provider wrote it -- `Entity` runs every context value through a `MicrotaskCollector` --
    * so a test reads it after `settle()`.
    */
-  /**
-   * The effective value of an Entity Context, the one `useContext()` reads. It arrives a microtask
-   * after a provider wrote it -- `Entity` runs every context value through a `MicrotaskCollector` --
-   * so a test reads it after `settle()`.
-   */
   readContext<T = unknown>(name: string | symbol): T | undefined {
     return value(this.entity.useContext<T | undefined>(name));
   }
 
-  setToken(_token: string): void {
-    throw new Error('not implemented yet');
+  setToken(token: string): void {
+    this.#kernel.changeToken(this.uuid, token);
   }
 
-  setParent(_parent: TestEntity | undefined, _order?: number): void {
-    throw new Error('not implemented yet');
+  setParent(parent: TestEntity | undefined, order?: number): void {
+    this.#kernel.setParent(this.uuid, parent?.uuid, order);
   }
 
-  sendViewEvent(_type: string, _data?: unknown): void {
-    throw new Error('not implemented yet');
+  /**
+   * Delivery is synchronous, the way `Kernel.dispatchEventsToEntity()` is: a View event carries no
+   * structure, so nothing has to settle before a Shadow Object hears it.
+   */
+  sendViewEvent(type: string, data?: unknown): void {
+    this.#kernel.dispatchEventsToEntity(this.uuid, [{type, data}]);
   }
 
-  emit(_eventName: string | symbol, ..._args: unknown[]): void {
-    throw new Error('not implemented yet');
+  /**
+   * Emits on the Entity's own event bus. Every Shadow Object of this Entity is attached there as an
+   * eventize listener object, so a method named like the event is what receives it.
+   */
+  emit(eventName: string | symbol, ...args: unknown[]): void {
+    emit(this.entity, eventName, ...args);
   }
 
   shadowObjects(): ShadowObjectType[] {
