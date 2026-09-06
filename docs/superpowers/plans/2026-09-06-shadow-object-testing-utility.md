@@ -626,7 +626,7 @@ describe('createTestKernel', () => {
     t.dispose();
   });
 
-  it('resolves a composite token through a route', async () => {
+  it('resolves a composite token through a route', () => {
     const t = createTestKernel();
     const built: string[] = [];
 
@@ -636,7 +636,11 @@ describe('createTestKernel', () => {
 
     t.createEntity('player');
 
-    expect(built).toEqual(['physics', 'health']);
+    // Set-wise: the Registry promises which constructors a route resolves to, not the order it
+    // hands them over in. Asserting the order here would test an implementation detail.
+    expect(built).toHaveLength(2);
+    expect(built).toContain('physics');
+    expect(built).toContain('health');
 
     t.dispose();
   });
@@ -834,7 +838,14 @@ import {generateUUID} from '../utils/generateUUID.js';
 import {recordKernelErrors, type KernelErrorRecorder} from './recordKernelErrors.js';
 import {settle} from './settle.js';
 import {TestEntityImpl, toPropertyEntries, type TestKernelInternals} from './TestEntity.js';
-import type {CreateEntityOptions, KernelErrorRecord, TestEntity, TestKernel, TestKernelOptions} from './types.js';
+import type {
+  AnyShadowObjectConstructor,
+  CreateEntityOptions,
+  KernelErrorRecord,
+  TestEntity,
+  TestKernel,
+  TestKernelOptions,
+} from './types.js';
 
 class TestKernelImpl implements TestKernel, TestKernelInternals {
   readonly kernel: Kernel;
@@ -860,7 +871,7 @@ class TestKernelImpl implements TestKernel, TestKernelInternals {
     return this.#recorder.records;
   }
 
-  define(token: string, constructa: Parameters<TestKernel['define']>[1]): void {
+  define(token: string, constructa: AnyShadowObjectConstructor): void {
     this.registry.define(token, constructa as ShadowObjectConstructor);
   }
 
@@ -2001,6 +2012,7 @@ Create `packages/shadow-objects/src/testing/mountShadowObject.spec.ts`:
 
 ```ts
 import {describe, expect, it} from 'vitest';
+import {onDestroy} from '../in-the-dark/events.js';
 import type {ShadowObjectCreationAPI} from '../types.js';
 import {mountShadowObject} from './mountShadowObject.js';
 
@@ -2100,8 +2112,6 @@ describe('mountShadowObject', () => {
   });
 
   it('dispose() carries the failing-error default of the test kernel', async () => {
-    const {onDestroy} = await import('../in-the-dark/events.js');
-
     class BrokenTeardown {
       [onDestroy]() {
         throw new RangeError('teardown went wrong');
@@ -2165,8 +2175,10 @@ export async function mountShadowObject<C extends AnyShadowObjectConstructor>(
 
   let parent: TestEntity | undefined;
 
-  const contexts = options.contexts;
-  const contextNames = contexts === undefined ? [] : Reflect.ownKeys(contexts);
+  // Hoisted rather than read off `options` inside the closure: a narrowing done out here does not
+  // survive into a function body, and the alternative is a non-null assertion per read.
+  const providedContexts: Record<string | symbol, unknown> = options.contexts ?? {};
+  const contextNames = Reflect.ownKeys(providedContexts);
 
   if (contextNames.length > 0) {
     const providerToken = `mounted-context-provider-${generateUUID()}`;
@@ -2174,7 +2186,7 @@ export async function mountShadowObject<C extends AnyShadowObjectConstructor>(
     // the value. That is `provideContext()`'s contract; the documentation names it next to this.
     testKernel.define(providerToken, function MountedContextProvider({provideContext}: ShadowObjectCreationAPI) {
       for (const name of contextNames) {
-        provideContext(name, contexts![name as keyof typeof contexts]);
+        provideContext(name, providedContexts[name]);
       }
     });
     parent = testKernel.createEntity(providerToken);
@@ -2361,7 +2373,7 @@ Fix the recorded list to match the build. Do not fix the build to match the list
 In `packages/shadow-objects/CHANGELOG.md`, add as the last bullet of the `### New` list under `## [Unreleased]`:
 
 ```markdown
-- **New (public API, subpath):** `@spearwolf/shadow-objects/testing.js` — a testing utility that runs Shadow Objects on the real Kernel instead of a mocked creation API. `createTestKernel(options?)` builds a Kernel on a `Registry` of its own (`registry`, `failOnKernelErrors`, `echoKernelErrors`) and offers `define()`, `route()`, `importModule()`, `createEntity(token, props, options?)`, `entity(uuid)`, `settle()`, `errors`, `clearErrors()`, `dispose()`, plus `kernel` and `registry` for everything the facade does not cover. Each `createEntity()` hands out a `TestEntity`: object-shaped `setProps()`/`removeProps()`, `readProp()` and `readContext()` without a signalize import, `createChild()`, `setToken()`, `setParent()`, `sendViewEvent()`, `emit()`, `shadowObjects()`, `instanceOf(constructor)`, `describe()`, and a recorded `viewMessages` list. `mountShadowObject(constructor, options?)` is the one-object case on top of both — asynchronous, because a context value needs two microtask hops to reach its reader. `settle()` drains the whole microtask cascade through a `MessageChannel`, so it also resolves under fake timers. Reports the Kernel swallows through `runGuarded()` are recorded and, by default, fail `dispose()`. Nothing imports a test runner, nothing runs at import time, and nothing is cloned on the way in — a DOM node or a WebGL handle reaches a Shadow Object by identity. Adds `dist/src/testing.js`, `dist/src/testing/*` and their declarations to the published file list. Documented in `docs/api-reference.md`, `docs/best-practices.md` §9, `docs/cheat-sheet.md` and the README.
+- **New (public API, subpath):** `@spearwolf/shadow-objects/testing.js` — a testing utility that runs Shadow Objects on the real Kernel instead of a mocked creation API. `createTestKernel(options?)` builds a Kernel on a `Registry` of its own (`registry`, `failOnKernelErrors`, `echoKernelErrors`) and offers `define()`, `route()`, `importModule()`, `createEntity(token, props, options?)`, `entity(uuid)`, `settle()`, `errors`, `clearErrors()`, `dispose()`, plus `kernel` and `registry` for everything the facade does not cover. Each `createEntity()` hands out a `TestEntity`: object-shaped `setProps()`/`removeProps()`, `readProp()` and `readContext()` without a signalize import, `createChild()`, `setToken()`, `setParent()`, `sendViewEvent()`, `emit()`, `shadowObjects()`, `instanceOf(constructor)`, `describe()`, and a recorded `viewMessages` list. `mountShadowObject(constructor, options?)` is the one-object case on top of both — asynchronous, because a context value needs two microtask hops to reach its reader. `settle()` drains the whole microtask cascade through a `MessageChannel`, so it also resolves under fake timers, and `recordKernelErrors(logger, echo?)` is exported beside it for a Kernel held directly. Reports the Kernel swallows through `runGuarded()` are recorded and, by default, fail `dispose()`. Nothing imports a test runner, nothing runs at import time, and nothing is cloned on the way in — a DOM node or a WebGL handle reaches a Shadow Object by identity. Adds `dist/src/testing.js`, `dist/src/testing/*` and their declarations to the published file list. Documented in `docs/api-reference.md`, `docs/best-practices.md` §9, `docs/cheat-sheet.md` and the README.
 ```
 
 - [ ] **Step 6: Run the whole package suite**
