@@ -216,6 +216,10 @@ src/shae-worker.d.ts
 src/shae-worker.d.ts.map
 src/shae-worker.js
 src/shae-worker.js.map
+src/testing.d.ts
+src/testing.d.ts.map
+src/testing.js
+src/testing.js.map
 src/testing/TestEntity.d.ts
 src/testing/TestEntity.d.ts.map
 src/testing/TestEntity.js

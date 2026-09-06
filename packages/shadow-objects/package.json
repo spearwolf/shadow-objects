@@ -62,6 +62,10 @@
     "./model-context.js": {
       "import": "./dist/src/model-context.js",
       "types": "./dist/src/model-context.d.ts"
+    },
+    "./testing.js": {
+      "import": "./dist/src/testing.js",
+      "types": "./dist/src/testing.d.ts"
     }
   },
   "sideEffects": [
