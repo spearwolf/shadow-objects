@@ -28,11 +28,13 @@ class TestKernelImpl implements TestKernel, TestKernelInternals {
   // Only a Registry this test kernel made is a Registry it may empty. One the caller handed in is
   // the caller's, default or not, and clearing it would take the rest of the suite's definitions.
   readonly #ownsRegistry: boolean;
+  readonly #failOnKernelErrors: boolean;
 
   #disposed = false;
 
   constructor(options: TestKernelOptions) {
     this.#ownsRegistry = options.registry === undefined;
+    this.#failOnKernelErrors = options.failOnKernelErrors ?? true;
     this.registry = options.registry ?? new Registry();
     this.kernel = new Kernel(this.registry);
     this.#recorder = recordKernelErrors(this.kernel.logger, options.echoKernelErrors ?? false);
@@ -116,9 +118,26 @@ class TestKernelImpl implements TestKernel, TestKernelInternals {
       this.registry.clear();
     }
 
+    // Read before the unhook, because unhooking does not clear the records but a later read has no
+    // reason to reach the recorder again.
+    const errors = this.#recorder.records.filter((record) => record.level === 'error');
+
     this.#recorder.unhook();
     this.#handles.clear();
     this.#importedModules.clear();
+
+    // Only `error`. A warning is recorded and readable, and never fails a run: `importModule()`
+    // warns about a module two `extends` chains have in common, which is a shape of the module
+    // graph and not a mistake.
+    if (this.#failOnKernelErrors && errors.length > 0) {
+      const first = errors[0]!;
+      throw new Error(
+        `the kernel reported ${errors.length} error(s) that this test did not acknowledge. ` +
+          `The first one was: ${first.args.map((arg) => String(arg)).join(' ')}. ` +
+          'Assert on testKernel.errors and call clearErrors(), or pass {failOnKernelErrors: false}.',
+        ...(first.error !== undefined ? [{cause: first.error}] : []),
+      );
+    }
   }
 }
 
