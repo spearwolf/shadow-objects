@@ -94,9 +94,20 @@ export class ShadowEnv {
    * list: the per-environment failures are reported under `error`, and an environment destroyed
    * while it answers drops out of the list. Rejects only for the caller's reasons -- an aborted
    * signal.
+   *
+   * `only` narrows the list before anything is asked: it is called with the namespace an
+   * environment is registered under, and an environment it refuses is neither inspected nor
+   * listed. That is what lets a caller keep an environment out of a picture without touching it.
    */
-  static async inspectAll(request: InspectRequest = {}, signal?: AbortSignal): Promise<EnvSnapshot[]> {
-    const envs = Array.from(globalThis.__shadowEnvs?.values() ?? []);
+  static async inspectAll(
+    request: InspectRequest = {},
+    signal?: AbortSignal,
+    only?: (ns: NamespaceType) => boolean,
+  ): Promise<EnvSnapshot[]> {
+    const envs: ShadowEnv[] = [];
+    for (const [ns, env] of globalThis.__shadowEnvs?.entries() ?? []) {
+      if (only === undefined || only(ns)) envs.push(env);
+    }
     const settled = await Promise.all(
       envs.map((env) =>
         env.inspect(request, signal).catch((error) => {

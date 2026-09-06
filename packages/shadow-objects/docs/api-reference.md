@@ -1321,11 +1321,11 @@ environment that has not been displaced, `env.ns$` carries the same name, so an 
 it from one namespace to the next without observing `view` itself; a displaced environment keeps
 that name in `ns$` even though this lookup no longer answers it.
 
-#### `ShadowEnv.inspectAll(request?, signal?)`
+#### `ShadowEnv.inspectAll(request?, signal?, only?)`
 
-Describes every environment that holds a namespace, in registration order, each by [`inspect()`](#inspectrequest-signal). One environment that cannot answer costs its own entry, not the list: its reason stands under `error`, and an environment destroyed while it answers drops out of the list. Rejects only when `signal` aborts.
+Describes every environment that holds a namespace, in registration order, each by [`inspect()`](#inspectrequest-signal). One environment that cannot answer costs its own entry, not the list: its reason stands under `error`, and an environment destroyed while it answers drops out of the list. Rejects only when `signal` aborts. `only` narrows the list before anything is asked: it is called with the namespace an environment is registered under, and an environment it refuses is neither inspected nor listed.
 
-- **Signature:** `static inspectAll(request?: InspectRequest, signal?: AbortSignal): Promise<EnvSnapshot[]>`
+- **Signature:** `static inspectAll(request?: InspectRequest, signal?: AbortSignal, only?: (ns: NamespaceType) => boolean): Promise<EnvSnapshot[]>`
 
 ```typescript
 const snapshots = await ShadowEnv.inspectAll({maxDepth: 2});
@@ -2008,7 +2008,7 @@ A refusal -- an unknown namespace, an unknown uuid, a search without a criterion
 | `shae-find-entities` | `{namespace?, token?, propName?, shadowObject?, contextName?, limit?}`, at least one criterion | `{results: [{namespace, matches: [{uuid, token, path}], total, error?}]}` -- the search runs where the Kernel runs (`InspectRequest.filter`) and ships matches, not the tree; `limit` defaults to 50, `total` counts every match |
 | `shae-get-registry` | `{namespace?}` | `{registries: [{namespace, kind, registry?: RegistrySnapshot, error?}]}` |
 
-The tool inputs map onto [`InspectRequest`](#inspectrequest): `rootUuid` is `rootUuids: [rootUuid]`, `valueDepth` is `values.maxDepth`, the rest keep their names. An environment that cannot answer costs its own entry with the reason under `error`, exactly as [`inspectAll()`](#shadowenvinspectallrequest-signal) reports it. Snapshots are built per call and never cached; an agent that wants View and Kernel to agree after a change the application made has to wait for the application's own `syncWait()`, and the tools cannot do that for it.
+The tool inputs map onto [`InspectRequest`](#inspectrequest): `rootUuid` is `rootUuids: [rootUuid]`, `valueDepth` is `values.maxDepth`, the rest keep their names. An environment that cannot answer costs its own entry with the reason under `error`, exactly as [`inspectAll()`](#shadowenvinspectallrequest-signal-only) reports it. Snapshots are built per call and never cached; an agent that wants View and Kernel to agree after a change the application made has to wait for the application's own `syncWait()`, and the tools cannot do that for it.
 
 ### `ModelContextLike`
 

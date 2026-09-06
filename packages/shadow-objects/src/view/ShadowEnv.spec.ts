@@ -1872,5 +1872,40 @@ describe('ShadowEnv', () => {
       ComponentContext.get('inspect-c').dispose();
       ComponentContext.get('inspect-d').dispose();
     });
+
+    it('asks only the environments whose namespace the filter accepts, and never touches the others', async () => {
+      const a = new ShadowEnv();
+      a.view = ComponentContext.get('inspect-only-a');
+      a.envProxy = new LocalShadowObjectEnv();
+
+      let asked = 0;
+      const b = new ShadowEnv();
+      b.view = ComponentContext.get('inspect-only-b');
+      b.envProxy = {
+        start: () => Promise.resolve(),
+        importScript: () => Promise.resolve(),
+        applyChangeTrail: () => Promise.resolve(),
+        destroy: () => {},
+        inspect: () => {
+          asked += 1;
+          return Promise.reject(new Error('should not be asked'));
+        },
+      };
+
+      await Promise.all([a.ready(), b.ready()]);
+
+      try {
+        const snapshots = await ShadowEnv.inspectAll({}, undefined, (ns) => ns === 'inspect-only-a');
+
+        expect(snapshots.map((s) => s.namespace)).toEqual(['inspect-only-a']);
+        expect(asked, 'the refused environment was not inspected').toBe(0);
+        expect((await ShadowEnv.inspectAll({}, undefined, () => false)).length).toBe(0);
+      } finally {
+        a.destroy();
+        b.destroy();
+        ComponentContext.get('inspect-only-a').dispose();
+        ComponentContext.get('inspect-only-b').dispose();
+      }
+    });
   });
 });
