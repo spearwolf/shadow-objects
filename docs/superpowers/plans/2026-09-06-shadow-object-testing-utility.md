@@ -1102,7 +1102,7 @@ describe('TestEntity properties and contexts', () => {
     t.dispose();
   });
 
-  it('a child reads a context its parent provides', async () => {
+  it('a child reads a context its parent provides, one settle after the first read', async () => {
     const t = createTestKernel();
     const world = {gravity: -9.81};
 
@@ -1116,7 +1116,15 @@ describe('TestEntity properties and contexts', () => {
 
     await t.settle();
 
-    expect(body.readContext('physicsWorld')).toBe(world);
+    // Nothing on this Entity has touched the context yet, so this read is what creates the entry
+    // and links it to the parent. The link feeds the inherited signal straight away, but the
+    // effective value every reader sees runs through the Entity's microtask collector -- so a read
+    // that creates the entry is always one settle too early, however long the parent has stood.
+    expect(body.readContext('physicsWorld')).toBeUndefined();
+
+    await t.settle();
+
+    expect(body.readContext<typeof world>('physicsWorld')).toBe(world);
 
     t.dispose();
   });
@@ -2471,7 +2479,7 @@ Insert a new `## Testing` section directly after the `## Model Context` section 
 
 - `createTestKernel(options?)` and `TestKernelOptions`
 - the `TestKernel` members, one line each
-- `TestEntity`, one line per member, with the timing note on `readContext()` and the throw conditions of `instanceOf()`
+- `TestEntity`, one line per member, with the throw conditions of `instanceOf()` and this timing rule on `readContext()`: a context is read one settle after a provider wrote it, and a context no Shadow Object on that Entity has used yet needs one settle more, because the read is what creates the entry and links it to the parent
 - `mountShadowObject(constructa, options?)`, `MountOptions`, `MountedShadowObject`, and the two microtask hops
 - `settle()` and why it uses a `MessageChannel`
 - `KernelErrorRecord`, `ViewMessageRecord`, and the rule that only level `error` fails a `dispose()`
