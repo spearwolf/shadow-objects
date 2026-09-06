@@ -2448,10 +2448,12 @@ git add packages/shadow-objects/src/testing/mountShadowObject.ts \
         packages/shadow-objects/src/distContract.files.txt
 git commit -m "feat: mountShadowObject() is the one-object case, and it is asynchronous
 
-Contexts come from a synthetic parent Entity, and a context value needs two
-microtask hops to reach a reader: one for the parent, one for the child's own
-context signal. The mount settles after each, so when it resolves every
-effect that depends on a context has re-run."
+Contexts come from a synthetic parent Entity, and the mount settles twice for
+two different reasons. settle() drains the whole microtask cascade, so the
+second one alone already carries every context value into every effect. The
+first is what a constructor gets: it fills the parent's context signal before
+the link is made, so a useParentContext() read inside the constructor body
+answers with the value instead of undefined."
 ```
 
 ---
