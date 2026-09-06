@@ -2,7 +2,7 @@ import {emit} from '@spearwolf/eventize';
 import {value} from '@spearwolf/signalize';
 import {getDisplayName} from '../in-the-dark/displayName.js';
 import type {Entity} from '../in-the-dark/Entity.js';
-import type {Kernel} from '../in-the-dark/Kernel.js';
+import type {Kernel, MessageToViewEvent} from '../in-the-dark/Kernel.js';
 import type {ComponentPropertiesType, ShadowObjectConstructor, ShadowObjectDescription, ShadowObjectType} from '../types.js';
 import type {
   AnyShadowObjectConstructor,
@@ -172,6 +172,21 @@ export class TestEntityImpl implements TestEntity {
 
   describe(): ShadowObjectDescription[] {
     return this.#kernel.describeShadowObjects(this.uuid);
+  }
+
+  /**
+   * Called by the test kernel for every message the Kernel emitted for this uuid. `traverseChildren`
+   * is recorded rather than acted on: the flag is an instruction to the View layer, and there is no
+   * View layer here.
+   *
+   * @internal
+   */
+  recordViewMessage(message: MessageToViewEvent): void {
+    this.#viewMessages.push({
+      type: message.type,
+      data: message.data,
+      ...(message.traverseChildren !== undefined ? {traverseChildren: message.traverseChildren} : {}),
+    });
   }
 
   clearViewMessages(): void {

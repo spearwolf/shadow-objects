@@ -1,5 +1,7 @@
+import {on} from '@spearwolf/eventize';
+import {MessageToView} from '../constants.js';
 import {importModule as importShadowObjectsModule} from '../in-the-dark/importModule.js';
-import {Kernel} from '../in-the-dark/Kernel.js';
+import {Kernel, type MessageToViewEvent} from '../in-the-dark/Kernel.js';
 import {Registry} from '../in-the-dark/Registry.js';
 import type {ShadowObjectConstructor, ShadowObjectsModule} from '../types.js';
 import {generateUUID} from '../utils/generateUUID.js';
@@ -22,6 +24,7 @@ class TestKernelImpl implements TestKernel, TestKernelInternals {
   readonly #handles = new Map<string, TestEntityImpl>();
   readonly #importedModules = new Set<ShadowObjectsModule>();
   readonly #recorder: KernelErrorRecorder;
+  readonly #unsubscribeMessageToView: () => void;
   // Only a Registry this test kernel made is a Registry it may empty. One the caller handed in is
   // the caller's, default or not, and clearing it would take the rest of the suite's definitions.
   readonly #ownsRegistry: boolean;
@@ -33,6 +36,12 @@ class TestKernelImpl implements TestKernel, TestKernelInternals {
     this.registry = options.registry ?? new Registry();
     this.kernel = new Kernel(this.registry);
     this.#recorder = recordKernelErrors(this.kernel.logger, options.echoKernelErrors ?? false);
+
+    // Nothing clones the payload on the way here, unlike `LocalShadowObjectEnv`, which runs it
+    // through `structuredClone`. A test asserts on the object the Shadow Object sent.
+    this.#unsubscribeMessageToView = on(this.kernel, MessageToView, (message: MessageToViewEvent) => {
+      this.#handles.get(message.uuid)?.recordViewMessage(message);
+    });
   }
 
   get errors(): readonly KernelErrorRecord[] {
@@ -101,6 +110,7 @@ class TestKernelImpl implements TestKernel, TestKernelInternals {
     this.#disposed = true;
 
     this.kernel.destroy();
+    this.#unsubscribeMessageToView();
 
     if (this.#ownsRegistry) {
       this.registry.clear();
