@@ -1,3 +1,4 @@
+import {value} from '@spearwolf/signalize';
 import type {Entity} from '../in-the-dark/Entity.js';
 import type {Kernel} from '../in-the-dark/Kernel.js';
 import type {ComponentPropertiesType, ShadowObjectDescription, ShadowObjectType} from '../types.js';
@@ -90,9 +91,13 @@ export class TestEntityImpl implements TestEntity {
    * after a provider wrote it -- `Entity` runs every context value through a `MicrotaskCollector` --
    * so a test reads it after `settle()`.
    */
+  /**
+   * The effective value of an Entity Context, the one `useContext()` reads. It arrives a microtask
+   * after a provider wrote it -- `Entity` runs every context value through a `MicrotaskCollector` --
+   * so a test reads it after `settle()`.
+   */
   readContext<T = unknown>(name: string | symbol): T | undefined {
-    const reader = this.entity.useContext<T | undefined>(name);
-    return reader();
+    return value(this.entity.useContext<T | undefined>(name));
   }
 
   setToken(_token: string): void {

@@ -93,32 +93,29 @@ describe('TestEntity properties and contexts', () => {
     t.dispose();
   });
 
-  it('a child reads a context its parent provides', async () => {
+  it('a child reads a context its parent provides, one settle after the first read', async () => {
     const t = createTestKernel();
     const world = {gravity: -9.81};
-    let bodyContextValue: unknown;
 
     t.define('root', function Root({provideContext}: ShadowObjectCreationAPI) {
       provideContext('physicsWorld', world);
     });
-    t.define('body', function Body({useContext}: ShadowObjectCreationAPI) {
-      // The child captures the context reader during construction, when the parent-child
-      // link is being established. This differs from reading the context through the
-      // TestEntity handle after construction, which accesses the context after deferrals
-      // have been processed.
-      bodyContextValue = useContext('physicsWorld');
-    });
+    t.define('body', class Body {});
 
     const root = t.createEntity('root');
-    root.createChild('body');
+    const body = root.createChild('body');
 
     await t.settle();
 
-    // The child's shadow object captured the context reader during construction,
-    // so it should have access to the parent's context value
-    expect(bodyContextValue).toBeDefined();
-    const reader = bodyContextValue as () => unknown;
-    expect(reader()).toBe(world);
+    // Nothing on this Entity has touched the context yet, so this read is what creates the entry
+    // and links it to the parent. The link feeds the inherited signal straight away, but the
+    // effective value every reader sees runs through the Entity's microtask collector -- so a read
+    // that creates the entry is always one settle too early, however long the parent has stood.
+    expect(body.readContext('physicsWorld')).toBeUndefined();
+
+    await t.settle();
+
+    expect(body.readContext<typeof world>('physicsWorld')).toBe(world);
 
     t.dispose();
   });
