@@ -1,7 +1,14 @@
 import type {ShadowObjectCreationAPI} from '../types.js';
 import {generateUUID} from '../utils/generateUUID.js';
 import {createTestKernel} from './createTestKernel.js';
-import type {AnyShadowObjectConstructor, MountedShadowObject, MountOptions, ShadowObjectInstance, TestEntity} from './types.js';
+import type {
+  AnyShadowObjectConstructor,
+  MountedShadowObject,
+  MountOptions,
+  ShadowObjectInstance,
+  TestEntity,
+  TestKernel,
+} from './types.js';
 
 /**
  * Mounts one Shadow Object on one Entity and hands back everything a test asserts on.
@@ -31,6 +38,31 @@ export async function mountShadowObject<C extends AnyShadowObjectConstructor>(
     ...(options.echoKernelErrors !== undefined ? {echoKernelErrors: options.echoKernelErrors} : {}),
   });
 
+  // Everything from here on can throw -- a Shadow Object constructor propagates through
+  // `createEntity()`, and `shadowObjectOf()` throws when nothing matched. The test kernel is
+  // unreachable on that path, because the caller is handed an error rather than a mount, so it is
+  // torn down here or never. With `{registry: Registry.get()}` "never" would leave the generated
+  // token and the synthetic provider's token in the process-wide Registry for the rest of the run.
+  try {
+    return await mount(testKernel, constructa, options);
+  } catch (error) {
+    try {
+      testKernel.dispose();
+    } catch {
+      // `dispose()` throws over an unacknowledged Kernel error -- and a failed mount is exactly the
+      // situation that records one. That error must not take the place of the one the caller is
+      // waiting for: the original says why the mount failed, and it is the one that gets through.
+    }
+    throw error;
+  }
+}
+
+/** The body of the mount, split out so the caller above has one place to put the teardown guard. */
+async function mount<C extends AnyShadowObjectConstructor>(
+  testKernel: TestKernel,
+  constructa: C,
+  options: MountOptions,
+): Promise<MountedShadowObject<C>> {
   const token = options.token ?? `mounted-shadow-object-${generateUUID()}`;
   testKernel.define(token, constructa);
 
