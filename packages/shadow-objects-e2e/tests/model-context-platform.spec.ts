@@ -8,6 +8,7 @@ test.describe('model-context-platform', () => {
   test.skip(({browserName}) => browserName !== 'chromium', 'WebMCP is a Chromium feature behind --enable-features=WebMCP');
 
   runPageTests('/pages/model-context-platform.html', [
+    'mcp-element-share-resolves',
     'mcp-expose-resolves',
     'mcp-model-context-is-available',
     'mcp-tools-are-listed-by-the-platform',
@@ -15,6 +16,7 @@ test.describe('model-context-platform', () => {
     'mcp-get-entity-tree-executes-through-the-platform',
     'mcp-find-entities-executes-through-the-platform',
     'mcp-a-refusal-comes-back-as-an-error-result',
-    'mcp-dispose-takes-the-tools-back',
+    'mcp-dispose-leaves-the-element-share-standing',
+    'mcp-removing-the-element-takes-the-tools-off-the-platform',
   ]);
 });

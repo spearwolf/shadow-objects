@@ -10,6 +10,13 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 - **`AGENTS.md`, `README.md`, `packages/shadow-objects/docs/README.md`:** link the second proposal next to the first.
 
+## 2026-09-06 — the e2e and integration suites drive the expose-to-model-context attribute
+
+The element-level opt-in of the inspection proposal (`docs/proposals/web-mcp-shadow-envs.md`, §11.4 and §17) lands in `@spearwolf/shadow-objects`; what it changes for the package is in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md). The two private test packages grow with it.
+
+- **`packages/shadow-objects-e2e`:** `pages/model-context-element.html` drives `<shae-worker expose-to-model-context redact-props>` over a real worker next to a local element without the attribute, through a fake model context installed before the element definitions load, in Chromium, Firefox and WebKit; `pages/model-context-platform.html` puts such an element next to the function call on Chromium's real `document.modelContext` and shows one registration shared by both. `TEST-PLAN.md`: the case counts stand at 291 per project, 873 overall.
+- **`packages/shadow-objects-testing`:** `test/worker-element-model-context.test.js` builds the same from markup in real Chromium -- parser upgrade with the attribute in place, `<shae-prop>` values through the tools, redaction cumulating across elements and a function call, and the teardown of the last exposing element.
+
 ## 2026-09-06 — the inspection proposal reads as built, and the three phase plans that carried it are gone
 
 `docs/proposals/web-mcp-shadow-envs.md` is a design record now, not a draft: its status says the three phases shipped on 2026-09-05, a new §0 says what is open, and every detail the code settled differently from the first draft is amended in place, marked *as built*. The document is linked from `AGENTS.md`, the root README and the docs index, so it is part of the documentation rather than a file next to it.

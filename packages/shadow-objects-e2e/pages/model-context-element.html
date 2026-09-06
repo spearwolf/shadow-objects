@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>model-context-element</title>
+  </head>
+  <body>
+    <shae-worker id="exposed" ns="mce-worker" src="/mod-hello.js" expose-to-model-context redact-props="xyz"></shae-worker>
+    <shae-worker id="silent" ns="mce-local" local></shae-worker>
+
+    <shae-ent ns="mce-worker" token="foo" id="foo">
+      <shae-prop name="xyz" type="number" value="123"></shae-prop>
+      <shae-ent ns="mce-worker" token="bar" id="bar">
+        <shae-prop name="plah" type="number" value="666"></shae-prop>
+      </shae-ent>
+    </shae-ent>
+    <shae-ent ns="mce-local" token="foo"></shae-ent>
+
+    <section id="tests"></section>
+    <script type="module" src="/src/model-context-element.js"></script>
+  </body>
+</html>

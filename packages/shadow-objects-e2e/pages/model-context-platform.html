@@ -7,6 +7,9 @@
     <title>model-context-platform</title>
   </head>
   <body>
+    <shae-worker id="element" ns="mcp-element" local expose-to-model-context redact-props="xyz"></shae-worker>
+    <shae-ent ns="mcp-element" token="foo"><shae-prop name="xyz" type="number" value="7"></shae-prop></shae-ent>
+
     <section id="tests"></section>
     <script type="module" src="/src/model-context-platform.js"></script>
   </body>

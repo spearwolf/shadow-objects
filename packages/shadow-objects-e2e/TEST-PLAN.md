@@ -3,8 +3,8 @@
 Status: 2026-09-05. Analysis of the Playwright suite in this package, the gaps it leaves, and a
 ticket-ready list of test cases to close them.
 
-> **Where the suite stands.** 825 tests across Chromium, Firefox and WebKit — 275 per project,
-> fifteen spec files over fifteen pages. The harness fixes and the P1 blocks of every group below
+> **Where the suite stands.** 873 tests across Chromium, Firefox and WebKit — 291 per project,
+> sixteen spec files over sixteen pages. The harness fixes and the P1 blocks of every group below
 > are in place. No framework defect is open — [`KNOWN-DEFECTS.md`](KNOWN-DEFECTS.md) describes
 > the `knownFailures` mechanism that carries the next one.
 >
@@ -19,7 +19,7 @@ Scope: E2E only. This file names the pages, fixtures and assertions of the Playw
 
 ## 1. What exists today
 
-Fifteen spec files, 275 registered test cases per project — 825 across Chromium, Firefox and WebKit. The specs
+Sixteen spec files, 291 registered test cases per project — 873 across Chromium, Firefox and WebKit. The specs
 themselves contain almost no logic: they name a page and a list of ids, and `runPageTests` turns
 each id into one Playwright test that asserts `data-testresult="ok"` on the node the page wrote.
 All real assertions live in `src/*.js`.
@@ -40,7 +40,8 @@ All real assertions live in `src/*.js`.
 | `remote-worker-env.spec.ts` | `pages/remote-worker-env.html` | 7 | Programmatic `ShadowEnv` + `RemoteWorkerEnv`: `ready()`, `importScript()`, `isReady`, one `sync()`, one message worker → view. |
 | `inspect-worker-env.spec.ts` | `pages/inspect-worker-env.html` | 16 | `ShadowEnv.inspect()` over a real worker: the snapshot is built in the worker (`thread: 'worker'`) and comes back JSON-safe, View and Kernel agree on uuids, tokens and props, Shadow Objects and the Registry are described, `maxDepth` and `include` are honoured with a truncation note, an aborted signal rejects with its reason, and the proxy rejects after the teardown. |
 | `model-context.spec.ts` | `pages/model-context.html` | 18 | The five inspection tools through a fake model context, over one worker and one local environment: registration with names and annotations, `list-envs` with counts and no tree, `get-entity-tree` over the wire and under limits, `get-entity` with ancestors and the View component, `find-entities` by token with paths, a call without a criterion and an unknown namespace refused as error results, redaction on both halves, a JSON-safe envelope, and `dispose()`. |
-| `model-context-platform.spec.ts` | `pages/model-context-platform.html` | 10 | The same tools on Chromium's real `document.modelContext`: `getTools()` lists them with their annotations, `executeTool()` reaches `list-envs`, `get-entity-tree` and `find-entities` and brings the envelope back, a refusal arrives as an error result, and `dispose()` takes them off the platform. Skipped in Firefox and WebKit. |
+| `model-context-platform.spec.ts` | `pages/model-context-platform.html` | 12 | The same tools on Chromium's real `document.modelContext`: `getTools()` lists them with their annotations, `executeTool()` reaches `list-envs`, `get-entity-tree` and `find-entities` and brings the envelope back, a refusal arrives as an error result, and `dispose()` takes them off the platform; a `<shae-worker expose-to-model-context>` on the same page shares the registration with the call, its share outlives the call's `dispose()`, and removing the element takes the tools off the platform. Skipped in Firefox and WebKit. |
+| `model-context-element.spec.ts` | `pages/model-context-element.html` | 14 | `<shae-worker expose-to-model-context redact-props="xyz">` over a real worker next to a local element without the attribute, through a fake model context installed before the definitions load: the attribute registers the five tools once, `list-envs` names the exposed environment alone, the hidden namespace is refused as unknown, the redaction crosses the wire, a second element joins the same registration and its `redact-props` cumulate with the first's, removing the attribute leaves and takes its rule with it, and removing the last element takes the tools back. |
 
 Two of the cases per page come from the harness rather than from the page: `runPageTests` always
 registers `test suite setup` and a case over the errors the page recorded. A page that names no
