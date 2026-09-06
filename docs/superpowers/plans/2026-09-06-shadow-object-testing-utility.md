@@ -1691,6 +1691,13 @@ import {describe, expect, it} from 'vitest';
 import type {ShadowObjectCreationAPI} from '../types.js';
 import {createTestKernel} from './createTestKernel.js';
 
+// `traverseChildren: false` stands in every expectation below on purpose. Both layers of the
+// dispatch -- `ShadowObjectCreationScope.dispatchMessageToView()` and
+// `Entity.dispatchMessageToView()` -- declare the parameter as `traverseChildren = false`, so a
+// message that came through the creation API always carries the field, never omits it. The
+// recorder's conditional spread is for the other entrance: `Kernel.dispatchMessageToView()` takes a
+// `MessageToViewEvent` whose `traverseChildren` is optional, and a caller assembling one by hand
+// may leave it out.
 describe('TestEntity view messages', () => {
   it('records what a Shadow Object dispatched, after one settle', async () => {
     const t = createTestKernel();
@@ -1708,14 +1715,14 @@ describe('TestEntity view messages', () => {
 
     await t.settle();
 
-    expect(ent.viewMessages).toEqual([{type: 'score-updated', data: {value: 0}}]);
+    expect(ent.viewMessages).toEqual([{type: 'score-updated', data: {value: 0}, traverseChildren: false}]);
 
     ent.setProps({score: 10});
     await t.settle();
 
     expect(ent.viewMessages).toEqual([
-      {type: 'score-updated', data: {value: 0}},
-      {type: 'score-updated', data: {value: 10}},
+      {type: 'score-updated', data: {value: 0}, traverseChildren: false},
+      {type: 'score-updated', data: {value: 10}, traverseChildren: false},
     ]);
 
     t.dispose();
@@ -1753,7 +1760,7 @@ describe('TestEntity view messages', () => {
     const ent = t.createEntity('eager');
     await t.settle();
 
-    expect(ent.viewMessages).toEqual([{type: 'constructed', data: undefined}]);
+    expect(ent.viewMessages).toEqual([{type: 'constructed', data: undefined, traverseChildren: false}]);
 
     t.dispose();
   });
@@ -1784,8 +1791,8 @@ describe('TestEntity view messages', () => {
     const b = t.createEntity('probe');
     await t.settle();
 
-    expect(a.viewMessages).toEqual([{type: 'from', data: a.uuid}]);
-    expect(b.viewMessages).toEqual([{type: 'from', data: b.uuid}]);
+    expect(a.viewMessages).toEqual([{type: 'from', data: a.uuid, traverseChildren: false}]);
+    expect(b.viewMessages).toEqual([{type: 'from', data: b.uuid, traverseChildren: false}]);
 
     a.clearViewMessages();
 
@@ -2540,7 +2547,7 @@ Insert a new `## Testing` section directly after the `## Model Context` section 
 - `TestEntity`, one line per member, with the throw conditions of `instanceOf()` and this timing rule on `readContext()`: a context is read one settle after a provider wrote it, and a context no Shadow Object on that Entity has used yet needs one settle more, because the read is what creates the entry and links it to the parent
 - `mountShadowObject(constructa, options?)`, `MountOptions`, `MountedShadowObject`, and the two microtask hops
 - `settle()` and why it uses a `MessageChannel`
-- `KernelErrorRecord`, `ViewMessageRecord`, and the rule that only level `error` fails a `dispose()`
+- `KernelErrorRecord`, `ViewMessageRecord`, and the rule that only level `error` fails a `dispose()`. Say that a recorded message always carries `traverseChildren` when it came from a Shadow Object, because both layers of `dispatchMessageToView()` default the parameter to `false`; the field is absent only for a message assembled by hand and handed straight to `Kernel.dispatchMessageToView()`
 - the Registry isolation rule, including the `createTestKernel({registry: Registry.get()})` bridge for `@ShadowObject`-registered classes and the warning that a Registry handed in is never cleared
 - that a function handed in as a context value is read by `provideContext()` as a signal reader
 
