@@ -4,6 +4,14 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-09-06 — the build-system design record is gone, and `docs/superpowers/` with it
+
+`docs/superpowers/specs/2026-05-09-build-system-renewal-design.md` is removed. It was archived as "Historical" on 2026-08-27 and spared twice since, both times on the grounds that this changelog and `Backlog.md` link it. `Backlog.md` is gone, and the document's own verification section diffs a build against `docs/superpowers/specs/dist-snapshot.txt`, which the cleanup of 2026-08-27 deleted while sparing the document that reads it. What remained was a design for a tsdown build that was never built, kept in place by a changelog entry saying it was kept. No task, no test and no CI job read it.
+
+- **The one thing it recorded and nothing else does** is the stack the renewal replaced: nx 19 with a `project.json` per package and `targetDefaults`, eslint 8 and prettier 3 with nine plugins, vitest 1 behind a TypeScript precompile step alongside `@web/test-runner`, and four tsconfigs inside `packages/shadow-objects`. It stands here now, so the removal costs nothing. What the toolchain is today is in [`CLAUDE.md`](CLAUDE.md).
+- **`docs/superpowers/`:** removed entirely. `specs/` held that one file, `plans/` was emptied on 2026-09-06, and design records live in [`docs/proposals/`](docs/proposals/). Git history holds the file — `c3223c4` wrote it with the renewal, `6b852b6` marked it historical.
+- Earlier entries below that name the document stay as they were written. They are correct about the day they describe.
+
 ## 2026-09-06 — the typed entity events have their design record
 
 `docs/proposals/typed-entity-events.md` records why the creation API's `on()` / `once()` / `emit()` were brought in line with eventize and how `ShadowObjectCreationAPI<TEvents>` and `EventsOf<T>` are cut: the routing rule that tells the entity forms from the target form, why the members stay method declarations, why a per-call generic was not taken, and what is open. Written after the code, as built, in the same shape as the inspection proposal. What the change does for the package is in [`packages/shadow-objects/CHANGELOG.md`](packages/shadow-objects/CHANGELOG.md).
