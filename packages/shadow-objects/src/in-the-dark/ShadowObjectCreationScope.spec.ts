@@ -1,4 +1,4 @@
-import {emit, eventize, on} from '@spearwolf/eventize';
+import {emit, eventize, on, Priority} from '@spearwolf/eventize';
 import {createSignal, type Signal, type SignalReader, value} from '@spearwolf/signalize';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import type {ShadowObjectCreationAPI, ShadowObjectType} from '../types.js';
@@ -588,6 +588,112 @@ describe('ShadowObjectCreationScope', () => {
       scope.tearDown();
 
       expect(() => scope.bindTo(eventize({}), vi.fn(), vi.fn())).toThrow(/torn down/);
+
+      kernel.destroy();
+    });
+  });
+
+  describe('where a subscription goes', () => {
+    // The creation API takes every subscription form eventize's `on()` / `once()` take, and decides
+    // from the arguments alone whether it is on the entity or on a target of its own: an event name,
+    // a priority, a listener function or a lone listener object in front means the entity; an
+    // object followed by more means that object is the target.
+    const methods = ['on', 'once'] as const;
+
+    it.each(methods)('%s(listener): a catch-all function listens on the entity', (method) => {
+      const {kernel, entity, scope} = boundScope();
+      const api = scope.createAPI();
+      const heard = vi.fn();
+
+      api[method](heard);
+      emit(entity, 'anything', 1);
+
+      expect(heard).toHaveBeenCalledWith(1);
+
+      kernel.destroy();
+    });
+
+    it.each(methods)('%s(priority, methodName, listenerObject): a priority in front still means the entity', (method) => {
+      const {kernel, entity, scope} = boundScope();
+      const api = scope.createAPI();
+      const handle = vi.fn();
+
+      api[method](Priority.High, 'handle', {handle});
+      emit(entity, 'anything', 9);
+
+      expect(handle).toHaveBeenCalledWith(9);
+
+      kernel.destroy();
+    });
+
+    it.each(methods)('%s(priority, listener): a catch-all with a priority listens on the entity', (method) => {
+      const {kernel, entity, scope} = boundScope();
+      const api = scope.createAPI();
+      const heard = vi.fn();
+
+      api[method](Priority.Low, heard);
+      emit(entity, 'anything', 2);
+
+      expect(heard).toHaveBeenCalledWith(2);
+
+      kernel.destroy();
+    });
+
+    it.each(methods)(
+      '%s(listenerObject): a lone object listens on the entity by its method names, and is released by the teardown',
+      (method) => {
+        const {kernel, entity, scope} = boundScope();
+        const api = scope.createAPI();
+        const seen: unknown[] = [];
+        const listener = {
+          ping(value: number) {
+            seen.push([this, value]);
+          },
+        };
+
+        api[method](listener);
+        emit(entity, 'ping', 3);
+        emit(entity, 'pong', 4);
+
+        expect(seen, 'the method is called with the object as its receiver').toEqual([[listener, 3]]);
+
+        scope.tearDown();
+        emit(entity, 'ping', 5);
+
+        expect(seen, 'and nothing arrives past the teardown').toHaveLength(1);
+
+        kernel.destroy();
+      },
+    );
+
+    it.each(methods)('%s(target, listenerObject): an object followed by more is the target', (method) => {
+      const {kernel, entity, scope} = boundScope();
+      const api = scope.createAPI();
+      const other = eventize({});
+      const ping = vi.fn();
+
+      api[method](other, {ping});
+      emit(entity, 'ping', 'entity');
+      emit(other, 'ping', 'other');
+
+      expect(ping).toHaveBeenCalledTimes(1);
+      expect(ping).toHaveBeenCalledWith('other');
+
+      kernel.destroy();
+    });
+
+    it.each(methods)('%s(target, listener): a catch-all on a target', (method) => {
+      const {kernel, entity, scope} = boundScope();
+      const api = scope.createAPI();
+      const other = eventize({});
+      const heard = vi.fn();
+
+      api[method](other, heard);
+      emit(entity, 'ping', 'entity');
+      emit(other, 'ping', 'other');
+
+      expect(heard).toHaveBeenCalledTimes(1);
+      expect(heard).toHaveBeenCalledWith('other');
 
       kernel.destroy();
     });

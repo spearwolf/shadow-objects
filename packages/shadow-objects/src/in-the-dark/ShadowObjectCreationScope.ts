@@ -47,6 +47,26 @@ const inertEffect = (): ReturnType<typeof createEffect> => {
 const noSubscription = (): void => {};
 
 /**
+ * Where a subscription taken through the creation API goes: the arguments of eventize's `on()` /
+ * `once()` with the entity put in front, or the arguments as they are when the first of them is a
+ * target of its own.
+ *
+ * Eventize reads the *shape* of the arguments to tell its forms apart, and the creation API has to
+ * read the same shape one argument earlier. The first argument means the entity when it is an event
+ * name or a list of them, a priority, a listener function, or an object standing alone -- a
+ * listener object with nothing after it, the form the Kernel itself uses to attach a Shadow Object.
+ * An object followed by anything is the target: `on(other, 'ping', fn)`, `on(other, fn)` and
+ * `on(other, listenerObject)`. The one form that is unreachable on the entity by design is a
+ * listener object together with a context object, because `[object, object]` reads as a target and
+ * its listener; a context is not needed for the entity, where the object itself is the receiver.
+ */
+function subscribeOn(entity: Entity, args: unknown[]): unknown[] {
+  const [first] = args;
+  const isTarget = args.length > 1 && typeof first === 'object' && first !== null && !Array.isArray(first);
+  return isTarget ? args : [entity, ...args];
+}
+
+/**
  * Everything a single shadow-object was given at construction time, and the end of all of it.
  *
  * The scope holds the signals, links and subscriptions the creation API hands out, and it hands the API
@@ -762,13 +782,8 @@ export class ShadowObjectCreationScope {
   on(...args: any[]): ReturnType<typeof on> {
     if (this.#refuseAfterTearDown('on')) return noSubscription;
 
-    const [firstArg] = args;
-    const unsubscribe =
-      typeof firstArg === 'string' || typeof firstArg === 'symbol' || Array.isArray(firstArg)
-        ? // @ts-ignore
-          on(this.#entity, ...args)
-        : // @ts-ignore
-          on(...args);
+    // @ts-ignore -- the standalone `on()` has no rest-parameter overload; `subscribeOn()` decided the target
+    const unsubscribe = on(...subscribeOn(this.#entity, args));
 
     return this.#trackSubscription(unsubscribe);
   }
@@ -776,13 +791,8 @@ export class ShadowObjectCreationScope {
   once(...args: any[]): ReturnType<typeof once> {
     if (this.#refuseAfterTearDown('once')) return noSubscription;
 
-    const [firstArg] = args;
-    const unsubscribe =
-      typeof firstArg === 'string' || typeof firstArg === 'symbol' || Array.isArray(firstArg)
-        ? // @ts-ignore
-          once(this.#entity, ...args)
-        : // @ts-ignore
-          once(...args);
+    // @ts-ignore -- same as in `on()`
+    const unsubscribe = once(...subscribeOn(this.#entity, args));
 
     return this.#trackSubscription(unsubscribe);
   }
