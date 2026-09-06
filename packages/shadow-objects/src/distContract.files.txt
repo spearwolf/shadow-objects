@@ -164,6 +164,10 @@ src/model-context/redactProps.d.ts
 src/model-context/redactProps.d.ts.map
 src/model-context/redactProps.js
 src/model-context/redactProps.js.map
+src/model-context/sharedExposure.d.ts
+src/model-context/sharedExposure.d.ts.map
+src/model-context/sharedExposure.js
+src/model-context/sharedExposure.js.map
 src/model-context/toolSupport.d.ts
 src/model-context/toolSupport.d.ts.map
 src/model-context/toolSupport.js

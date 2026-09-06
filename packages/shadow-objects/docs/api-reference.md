@@ -1977,14 +1977,17 @@ A subpath rather than an `index.ts` export, so that the module stays out of the 
 | :--- | :--- | :--- |
 | `modelContext` | `document.modelContext`, then `navigator.modelContext` | Where to register. Anything with a `registerTool()` -- a fake in a test, an adapter of your own |
 | `toolPrefix` | `'shae-'` | The start of every tool name, so the tools sit next to an application's own without colliding |
-| `signal` | none | Aborting it unregisters every tool; the same as `dispose()`; a signal that is already aborted registers nothing and resolves with `available: true, tools: []` |
-| `exposedTo` | not set | Passed through to `registerTool()` untouched; the platform's default applies without it |
-| `limits` | `{}` | An `InspectRequest` of defaults for every call; a call's own input wins field by field, `values` one level down |
-| `redactProps` | none | `string[]` or `(name, uuid) => boolean`: the properties whose values every answer replaces by `{$type: 'redacted'}`, on the Kernel's and the View's side alike. Property values only; an Entity Context that carries the same secret is not covered |
+| `signal` | none | Aborting it takes this call's share back; the same as `dispose()`; a signal that is already aborted registers nothing and resolves with `available: true, tools: []` |
+| `exposedTo` | not set | Passed through to `registerTool()` by the call that opens the registration; the platform's default applies without it |
+| `limits` | `{}` | An `InspectRequest` of defaults for every tool call, set by the call that opens the registration; a call's own input wins field by field, `values` one level down |
+| `redactProps` | none | `string[]` or `(name, uuid) => boolean`: the properties whose values every answer replaces by `{$type: 'redacted'}`, on the Kernel's and the View's side alike. Property values only; an Entity Context that carries the same secret is not covered. Cumulates: every share of the registration adds its rule, a value is hidden when any rule says so, and a rule leaves with its share |
+| `namespaces` | every environment that holds a namespace | `NamespaceType[]` or `(ns) => boolean` over the namespace an environment is registered under: which environments this share exposes. The registration exposes the union over its shares, so a share without the option makes every environment visible whichever came first. An environment outside the union is not listed, and a tool asked for its namespace answers as for an unknown one |
 
-The promise resolves with `{available: false, tools: [], dispose}` where the platform has no model context -- a worker, Node, a browser without WebMCP, a plain `http://` origin outside `localhost` -- and logs one `info` line through a `ConsoleLogger` named `ModelContext`. It rejects with what `registerTool()` rejected with: a `NotAllowedError` under a Permissions Policy that disables `tools`, an `InvalidStateError` on a name that is already registered. Registration is all-or-nothing -- a rejection midway takes back what was registered before it. A second call while the first handle is live registers a second, independent set; under the same prefix it rejects on the duplicate name and leaves the first set intact. Keep one handle.
+The promise resolves with `{available: false, tools: [], dispose}` where the platform has no model context -- a worker, Node, a browser without WebMCP, a plain `http://` origin outside `localhost` -- and logs one `info` line through a `ConsoleLogger` named `ModelContext`. It rejects with what `registerTool()` rejected with, a `NotAllowedError` under a Permissions Policy that disables `tools` among them. Registration is all-or-nothing -- a rejection midway takes back what was registered before it, and the next call opens afresh.
 
-`ExposeHandle` carries `available`, `tools` (the registered names, with the prefix) and `dispose()`, which is idempotent.
+**One registration per model context and prefix, shared.** Every call of this function and every [`<shae-worker expose-to-model-context>`](#shae-worker) is a *share* of it: the first share opens the registration, a later one joins without registering anything, and the tools leave with the last share. The tools answer from the union over the shares -- the namespaces every share exposes, the properties every share hides -- read at the start of every call, so a share joining or leaving is seen by the next call. `limits` and `exposedTo` are the opener's: a later share with other values is reported through the `ModelContext` logger and joins under the opener's. Another prefix or another model context is another registration.
+
+`ExposeHandle` carries `available`, `tools` (the names of the shared registration, with the prefix) and `dispose()`, which takes this share back and is idempotent.
 
 ### The tools
 
@@ -1998,7 +2001,7 @@ Every tool carries `annotations: {readOnlyHint: true, untrustedContentHint: true
 }
 ```
 
-A refusal -- an unknown namespace, an unknown uuid, a search without a criterion, an input field of the wrong type, an environment that reported a failure -- is an `isError` result and never a rejection, so the wording reaches the agent. Only an aborted `options.signal` rejects `execute()`. A `namespace` names one environment as `shae-list-envs` reports it (the global namespace is `'ShadowObjectsGlobalNS'`); without one, every environment that holds a namespace answers, and every answer is a list with one entry per environment, whichever way it was asked.
+A refusal -- an unknown namespace, an unknown uuid, a search without a criterion, an input field of the wrong type, an environment that reported a failure -- is an `isError` result and never a rejection, so the wording reaches the agent. Only an aborted `options.signal` rejects `execute()`. A `namespace` names one environment as `shae-list-envs` reports it (the global namespace is `'ShadowObjectsGlobalNS'`), and only an environment the registration's shares expose answers at all; without one, every environment that holds a namespace answers, and every answer is a list with one entry per environment, whichever way it was asked.
 
 | Tool | Input | `structuredContent` |
 | :--- | :--- | :--- |

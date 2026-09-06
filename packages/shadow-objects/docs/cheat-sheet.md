@@ -562,10 +562,10 @@ Development only, and read the security section of the API reference first: ever
 
 ```typescript
 import {exposeShadowEnvsToModelContext} from '@spearwolf/shadow-objects/model-context.js';
-const handle = await exposeShadowEnvsToModelContext({redactProps: ['sessionToken']});
+const handle = await exposeShadowEnvsToModelContext({redactProps: ['sessionToken'], namespaces: ['game']});  // namespaces: only these; default every environment
 handle.available;   // false: no model context on this platform, nothing registered
 handle.tools;       // the five names below
-handle.dispose();   // takes them back (or abort options.signal)
+handle.dispose();   // takes this share back; the tools leave with the last share (or abort options.signal)
 ```
 
 | Tool | Asks for | Answers with |

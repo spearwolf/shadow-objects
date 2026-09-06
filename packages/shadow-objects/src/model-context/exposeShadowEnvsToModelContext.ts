@@ -1,31 +1,33 @@
 import type {InspectRequest} from '../inspect/types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
-import {findModelContext, type ModelContextLike, type ModelContextRegisterOptions} from './ModelContextLike.js';
-import {type RedactRule, toRedactPredicate} from './redactProps.js';
-import type {ToolContext} from './toolSupport.js';
-import {createTools} from './tools/index.js';
+import {findModelContext, type ModelContextLike} from './ModelContextLike.js';
+import type {RedactRule} from './redactProps.js';
+import {joinSharedExposure} from './sharedExposure.js';
+import type {NamespaceRule} from './toolSupport.js';
 
 export interface ExposeOptions {
   /** Where to register. Default: `document.modelContext`, then `navigator.modelContext`; neither means "not available". */
   modelContext?: ModelContextLike;
-  /** Prefix for every tool name. Default `'shae-'`. */
+  /** Prefix for every tool name. Default `'shae-'`. Together with `modelContext` it names the registration this call shares. */
   toolPrefix?: string;
-  /** Aborting it unregisters every tool. */
+  /** Aborting it takes this call's share back; the tools leave with the last share. */
   signal?: AbortSignal;
-  /** Passed through to `registerTool()`. Default: not set, so the platform default applies. */
+  /** Passed through to `registerTool()` by the call that opens the registration. Default: not set, so the platform default applies. */
   exposedTo?: string[];
-  /** Default limits for every tool call; a call's own input wins field by field. */
+  /** Default limits for every tool call, set by the call that opens the registration; a call's own input wins field by field. */
   limits?: Partial<InspectRequest>;
-  /** Property names whose values are replaced by `{$type: 'redacted'}` in every answer, on the Kernel's and the View's side alike. Property values only. */
+  /** Property names whose values are replaced by `{$type: 'redacted'}` in every answer, on the Kernel's and the View's side alike. Property values only. Cumulates with every other share of the registration. */
   redactProps?: RedactRule;
+  /** Which environments this share exposes: a list of namespaces or a predicate over the namespace an environment is registered under. Default: every environment that holds a namespace. The registration exposes the union over its shares; a namespace outside it is refused like an unknown one. */
+  namespaces?: NamespaceRule;
 }
 
 export interface ExposeHandle {
   /** `false` when no model context was found; then `tools` is empty and nothing was registered. */
   available: boolean;
-  /** The registered tool names, with the prefix. */
+  /** The tool names of the shared registration, with the prefix. */
   tools: string[];
-  /** Unregisters every tool. Idempotent. The same as aborting `options.signal`. */
+  /** Takes this call's share back; the tools leave with the last share. Idempotent. The same as aborting `options.signal`. */
   dispose(): void;
 }
 
@@ -33,67 +35,51 @@ export const DefaultToolPrefix = 'shae-';
 
 /**
  * Registers the five read-only inspection tools on the platform's model context, so that an
- * agent can see every Shadow Environment on the page. Nothing is exposed without this call;
- * every value in every answer is application state, and the docs say what that means before
- * they show the first line of code.
+ * agent can see the Shadow Environments on the page. Nothing is exposed without this call or
+ * the `expose-to-model-context` attribute of `<shae-worker>`, which goes through it; every value
+ * in every answer is application state, and the docs say what that means before they show the
+ * first line of code.
+ *
+ * One registration per model context and prefix, shared: every call and every element is a
+ * share of it, the first opens it, the last to go closes it, and the tools answer from the union
+ * of what the shares expose and redact. A second call under the same prefix therefore joins
+ * rather than fails.
  *
  * Resolves, never rejects, where the platform has no model context -- the same application code
  * runs in every browser. Rejects with what `registerTool()` rejected with -- a `NotAllowedError`
- * under a Permissions Policy that disables `tools`, an `InvalidStateError` on a name that is
- * already taken -- and those are the caller's to handle. Registration is all-or-nothing: a
- * rejection midway takes back what was registered before it.
+ * under a Permissions Policy that disables `tools` -- and those are the caller's to handle.
+ * Registration is all-or-nothing: a rejection midway takes back what was registered before it.
  */
 export async function exposeShadowEnvsToModelContext(options: ExposeOptions = {}): Promise<ExposeHandle> {
-  const logger = new ConsoleLogger('ModelContext');
   const modelContext = options.modelContext ?? findModelContext();
 
   if (modelContext === undefined) {
-    logger.info('no model context on this platform, nothing registered');
+    new ConsoleLogger('ModelContext').info('no model context on this platform, nothing registered');
     return {available: false, tools: [], dispose() {}};
   }
 
-  // one controller for every tool: `dispose()` and the caller's signal both end here
-  const controller = new AbortController();
   const {signal} = options;
-  if (signal !== undefined) {
-    if (signal.aborted) {
-      controller.abort(signal.reason);
-    } else {
-      const onAbort = () => controller.abort(signal.reason);
-      signal.addEventListener('abort', onAbort, {once: true});
-      // dispose() ends here too; without this, a long-lived caller signal would keep onAbort's closure alive forever
-      controller.signal.addEventListener('abort', () => signal.removeEventListener('abort', onAbort), {once: true});
-    }
-  }
+  if (signal?.aborted) return {available: true, tools: [], dispose() {}};
 
-  const ctx: ToolContext = {
-    prefix: options.toolPrefix ?? DefaultToolPrefix,
-    limits: options.limits ?? {},
-    redact: toRedactPredicate(options.redactProps),
-    isExposed: undefined,
+  const settings = {limits: options.limits ?? {}, ...(options.exposedTo !== undefined ? {exposedTo: options.exposedTo} : {})};
+  const membership = joinSharedExposure(
+    modelContext,
+    options.toolPrefix ?? DefaultToolPrefix,
+    {namespaces: options.namespaces, redactProps: options.redactProps},
+    settings,
+  );
+
+  const dispose = () => {
+    membership.leave();
+    signal?.removeEventListener('abort', dispose);
   };
-  const registerOptions: ModelContextRegisterOptions = {signal: controller.signal};
-  if (options.exposedTo !== undefined) registerOptions.exposedTo = options.exposedTo;
+  signal?.addEventListener('abort', dispose, {once: true});
 
-  const registered: string[] = [];
   try {
-    for (const tool of createTools(ctx)) {
-      if (controller.signal.aborted) break;
-      await modelContext.registerTool(tool, registerOptions);
-      registered.push(tool.name);
-    }
+    const tools = await membership.tools;
+    return {available: true, tools, dispose};
   } catch (error) {
-    // takes back what was registered before the one that failed
-    controller.abort(error);
-    logger.error('registering the tools failed', error);
+    dispose();
     throw error;
   }
-
-  const dispose = () => controller.abort();
-
-  // aborted while registering: the platform has already taken the tools back
-  if (controller.signal.aborted) return {available: true, tools: [], dispose};
-
-  logger.info(`registered ${registered.length} tools`, registered);
-  return {available: true, tools: registered, dispose};
 }
