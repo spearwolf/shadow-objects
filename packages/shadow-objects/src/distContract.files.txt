@@ -224,6 +224,10 @@ src/testing/createTestKernel.d.ts
 src/testing/createTestKernel.d.ts.map
 src/testing/createTestKernel.js
 src/testing/createTestKernel.js.map
+src/testing/mountShadowObject.d.ts
+src/testing/mountShadowObject.d.ts.map
+src/testing/mountShadowObject.js
+src/testing/mountShadowObject.js.map
 src/testing/recordKernelErrors.d.ts
 src/testing/recordKernelErrors.d.ts.map
 src/testing/recordKernelErrors.js
