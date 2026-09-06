@@ -56,6 +56,8 @@ export function MyLogic(api: ShadowObjectCreationAPI) {
 }
 ```
 
+The interface takes an optional event map, `ShadowObjectCreationAPI<TEvents>`, which types `on`, `once` and `emit` against the events of this Entity -- see [Typed events](#typed-events).
+
 ---
 
 ### 1. Inputs (Properties)
@@ -265,22 +267,43 @@ A `cleanup` that throws when the Shadow Object tears down does not stop the rest
 
 ### 4. Events
 
-Shadow Objects communicate via an event system that mirrors standard DOM events but runs entirely within the Shadow Environment.
+Shadow Objects communicate via an event system that mirrors standard DOM events but runs entirely within the Shadow Environment. The event bus is the Entity: every Shadow Object on it emits there and listens there, and the Kernel attaches each Shadow Object to its Entity as an eventize listener object, so a method named like an event is called when that event fires -- on a class instance and on the object a function returns alike, see [Automatic Event Handling](./guides.md#automatic-event-handling) and [Listening to Entity Events](./guides.md#listening-to-entity-events).
 
-#### `on(source, eventName, callback)`
+The three members below are `@spearwolf/eventize`'s `on()`, `once()` and `emit()` with the Entity filled in as the emitter and the subscription tied to the Shadow Object. What eventize does with a listener, a priority, a retained event or a typed event map is documented there and not repeated here: [eventize README](https://github.com/spearwolf/eventize#readme), [typed event maps](https://github.com/spearwolf/eventize/blob/main/docs/typed-events.md).
 
-Listens for an event on a source. Subscriptions created via `on()` are automatically removed when the Shadow Object is destroyed.
+#### `on(eventName, listener)`
 
-- **Signatures:**
-  - `on(source: object, event: string, callback: () => any): () => void`
-  - `on(event: string | symbol | (string|symbol)[], callback: () => any): () => void` (implicitly uses `entity` as source)
-  - All other argument forms from the [@spearwolf/eventize](https://github.com/spearwolf/eventize) package are also supported.
+Listens for an event on the Entity of this Shadow Object. The subscription ends when the Shadow Object is destroyed, or earlier through the returned function.
 
-The return value is the unsubscribe function. Calling it early is the way to end a subscription before the Shadow Object is destroyed; ignoring it is fine, since the automatic cleanup still applies.
+- **Signature:** `on<K>(eventName: K, listener: ListenerFor<TEvents, K>): () => void` -- with `TEvents` the event map of [Typed events](#typed-events), and `(...args: any[]) => void` as the listener without one.
+- **Returns:** the unsubscribe function. Calling it early ends the subscription; ignoring it is fine, since the automatic cleanup still applies.
+
+Every subscription form eventize's standalone `on()` takes is taken here, with the Entity in front:
+
+- `on(eventName, listener)` and `on(eventName, priority, listener)`
+- `on([nameA, [nameB, priority]], listener)` -- several names at once, each with a priority of its own where it needs one
+- `on(eventName, methodName, listenerObject)` -- the method is looked up on the object at dispatch time
+- `on(listenerObject)` -- an object listening by its method names, the form the Kernel itself uses to attach a Shadow Object
+- `on(listener)` and `on(priority, listener)` -- a catch-all listener; it receives the arguments of every event, not the event name
+
+How the creation API tells these from the target form below: an object followed by further arguments is the target; an event name, a priority, a function or an object standing alone means the Entity. The one form out of reach on the Entity is a listener object together with a context object, because two objects read as a target and its listener.
 
 ```typescript
 const stop = on('player-ready', () => { /* … */ });
 stop(); // done listening
+
+on({
+  'player-ready'() { /* … */ },
+  'score-changed'(score) { /* … */ },
+});
+```
+
+#### `on(target, eventName, listener)`
+
+The same on a *target* given in front: another Entity -- `entity.parent`, one of `entity.children` -- another Shadow Object, or any object at all; eventize attaches to an object that is not an emitter yet. Every form above applies with the target as the first argument. A target that carries an event map of its own -- `eventize<MyEvents>()`, a `class extends Eventize<MyEvents>` -- is checked against that map.
+
+```typescript
+on(entity.parent, 'level-changed', (level) => { /* … */ });
 ```
 
 #### Listening to View Layer Events
@@ -316,15 +339,15 @@ function MyBehavior({ on, onViewEvent }: ShadowObjectCreationAPI) {
 }
 ```
 
-#### `once(source, eventName, callback)`
+#### `once(eventName, listener)`
 
-Same as `on`, including the unsubscribe function it returns, but the listener is removed automatically after the first trigger.
+Same forms as `on`, including the unsubscribe function it returns, but the listener is removed automatically after the first trigger.
 
 #### `emit(eventNames, ...eventArgs)`
 
-Emits an event on the entity associated with the current shadow object. This is the preferred way to communicate with other Shadow Objects on the same Entity or signal state changes.
+Emits an event on the Entity of the current Shadow Object. This is the preferred way to communicate with other Shadow Objects on the same Entity or to signal state changes.
 
-- **Signature:** `emit(eventNames: string | symbol | (string|symbol)[], ...eventArgs: any[]): void`
+- **Signature:** `emit<K>(eventName: K | K[], ...eventArgs: ArgsFor<TEvents, K>): void` -- `string | symbol | (string | symbol)[]` and `any[]` without a map.
 
 A listener that throws ends the delivery where it stands, and the error reaches this call. That is
 the one dispatch in the library that behaves this way, and it is deliberate: the listeners belong to
@@ -351,22 +374,47 @@ export function GameUI({ on }: ShadowObjectCreationAPI) {
 
 #### `emit(target, eventNames, ...eventArgs)`
 
-Emits an event on a specific target object instead of the current entity.
+Emits an event on a specific *target* instead of the current Entity: another Entity, a Shadow Object, any object. eventize duck-types the target -- an object that is not an emitter and has no method of that name is a no-op -- and checks the event against the target's own map where it has one.
 
-- **Signature:** `emit(target: EventizedObject, eventNames: string | symbol | (string|symbol)[], ...eventArgs: any[]): void`
-
-The target has to be an eventized object. An `EntityApi` — what `entity.children` and `entity.parent` hand back — is one at runtime, but its type does not carry the eventize markers, so TypeScript turns it down here. Address another Entity through `emit` from `@spearwolf/eventize`, which takes any object:
+- **Signature:** `emit(target: object, eventNames: string | symbol | (string | symbol)[], ...eventArgs: any[]): void`
 
 ```typescript
-import { emit } from '@spearwolf/eventize';
-
-export function ParentController({ entity }: ShadowObjectCreationAPI) {
+export function ParentController({ entity, emit }: ShadowObjectCreationAPI) {
     const child = entity.children[0];
     if (child) {
         emit(child, 'parent-command', { action: 'move' });
     }
 }
 ```
+
+#### Typed events
+
+`ShadowObjectCreationAPI<TEvents>` takes an eventize event map -- `{[eventName]: argumentTuple}`, a plain interface -- and checks the Entity forms of `on`, `once` and `emit` against it: the event name, the argument tuple, the listener's parameters and the method names of a listener object. Without the map every form is as loose as eventize's default. The rules of the map itself -- a tuple per key, a `symbol` name as the escape hatch, an index signature that reopens everything, what the multi-name forms check -- are eventize's, in [typed event maps](https://github.com/spearwolf/eventize/blob/main/docs/typed-events.md).
+
+`EventsOf<T>` derives the map from the Shadow Object meant to receive the event: every method of `T` is an event of that name, carrying the method's parameters as its tuple. That is the runtime read back into a type -- the Kernel dispatches an `emit('onPowerUp', 100)` on the Entity as a call to `onPowerUp(100)` on every Shadow Object there that has such a method.
+
+```typescript
+import type { EventsOf, ShadowObjectCreationAPI } from '@spearwolf/shadow-objects/shadow-objects.js';
+
+export class PlayerLogic {
+  constructor(api: ShadowObjectCreationAPI) { /* … */ }
+  onPowerUp(power: number) { /* … */ }
+  onReset() { /* … */ }
+}
+
+export function PowerUpSpawner({ emit, on }: ShadowObjectCreationAPI<EventsOf<PlayerLogic>>) {
+  emit('onPowerUp', 100);     // ✅
+  emit('onPowerUp', 'lots');  // ❌ number expected
+  emit('onFoo');              // ❌ not an event of PlayerLogic
+  on('onReset', () => { /* … */ });
+}
+```
+
+Three things to know:
+
+- Every method of `T` takes part, the ones nobody meant as an event included -- which is what the dispatch does, too. The lifecycle hooks are `symbol`-keyed and stay out.
+- The map is a compile-time contract. Nothing at runtime holds two Shadow Objects on one Entity to the same map; two receivers make `EventsOf<A> & EventsOf<B>`, and a hand-written map works as well as a derived one.
+- A constructor written against a map still fits the Registry: `ShadowObjectConstructor` and `ShadowObjectConstructorFunc` take the loose `ShadowObjectCreationAPI`, and a narrowed one is assignable to it.
 
 **Best practices for events:**
 

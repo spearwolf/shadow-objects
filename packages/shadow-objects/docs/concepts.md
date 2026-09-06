@@ -279,8 +279,11 @@ During setup, your function receives an API object with these capabilities:
 **Events:**
 - `onViewEvent(callback)` -- receive events dispatched from the View Layer
 - `dispatchMessageToView(type, data)` -- send events back to the View Layer
-- `on(target, event, callback)` -- listen for events on any entity or emitter
-- `emit(target, event, data)` -- emit an event on any entity or emitter
+- `on(event, callback)` -- listen for an event on this entity; `on(target, event, callback)` on any other entity or emitter
+- `once(event, callback)` -- the same, removed after the first event
+- `emit(event, ...args)` -- emit an event on this entity; `emit(target, event, ...args)` on any other entity or emitter
+
+`ShadowObjectCreationAPI<TEvents>` checks the three against an event map, and `EventsOf<T>` derives one from the Shadow Object that receives the event -- see [Typed events](./api-reference.md#typed-events).
 
 **Lifecycle:**
 - `onDestroy(callback)` -- register a cleanup function
@@ -386,6 +389,8 @@ export function FeatureB({ emit }) {
   emit('data-loaded', { id: 123 });
 }
 ```
+
+A Shadow Object is itself a listener on its entity: a method named like the event -- on a class instance, or on the object a function returns -- is called without any subscription.
 
 **Broadcasting to descendant entities**
 

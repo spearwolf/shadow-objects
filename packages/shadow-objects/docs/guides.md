@@ -126,6 +126,45 @@ export function FormLogic({ onViewEvent }: ShadowObjectCreationAPI) {
 }
 ```
 
+### Listening to Entity Events
+
+The Entity is the event bus its Shadow Objects share. `on(eventName, listener)` listens there, `emit(eventName, ...args)` sends there, and the subscription ends with the Shadow Object:
+
+```typescript
+export function ScoreLogic({ on, emit, createSignal }: ShadowObjectCreationAPI) {
+  const score = createSignal(0);
+
+  on('coin-collected', (value: number) => {
+    score.set(score.value + value);
+    emit('score-changed', score.value);
+  });
+}
+```
+
+The object a function returns listens, too. The Kernel attaches whatever the constructor hands back to the Entity as an eventize listener object, so a method named like an event is called when that event fires -- the same wiring the class style gets, see [Automatic Event Handling](#automatic-event-handling):
+
+```typescript
+export function PlayerLogic({ useProperty }: ShadowObjectCreationAPI) {
+  const health = useProperty<number>('health');
+
+  return {
+    onPowerUp(power: number) {
+      console.log('Power Up received!', power, 'at', health());
+    },
+    onReset() { /* … */ },
+  };
+}
+
+// Elsewhere, on the same Entity:
+export function PowerUpSpawner({ emit }: ShadowObjectCreationAPI) {
+  emit('onPowerUp', 100);
+}
+```
+
+Two things follow from that. A returned method is reachable under its name by every `emit` on the Entity, so name your helpers accordingly, or keep them in the closure. And the four lifecycle hooks are looked up under their symbols, not their names: a returned `onDestroy() {}` is a plain method that is never called, and the Kernel reports it -- use `[onDestroy]` from `@spearwolf/shadow-objects/shadow-objects.js`, or the creation API's `onDestroy(callback)`.
+
+Emitter and receiver can be typed against each other: `ShadowObjectCreationAPI<EventsOf<PlayerLogic>>` checks `emit('onPowerUp', 100)` against the `onPowerUp(power: number)` that receives it -- see [Typed events](./api-reference.md#typed-events).
+
 ### Cleaning Up
 
 Register cleanup logic with `onDestroy`. Signals and effects clean themselves up automatically -- you only need this for external resources like timers, subscriptions, or explicit event listeners.
@@ -257,7 +296,7 @@ export class MyShadowObject {
 Handle custom entity events by matching the method name to the event:
 
 ```typescript
-// Some other Shadow Object emits: emit(entity, 'onPowerUp', { power: 100 });
+// Some other Shadow Object on the same Entity emits: emit('onPowerUp', { power: 100 });
 
 export class PlayerLogic {
   onPowerUp(data) {
@@ -266,7 +305,7 @@ export class PlayerLogic {
 }
 ```
 
-No manual subscription needed -- the framework handles it.
+No manual subscription needed -- the framework handles it. The function style gets the same wiring for an object it returns, see [Listening to Entity Events](#listening-to-entity-events). And the emitting side can be typed against the receiving class -- `ShadowObjectCreationAPI<EventsOf<PlayerLogic>>` checks the event name and the arguments against the methods of `PlayerLogic`, see [Typed events](./api-reference.md#typed-events).
 
 ### Context in Classes
 

@@ -75,9 +75,9 @@ A `static displayName = 'MyLogic'` on the constructor names the Shadow Object in
 | `createMemo` | `(fn) => SignalReader` | Derived/computed value, re-evaluates when deps change |
 | `createEffect` | `(fn, options?) => Effect` | Run side effect, re-runs when deps change |
 | `createResource` | `(factory, cleanup?) => Signal` | Manage external resources with auto teardown |
-| `on` | `(source?, event, cb) => () => void` | Subscribe to an event (auto-cleaned on destroy); returns the unsubscribe function |
-| `once` | `(source?, event, cb) => () => void` | Subscribe once, auto-removed after first fire; returns the unsubscribe function |
-| `emit` | `(target?, event, ...args) => void` | Emit event on entity (or a target) |
+| `on` | `(event, cb)`, `(target, event, cb)`, `(listenerObject)` `=> () => void` | Subscribe on the entity, or on a target in front (auto-cleaned on destroy); returns the unsubscribe function |
+| `once` | same forms as `on` | Subscribe once, auto-removed after first fire; returns the unsubscribe function |
+| `emit` | `(event, ...args)`, `(target, event, ...args) => void` | Emit event on the entity, or on a target in front |
 | `onViewEvent` | `(cb) => void` | Shorthand: listen for events from the view layer |
 | `dispatchMessageToView` | `(type, data?, transferables?, children?) => void` | Send event to the view layer |
 | `onDestroy` | `(fn) => void` | Register cleanup callback |
@@ -173,6 +173,10 @@ on('player-ready', (data) => { });
 // Listen with explicit source
 on(entity, 'player-ready', (data) => { });
 
+// Listen by method name: the object is attached as an eventize listener object,
+// the way the Kernel attaches every Shadow Object to its entity
+on({ 'player-ready'(data) { }, 'score-changed'(score) { } });
+
 // Listen once
 once('init-complete', () => { });
 
@@ -196,6 +200,20 @@ dispatchMessageToView('login-success', { user: 'Alice' });
 dispatchMessageToView('frame-data', buffer, [buffer]);
 // Dispatch to this entity and all its children in the view
 dispatchMessageToView('reset', {}, [], true);
+```
+
+Typed against the receiving Shadow Object (compile-time only, see [Typed events](./api-reference.md#typed-events)):
+
+```typescript
+import type { EventsOf, ShadowObjectCreationAPI } from '@spearwolf/shadow-objects/shadow-objects.js';
+
+class PlayerLogic {
+  onPowerUp(power: number) { }
+}
+
+function PowerUpSpawner({ emit }: ShadowObjectCreationAPI<EventsOf<PlayerLogic>>) {
+  emit('onPowerUp', 100);    // checked: name and arguments
+}
 ```
 
 ---
