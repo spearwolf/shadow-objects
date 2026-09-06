@@ -287,15 +287,17 @@ describe('no-autostart', () => {
     el.destroy();
   });
 
-  it('observes exactly ns, local, src, no-structured-clone and auto-sync', () => {
+  it('observes exactly ns, local, src, no-structured-clone, auto-sync and expose-to-model-context', () => {
     // no-autostart is read on every access instead, which is what the five cases above pin
     // down — this only fixes the set the browser calls attributeChangedCallback for.
+    // redact-props is read at every tool call, so it needs no callback either.
     expect(customElements.get('shae-worker').observedAttributes).to.deep.equal([
       'ns',
       'local',
       'src',
       'no-structured-clone',
       'auto-sync',
+      'expose-to-model-context',
     ]);
   });
 });
