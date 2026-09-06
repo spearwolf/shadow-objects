@@ -216,6 +216,10 @@ src/shae-worker.d.ts
 src/shae-worker.d.ts.map
 src/shae-worker.js
 src/shae-worker.js.map
+src/testing/settle.d.ts
+src/testing/settle.d.ts.map
+src/testing/settle.js
+src/testing/settle.js.map
 src/types.d.ts
 src/types.d.ts.map
 src/types.js
