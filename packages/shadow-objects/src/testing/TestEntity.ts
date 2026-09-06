@@ -64,20 +64,35 @@ export class TestEntityImpl implements TestEntity {
     return this.#testKernel.createEntity(token, props, {...options, parent: this});
   }
 
-  setProps(_props: Record<string, unknown>): void {
-    throw new Error('not implemented yet');
+  /**
+   * Writes through the Kernel rather than through `Entity.setProperties()`: `changeProperties()`
+   * re-resolves the constructor set afterwards, which is how a property route -- `token@prop` in a
+   * module's `routes` -- puts a Shadow Object on an Entity or takes it off again.
+   */
+  setProps(props: Record<string, unknown>): void {
+    this.#kernel.changeProperties(this.uuid, toPropertyEntries(props));
   }
 
-  removeProps(..._names: string[]): void {
-    throw new Error('not implemented yet');
+  /** A property set to `undefined` is a removal; see `ComponentPropertiesType` in `src/types.ts`. */
+  removeProps(...names: string[]): void {
+    this.#kernel.changeProperties(
+      this.uuid,
+      names.map((name) => [name, undefined] as [string, unknown]),
+    );
   }
 
-  readProp<T = unknown>(_name: string): T | undefined {
-    throw new Error('not implemented yet');
+  readProp<T = unknown>(name: string): T | undefined {
+    return this.entity.getProperty<T | undefined>(name);
   }
 
-  readContext<T = unknown>(_name: string | symbol): T | undefined {
-    throw new Error('not implemented yet');
+  /**
+   * The effective value of an Entity Context, the one `useContext()` reads. It arrives a microtask
+   * after a provider wrote it -- `Entity` runs every context value through a `MicrotaskCollector` --
+   * so a test reads it after `settle()`.
+   */
+  readContext<T = unknown>(name: string | symbol): T | undefined {
+    const reader = this.entity.useContext<T | undefined>(name);
+    return reader();
   }
 
   setToken(_token: string): void {
