@@ -424,4 +424,27 @@ describe('shae-ent and the peer re-request round', () => {
 
     expect(messages.total(ComponentContext.ReRequestParentRoots), 'three roots and the new one, one round').to.equal(4);
   });
+
+  // Every `slotchange` under an entity in a shadow tree books a round. Two slots reporting in the
+  // same task are two events from the same sender, and the collector keeps one entry per sender.
+  it('slot changes under one entity in the same task share one round', async () => {
+    const ns = 'peer-round-slotchange';
+    const container = connectedContainer();
+    container.innerHTML = `<shae-ent ns="${ns}" token="root"></shae-ent>`.repeat(2) + '<div id="prs-host"></div>';
+    const host = container.querySelector('#prs-host');
+    host.attachShadow({
+      mode: 'open',
+    }).innerHTML = `<shae-ent id="prs-outer" ns="${ns}" token="outer"><slot name="a"></slot><slot name="b"></slot></shae-ent>`;
+    await nextTask();
+
+    const messages = countMessages(ComponentContext.get(ns));
+
+    host.innerHTML = '<div slot="a"></div><div slot="b"></div>';
+    await nextTask();
+
+    expect(
+      messages.total(ComponentContext.ReRequestParentRoots),
+      'two roots and the entity holding the slots, one round',
+    ).to.equal(3);
+  });
 });

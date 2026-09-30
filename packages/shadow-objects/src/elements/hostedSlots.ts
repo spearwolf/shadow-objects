@@ -157,10 +157,11 @@ export class HostedSlots {
       entHostOfSlot.set(slot, new WeakRef(this.#owner));
       this.#watch(slot);
       // the gate in front of the round, and it is closed twice. What a slot reporting for the
-      // first time projects is reached by the two calls that frame this block, so the first
-      // registration writes the register and pays nothing beyond it. Afterwards a slot whose
-      // entity above it is the same one as last time reports changed content, and content moves
-      // no binding. What is left is the slot that arrived here from somewhere else — and an entry
+      // first time projects is reached by the calls that frame this block — the two re-request
+      // events, and the peer round `ShaeEntElement` books after them, which is what reaches a
+      // projected entity that is still a root — so the first registration writes the register and
+      // pays nothing beyond it. Afterwards a slot whose entity above it is the same one as last
+      // time reports changed content, and content moves no binding. What is left is the slot that arrived here from somewhere else — and an entry
       // naming nobody is such an arrival too: that slot stood under no entity in between
       if (previous !== undefined && previous?.deref() !== this.#owner) {
         askEveryoneToReRequest(event);

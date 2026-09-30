@@ -853,6 +853,13 @@ export class ShaeEntElement extends ShaeElement {
         detail: {requester: this, shadowRootHost},
       }),
     );
+
+    // the event above is heard by entities bound to an ancestor on its way, and by nobody else:
+    // its listener hangs on the parent an entity is bound to. A projected entity that got no answer
+    // at all is a root and listens nowhere, and the slot that now projects it into this element is
+    // news it can only hear through the peer round. The round is collected once per task, so a
+    // burst of slot changes costs one
+    this.#askPeersToReRequestParent();
   };
 
   #onReRequestParent = (event: CustomEvent) => {

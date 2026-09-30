@@ -255,3 +255,46 @@ describe('the context an adopted entity sees', () => {
     expect(stage()).to.equal('stage-of-outer');
   });
 });
+
+describe('shae-ent whose slot starts projecting after it connected', () => {
+  // The connect-time round has run and found nothing to adopt, because nothing was projected yet.
+  // What changes afterwards is reported by `slotchange` alone, and the event that carries it only
+  // reaches entities that are bound to some ancestor — a root listens nowhere.
+  it('adopts a projected root once a slot is added to the rendered entity', async () => {
+    const hostTag = defineDeferredHost('<shae-ent id="outer" token="outer"></shae-ent>');
+    const container = mount(`<${hostTag} id="host"><shae-ent id="inner" token="inner"></shae-ent></${hostTag}>`);
+    const host = container.querySelector('#host');
+    const inner = container.querySelector('#inner');
+
+    host.render();
+    await nextTask();
+
+    expect(inner.entParentNode, 'without a slot the entity projects nothing').to.be.undefined;
+
+    const outer = host.renderRoot.getElementById('outer');
+    outer.append(document.createElement('slot'));
+    await nextTask();
+
+    expect(inner.entParentNode?.id).to.equal('outer');
+    expect(inner.viewComponent.parent).to.equal(outer.viewComponent);
+  });
+
+  it('adopts a projected root once its slot attribute names the slot', async () => {
+    const hostTag = defineDeferredHost('<shae-ent id="outer" token="outer"><slot name="stage"></slot></shae-ent>');
+    const container = mount(`<${hostTag} id="host"><shae-ent id="inner" slot="later" token="inner"></shae-ent></${hostTag}>`);
+    const host = container.querySelector('#host');
+    const inner = container.querySelector('#inner');
+
+    host.render();
+    await nextTask();
+
+    expect(inner.entParentNode, 'a named slot that does not match projects nothing').to.be.undefined;
+
+    inner.setAttribute('slot', 'stage');
+    await nextTask();
+
+    const outer = host.renderRoot.getElementById('outer');
+    expect(inner.entParentNode?.id).to.equal('outer');
+    expect(inner.viewComponent.parent).to.equal(outer.viewComponent);
+  });
+});
