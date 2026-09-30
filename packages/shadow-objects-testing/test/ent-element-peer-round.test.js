@@ -382,4 +382,46 @@ describe('shae-ent and the peer re-request round', () => {
       'the round waiting behind it is delivered in full',
     ).to.deep.equal([1, 1]);
   });
+
+  // The guard in `connectedCallback` exists for this case: an element built before it enters the
+  // light DOM has nothing below it that connected first, and a namespace full of roots must not
+  // pay a round for it.
+  it('an entity built before it enters the light DOM asks nobody', async () => {
+    const ns = 'peer-round-light-dom';
+    const container = connectedContainer();
+    container.innerHTML = `<shae-ent ns="${ns}" token="root"></shae-ent>`.repeat(3);
+    await nextTask();
+
+    const messages = countMessages(ComponentContext.get(ns));
+
+    const late = document.createElement('shae-ent');
+    late.setAttribute('ns', ns);
+    late.setAttribute('token', 'late');
+    container.append(late);
+    await nextTask();
+
+    expect(messages.total(ComponentContext.ReRequestParentRoots), 'the roots already standing are not asked').to.equal(0);
+  });
+
+  // An element built before it enters a shadow tree can hold a slot whose projected entities
+  // connected first — so it asks, once, and the round is the usual one: every root, itself included.
+  it('an entity built before it enters a shadow tree asks its peers once', async () => {
+    const ns = 'peer-round-shadow-tree';
+    const container = connectedContainer();
+    container.innerHTML = `<shae-ent ns="${ns}" token="root"></shae-ent>`.repeat(3);
+    const host = document.createElement('div');
+    container.append(host);
+    const shadowRoot = host.attachShadow({mode: 'open'});
+    await nextTask();
+
+    const messages = countMessages(ComponentContext.get(ns));
+
+    const late = document.createElement('shae-ent');
+    late.setAttribute('ns', ns);
+    late.setAttribute('token', 'late');
+    shadowRoot.append(late);
+    await nextTask();
+
+    expect(messages.total(ComponentContext.ReRequestParentRoots), 'three roots and the new one, one round').to.equal(4);
+  });
 });

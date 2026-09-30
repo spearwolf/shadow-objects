@@ -110,11 +110,18 @@ export class ShaeEntElement extends ShaeElement {
    * Whether this element already sat in a live tree while its constructor ran.
    *
    * An element created by the parser or by `createElement` runs its constructor before it enters
-   * the tree, so everything below it connects after it and finds it on the first request. Only an
-   * element upgraded in place can have entities below it that bound to a further ancestor while it
-   * was not yet answering. Markup written into a connected node through `innerHTML` reports the
-   * same, because the fragment parser builds the element undefined and upgrades it on insertion —
-   * that keeps the guard on the safe side, it errs towards asking too often.
+   * the tree, so everything in its own subtree connects after it and finds it on the first request.
+   * Only an element upgraded in place can have entities in its subtree that bound to a further
+   * ancestor while it was not yet answering. Markup written into a connected node through
+   * `innerHTML` reports the same, because the fragment parser builds the element undefined and
+   * upgrades it on insertion — that keeps the guard on the safe side, it errs towards asking too
+   * often.
+   *
+   * The subtree is not all there is below an element. A parent request walks the flattened tree,
+   * and there a `<slot>` in this element's subtree puts the nodes it projects below it — children
+   * of the shadow host, which connect with the host and can be older than this element by the time
+   * a framework fills the shadow root. This field says nothing about them; `connectedCallback`
+   * asks that question separately.
    */
   readonly #wasUpgradedInPlace = this.isConnected;
 
@@ -453,19 +460,32 @@ export class ShaeEntElement extends ShaeElement {
       // candidate set would be the wrong one.
       //
       // The guard decides in constant time whether the question arises at all, and it has to,
-      // because this runs on every connect. It cannot hide a case the request would have found: an
-      // element constructed before it entered the tree is answering by the time anything below it
-      // connects. What this element holds is no such question — a shadow root can be attached to it
-      // before it is defined, and a closed one is invisible from the inside, so `shadowRoot` reads
-      // null while the entities in it are bound to an ancestor further up. An empty element is not
-      // an element with nothing below it.
+      // because this runs on every connect. The question is whether anything below this element —
+      // in the flattened tree, the one a parent request walks — can have connected before it did,
+      // and two ways lead there.
+      //
+      // The first is the upgrade in place. What such an element holds is no question it could
+      // settle for itself: a shadow root can be attached to it before it is defined, and a closed
+      // one is invisible from the inside, so `shadowRoot` reads null while the entities in it are
+      // bound to an ancestor further up. An empty element is not an element with nothing below it.
+      //
+      // The second is projection. An element inside a shadow tree can hold a `<slot>`, and what the
+      // slot projects are children of the shadow host: they connect with the host, and a framework
+      // that fills the shadow root afterwards — Lit stamps its template with `importNode` a
+      // microtask after the host connected — builds this element later, fully constructed before it
+      // is inserted. Being in a shadow tree is the test, not holding a slot right now: a slot that
+      // arrives in the subtree later would be missed, and the round is collected once per task, so
+      // asking for an entity that projects nothing costs one shared round. Only an element outside
+      // every shadow tree that was constructed before it entered the tree has nothing below it that
+      // came first, and that one asks nobody.
       //
       // --- properties ---
       // The same reasoning carries the second call, and so does the same limit: an element built in
-      // a detached subtree and inserted afterwards does *not* announce itself, because the
+      // a detached subtree and inserted into the light DOM does *not* announce itself, because the
       // properties below it connect after it and find it on their own. A property already connected
-      // and then projected into that subtree is reached by the `#onSlotChange` call further down.
-      if (this.#wasUpgradedInPlace) {
+      // and then projected into a slot of this element is reached here, or by the `#onSlotChange`
+      // call further down when the slot reports later.
+      if (this.#wasUpgradedInPlace || this.findShadowRootHost() != null) {
         this.#askPeersToReRequestParent();
         this.#askPropertiesToReRequestHost();
       }
