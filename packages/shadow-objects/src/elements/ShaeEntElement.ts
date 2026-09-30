@@ -858,7 +858,14 @@ export class ShaeEntElement extends ShaeElement {
     // its listener hangs on the parent an entity is bound to. A projected entity that got no answer
     // at all is a root and listens nowhere, and the slot that now projects it into this element is
     // news it can only hear through the peer round. The round is collected once per task, so a
-    // burst of slot changes costs one
+    // burst of slot changes costs one.
+    //
+    // Every entity the `slotchange` bubbles past books a round here, not only the closest one above
+    // the slot, and that is load-bearing. The round of an entity that has a parent goes over that
+    // parent's children and never reaches a root. The topmost entity above the slot in this shadow
+    // tree does reach the roots whenever the projected entity is one: no entity of the namespace
+    // stands above the host, or the projected entity would have found it, so the topmost one is a
+    // root itself and its round goes over the roots
     this.#askPeersToReRequestParent();
   };
 

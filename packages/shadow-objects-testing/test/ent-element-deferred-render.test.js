@@ -298,3 +298,53 @@ describe('shae-ent whose slot starts projecting after it connected', () => {
     expect(inner.viewComponent.parent).to.equal(outer.viewComponent);
   });
 });
+
+// Lit's conditional render: the entity that holds the slot hangs on another entity of the same
+// shadow tree. Its own rounds are keyed to that parent and go over the parent's children, so they
+// never reach a projected entity that is a root. What does is the `slotchange` bubbling on past it:
+// the topmost entity above the slot hears it too, and that one is a root whenever the projected
+// entity is — no entity of the namespace stands above the host, or the projected one would have
+// found it.
+describe('shae-ent holding the slot below another entity of the same shadow tree', () => {
+  it('adopts a projected root once a slot is added to the nested entity', async () => {
+    const hostTag = defineDeferredHost(
+      '<shae-ent id="frame" token="frame"><shae-ent id="outer" token="outer"></shae-ent></shae-ent>',
+    );
+    const container = mount(`<${hostTag} id="host"><shae-ent id="inner" token="inner"></shae-ent></${hostTag}>`);
+    const host = container.querySelector('#host');
+    const inner = container.querySelector('#inner');
+
+    host.render();
+    await nextTask();
+
+    const outer = host.renderRoot.getElementById('outer');
+    expect(outer.entParentNode?.id, 'the slot holder hangs on the frame').to.equal('frame');
+    expect(inner.entParentNode, 'without a slot the entity projects nothing').to.be.undefined;
+
+    outer.append(document.createElement('slot'));
+    await nextTask();
+
+    expect(inner.entParentNode?.id).to.equal('outer');
+    expect(inner.viewComponent.parent).to.equal(outer.viewComponent);
+  });
+
+  it('adopts a projected root once the nested entity is stamped into the frame with its slot', async () => {
+    const hostTag = defineDeferredHost('<shae-ent id="frame" token="frame"></shae-ent>');
+    const container = mount(`<${hostTag} id="host"><shae-ent id="inner" token="inner"></shae-ent></${hostTag}>`);
+    const host = container.querySelector('#host');
+    const inner = container.querySelector('#inner');
+
+    host.render();
+    await nextTask();
+
+    expect(inner.entParentNode, 'the frame holds no slot').to.be.undefined;
+
+    host.renderRoot.getElementById('frame').append(stamps.importNode(SINGLE));
+    await nextTask();
+
+    const outer = host.renderRoot.getElementById('outer');
+    expect(outer.entParentNode?.id, 'the slot holder hangs on the frame').to.equal('frame');
+    expect(inner.entParentNode?.id).to.equal('outer');
+    expect(inner.viewComponent.parent).to.equal(outer.viewComponent);
+  });
+});
