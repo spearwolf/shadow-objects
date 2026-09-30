@@ -19,7 +19,7 @@ Scope: E2E only. This file names the pages, fixtures and assertions of the Playw
 
 ## 1. What exists today
 
-Sixteen spec files, 291 registered test cases per project — 873 across Chromium, Firefox and WebKit. The specs
+Seventeen spec files, 303 registered test cases per project — 909 across Chromium, Firefox and WebKit. The specs
 themselves contain almost no logic: they name a page and a list of ids, and `runPageTests` turns
 each id into one Playwright test that asserts `data-testresult="ok"` on the node the page wrote.
 All real assertions live in `src/*.js`.
@@ -30,6 +30,7 @@ All real assertions live in `src/*.js`.
 | `multi-env.spec.ts` | `pages/multi-env.html` | 34 | Three environments side by side (two remote, one local): distinct instances and contexts, the same token in two namespaces, cross-namespace nesting, property isolation, simultaneous changes in one tick, a request answered only in its own namespace, and a `ns` change at runtime and back (MULTI-1 … MULTI-8). |
 | `shae-worker.spec.ts` | `pages/shae-worker.html` | 33 | `<shae-worker>` is defined; two workers (remote+autostart, local+no-autostart) report the right `ns`, the right env type, their `contextCreated` event and reach `ready()`; the remote one carries the five timeout attributes and its environment holds itself to them; both workers' kernels are asked for their entity graph and every parent-child relation, slot projection and namespace boundary in the tree is checked against it; a `local` attribute change against the running remote environment is refused, the attribute goes back to what it was and the environment stays remote. |
 | `upgrade-timing.spec.ts` | `pages/upgrade-timing.html` | 28 | Markup parsed before the definitions, markup injected before them, elements added after them, and an element whose own definition arrives after the first sync — a `ShaeEntElement` subclass, a wrapper projecting through a `<slot>`, and a `<shae-prop>` following the entity that upgrades between it and its host (UPG-1, UPG-2, UPG-4, UPG-5, UPG-7, UPG-9). |
+| `deferred-render.spec.ts` | `pages/deferred-render.html` | 12 | Hosts that fill their shadow root a microtask after they connected, with elements built before insertion (Lit's model): a projected `<shae-ent>` that asked first is adopted by the entity rendered above its slot — stamped with `importNode` and with `createElement`, one level and two nested levels in both render orders — and reads that entity's context in the worker (DEFER-1 … DEFER-3). |
 | `async-events.spec.ts` | `pages/async-events.html` | 26 | `contextCreated` / `contextLost` as DOM CustomEvents, a property change echoed back as a message, `auto-sync` in its forms, a burst of changes coalescing into the final value, `traverseChildren` across the worker boundary, `forward-custom-events` with and without a filter list, and a change made while a cycle is in flight riding the cycle behind it (ASYNC-1, ASYNC-3 … ASYNC-7, ASYNC-9, ASYNC-13). |
 | `bundle.spec.ts` | `pages/bundle.html` | 13 | The single-file build: the load flag, the element definitions, the five-entity tree, the cross-namespace child that becomes a root, three property types, and a round-trip through the inlined worker (BUNDLE-1 … BUNDLE-4). |
 | `worker-failure.spec.ts` | `pages/worker-failure.html` | 14 | A worker that dies mid-run: `proxyfailed` and `contextlost` as DOM events, the failure reason, the destroyed proxy, a later call rejecting right away, and the recovery through a new proxy that re-creates the surviving entity. |
@@ -73,7 +74,7 @@ on a surviving entity and waits for the echo (`sync-failure-environment-still-sy
 
 ### 1.2 Harness weaknesses
 
-None open. The last one was the disabled `webkit` project; it is enabled and green — see §3.7.
+None open. The last one was the disabled `webkit` project; it is enabled and green — see §3.8.
 
 ---
 
@@ -307,7 +308,22 @@ itself carries no serial and would end the cycle as a success.
 | SYNC-6 | P1 | **Implemented** — `sync-failure-refused-entry-is-sent-again`. The entries the kernel did not apply stay pending and go out again with the next cycle: with the refuser still in the DOM the second `syncWait()` is refused in the same way, and the `syncfailed` event of that second cycle carries the create-entities entry for the same uuid. This is also the cost of the promise — a cause that stays put refuses every following cycle instead of failing once. |
 | SYNC-5 | P3 | The documented way back after a reason that says nothing about how far the kernel got: a new proxy, its `importScript()`, and the `sync()` that carries the rebuilt trail. It belongs to a fresh worker — a kernel that still holds the uuids refuses every re-created entity, one uuid naming one entity at a time — and it re-sends the whole view state, so the refused entity has to be gone first or the recovery walks into its own refusal. A case for a fixture that lets the second attempt through, not for this one; `worker-failure` already runs those three steps after a dead worker. |
 
-### 3.7 Harness fixes
+### 3.7 Page `pages/deferred-render.html` — shadow roots rendered after the projected entities
+
+Setup: markup parsed first, definitions from the module script afterwards — the most common setup
+in the wild. Importing the `shae-*` elements upgrades every `<shae-ent>` in place while each host is
+still an unknown element, so the projected entities ask first and become roots. The host tags are
+defined afterwards; each host fills its shadow root a microtask after it connected, with elements
+built before insertion, the way Lit renders. `public/mod-deferred-render.js` supplies a provider that
+puts its own uuid into a `stage` context and a consumer that reports the `stage` it reads.
+
+| ID | Prio | Case |
+|---|---|---|
+| DEFER-1 | P1 | **Implemented** — `deferred-render-import-node-adopts`, `deferred-render-create-element-adopts`. A host fills its shadow root a microtask after it connected, with `<shae-ent><slot>` built before insertion; the `<shae-ent>` in its light DOM, which asked for a parent before that, ends up below the rendered entity. |
+| DEFER-2 | P1 | **Implemented** — `deferred-render-outer-first-builds-the-chain`, `deferred-render-inner-first-builds-the-chain`. Two such hosts nested; the projected entity ends up below the inner host's entity and that one below the outer's, whichever host renders first. |
+| DEFER-3 | P1 | **Implemented** — `deferred-render-context-reaches-the-projected-entities`. The projected entity's Shadow Object reads the context of its closest provider in the worker — the symptom that made the defect visible. |
+
+### 3.8 Harness fixes
 
 | ID | Prio | Case |
 |---|---|---|

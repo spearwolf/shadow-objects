@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>deferred-render</title>
+  </head>
+  <body>
+    <!--
+      Hosts that fill their shadow root a microtask after they connected, with elements built
+      before insertion — Lit's rendering model, without Lit.
+
+      The markup is parsed before the module script defines anything. The module imports the
+      shae-* elements first, which upgrades every <shae-ent> below in place: each one asks for a
+      parent while every host is still an unknown element, and becomes a root. The host tags are
+      defined afterwards, each host upgrades, connects, and renders in a microtask.
+
+      The two nested islands differ only in the order their tags are defined, and with it the order
+      their hosts render: outer first in the "of-" island, inner first in the "if-" island.
+    -->
+    <shae-worker id="env" no-autostart auto-sync="no"></shae-worker>
+
+    <main>
+      <deferred-import-host id="import-host">
+        <shae-ent id="import-inner" token="consumer"></shae-ent>
+      </deferred-import-host>
+
+      <deferred-create-host id="create-host">
+        <shae-ent id="create-inner" token="consumer"></shae-ent>
+      </deferred-create-host>
+
+      <of-world-host id="of-world-host">
+        <of-display-host id="of-display-host">
+          <shae-ent id="of-hero" token="consumer"></shae-ent>
+        </of-display-host>
+      </of-world-host>
+
+      <if-world-host id="if-world-host">
+        <if-display-host id="if-display-host">
+          <shae-ent id="if-hero" token="consumer"></shae-ent>
+        </if-display-host>
+      </if-world-host>
+    </main>
+
+    <section id="tests"></section>
+
+    <script type="module" src="/src/deferred-render.js"></script>
+  </body>
+</html>
