@@ -2643,18 +2643,20 @@ empty while `entParentNode` names the ancestor that answered. That is what a `<s
 after a `ComponentContext.clear()` while it stays in the document, until its component is taken back
 in.
 
-Three things happen after that and are picked up on their own: an element that is itself an entity —
+Four things happen after that and are picked up on their own: an element that is itself an entity —
 a subclass of `ShaeEntElement`, say, loaded from a lazy module — and that is registered with
 `customElements.define()` while the markup around it already sits in the document takes the
-entities below it under itself; a change to a `<slot>` assignment re-binds what the slot projects,
-and so does moving the `<slot>` element itself; and an entity that stays in the tree
-while its parent entity leaves it looks for the closest ancestor still answering. None of this
-needs the application to trigger anything.
+entities below it under itself; a `<shae-ent>` that a component renders into its shadow root after
+the component connected — Lit's rendering model, or any `attachShadow()` filled later — takes the
+entities projected into its slots under itself, although they connected first and found no parent;
+a change to a `<slot>` assignment re-binds what the slot projects, and so does moving the `<slot>`
+element itself; and an entity that stays in the tree while its parent entity leaves it looks for the
+closest ancestor still answering. None of this needs the application to trigger anything.
 
-The first two take effect one microtask after the change, the third right away — the parent leaving
-is the one case the entity hears about directly instead of through a round over its peers. Read
-`entParentNode` in the same step as a `customElements.define()` or a slot change and you read the
-state from before; `await Promise.resolve()` first.
+The first three take effect one microtask after the change, the fourth right away — the parent
+leaving is the one case the entity hears about directly instead of through a round over its peers.
+Read `entParentNode` in the same step as a `customElements.define()`, a render into a shadow root or
+a slot change and you read the state from before; `await Promise.resolve()` first.
 
 Everything that becomes an entity in one task is answered by a single round, and that round is what
 keeps the cost of a large namespace flat: a round is a broadcast, so one round per arriving entity

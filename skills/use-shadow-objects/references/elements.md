@@ -150,7 +150,10 @@ the `value` attribute is absent or empty.
 Registration order does **not** decide the entity tree. An element that becomes an entity while the
 markup already stands announces itself downwards: `<shae-ent>` children look for their parent again,
 `<shae-prop>` children for their host, and they get the tree as it is now. A wrapper that is not an
-entity is skipped on the way up.
+entity is skipped on the way up. Render order does not decide it either: a component that renders
+`<shae-ent><slot></slot></shae-ent>` into its shadow root after it connected — every Lit element
+does — gets the entities projected into that slot as children, although they connected first. No
+`firstUpdated()` workaround is needed.
 
 Timing is the catch: everything that becomes an entity in one task is answered by **one** round, one
 microtask later. `customElements.define()` returns before that. Assert afterwards only behind

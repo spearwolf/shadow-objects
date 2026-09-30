@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > Build-system, monorepo, lint/format, and dev-workflow changes that don't affect the shipped package are tracked in the top-level [`CHANGELOG.md`](https://github.com/spearwolf/shadow-objects/blob/main/CHANGELOG.md).
 
+## [Unreleased]
+
+### Bugfixes
+
+- **Fixed (`<shae-ent>`):** a `<shae-ent>` projected through a `<slot>` is adopted by the entity that holds the slot even when that entity was rendered into its shadow root after the projected one connected, with elements built before insertion — `document.importNode()`, which Lit's `render()` uses, or `document.createElement()`. Since 0.34.0 the round that asks existing entities to look for their parent again ran on connect only for an element upgraded in place, so the projected entity stayed a root and missed every context its ancestors provide, without an error; `template.content.cloneNode(true)` was not affected. The round now also runs for every entity that connects inside a shadow tree, and a `slotchange` books it as well, so a slot added later or a `slot` attribute that comes to match reaches an entity that is still a root. Both are collected once per task; an entity built before it enters the light DOM still asks nobody. A `firstUpdated()` call to `ComponentContext.dispatchReRequestParentRoots()` written as a workaround can go. Documented in `docs/api-reference.md`.
+
 ## [0.35.0] - 2026-09-06
 
 > **Minor, and nothing breaks.** Everything below either adds API or repairs a form that could
