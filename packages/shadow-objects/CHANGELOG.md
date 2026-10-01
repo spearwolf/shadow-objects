@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > Build-system, monorepo, lint/format, and dev-workflow changes that don't affect the shipped package are tracked in the top-level [`CHANGELOG.md`](https://github.com/spearwolf/shadow-objects/blob/main/CHANGELOG.md).
 
-## [Unreleased]
+## [0.35.3] - 2026-10-01
+
+> **Patch, and nothing breaks.** Three bugfixes in the model-context layer and no new API — an
+> application written against `0.35.2` runs against this release unchanged.
 
 ### Bugfixes
 
