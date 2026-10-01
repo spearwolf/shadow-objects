@@ -16,9 +16,10 @@
  *
  * Both are a no-op wherever WebKit already resolves — Ubuntu, macOS, Windows, CI.
  *
- * The libraries come from `mcr.microsoft.com/playwright:v<version>-noble`, which is the same
- * image CI's Ubuntu runner effectively is. Tying them to the installed @playwright/test version
- * keeps the ICU major in step with the WebKit build that asks for it.
+ * The libraries come from `mcr.microsoft.com/playwright:v<version>-noble`, the Ubuntu 24.04 image
+ * whose WebKit build Playwright falls back to on a distribution it does not recognise. Tying them
+ * to the installed @playwright/test version keeps the ICU major in step with the WebKit build that
+ * asks for it.
  */
 
 import {execFileSync, spawnSync} from 'node:child_process';

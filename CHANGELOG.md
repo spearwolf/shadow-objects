@@ -4,6 +4,19 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-10-01 — CI runs on Ubuntu 26.04 and no action is left on Node.js 20
+
+- **`actions/upload-artifact` v4 → v7** in `ci.yml`: v4 targets Node.js 20, which the runner forces
+  onto Node.js 24 with a deprecation warning on every run. v7 runs on `node24`; its new
+  `archive: false` mode is not used here.
+- **`runs-on: ubuntu-26.04`** in all three workflows instead of `ubuntu-latest`, which GitHub moves
+  to 26.04 between 2026-10-19 and 2026-11-19. Playwright 1.62 supports 26.04, including its own
+  WebKit build, so the e2e job runs there as it did on 24.04. The named image keeps the next move
+  of the label from changing the job unannounced.
+- **`packages/shadow-objects-e2e/scripts/webkit-host-libs.mjs`:** the header no longer calls the
+  `noble` container image the one CI runs on; it is the 24.04 build Playwright falls back to on a
+  distribution it does not recognise.
+
 ## 2026-10-01 — the skill says when a host-less `<shae-prop>` is reported
 
 - **`skills/use-shadow-objects/references/elements.md`:** the missing-host report of `<shae-prop>`

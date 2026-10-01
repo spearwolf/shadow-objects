@@ -22,7 +22,8 @@ permissions:
 jobs:
   advisories:
     name: Report high-severity advisories
-    runs-on: ubuntu-latest
+    # Same image as Continuous Integration, see the comment there.
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6

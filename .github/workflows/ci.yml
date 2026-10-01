@@ -23,7 +23,11 @@ concurrency:
 jobs:
   ci:
     name: Build and run tests
-    runs-on: ubuntu-latest
+    # A named image rather than ubuntu-latest: the label moves on GitHub's
+    # schedule, and the move changes which Playwright browser builds and system
+    # packages this job installs. Raising the version is a change of its own,
+    # made in all three workflows together.
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
@@ -52,7 +56,7 @@ jobs:
       # is allowed to find nothing rather than turning the job red twice.
       - name: Upload coverage report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: |
@@ -65,7 +69,7 @@ jobs:
 
   e2e:
     name: Run the e2e test suite
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
@@ -88,7 +92,7 @@ jobs:
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: packages/shadow-objects-e2e/playwright-report/
