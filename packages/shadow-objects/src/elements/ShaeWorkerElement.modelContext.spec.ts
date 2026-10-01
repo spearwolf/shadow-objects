@@ -1,4 +1,4 @@
-import {afterEach, describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 import '../shae-ent.js';
 import '../shae-prop.js';
 import '../shae-worker.js';
@@ -192,9 +192,8 @@ describe('<shae-worker expose-to-model-context>', () => {
       exposedTo: ['https://agent.example'],
     });
 
-    const warnings: unknown[][] = [];
-    const originalWarn = console.warn;
-    console.warn = (...args: unknown[]) => warnings.push(args);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const warnings = warn.mock.calls;
     try {
       const el = mount(`ns="${nextNs()}" ${ATTR_EXPOSE_TO_MODEL_CONTEXT}`);
       await el.modelContextExposure;
@@ -206,7 +205,7 @@ describe('<shae-worker expose-to-model-context>', () => {
       el.removeAttribute(ATTR_EXPOSE_TO_MODEL_CONTEXT);
       expect(fake.tools.size).toBe(0);
     } finally {
-      console.warn = originalWarn;
+      warn.mockRestore();
     }
   });
 });

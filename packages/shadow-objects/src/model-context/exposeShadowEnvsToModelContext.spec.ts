@@ -1,4 +1,4 @@
-import {afterEach, describe, expect, it} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 import {ComponentContext} from '../view/ComponentContext.js';
 import {LocalShadowObjectEnv} from '../view/LocalShadowObjectEnv.js';
 import {ShadowEnv} from '../view/ShadowEnv.js';
@@ -374,9 +374,8 @@ describe('exposeShadowEnvsToModelContext', () => {
     new ViewComponent('thing', {parent: scene.root, context: ComponentContext.get('mc-settings')});
     await scene.env.syncWait();
 
-    const warnings: unknown[][] = [];
-    const originalWarn = console.warn;
-    console.warn = (...args: unknown[]) => warnings.push(args);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const warnings = warn.mock.calls;
     try {
       const opener = await exposeShadowEnvsToModelContext({
         modelContext: mc,
@@ -400,7 +399,7 @@ describe('exposeShadowEnvsToModelContext', () => {
       later.dispose();
       opener.dispose();
     } finally {
-      console.warn = originalWarn;
+      warn.mockRestore();
       scene.dispose();
     }
   });
@@ -411,9 +410,8 @@ describe('exposeShadowEnvsToModelContext', () => {
     new ViewComponent('thing', {parent: scene.root, context: ComponentContext.get('mc-accept')});
     await scene.env.syncWait();
 
-    const warnings: unknown[][] = [];
-    const originalWarn = console.warn;
-    console.warn = (...args: unknown[]) => warnings.push(args);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const warnings = warn.mock.calls;
     try {
       const opener = await exposeShadowEnvsToModelContext({
         modelContext: mc,
@@ -437,7 +435,7 @@ describe('exposeShadowEnvsToModelContext', () => {
       expect(fresh.contexts, 'the limit left with the opener, so the joiner had not asked for it').toBeDefined();
       after.dispose();
     } finally {
-      console.warn = originalWarn;
+      warn.mockRestore();
       scene.dispose();
     }
   });
@@ -445,9 +443,8 @@ describe('exposeShadowEnvsToModelContext', () => {
   it('a later share reports only the settings it actually passed, and only when they differ', async () => {
     const mc = fakeModelContext();
 
-    const warnings: unknown[][] = [];
-    const originalWarn = console.warn;
-    console.warn = (...args: unknown[]) => warnings.push(args);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const warnings = warn.mock.calls;
     try {
       const opener = await exposeShadowEnvsToModelContext({
         modelContext: mc,
@@ -469,13 +466,86 @@ describe('exposeShadowEnvsToModelContext', () => {
       expect(warnings, 'an explicit {} asks for no limits and differs from the opener’s').toHaveLength(2);
       expect(warnings[1]?.at(-1)).toMatchObject({ignored: {limits: {}}});
 
+      const mixed = await exposeShadowEnvsToModelContext({
+        modelContext: mc,
+        limits: {maxDepth: 0},
+        exposedTo: ['https://b.example'],
+      });
+      expect(warnings, 'exposedTo differs, limits does not').toHaveLength(3);
+      expect(warnings[2]?.at(-1), 'the report names only the value that differs').toHaveProperty('ignored', {
+        exposedTo: ['https://b.example'],
+      });
+
+      mixed.dispose();
       emptyLimits.dispose();
       sameLimits.dispose();
       otherExposedTo.dispose();
       sameExposedTo.dispose();
       opener.dispose();
     } finally {
-      console.warn = originalWarn;
+      warn.mockRestore();
+    }
+  });
+
+  it('a later share whose settings take the same effect is not reported, however they are written', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      const mc = fakeModelContext();
+      const opener = await exposeShadowEnvsToModelContext({
+        modelContext: mc,
+        limits: {maxDepth: 2, include: ['props', 'shadowObjects']},
+        exposedTo: ['https://a.example', 'https://b.example'],
+      });
+      const reordered = await exposeShadowEnvsToModelContext({
+        modelContext: mc,
+        limits: {include: ['shadowObjects', 'props', 'props'], maxDepth: 2},
+        exposedTo: ['https://b.example', 'https://a.example'],
+      });
+      expect(warn.mock.calls, 'key order, list order and repeats carry no meaning').toEqual([]);
+
+      const otherMc = fakeModelContext();
+      const bare = await exposeShadowEnvsToModelContext({modelContext: otherMc});
+      const spelledOut = await exposeShadowEnvsToModelContext({
+        modelContext: otherMc,
+        limits: {maxDepth: 4, maxNodes: 250, include: ['props', 'shadowObjects', 'contexts', 'registry']},
+      });
+      expect(warn.mock.calls, 'the defaults written out are the defaults').toEqual([]);
+
+      spelledOut.dispose();
+      bare.dispose();
+      reordered.dispose();
+      opener.dispose();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("the opener's settings are copied: changing the caller's objects afterwards changes nothing", async () => {
+    const mc = fakeModelContext();
+    const scene = await makeEnv('mc-copied');
+    new ViewComponent('thing', {parent: scene.root, context: ComponentContext.get('mc-copied')});
+    await scene.env.syncWait();
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      const limits = {maxDepth: 0};
+      const exposedTo = ['https://a.example'];
+      const opener = await exposeShadowEnvsToModelContext({modelContext: mc, limits, exposedTo});
+      limits.maxDepth = 3;
+      exposedTo.push('https://b.example');
+
+      const root = (await execute(mc, 'shae-get-entity-tree', {namespace: 'mc-copied'})).envs[0].kernel.roots[0];
+      expect(root.children, 'the limits as they were at opening').toBeUndefined();
+      expect(mc.calls[0]?.exposedTo).toEqual(['https://a.example']);
+
+      const joiner = await exposeShadowEnvsToModelContext({modelContext: mc, limits: {maxDepth: 0}});
+      expect(warn.mock.calls, 'compared against what was registered').toEqual([]);
+
+      joiner.dispose();
+      opener.dispose();
+    } finally {
+      warn.mockRestore();
+      scene.dispose();
     }
   });
 });

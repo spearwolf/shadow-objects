@@ -12,9 +12,16 @@ export interface ExposeOptions {
   toolPrefix?: string;
   /** Aborting it takes this call's share back; the tools leave with the last share. */
   signal?: AbortSignal;
-  /** Passed through to `registerTool()` by the call that opens the registration. Default: not set, so the platform default applies. */
+  /**
+   * Passed through to `registerTool()` by the call that opens the registration; left out there, the platform default applies.
+   * A later call joins under the opener's value: left out, it accepts that value without a report -- the environments it
+   * exposes are then visible to the opener's audience -- and a value of its own that differs is reported and ignored.
+   */
   exposedTo?: string[];
-  /** Default limits for every tool call, set by the call that opens the registration; a call's own input wins field by field. */
+  /**
+   * Default limits for every tool call, set by the call that opens the registration; a call's own input wins field by field.
+   * A later call that leaves them out accepts the opener's without a report; one that passes others is reported and ignored.
+   */
   limits?: Partial<InspectRequest>;
   /** Property names whose values are replaced by `{$type: 'redacted'}` in every answer, on the Kernel's and the View's side alike. Property values only. Cumulates with every other share of the registration. */
   redactProps?: RedactRule;
@@ -61,16 +68,11 @@ export async function exposeShadowEnvsToModelContext(options: ExposeOptions = {}
   const {signal} = options;
   if (signal?.aborted) return {available: true, tools: [], dispose() {}};
 
-  // what this call asks for, and nothing more: a setting left out accepts whatever the registration already runs with
-  const settings = {
-    ...(options.limits !== undefined ? {limits: options.limits} : {}),
-    ...(options.exposedTo !== undefined ? {exposedTo: options.exposedTo} : {}),
-  };
   const membership = joinSharedExposure(
     modelContext,
     options.toolPrefix ?? DefaultToolPrefix,
     {namespaces: options.namespaces, redactProps: options.redactProps},
-    settings,
+    {limits: options.limits, exposedTo: options.exposedTo},
   );
 
   const dispose = () => {

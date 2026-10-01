@@ -1,3 +1,4 @@
+import {normalizeInspectRequest} from '../inspect/normalizeInspectRequest.js';
 import type {InspectRequest} from '../inspect/types.js';
 import type {NamespaceType} from '../types.js';
 import {ConsoleLogger} from '../utils/ConsoleLogger.js';
@@ -19,8 +20,11 @@ export interface ExposureSettings {
   exposedTo?: string[];
 }
 
-/** What one member asked for. A field left out accepts whatever the registration already has. */
-export type RequestedExposureSettings = ExposureSettings | {limits?: Partial<InspectRequest>; exposedTo?: string[]};
+/**
+ * What one member asked for. A field left out -- or passed as `undefined`, so an option can be
+ * handed through as it is -- accepts whatever the registration already has.
+ */
+export type RequestedExposureSettings = {[K in keyof ExposureSettings]?: ExposureSettings[K] | undefined};
 
 export interface ExposureMembership {
   /**
@@ -107,9 +111,10 @@ const registerAll = async (modelContext: ModelContextLike, ctx: ToolContext, exp
 };
 
 const open = (modelContext: ModelContextLike, prefix: string, requested: RequestedExposureSettings): Exposure => {
+  // copies: the registration runs with what was asked for at opening, not with what the caller's objects turn into later
   const settings: ExposureSettings = {
-    limits: requested.limits ?? {},
-    ...(requested.exposedTo !== undefined ? {exposedTo: requested.exposedTo} : {}),
+    limits: structuredClone(requested.limits ?? {}),
+    ...(requested.exposedTo !== undefined ? {exposedTo: [...requested.exposedTo]} : {}),
   };
   const members = new Set<ExposureMember>();
   const exposure: Exposure = {
@@ -145,10 +150,34 @@ const close = (modelContext: ModelContextLike, prefix: string, exposure: Exposur
   if (byPrefix?.get(prefix) === exposure) byPrefix.delete(prefix);
 };
 
-/** What the joiner asked for and the registration does not run with. A setting left out accepts what is in effect. */
-const conflicts = (inEffect: ExposureSettings, requested: RequestedExposureSettings): boolean =>
-  (requested.limits !== undefined && JSON.stringify(requested.limits) !== JSON.stringify(inEffect.limits)) ||
-  (requested.exposedTo !== undefined && JSON.stringify(requested.exposedTo) !== JSON.stringify(inEffect.exposedTo));
+/** A list whose order and repeats carry no meaning, in one spelling. */
+const asSet = (list: readonly string[] | undefined): string[] | undefined =>
+  list === undefined ? undefined : [...new Set(list)].sort();
+
+/**
+ * The limits as the tools apply them, in one spelling: defaults filled in, values clamped, lists
+ * read as sets. Two limits that walk and serialize alike compare equal, however they were written.
+ */
+const effectiveLimits = (limits: Partial<InspectRequest>): string => {
+  const {include, rootUuids, ...rest} = normalizeInspectRequest(limits);
+  return JSON.stringify({include: asSet([...include]), rootUuids: asSet(rootUuids), ...rest});
+};
+
+/**
+ * What the joiner asked for and the registration does not run with -- just those fields, or
+ * `undefined` when there are none. A setting left out accepts what is in effect; `limits` are
+ * compared by their effect, `exposedTo` as a set of origins.
+ */
+const conflicts = (inEffect: ExposureSettings, requested: RequestedExposureSettings): RequestedExposureSettings | undefined => {
+  const {limits, exposedTo} = requested;
+  const ignored: RequestedExposureSettings = {
+    ...(limits !== undefined && effectiveLimits(limits) !== effectiveLimits(inEffect.limits) ? {limits} : {}),
+    ...(exposedTo !== undefined && JSON.stringify(asSet(exposedTo)) !== JSON.stringify(asSet(inEffect.exposedTo))
+      ? {exposedTo}
+      : {}),
+  };
+  return Object.keys(ignored).length > 0 ? ignored : undefined;
+};
 
 /**
  * Joins the registration under `prefix` on `modelContext`, opening it when there is none. The
@@ -173,11 +202,14 @@ export function joinSharedExposure(
   if (exposure === undefined) {
     exposure = open(modelContext, prefix, settings);
     byPrefix.set(prefix, exposure);
-  } else if (conflicts(exposure.settings, settings)) {
-    logger.warn(
-      `the tools under "${prefix}" are already registered with other limits or exposedTo; the values of the first call apply`,
-      {inEffect: exposure.settings, ignored: settings},
-    );
+  } else {
+    const ignored = conflicts(exposure.settings, settings);
+    if (ignored !== undefined) {
+      logger.warn(
+        `the tools under "${prefix}" are already registered with other limits or exposedTo; the values of the first call apply`,
+        {inEffect: exposure.settings, ignored},
+      );
+    }
   }
 
   const joined = exposure;
