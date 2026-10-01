@@ -183,4 +183,30 @@ describe('<shae-worker expose-to-model-context>', () => {
     const el = mount(`ns="${nextNs()}" ${ATTR_EXPOSE_TO_MODEL_CONTEXT}`);
     expect(await el.modelContextExposure).toMatchObject({available: false, tools: []});
   });
+
+  it('joins a registration that was opened with limits and exposedTo, without a warning', async () => {
+    const fake = installFakeModelContext();
+    const opener = await exposeShadowEnvsToModelContext({
+      namespaces: [],
+      limits: {include: ['shadowObjects', 'props']},
+      exposedTo: ['https://agent.example'],
+    });
+
+    const warnings: unknown[][] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args);
+    try {
+      const el = mount(`ns="${nextNs()}" ${ATTR_EXPOSE_TO_MODEL_CONTEXT}`);
+      await el.modelContextExposure;
+
+      expect(warnings, 'the element asks for no settings of its own').toEqual([]);
+      expect(fake.registrations, 'one registration, joined').toBe(5);
+
+      opener.dispose();
+      el.removeAttribute(ATTR_EXPOSE_TO_MODEL_CONTEXT);
+      expect(fake.tools.size).toBe(0);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
 });

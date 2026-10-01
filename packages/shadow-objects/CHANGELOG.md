@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > Build-system, monorepo, lint/format, and dev-workflow changes that don't affect the shipped package are tracked in the top-level [`CHANGELOG.md`](https://github.com/spearwolf/shadow-objects/blob/main/CHANGELOG.md).
 
+## [Unreleased]
+
+### Bugfixes
+
+- **Fixed (model-context):** a `<shae-worker expose-to-model-context>` that joins a registration opened with `limits` or `exposedTo` no longer reports `the tools under "shae-" are already registered with other limits or exposedTo`. The join compared the settings by value, and `exposeShadowEnvsToModelContext()` normalised a missing `limits` to `{}` before it, so a share that asked for nothing read as a conflict with whatever the opener had set — once per exposing element, and with no way for the element to opt out. A setting left out now accepts what the registration runs with; only a value the caller actually passed and that differs from the opener's is reported, and the report's `ignored` payload names just that. The opener's semantics are unchanged. Documented in `docs/api-reference.md` and `docs/best-practices.md`.
+
 ## [0.35.2] - 2026-10-01
 
 > **Patch, and nothing breaks.** One bugfix and no new API — an application written against

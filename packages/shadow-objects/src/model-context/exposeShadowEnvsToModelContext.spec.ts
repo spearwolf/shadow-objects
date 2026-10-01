@@ -404,4 +404,78 @@ describe('exposeShadowEnvsToModelContext', () => {
       scene.dispose();
     }
   });
+
+  it('a later share that leaves limits and exposedTo out accepts what is in effect, without a warning', async () => {
+    const mc = fakeModelContext();
+    const scene = await makeEnv('mc-accept');
+    new ViewComponent('thing', {parent: scene.root, context: ComponentContext.get('mc-accept')});
+    await scene.env.syncWait();
+
+    const warnings: unknown[][] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args);
+    try {
+      const opener = await exposeShadowEnvsToModelContext({
+        modelContext: mc,
+        namespaces: [],
+        limits: {include: ['shadowObjects', 'props']},
+        exposedTo: ['https://a.example'],
+      });
+      // the shape of an element join: namespaces and redactProps, no settings of its own
+      const joiner = await exposeShadowEnvsToModelContext({modelContext: mc});
+
+      expect(warnings, 'nothing to report: the joiner asked for nothing').toEqual([]);
+      expect(mc.calls[0]?.exposedTo).toEqual(['https://a.example']);
+      const root = (await execute(mc, 'shae-get-entity-tree', {namespace: 'mc-accept'})).envs[0].kernel.roots[0];
+      expect(root.props, "the opener's limits apply: props is included").toBeDefined();
+      expect(root.contexts, "the opener's limits apply: contexts is not included").toBeUndefined();
+
+      joiner.dispose();
+      opener.dispose();
+      const after = await exposeShadowEnvsToModelContext({modelContext: mc});
+      const fresh = (await execute(mc, 'shae-get-entity-tree', {namespace: 'mc-accept'})).envs[0].kernel.roots[0];
+      expect(fresh.contexts, 'the limit left with the opener, so the joiner had not asked for it').toBeDefined();
+      after.dispose();
+    } finally {
+      console.warn = originalWarn;
+      scene.dispose();
+    }
+  });
+
+  it('a later share reports only the settings it actually passed, and only when they differ', async () => {
+    const mc = fakeModelContext();
+
+    const warnings: unknown[][] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args);
+    try {
+      const opener = await exposeShadowEnvsToModelContext({
+        modelContext: mc,
+        limits: {maxDepth: 0},
+        exposedTo: ['https://a.example'],
+      });
+
+      const sameExposedTo = await exposeShadowEnvsToModelContext({modelContext: mc, exposedTo: ['https://a.example']});
+      expect(warnings, 'the value asked for is the value in effect').toEqual([]);
+
+      const otherExposedTo = await exposeShadowEnvsToModelContext({modelContext: mc, exposedTo: ['https://b.example']});
+      expect(warnings, 'exposedTo was asked for and differs').toHaveLength(1);
+      expect(warnings[0]?.at(-1)).toMatchObject({ignored: {exposedTo: ['https://b.example']}});
+
+      const sameLimits = await exposeShadowEnvsToModelContext({modelContext: mc, limits: {maxDepth: 0}});
+      expect(warnings, 'still only the one').toHaveLength(1);
+
+      const emptyLimits = await exposeShadowEnvsToModelContext({modelContext: mc, limits: {}});
+      expect(warnings, 'an explicit {} asks for no limits and differs from the opener’s').toHaveLength(2);
+      expect(warnings[1]?.at(-1)).toMatchObject({ignored: {limits: {}}});
+
+      emptyLimits.dispose();
+      sameLimits.dispose();
+      otherExposedTo.dispose();
+      sameExposedTo.dispose();
+      opener.dispose();
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
 });
