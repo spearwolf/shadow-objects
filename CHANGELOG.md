@@ -4,6 +4,12 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-10-01 — the skill says when a host-less `<shae-prop>` is reported
+
+- **`skills/use-shadow-objects/references/elements.md`:** the missing-host report of `<shae-prop>`
+  goes out one task after the lookup, so a host arriving in the same task is not reported. The
+  reference now says so, matching `@spearwolf/shadow-objects` `[Unreleased]`.
+
 ## 2026-09-06 — an agent skill for using the framework, and one sentence of history out of the docs
 
 `skills/use-shadow-objects/` is a new agent skill: what a coding agent needs to build an application

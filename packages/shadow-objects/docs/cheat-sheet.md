@@ -322,8 +322,9 @@ root attached afterwards, a changed slot assignment, the `<slot>` element itself
 another entity, a host that leaves the tree. A move binds anew right away; a change above the
 element takes effect one microtask later. The same two speeds hold for a `<shae-ent>` looking for
 its parent, and on both sides there is one change that is announced at once: the entity above the
-element leaving the tree. With no entity above it at all, the property is set
-nowhere and reported once per element through the `ConsoleLogger` at warn level.
+element leaving the tree. With no entity above it at all, the property is set nowhere and reported
+once per element through the `ConsoleLogger` at warn level — in the next task, so a host that
+arrives in the same task, a tag registered later included, is not reported.
 
 Every slot move is followed, wherever the slot lands — `slot.remove()` included: the entity giving
 the slot away listens on the `<slot>` element itself and reports the loss. A projected `<shae-ent>`

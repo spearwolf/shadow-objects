@@ -111,8 +111,9 @@ boundaries. It is re-decided whenever the element moves and whenever something a
 tag registered late, a shadow root attached afterwards, a changed slot assignment, the `<slot>`
 itself moving, a host leaving the tree. A move binds immediately; a change above the element takes
 effect one microtask later. With no entity above it, the property is set nowhere and reported once
-per element at `warn`. Removing, renaming or moving the element to another entity clears the
-property; a move within one tick is a move, not a removal.
+per element at `warn` — one task later, so a host arriving in the same task is never reported.
+Removing, renaming or moving the element to another entity clears the property; a move within one
+tick is a move, not a removal.
 
 ### `type` values
 

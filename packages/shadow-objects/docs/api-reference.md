@@ -2817,12 +2817,18 @@ when it enters the tree, is synchronous, and letting go when the element leaves 
 of its own.
 
 A `<shae-prop>` with no entity anywhere above it sets its property nowhere and reports that once
-through the `ConsoleLogger`. Once means once per element, not once per lookup: the re-request
-channel repeats the same question every time anything above the element changes, and only the
-first unanswered lookup is reported. An element on its way out of the tree reports nothing — the
-report needs the element to be connected, because a departing element is not one that is missing a
-host. The report is a `warn` and therefore gated behind `ConsoleLogger.sharedConfig.enable`, which
-defaults to "the page is served from a loopback host" — off a loopback host the case is silent.
+through the `ConsoleLogger`. The report waits for the next task: "no entity above me yet" is a
+state an element passes through when the tag of the element above it is registered after its own,
+when a framework renders the entity a microtask later, or when a slot is assigned afterwards — and
+every one of those is repaired by a re-request round inside the task the element arrived in. If the
+element has found its host by the next task, nothing is reported. Once means once per element, not
+once per lookup: the re-request channel repeats the same question every time anything above the
+element changes, and only the first lookup that is still unanswered a task later is reported. An
+element that left the tree or was destroyed before the check runs reports nothing — a departing
+element is not one that is missing a host. The report is a `warn` and therefore gated behind
+`ConsoleLogger.sharedConfig.enable`, which defaults to "the page is served from a loopback host" —
+off a loopback host the case is silent. The switch is read when the report goes out, so a test that
+turns it on has to keep it on across that task.
 
 The namespace plays no part in it: what counts is proximity, not membership. A `<shae-prop>` under
 a `<shae-ent ns="hud">` inside a `<shae-ent>` of the global namespace belongs to the `hud` entity,
