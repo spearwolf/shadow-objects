@@ -61,7 +61,11 @@ export async function exposeShadowEnvsToModelContext(options: ExposeOptions = {}
   const {signal} = options;
   if (signal?.aborted) return {available: true, tools: [], dispose() {}};
 
-  const settings = {limits: options.limits ?? {}, ...(options.exposedTo !== undefined ? {exposedTo: options.exposedTo} : {})};
+  // what this call asks for, and nothing more: a setting left out accepts whatever the registration already runs with
+  const settings = {
+    ...(options.limits !== undefined ? {limits: options.limits} : {}),
+    ...(options.exposedTo !== undefined ? {exposedTo: options.exposedTo} : {}),
+  };
   const membership = joinSharedExposure(
     modelContext,
     options.toolPrefix ?? DefaultToolPrefix,

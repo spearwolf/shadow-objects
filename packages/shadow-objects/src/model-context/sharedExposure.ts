@@ -19,6 +19,9 @@ export interface ExposureSettings {
   exposedTo?: string[];
 }
 
+/** What one member asked for. A field left out accepts whatever the registration already has. */
+export type RequestedExposureSettings = ExposureSettings | {limits?: Partial<InspectRequest>; exposedTo?: string[]};
+
 export interface ExposureMembership {
   /**
    * The names the registration ended with -- empty when it was closed while it was still
@@ -103,7 +106,11 @@ const registerAll = async (modelContext: ModelContextLike, ctx: ToolContext, exp
   return registered;
 };
 
-const open = (modelContext: ModelContextLike, prefix: string, settings: ExposureSettings): Exposure => {
+const open = (modelContext: ModelContextLike, prefix: string, requested: RequestedExposureSettings): Exposure => {
+  const settings: ExposureSettings = {
+    limits: requested.limits ?? {},
+    ...(requested.exposedTo !== undefined ? {exposedTo: requested.exposedTo} : {}),
+  };
   const members = new Set<ExposureMember>();
   const exposure: Exposure = {
     members,
@@ -138,20 +145,23 @@ const close = (modelContext: ModelContextLike, prefix: string, exposure: Exposur
   if (byPrefix?.get(prefix) === exposure) byPrefix.delete(prefix);
 };
 
-const sameSettings = (a: ExposureSettings, b: ExposureSettings): boolean =>
-  JSON.stringify(a.limits) === JSON.stringify(b.limits) && JSON.stringify(a.exposedTo) === JSON.stringify(b.exposedTo);
+/** What the joiner asked for and the registration does not run with. A setting left out accepts what is in effect. */
+const conflicts = (inEffect: ExposureSettings, requested: RequestedExposureSettings): boolean =>
+  (requested.limits !== undefined && JSON.stringify(requested.limits) !== JSON.stringify(inEffect.limits)) ||
+  (requested.exposedTo !== undefined && JSON.stringify(requested.exposedTo) !== JSON.stringify(inEffect.exposedTo));
 
 /**
  * Joins the registration under `prefix` on `modelContext`, opening it when there is none. The
  * member's rules count from the next tool call on; `settings` count only for the member that
- * opens -- a later member with other values is reported and joins under the opener's, because
- * `exposedTo` has gone to the platform by then and one set of `limits` is all a tool has.
+ * opens -- a later member that asks for other values is reported and joins under the opener's,
+ * because `exposedTo` has gone to the platform by then and one set of `limits` is all a tool
+ * has. A setting the later member leaves out accepts what the registration already runs with.
  */
 export function joinSharedExposure(
   modelContext: ModelContextLike,
   prefix: string,
   member: ExposureMember,
-  settings: ExposureSettings,
+  settings: RequestedExposureSettings,
 ): ExposureMembership {
   let byPrefix = registry.get(modelContext);
   if (byPrefix === undefined) {
@@ -163,7 +173,7 @@ export function joinSharedExposure(
   if (exposure === undefined) {
     exposure = open(modelContext, prefix, settings);
     byPrefix.set(prefix, exposure);
-  } else if (!sameSettings(exposure.settings, settings)) {
+  } else if (conflicts(exposure.settings, settings)) {
     logger.warn(
       `the tools under "${prefix}" are already registered with other limits or exposedTo; the values of the first call apply`,
       {inEffect: exposure.settings, ignored: settings},
