@@ -348,8 +348,10 @@ describe('shae-prop follows its host entity', () => {
     });
   });
 
-  // Mutation that turns this red: drop the `#reportedMissingHost` guard. Every entity that shows
-  // up anywhere above the property repeats the request, and with it the report.
+  // Mutation that turns this red: drop the `#reportedMissingHost` terms — both of them, the one in
+  // `#findEntNode` and the one in the check `#bookMissingHostCheck` runs; either alone still holds
+  // the line. Every entity that shows up anywhere above the property repeats the request, and with
+  // it the report.
   it('reports the missing host once, not once per entity that arrives', async () => {
     await withWarnings(async (reports) => {
       const container = mount('<div id="rg-box"><shae-prop id="rg-prop" name="rg-x" value="1"></shae-prop></div>');
@@ -362,6 +364,10 @@ describe('shae-prop follows its host entity', () => {
       // a node that is already connected, because only an element upgraded in place announces
       // itself at all
       container.querySelector('#rg-box').insertAdjacentHTML('beforeend', '<shae-ent id="rg-sibling" token="sibling"></shae-ent>');
+      // two tasks, not one: the lookup the sibling triggers runs a microtask later and books its
+      // check from there, behind a `nextTask()` timer booked right here. One task would read the
+      // count before a second report could have arrived
+      await nextTask();
       await nextTask();
 
       expect({afterMount, afterSibling: reports('rg-x')}).to.deep.equal({afterMount: 1, afterSibling: 1});
