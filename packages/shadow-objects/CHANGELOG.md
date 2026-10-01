@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > Build-system, monorepo, lint/format, and dev-workflow changes that don't affect the shipped package are tracked in the top-level [`CHANGELOG.md`](https://github.com/spearwolf/shadow-objects/blob/main/CHANGELOG.md).
 
+## [Unreleased]
+
+### Bugfixes
+
+- **Fixed (`<shae-prop>`):** the warning `no entity above this element, the property is set nowhere` no longer goes out for a property whose host arrives in the same task. Importing `@spearwolf/shadow-objects/shae-prop.js` before `shae-ent.js` defines `<shae-prop>` first, and every property already in the page reported once although its value reached the entity right afterwards; a property inside a subtree whose entity is rendered a microtask later did the same. The element now checks again in the next task, after the re-request rounds of the current one have run, and reports only if it still has no host there — once per element, and nothing for an element that left the tree or was destroyed in between. Documented in `docs/api-reference.md`.
+
 ## [0.35.1] - 2026-09-30
 
 > **Patch, and nothing breaks.** One bugfix and no new API — an application written against

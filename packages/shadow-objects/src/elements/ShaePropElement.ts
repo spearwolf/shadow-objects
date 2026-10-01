@@ -111,6 +111,9 @@ export class ShaePropElement extends ShaeLifecycleElement {
   /** Whether the missing-host warning has already gone out for this element. */
   #reportedMissingHost = false;
 
+  /** Whether a missing-host check is waiting for the next task. */
+  #missingHostCheckBooked = false;
+
   /** The node this element listens on for a re-request of the host, so the listener can come off the same one. */
   #reRequestHostTarget?: EventTarget | undefined;
 
@@ -409,8 +412,8 @@ export class ShaePropElement extends ShaeLifecycleElement {
   // namespace: a property belongs to the closest entity above it, whatever namespace that entity
   // is in.
   //
-  // Nobody answering means there is no entity above this position, and the element says so. A
-  // binding without an answer belongs to a place that is no longer there — whether the element
+  // Nobody answering means there is no entity above this position, and the element says so once
+  // the task it arrived in has ended without one. A binding without an answer belongs to a place that is no longer there — whether the element
   // moved or the entity above it did. The cleanup on `entNode$` then takes the property off the
   // entity that no longer holds it, instead of leaving the element writing into an entity it does
   // not sit under any more.
@@ -420,27 +423,59 @@ export class ShaePropElement extends ShaeLifecycleElement {
 
     this.entNode$.set(found);
 
-    // Reported once per element, not once per request: the re-request channel repeats this very
-    // lookup, so a property that never gets a host would otherwise report again on every upgrade
-    // happening anywhere above it.
+    // Nobody answering is not reported on the spot. "No entity above me yet" is a state this
+    // framework passes through by design: a <shae-prop> whose tag is registered before the tag of
+    // the element above it, a property inside a subtree whose entity a framework renders a
+    // microtask later, a slot that is assigned afterwards. Each of them is repaired inside the task
+    // the element arrived in — by the re-request round an upgraded or shadow-tree entity sends, and
+    // by the round a `slotchange` books — and all of those rounds run as microtasks. So the element
+    // books a check for the next task, where every one of them has had its turn, and reports only
+    // what is still true there; see `#bookMissingHostCheck`.
     //
     // The `isConnected` term is what separates "no host" from "no position": an element on its way
     // out of the tree is not missing a host.
-    //
-    // The limit of this report belongs next to it: `logger.warn` hangs on
-    // `ConsoleLogger.sharedConfig.enable`, which means "the page is served from a loopback host" —
-    // elsewhere the case stays silent. `warn` and not `error`, because in the upgrade path this
-    // framework supports by design, "no entity above me yet" is a state to pass through: a
-    // <shae-prop> under an element whose tag is registered later reports once and finds its host
-    // right afterwards.
     if (found == null && this.isConnected && !this.#reportedMissingHost) {
+      this.#bookMissingHostCheck();
+    }
+
+    this.#listenForHostChanges();
+  };
+
+  // A macrotask and not a microtask: a `queueMicrotask` booked here can come due before the lookup
+  // a later `customElements.define` of the host's tag queues, and would report the very case it is
+  // meant to wait out. Not `requestAnimationFrame` either: it does not fire in a background tab or
+  // a hidden frame, and the report would hang there indefinitely.
+  //
+  // One booking per element at a time. A lookup that finds nothing again before the check runs —
+  // a re-request round, a move inside the same task — has nothing to add: the check reads the
+  // element's state when it runs, not when it was booked.
+  //
+  // The check asks the same three questions the lookups do. Connected, because an element that
+  // left the tree in the meantime is not missing a host. Not destroyed, because an element ended by
+  // hand while it stands where it was has let go of everything, the report included. And still
+  // without a host, because a host found in the meantime cancels the report silently.
+  //
+  // Reported once per element, not once per request: the re-request channel repeats the lookup on
+  // every change anywhere above the element, and a property that never gets a host would otherwise
+  // report again each time.
+  //
+  // `warn` and not `error`, and therefore gated by `ConsoleLogger.sharedConfig.enable`, which
+  // means "the page is served from a loopback host" — elsewhere the case stays silent. The gate is
+  // read when the report goes out, not when it was booked.
+  #bookMissingHostCheck = () => {
+    if (this.#missingHostCheckBooked) return;
+    this.#missingHostCheckBooked = true;
+
+    setTimeout(() => {
+      this.#missingHostCheckBooked = false;
+
+      if (this.#reportedMissingHost || !this.isConnected || this.isDestroyed || this.entNode$.value != null) return;
+
       this.#reportedMissingHost = true;
       this.logger.warn(`[${this.name}] no entity above this element, the property is set nowhere`, {
         shaeProp: this,
       });
-    }
-
-    this.#listenForHostChanges();
+    }, 0);
   };
 
   // Someone above started or stopped answering. Two things separate this from a lookup the

@@ -1,5 +1,5 @@
 import {expect} from '@esm-bundle/chai';
-import {ComponentChangeType, ComponentContext, ShadowEnv, ShaeEntElement} from '@spearwolf/shadow-objects';
+import {ComponentChangeType, ComponentContext, ShadowEnv, ShaeEntElement, ShaePropElement} from '@spearwolf/shadow-objects';
 import {ConsoleLogger} from '@spearwolf/shadow-objects/ConsoleLogger.js';
 import '@spearwolf/shadow-objects/shae-ent.js';
 import '@spearwolf/shadow-objects/shae-prop.js';
@@ -77,6 +77,38 @@ const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0));
 /** The property list of the change-properties entry for `uuid`, or `undefined` if there is none. */
 const propsOf = (trail, uuid) =>
   trail.find((entry) => entry.type === ComponentChangeType.ChangeProperties && entry.uuid === uuid)?.properties;
+
+/**
+ * Runs `body` with `console.warn` stubbed and the `ConsoleLogger` switched on, and hands it a
+ * counter for the warnings that name `text`.
+ *
+ * `ConsoleLogger.sharedConfig.enable` is derived from the host name of the page and then reloaded
+ * from localStorage — neither is under a case's control, so it is set here. The opposite of
+ * `the conversion failure is reported through the ConsoleLogger` in `prop-element-types.test.js`,
+ * which turns the switch *off* because it checks `logger.error`.
+ *
+ * The missing-host report is read off the switch when it goes out, one task after the lookup that
+ * found nothing, so `body` has to await that task itself — after the `finally` below, the switch is
+ * back to whatever it was and a late report reaches a restored `console.warn`.
+ *
+ * Counted by content, not by call count: an unrelated report during mount must not decide a case
+ * either way.
+ *
+ * @param {(reports: (text: string) => number) => Promise<void>} body
+ */
+const withWarnings = async (body) => {
+  const previousEnable = ConsoleLogger.sharedConfig.enable;
+  ConsoleLogger.sharedConfig.enable = true;
+  const warn = sinon.stub(console, 'warn');
+  try {
+    await body(
+      (text) => warn.getCalls().filter((call) => call.args.some((arg) => typeof arg === 'string' && arg.includes(text))).length,
+    );
+  } finally {
+    warn.restore();
+    ConsoleLogger.sharedConfig.enable = previousEnable;
+  }
+};
 
 describe('shae-prop host lookup across shadow boundaries', () => {
   afterEach(() => {
@@ -301,44 +333,30 @@ describe('shae-prop follows its host entity', () => {
     expect(ctx.buildChangeTrails(), 'a value written from there reaches nothing at all').to.have.lengthOf(0);
   });
 
+  // The report waits for the next task: a host that arrives inside the current one — a tag
+  // registered later, an entity rendered a microtask afterwards — cancels it.
   it('reports a property with no entity in its ancestor path', async () => {
-    // `ConsoleLogger.sharedConfig.enable` is derived from the host name of the page and then
-    // reloaded from localStorage — neither is under this case's control, so it is set here. The
-    // opposite of `the conversion failure is reported through the ConsoleLogger` in
-    // `prop-element-types.test.js`, which turns the switch *off* because it checks `logger.error`.
-    const previousEnable = ConsoleLogger.sharedConfig.enable;
-    ConsoleLogger.sharedConfig.enable = true;
-    const warn = sinon.stub(console, 'warn');
-    try {
+    await withWarnings(async (reports) => {
       mount('<shae-prop id="lonely" name="lonely-x" value="1"></shae-prop>');
       await Promise.all(['shae-ent', 'shae-prop'].map((name) => customElements.whenDefined(name)));
 
-      // counted by content, not by call count: an unrelated report during mount must not decide
-      // this case either way
-      const reports = warn
-        .getCalls()
-        .filter((call) => call.args.some((arg) => typeof arg === 'string' && arg.includes('lonely-x')));
-      expect(reports, 'reports naming the property').to.have.lengthOf(1);
-    } finally {
-      warn.restore();
-      ConsoleLogger.sharedConfig.enable = previousEnable;
-    }
+      expect(reports('lonely-x'), 'nothing goes out while an entity can still arrive in this task').to.equal(0);
+
+      await nextTask();
+
+      expect(reports('lonely-x'), 'reports naming the property').to.equal(1);
+    });
   });
 
   // Mutation that turns this red: drop the `#reportedMissingHost` guard. Every entity that shows
   // up anywhere above the property repeats the request, and with it the report.
   it('reports the missing host once, not once per entity that arrives', async () => {
-    const previousEnable = ConsoleLogger.sharedConfig.enable;
-    ConsoleLogger.sharedConfig.enable = true;
-    const warn = sinon.stub(console, 'warn');
-    try {
+    await withWarnings(async (reports) => {
       const container = mount('<div id="rg-box"><shae-prop id="rg-prop" name="rg-x" value="1"></shae-prop></div>');
       await Promise.all(['shae-ent', 'shae-prop'].map((name) => customElements.whenDefined(name)));
+      await nextTask();
 
-      const count = () =>
-        warn.getCalls().filter((call) => call.args.some((arg) => typeof arg === 'string' && arg.includes('rg-x'))).length;
-
-      const afterMount = count();
+      const afterMount = reports('rg-x');
 
       // a *sibling* entity: it announces itself without ever becoming a host. The markup goes into
       // a node that is already connected, because only an element upgraded in place announces
@@ -346,11 +364,8 @@ describe('shae-prop follows its host entity', () => {
       container.querySelector('#rg-box').insertAdjacentHTML('beforeend', '<shae-ent id="rg-sibling" token="sibling"></shae-ent>');
       await nextTask();
 
-      expect({afterMount, afterSibling: count()}).to.deep.equal({afterMount: 1, afterSibling: 1});
-    } finally {
-      warn.restore();
-      ConsoleLogger.sharedConfig.enable = previousEnable;
-    }
+      expect({afterMount, afterSibling: reports('rg-x')}).to.deep.equal({afterMount: 1, afterSibling: 1});
+    });
   });
 
   // The `<slot>` moves, not the property and not the entity: what a property sits below changes
@@ -460,6 +475,112 @@ describe('shae-prop follows its host entity', () => {
     // the ascent leaves the shadow root over its host and arrives at the entity around it
     expect(prop.entNode?.id, 'no entity stands above the slot any more').to.equal('sq-outer');
     expect(deep.entNode?.id, 'down to the property below the assigned node').to.equal('sq-outer');
+  });
+});
+
+/**
+ * "No entity above me yet" is a state the framework passes through by design, and the repairs for
+ * it all run as microtasks of the task the element arrived in. The report therefore waits for the
+ * next task and asks again there: a host that arrived in the meantime cancels it, and an element
+ * that left the tree or was destroyed in between reports nothing.
+ */
+describe('shae-prop reports a missing host only once the task has ended', () => {
+  afterEach(() => {
+    unmountAll();
+  });
+
+  // The order a consumer gets by importing `shae-prop.js` before `shae-ent.js`: every property
+  // upgrades in place while the element above it is still undefined, and the entity arrives a
+  // moment later in the same task.
+  //
+  // Mutation that turns this red: report straight from `#findEntNode` again, without the deferred
+  // check.
+  it('stays silent for a host whose tag is registered after its own, in the same task', async () => {
+    await withWarnings(async (reports) => {
+      const entTag = freshTag('late-ent');
+      const propTag = freshTag('late-prop');
+      const container = mount(`
+        <${entTag} id="dr-host" ns="ns-late-prop" token="host">
+          <${propTag} id="dr-x" name="dr-x" value="1"></${propTag}>
+          <${propTag} id="dr-y" name="dr-y" value="2"></${propTag}>
+        </${entTag}>
+      `);
+
+      customElements.define(propTag, class extends ShaePropElement {});
+      customElements.define(entTag, class extends ShaeEntElement {});
+      await nextTask();
+
+      const host = container.querySelector('#dr-host');
+      const properties = ComponentContext.get('ns-late-prop')
+        .buildChangeTrails()
+        .filter((entry) => entry.uuid === host.uuid)
+        .flatMap((entry) => entry.properties ?? []);
+
+      expect(container.querySelector('#dr-x').entNode?.id, 'the property finds the entity').to.equal('dr-host');
+      expect(properties, 'both values reach the entity').to.have.deep.members([
+        ['dr-x', '1'],
+        ['dr-y', '2'],
+      ]);
+      expect({x: reports('dr-x'), y: reports('dr-y')}, 'and neither reports a missing host').to.deep.equal({x: 0, y: 0});
+    });
+  });
+
+  // Lit stamps its template a microtask after the host element connected; the `<slot>` in it then
+  // projects a property that has been looking for its host since the connect.
+  it('stays silent for an entity rendered a microtask after the property connected', async () => {
+    await withWarnings(async (reports) => {
+      const container = mount('<div id="lr-div"><shae-prop id="lr-prop" name="lr-x" value="1"></shae-prop></div>');
+      await Promise.all(['shae-ent', 'shae-prop'].map((name) => customElements.whenDefined(name)));
+
+      await Promise.resolve();
+      container.querySelector('#lr-div').attachShadow({mode: 'open'}).innerHTML =
+        '<shae-ent id="lr-inner" token="inner"><slot></slot></shae-ent>';
+      await nextTask();
+
+      expect(container.querySelector('#lr-prop').entNode?.id, 'the slot projects it into the entity').to.equal('lr-inner');
+      expect(reports('lr-x'), 'and it reports no missing host').to.equal(0);
+    });
+  });
+
+  it('reports nothing for a property removed before the task ended', async () => {
+    await withWarnings(async (reports) => {
+      const container = mount('<shae-prop id="rm-prop" name="rm-x" value="1"></shae-prop>');
+      await Promise.all(['shae-ent', 'shae-prop'].map((name) => customElements.whenDefined(name)));
+
+      container.querySelector('#rm-prop').remove();
+      await nextTask();
+
+      expect(reports('rm-x')).to.equal(0);
+    });
+  });
+
+  it('reports nothing for a property destroyed before the task ended', async () => {
+    await withWarnings(async (reports) => {
+      const container = mount('<shae-prop id="ds-prop" name="ds-x" value="1"></shae-prop>');
+      await Promise.all(['shae-ent', 'shae-prop'].map((name) => customElements.whenDefined(name)));
+
+      // destroyed where it stands: still connected, no longer listening
+      container.querySelector('#ds-prop').destroy();
+      await nextTask();
+
+      expect(reports('ds-x')).to.equal(0);
+    });
+  });
+
+  // Green before the fix as well — it pins that the booking survives a move: an element that
+  // leaves and re-enters inside one task still reports, once, for where it ends up.
+  it('reports once for a property that moves between two places without an entity in one task', async () => {
+    await withWarnings(async (reports) => {
+      const container = mount(
+        '<div id="mv-a"><shae-prop id="mv2-prop" name="mv2-x" value="1"></shae-prop></div><div id="mv-b"></div>',
+      );
+      await Promise.all(['shae-ent', 'shae-prop'].map((name) => customElements.whenDefined(name)));
+
+      container.querySelector('#mv-b').append(container.querySelector('#mv2-prop'));
+      await nextTask();
+
+      expect(reports('mv2-x')).to.equal(1);
+    });
   });
 });
 
