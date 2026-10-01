@@ -111,8 +111,12 @@ export class ShaePropElement extends ShaeLifecycleElement {
   /** Whether the missing-host warning has already gone out for this element. */
   #reportedMissingHost = false;
 
-  /** Whether a missing-host check is waiting for the next task. */
-  #missingHostCheckBooked = false;
+  /**
+   * The elements waiting for the missing-host check. Shared by all of them, and so is the one timer
+   * that runs it: the check asks about the end of a task, and one task can leave hundreds of
+   * properties without a host. Not empty means the timer is queued.
+   */
+  static readonly #pendingMissingHostChecks = new Set<ShaePropElement>();
 
   /** The node this element listens on for a re-request of the host, so the listener can come off the same one. */
   #reRequestHostTarget?: EventTarget | undefined;
@@ -413,10 +417,10 @@ export class ShaePropElement extends ShaeLifecycleElement {
   // is in.
   //
   // Nobody answering means there is no entity above this position, and the element says so once
-  // the task it arrived in has ended without one. A binding without an answer belongs to a place that is no longer there — whether the element
-  // moved or the entity above it did. The cleanup on `entNode$` then takes the property off the
-  // entity that no longer holds it, instead of leaving the element writing into an entity it does
-  // not sit under any more.
+  // the task it arrived in has ended without one. A binding without an answer belongs to a place
+  // that is no longer there — whether the element moved or the entity above it did. The cleanup on
+  // `entNode$` then takes the property off the entity that no longer holds it, instead of leaving
+  // the element writing into an entity it does not sit under any more.
   #findEntNode = () => {
     let found: ShaeEntElement | undefined;
     requestEntAncestor(this, {answer: (entNode) => (found = entNode)});
@@ -446,9 +450,11 @@ export class ShaePropElement extends ShaeLifecycleElement {
   // meant to wait out. Not `requestAnimationFrame` either: it does not fire in a background tab or
   // a hidden frame, and the report would hang there indefinitely.
   //
-  // One booking per element at a time. A lookup that finds nothing again before the check runs —
-  // a re-request round, a move inside the same task — has nothing to add: the check reads the
-  // element's state when it runs, not when it was booked.
+  // One booking per element at a time, and one timer for every element booked before it runs. A
+  // lookup that finds nothing again before the check runs — a re-request round, a move inside the
+  // same task — has nothing to add: the check reads the element's state when it runs, not when it
+  // was booked. An element that joins a timer queued in an earlier task loses nothing by it: a
+  // timer task never starts before the microtasks of the task in front of it have run out.
   //
   // The check asks the same three questions the lookups do. Connected, because an element that
   // left the tree in the meantime is not missing a host. Not destroyed, because an element ended by
@@ -463,20 +469,32 @@ export class ShaePropElement extends ShaeLifecycleElement {
   // means "the page is served from a loopback host" — elsewhere the case stays silent. The gate is
   // read when the report goes out, not when it was booked.
   #bookMissingHostCheck = () => {
-    if (this.#missingHostCheckBooked) return;
-    this.#missingHostCheckBooked = true;
-
-    setTimeout(() => {
-      this.#missingHostCheckBooked = false;
-
-      if (this.#reportedMissingHost || !this.isConnected || this.isDestroyed || this.entNode$.value != null) return;
-
-      this.#reportedMissingHost = true;
-      this.logger.warn(`[${this.name}] no entity above this element, the property is set nowhere`, {
-        shaeProp: this,
-      });
-    }, 0);
+    const pending = ShaePropElement.#pendingMissingHostChecks;
+    if (pending.size === 0) {
+      setTimeout(() => ShaePropElement.#runMissingHostChecks(), 0);
+    }
+    pending.add(this);
   };
+
+  // The batch is taken out and emptied before the first check, as `MicrotaskCollector` does it: a
+  // booking made while the checks run belongs to the timer behind this one.
+  static #runMissingHostChecks(): void {
+    const pending = [...ShaePropElement.#pendingMissingHostChecks];
+    ShaePropElement.#pendingMissingHostChecks.clear();
+
+    for (const prop of pending) {
+      prop.#checkMissingHost();
+    }
+  }
+
+  #checkMissingHost(): void {
+    if (this.#reportedMissingHost || !this.isConnected || this.isDestroyed || this.entNode$.value != null) return;
+
+    this.#reportedMissingHost = true;
+    this.logger.warn(`[${this.name}] no entity above this element, the property is set nowhere`, {
+      shaeProp: this,
+    });
+  }
 
   // Someone above started or stopped answering. Two things separate this from a lookup the
   // element makes on arrival, and both belong here, to the trigger — what an unanswered

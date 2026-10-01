@@ -531,16 +531,21 @@ describe('shae-prop reports a missing host only once the task has ended', () => 
     });
   });
 
-  // Lit stamps its template a microtask after the host element connected; the `<slot>` in it then
-  // projects a property that has been looking for its host since the connect.
+  // Lit stamps its template a microtask after the host element connected, and the way Lit does it:
+  // `document.importNode()` builds the entity fully constructed before it is inserted, so it is no
+  // element upgraded in place. Two rounds reach the property instead — the one every entity in a
+  // shadow tree sends when it connects, and the one the `slotchange` of its `<slot>` books — and
+  // either alone binds it in time; the case holds the outcome, not which of them got there first.
   it('stays silent for an entity rendered a microtask after the property connected', async () => {
     await withWarnings(async (reports) => {
       const container = mount('<div id="lr-div"><shae-prop id="lr-prop" name="lr-x" value="1"></shae-prop></div>');
       await Promise.all(['shae-ent', 'shae-prop'].map((name) => customElements.whenDefined(name)));
 
+      const template = document.createElement('template');
+      template.innerHTML = '<shae-ent id="lr-inner" token="inner"><slot></slot></shae-ent>';
+
       await Promise.resolve();
-      container.querySelector('#lr-div').attachShadow({mode: 'open'}).innerHTML =
-        '<shae-ent id="lr-inner" token="inner"><slot></slot></shae-ent>';
+      container.querySelector('#lr-div').attachShadow({mode: 'open'}).append(document.importNode(template.content, true));
       await nextTask();
 
       expect(container.querySelector('#lr-prop').entNode?.id, 'the slot projects it into the entity').to.equal('lr-inner');
@@ -586,6 +591,66 @@ describe('shae-prop reports a missing host only once the task has ended', () => 
       await nextTask();
 
       expect(reports('mv2-x')).to.equal(1);
+    });
+  });
+
+  // The other way into the check: not an element that arrives without a host, but one that had a
+  // host and loses it. The lookup the departure triggers runs a microtask later and books from
+  // there, so the report comes two timer turns after the removal, not one.
+  //
+  // Mutation that turns this red: book the check from `connectedCallback` only instead of from
+  // `#findEntNode` — a re-request round then never books, and the property stays silent.
+  it('reports a property whose host leaves the tree, one task after it lost it', async () => {
+    await withWarnings(async (reports) => {
+      const container = mount('<div id="fl-div"><shae-prop id="fl-prop" name="fl-x" value="1"></shae-prop></div>');
+      await Promise.all(['shae-ent', 'shae-prop'].map((name) => customElements.whenDefined(name)));
+
+      const shadowRoot = container.querySelector('#fl-div').attachShadow({mode: 'open'});
+      shadowRoot.innerHTML = '<shae-ent id="fl-inner" token="inner"><slot></slot></shae-ent>';
+      await nextTask();
+
+      expect(container.querySelector('#fl-prop').entNode?.id, 'the slot projects it into the entity').to.equal('fl-inner');
+      expect(reports('fl-x'), 'a property with a host reports nothing').to.equal(0);
+
+      shadowRoot.getElementById('fl-inner').remove();
+
+      expect(reports('fl-x'), 'nothing goes out in the task that took the host away').to.equal(0);
+
+      await nextTask();
+      await nextTask();
+
+      expect(reports('fl-x'), 'and once the task has ended without a host, it reports').to.equal(1);
+    });
+  });
+
+  // Every property that arrives without a host in one task waits for the same check: a page that
+  // defines `shae-prop` first over hundreds of properties books one timer, not hundreds.
+  //
+  // Mutation that turns this red: give every element a `setTimeout` of its own.
+  it('books one check for every property that arrives without a host in the same task', async () => {
+    await withWarnings(async (reports) => {
+      await Promise.all(['shae-ent', 'shae-prop'].map((name) => customElements.whenDefined(name)));
+
+      const setTimeoutSpy = sinon.spy(window, 'setTimeout');
+      try {
+        mount(
+          '<shae-prop id="ot-a" name="ot-a" value="1"></shae-prop>' +
+            '<shae-prop id="ot-b" name="ot-b" value="2"></shae-prop>' +
+            '<shae-prop id="ot-c" name="ot-c" value="3"></shae-prop>',
+        );
+      } finally {
+        setTimeoutSpy.restore();
+      }
+
+      expect(setTimeoutSpy.callCount, 'three properties, one timer').to.equal(1);
+
+      await nextTask();
+
+      expect({a: reports('ot-a'), b: reports('ot-b'), c: reports('ot-c')}, 'and each reports for itself').to.deep.equal({
+        a: 1,
+        b: 1,
+        c: 1,
+      });
     });
   });
 });
