@@ -11,6 +11,10 @@ packages:
 # the workspace on 7.x. Drop it once Oxc lowers decorators.
 overrides:
   vite: ^7.3.6
+  # Floors that lift transitive dev dependencies past published advisories
+  # (`pnpm audit`, see .github/workflows/dependency-advisories.yml).
+  brace-expansion: ^5.0.11
+  source-map-js: ^1.2.2
 
 # pnpm >=11 refuses dependency build scripts unless they are listed here
 # (`strictDepBuilds` is on by default). esbuild's postinstall fetches the
@@ -114,3 +118,11 @@ catalogs:
 # day old.
 minimumReleaseAgeExclude:
   - '@spearwolf/signalize@1.0.0'
+
+# braces <=3.0.3 (stack exhaustion on deeply nested patterns) has no patched
+# release on the registry yet. It is reached only through leasot's glob
+# expansion of our own source paths in `pnpm make:todo`, a dev-time script that
+# never sees untrusted patterns. Drop this once braces >=3.0.4 is published.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm
