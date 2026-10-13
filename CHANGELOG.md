@@ -4,6 +4,13 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-10-12 — Weekly `pnpm audit` is green again
+
+- **`overrides`** in `pnpm-workspace.yaml` raise `brace-expansion` to `^5.0.11` and `source-map-js`
+  to `^1.2.2`, past their published high-severity advisories; the lockfile follows.
+- **`auditConfig.ignoreGhsas`** lists `GHSA-vfj7-8cjw-p6xm` (`braces`, reached only through
+  `leasot`): the registry has no patched release yet. Remove the entry once `braces` >=3.0.4 exists.
+
 ## 2026-10-01 — CI runs on Ubuntu 26.04 and no action is left on Node.js 20
 
 - **`actions/upload-artifact` v4 → v7** in `ci.yml`: v4 targets Node.js 20, which the runner forces
