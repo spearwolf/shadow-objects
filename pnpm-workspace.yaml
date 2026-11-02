@@ -10,7 +10,7 @@ packages:
 # `SyntaxError: Invalid or unexpected token`. This override keeps every vite in
 # the workspace on 7.x. Drop it once Oxc lowers decorators.
 overrides:
-  vite: ^7.3.6
+  vite: ^7.3.7
   # Floors that lift transitive dev dependencies past published advisories
   # (`pnpm audit`, see .github/workflows/dependency-advisories.yml).
   brace-expansion: ^5.0.11
@@ -59,7 +59,7 @@ catalog:
   '@vitest/browser': 4.1.10
   '@vitest/browser-playwright': 4.1.10
   '@vitest/coverage-v8': 4.1.10
-  happy-dom: ^20.11.2
+  happy-dom: ^21.0.4
   sinon: ^22.1.0
   '@types/sinon': ^22.0.0
   # Pinned exact: 4.3.4-fix.0 is a prerelease tag above 4.3.4, and a caret range
@@ -78,7 +78,7 @@ catalog:
   '@playwright/test': ^1.62.1
   playwright: ^1.62.1
   # Held at 7.x on purpose — see the `overrides` block at the top of this file.
-  vite: ^7.3.6
+  vite: ^7.3.7
 
   # --- lint/format ---
   '@biomejs/biome': ^2.5.9
