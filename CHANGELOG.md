@@ -4,6 +4,10 @@ Top-level changes that are not tied to a single published package — build syst
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 2026-11-02 — high-severity dependency advisories are addressed
+
+- **`vite`** moves from `^7.3.6` to `^7.3.7` and **`happy-dom`** from `^20.11.2` to `^21.0.4`; the lockfile follows. These development dependency upgrades address the three high-severity advisories while keeping Vite on 7.x.
+
 ## 2026-10-12 — Weekly `pnpm audit` is green again
 
 - **`overrides`** in `pnpm-workspace.yaml` raise `brace-expansion` to `^5.0.11` and `source-map-js`
